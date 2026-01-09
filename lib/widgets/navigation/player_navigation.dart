@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:ionicons/ionicons.dart';
 import 'floating_nav_bar.dart';
 
 class PlayerNavigation extends StatelessWidget {
@@ -17,8 +18,8 @@ class PlayerNavigation extends StatelessWidget {
         onTap: (int idx) => _onItemTapped(idx, context),
         items: const [
           Icons.home_rounded,
-          Icons.calendar_month_outlined, // Book
-          Icons.sports_cricket_rounded, // Sessions
+          Ionicons.search_outline, // Book
+          Ionicons.calendar_outline, // Sessions
           Icons.person_rounded,
         ],
       ),

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:ionicons/ionicons.dart';
 import '../../config/palette.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -20,385 +21,397 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white, // Reference has white background
-      body: SingleChildScrollView(
-        child: Column(
-          children: [
-            // Top Wave Header
-            Stack(
-              children: [
-                ClipPath(
-                  clipper: _WaveClipper(),
-                  child: Container(
-                    height: 280,
-                    width: double.infinity,
-                    decoration: const BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [AppPalette.navyPrimary, AppPalette.navyLight],
-                      ),
-                    ),
-                    child: Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          // Placeholder Logo
-                          const Icon(
-                            Icons.sports_cricket,
-                            size: 60,
-                            color: Colors.white,
-                          ),
-                          const SizedBox(height: 10),
-                          Text(
-                            'CRICKET COACH',
-                            style: GoogleFonts.outfit(
-                              color: Colors.white,
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: 2,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
+      backgroundColor: Colors.white,
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 24.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              const SizedBox(height: 16),
+              // Back Button (Optional context based)
+              Align(
+                alignment: Alignment.centerLeft,
+                child: IconButton(
+                  icon: const Icon(
+                    Icons.arrow_back_ios_new_rounded,
+                    color: AppPalette.navyPrimary,
                   ),
+                  padding: EdgeInsets.zero,
+                  onPressed: () {
+                    if (context.canPop()) {
+                      context.pop();
+                    } else {
+                      context.go('/');
+                    }
+                  },
                 ),
-                Positioned(
-                  top: 50,
-                  left: 10,
-                  child: IconButton(
-                    icon: const Icon(
-                      Icons.arrow_back_ios_new,
-                      color: Colors.white,
-                    ),
-                    onPressed: () {
-                      if (context.canPop()) {
-                        context.pop();
-                      } else {
-                        context.go('/');
-                      }
-                    },
-                  ),
-                ),
-              ],
-            ).animate().slideY(begin: -0.2, duration: 600.ms),
+              ),
 
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24.0),
-              child: Column(
+              const SizedBox(height: 30),
+
+              // Logo/Icon
+              Container(
+                width: 80,
+                height: 80,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.05),
+                      blurRadius: 15,
+                      offset: const Offset(0, 5),
+                    ),
+                  ],
+                ),
+                child: const Icon(
+                  Ionicons.flag_outline,
+                  size: 40,
+                  color: AppPalette.orangeAccent,
+                ),
+              ).animate().scale(delay: 100.ms),
+
+              const SizedBox(height: 24),
+
+              // Title
+              Text(
+                'Welcome Back',
+                style: GoogleFonts.outfit(
+                  fontSize: 30,
+                  fontWeight: FontWeight.bold,
+                  color: AppPalette.navyPrimary,
+                ),
+              ).animate().fadeIn(delay: 200.ms),
+
+              const SizedBox(height: 8),
+
+              Text(
+                'Sign in to manage your team and track progress.',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.inter(
+                  fontSize: 14,
+                  color: AppPalette.textSecondaryLight,
+                  height: 1.5,
+                ),
+              ).animate().fadeIn(delay: 300.ms),
+
+              const SizedBox(height: 48),
+
+              // Email Field
+              const _CustomTextField(
+                label: 'Email Address',
+                hint: 'coach@example.com',
+                icon: Ionicons.mail_outline,
+                keyboardType: TextInputType.emailAddress,
+              ).animate().fadeIn(delay: 400.ms).slideX(begin: -0.1),
+
+              const SizedBox(height: 16),
+
+              // Password Field
+              _CustomTextField(
+                label: 'Password',
+                hint: '••••••••',
+                icon: Ionicons.lock_closed_outline,
+                isPassword: true,
+                isVisible: _isPasswordVisible,
+                onVisibilityChanged: () =>
+                    setState(() => _isPasswordVisible = !_isPasswordVisible),
+              ).animate().fadeIn(delay: 500.ms).slideX(begin: -0.1),
+
+              const SizedBox(height: 12),
+
+              // Details: Remember Me & Forgot Password
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const SizedBox(height: 20),
-                  Text(
-                    'Welcome back!',
-                    style: GoogleFonts.outfit(
-                      fontSize: 28,
-                      fontWeight: FontWeight.bold,
-                      color: AppPalette.textPrimaryLight,
-                    ),
-                  ).animate().fadeIn(delay: 200.ms),
-
-                  if (widget.role != null)
-                    Text(
-                      'Login as ${widget.role!.toUpperCase()}',
-                      style: GoogleFonts.inter(
-                        fontSize: 14,
-                        color: AppPalette.textSecondaryLight,
-                      ),
-                    ).animate().fadeIn(delay: 300.ms),
-
-                  const SizedBox(height: 40),
-
-                  // Username / Email Field
-                  Container(
-                    decoration: BoxDecoration(
-                      color: Colors.grey[100],
-                      borderRadius: BorderRadius.circular(30),
-                    ),
-                    child: TextFormField(
-                      decoration: InputDecoration(
-                        hintText: 'Email Address',
-                        hintStyle: GoogleFonts.inter(color: Colors.grey[500]),
-                        prefixIcon: Icon(
-                          Icons.email_outlined,
-                          color: Colors.grey[500],
-                        ),
-                        border: InputBorder.none,
-                        contentPadding: const EdgeInsets.symmetric(
-                          vertical: 16,
-                        ),
-                      ),
-                    ),
-                  ).animate().fadeIn(delay: 400.ms).slideX(begin: -0.1),
-
-                  const SizedBox(height: 16),
-
-                  // Password Field
-                  Container(
-                    decoration: BoxDecoration(
-                      color: Colors.grey[100],
-                      borderRadius: BorderRadius.circular(30),
-                    ),
-                    child: TextFormField(
-                      obscureText: !_isPasswordVisible,
-                      decoration: InputDecoration(
-                        hintText: 'Password',
-                        hintStyle: GoogleFonts.inter(color: Colors.grey[500]),
-                        prefixIcon: Icon(
-                          Icons.lock_outline,
-                          color: Colors.grey[500],
-                        ),
-                        suffixIcon: IconButton(
-                          icon: Icon(
-                            _isPasswordVisible
-                                ? Icons.visibility
-                                : Icons.visibility_off,
-                            color: Colors.grey[500],
-                          ),
-                          onPressed: () {
-                            setState(() {
-                              _isPasswordVisible = !_isPasswordVisible;
-                            });
-                          },
-                        ),
-                        border: InputBorder.none,
-                        contentPadding: const EdgeInsets.symmetric(
-                          vertical: 16,
-                        ),
-                      ),
-                    ),
-                  ).animate().fadeIn(delay: 500.ms).slideX(begin: -0.1),
-
-                  const SizedBox(height: 10),
-
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Row(
-                        children: [
-                          Checkbox(
-                            value: _rememberMe,
-                            activeColor: AppPalette.navyPrimary,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            onChanged: (val) =>
-                                setState(() => _rememberMe = val!),
+                      SizedBox(
+                        width: 24,
+                        height: 24,
+                        child: Checkbox(
+                          value: _rememberMe,
+                          activeColor: AppPalette.orangeAccent,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(4),
                           ),
-                          Text(
-                            'Remember me',
-                            style: GoogleFonts.inter(
-                              color: Colors.grey[600],
-                              fontSize: 13,
-                            ),
-                          ),
-                        ],
+                          onChanged: (val) =>
+                              setState(() => _rememberMe = val!),
+                        ),
                       ),
-                      TextButton(
-                        onPressed: () {},
-                        child: Text(
-                          'Forgot password?',
-                          style: GoogleFonts.inter(
-                            color: Colors.grey[600],
-                            fontWeight: FontWeight.w600,
-                            fontSize: 13,
-                          ),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Remember me',
+                        style: GoogleFonts.inter(
+                          color: AppPalette.textSecondaryLight,
+                          fontSize: 13,
                         ),
                       ),
                     ],
-                  ).animate().fadeIn(delay: 600.ms),
-
-                  const SizedBox(height: 30),
-
-                  // Login Button
-                  SizedBox(
-                    width: double.infinity,
-                    height: 55,
-                    child: ElevatedButton(
-                      onPressed: () {
-                        if (widget.role == 'coach') {
-                          context.go('/coach/home');
-                        } else if (widget.role == 'player') {
-                          context.go('/player/home');
-                        } else {
-                          context.go('/guardian/home');
-                        }
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.transparent, // For gradient
-                        shadowColor: Colors.transparent,
-                        padding: EdgeInsets.zero,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(30),
-                        ),
-                      ),
-                      child: Ink(
-                        decoration: BoxDecoration(
-                          color: AppPalette.orangeAccent,
-                          borderRadius: BorderRadius.circular(30),
-                          boxShadow: [
-                            BoxShadow(
-                              color: AppPalette.orangeAccent.withValues(
-                                alpha: 0.3,
-                              ),
-                              blurRadius: 10,
-                              offset: const Offset(0, 5),
-                            ),
-                          ],
-                        ),
-                        child: Container(
-                          alignment: Alignment.center,
-                          child: Text(
-                            'Login',
-                            style: GoogleFonts.outfit(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ),
+                  ),
+                  TextButton(
+                    onPressed: () {},
+                    style: TextButton.styleFrom(
+                      padding: EdgeInsets.zero,
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                    child: Text(
+                      'Forgot Password?',
+                      style: GoogleFonts.inter(
+                        color: AppPalette.orangeAccent,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13,
                       ),
                     ),
-                  ).animate().fadeIn(delay: 700.ms).slideY(begin: 0.2),
+                  ),
+                ],
+              ).animate().fadeIn(delay: 600.ms),
 
-                  const SizedBox(height: 20),
+              const SizedBox(height: 32),
 
-                  // Create Account Link
-                  Row(
+              // Login Button
+              SizedBox(
+                width: double.infinity,
+                height: 56,
+                child: ElevatedButton(
+                  onPressed: () {
+                    if (widget.role == 'coach') {
+                      context.go('/coach/home');
+                    } else if (widget.role == 'player') {
+                      context.go('/player/home');
+                    } else {
+                      context.go('/guardian/home');
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppPalette.orangeAccent,
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                  ),
+                  child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Text(
-                        "New user? ",
-                        style: GoogleFonts.inter(color: Colors.grey[600]),
+                        'Log In',
+                        style: GoogleFonts.outfit(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
-                      GestureDetector(
-                        onTap: () {
-                          if (widget.role != null) {
-                            context.go('/register?role=${widget.role}');
-                          } else {
-                            context.go('/register');
-                          }
-                        },
-                        child: Text(
-                          "Sign Up",
+                      const SizedBox(width: 8),
+                      const Icon(Ionicons.arrow_forward, size: 20),
+                    ],
+                  ),
+                ),
+              ).animate().fadeIn(delay: 700.ms).slideY(begin: 0.2),
+
+              const SizedBox(height: 32),
+
+              // Social Login Divider
+              Row(
+                children: [
+                  Expanded(child: Divider(color: Colors.grey[300])),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Text(
+                      'OR CONTINUE WITH',
+                      style: GoogleFonts.inter(
+                        color: AppPalette.textSecondaryLight,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                  ),
+                  Expanded(child: Divider(color: Colors.grey[300])),
+                ],
+              ).animate().fadeIn(delay: 800.ms),
+
+              const SizedBox(height: 24),
+
+              // Social Buttons
+              Row(
+                children: [
+                  Expanded(
+                    child: _SocialButton(
+                      assetPath: 'assets/images/logo_google.png',
+                      onTap: () {},
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: _SocialButton(
+                      assetPath: 'assets/images/logo_apple.png',
+                      isApple: true,
+                      onTap: () {},
+                    ),
+                  ),
+                ],
+              ).animate().fadeIn(delay: 900.ms),
+
+              const SizedBox(height: 48),
+
+              // Footer
+              Center(
+                child: GestureDetector(
+                  onTap: () {
+                    if (widget.role != null) {
+                      context.go('/register?role=${widget.role}');
+                    } else {
+                      context.go('/register');
+                    }
+                  },
+                  child: RichText(
+                    text: TextSpan(
+                      style: GoogleFonts.inter(
+                        fontSize: 15,
+                        color: AppPalette.textSecondaryLight,
+                      ),
+                      children: [
+                        const TextSpan(text: "Don't have an account? "),
+                        TextSpan(
+                          text: 'Sign Up',
                           style: GoogleFonts.inter(
                             fontWeight: FontWeight.bold,
                             color: AppPalette.orangeAccent,
                           ),
                         ),
-                      ),
-                    ],
-                  ).animate().fadeIn(delay: 800.ms),
+                      ],
+                    ),
+                  ),
+                ),
+              ).animate().fadeIn(delay: 1000.ms),
 
-                  const SizedBox(height: 30),
-
-                  Row(
-                    children: [
-                      Expanded(child: Divider(color: Colors.grey[300])),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                        child: Text(
-                          "OR",
-                          style: GoogleFonts.inter(
-                            color: Colors.grey[400],
-                            fontSize: 12,
-                          ),
-                        ),
-                      ),
-                      Expanded(child: Divider(color: Colors.grey[300])),
-                    ],
-                  ).animate().fadeIn(delay: 900.ms),
-
-                  const SizedBox(height: 20),
-
-                  // Social Media
-                  const Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      _SocialIcon(
-                        icon: Icons.facebook,
-                        color: Color(0xFF1877F2),
-                      ),
-                      SizedBox(width: 20),
-                      _SocialIcon(
-                        icon: Icons.g_mobiledata,
-                        color: Colors.red,
-                        size: 34,
-                      ), // Google placeholder
-                      SizedBox(width: 20),
-                      _SocialIcon(icon: Icons.apple, color: Colors.black),
-                    ],
-                  ).animate().fadeIn(delay: 1000.ms),
-
-                  const SizedBox(height: 30),
-                ],
-              ),
-            ),
-          ],
+              const SizedBox(height: 24),
+            ],
+          ),
         ),
       ),
     );
   }
 }
 
-class _SocialIcon extends StatelessWidget {
+class _CustomTextField extends StatelessWidget {
+  final String label;
+  final String hint;
   final IconData icon;
-  final Color color;
-  final double size;
+  final bool isPassword;
+  final bool isVisible;
+  final VoidCallback? onVisibilityChanged;
+  final TextInputType keyboardType;
 
-  const _SocialIcon({required this.icon, required this.color, this.size = 28});
+  const _CustomTextField({
+    required this.label,
+    required this.hint,
+    required this.icon,
+    this.isPassword = false,
+    this.isVisible = false,
+    this.onVisibilityChanged,
+    this.keyboardType = TextInputType.text,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        shape: BoxShape.circle,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: GoogleFonts.outfit(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            color: AppPalette.navyPrimary,
           ),
-        ],
-        border: Border.all(color: Colors.grey[200]!),
-      ),
-      child: Icon(icon, color: color, size: size),
+        ),
+        const SizedBox(height: 8),
+        Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.grey[200]!),
+          ),
+          child: TextFormField(
+            obscureText: isPassword && !isVisible,
+            keyboardType: keyboardType,
+            style: GoogleFonts.inter(
+              fontSize: 15,
+              color: AppPalette.navyPrimary,
+            ),
+            decoration: InputDecoration(
+              hintText: hint,
+              hintStyle: GoogleFonts.inter(color: Colors.grey[400]),
+              prefixIcon: Icon(icon, color: Colors.grey[400], size: 20),
+              suffixIcon: isPassword
+                  ? IconButton(
+                      icon: Icon(
+                        isVisible
+                            ? Ionicons.eye_off_outline
+                            : Ionicons.eye_outline,
+                        color: Colors.grey[400],
+                        size: 20,
+                      ),
+                      onPressed: onVisibilityChanged,
+                    )
+                  : null,
+              border: InputBorder.none,
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 14,
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
 
-class _WaveClipper extends CustomClipper<Path> {
+class _SocialButton extends StatelessWidget {
+  final String assetPath;
+  final VoidCallback onTap;
+  final bool isApple;
+
+  const _SocialButton({
+    required this.assetPath,
+    required this.onTap,
+    this.isApple = false,
+  });
+
   @override
-  Path getClip(Size size) {
-    var path = Path();
-    path.lineTo(0, size.height - 50);
-    // First curve
-    var firstControlPoint = Offset(size.width / 4, size.height);
-    var firstEndPoint = Offset(size.width / 2, size.height - 50);
-    path.quadraticBezierTo(
-      firstControlPoint.dx,
-      firstControlPoint.dy,
-      firstEndPoint.dx,
-      firstEndPoint.dy,
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        height: 56, // Match main button height
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          border: Border.all(color: Colors.grey[200]!),
+          borderRadius: BorderRadius.circular(12),
+          color: Colors.white,
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Image.asset(assetPath, height: 24, width: 24),
+            if (isApple) ...[
+              const SizedBox(width: 8),
+              Text(
+                'iOS',
+                style: GoogleFonts.inter(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
     );
-
-    // Second curve
-    var secondControlPoint = Offset(size.width * 3 / 4, size.height - 100);
-    var secondEndPoint = Offset(size.width, size.height - 50);
-    path.quadraticBezierTo(
-      secondControlPoint.dx,
-      secondControlPoint.dy,
-      secondEndPoint.dx,
-      secondEndPoint.dy,
-    );
-
-    path.lineTo(size.width, 0);
-    path.close();
-    return path;
   }
-
-  @override
-  bool shouldReclip(CustomClipper<Path> oldClipper) => false;
 }

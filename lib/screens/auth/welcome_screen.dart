@@ -17,31 +17,54 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
   int _currentPage = 0;
   Timer? _timer;
 
-  final List<String> _images = [
-    'assets/images/multi_sport_welcome_1.png',
-    'assets/images/multi_sport_welcome_2.png',
+  final List<WelcomeSlide> _slides = [
+    WelcomeSlide(
+      imageAsset: 'assets/images/welcome_batting.png',
+      title1: 'Master Your\n',
+      title2: 'Game Skills',
+      description:
+          'Connect with elite coaches to perfect your technique and dominate in any sport.',
+    ),
+    WelcomeSlide(
+      imageAsset: 'assets/images/welcome_bowling.png',
+      title1: 'Unleash Your\n',
+      title2: 'Full Potential',
+      description:
+          'Get personalized training plans and analysis to reach the next level of performance.',
+    ),
+    WelcomeSlide(
+      imageAsset: 'assets/images/welcome_fielding.png',
+      title1: 'Experience the\n',
+      title2: 'Thrill of Victory',
+      description:
+          'Join a community of passionate athletes and track your journey to success.',
+    ),
   ];
 
   @override
   void initState() {
     super.initState();
+    // Auto-scroll is optional for onboarding, but requested in previous context.
+    // Keeping it but ensuring it stops on interaction or can be manual.
     _startAutoScroll();
   }
 
   void _startAutoScroll() {
     _timer = Timer.periodic(const Duration(seconds: 4), (timer) {
-      if (_currentPage < _images.length - 1) {
-        _currentPage++;
+      if (_currentPage < _slides.length - 1) {
+        if (_pageController.hasClients) {
+          _pageController.animateToPage(
+            _currentPage + 1,
+            duration: const Duration(milliseconds: 800),
+            curve: Curves.easeInOutCubic,
+          );
+        }
       } else {
-        _currentPage = 0;
-      }
-
-      if (_pageController.hasClients) {
-        _pageController.animateToPage(
-          _currentPage,
-          duration: const Duration(milliseconds: 800),
-          curve: Curves.easeInOutCubic,
-        );
+        // Stop auto-scroll at end or loop? Usually onboarding stops or loops.
+        // Let's loop for "welcome screen" feel, but since it has "Get Started" at end, maybe stop?
+        // User said "on last picture get started button shuld apper".
+        // Use case: Onboarding. Let's stop at the end.
+        _timer?.cancel();
       }
     });
   }
@@ -53,48 +76,74 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
     super.dispose();
   }
 
+  void _onNext() {
+    if (_currentPage < _slides.length - 1) {
+      _pageController.animateToPage(
+        _currentPage + 1,
+        duration: const Duration(milliseconds: 500),
+        curve: Curves.easeInOut,
+      );
+    } else {
+      context.push('/role-selection');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppPalette.navyPrimary, // Fallback color
+      backgroundColor: AppPalette.navyPrimary,
       body: Stack(
         children: [
           // 1. Full Screen Background Carousel
+          // 1. Full Screen Background Carousel
           Positioned.fill(
-            child: PageView.builder(
-              controller: _pageController,
-              onPageChanged: (index) {
-                setState(() {
-                  _currentPage = index;
-                });
+            child: Listener(
+              onPointerDown: (_) {
+                _timer?.cancel();
               },
-              itemCount: _images.length,
-              itemBuilder: (context, index) {
-                return Image.asset(_images[index], fit: BoxFit.cover);
-              },
+              child: PageView.builder(
+                controller: _pageController,
+                onPageChanged: (index) {
+                  setState(() {
+                    _currentPage = index;
+                  });
+                },
+                itemCount: _slides.length,
+                itemBuilder: (context, index) {
+                  return Image.asset(
+                    _slides[index].imageAsset,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) {
+                      return Container(color: AppPalette.navyPrimary);
+                    },
+                  );
+                },
+              ),
             ),
           ),
 
-          // 2. Gradient Overlay for text readability
+          // 2. Gradient Overlay
           Positioned.fill(
-            child: Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  stops: const [0.0, 0.4, 0.7, 1.0],
-                  colors: [
-                    Colors.black.withValues(alpha: 0.1),
-                    Colors.black.withValues(alpha: 0.0),
-                    Colors.black.withValues(alpha: 0.6),
-                    Colors.black.withValues(alpha: 0.9),
-                  ],
+            child: IgnorePointer(
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    stops: const [0.0, 0.4, 0.7, 1.0],
+                    colors: [
+                      Colors.black.withValues(alpha: 0.1),
+                      Colors.black.withValues(alpha: 0.0),
+                      Colors.black.withValues(alpha: 0.6),
+                      Colors.black.withValues(alpha: 0.9),
+                    ],
+                  ),
                 ),
               ),
             ),
           ),
 
-          // 3. Content Section (Bottom Aligned)
+          // 3. Content Section
           SafeArea(
             child: Column(
               children: [
@@ -104,9 +153,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                   margin: const EdgeInsets.symmetric(horizontal: 16.0),
                   padding: const EdgeInsets.all(24.0),
                   decoration: BoxDecoration(
-                    color: Colors.black.withValues(
-                      alpha: 0.7,
-                    ), // Stronger transparent black for readability
+                    color: Colors.black.withValues(alpha: 0.7),
                     borderRadius: const BorderRadius.vertical(
                       top: Radius.circular(32),
                       bottom: Radius.circular(32),
@@ -154,45 +201,55 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
 
                       const SizedBox(height: 24),
 
-                      // Headline
-                      RichText(
-                        textAlign: TextAlign.center,
-                        text: TextSpan(
-                          style: GoogleFonts.outfit(
-                            fontSize: 32,
-                            fontWeight: FontWeight.bold,
-                            height: 1.1,
-                            color: Colors.white,
-                          ),
-                          children: const [
-                            TextSpan(text: 'Master Your\n'),
-                            TextSpan(
-                              text: 'Sport Potential',
-                              style: TextStyle(color: AppPalette.orangeAccent),
+                      // Animated Headlines
+                      AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 500),
+                        child: RichText(
+                          key: ValueKey<int>(_currentPage),
+                          textAlign: TextAlign.center,
+                          text: TextSpan(
+                            style: GoogleFonts.outfit(
+                              fontSize: 32,
+                              fontWeight: FontWeight.bold,
+                              height: 1.1,
+                              color: Colors.white,
                             ),
-                          ],
+                            children: [
+                              TextSpan(text: _slides[_currentPage].title1),
+                              TextSpan(
+                                text: _slides[_currentPage].title2,
+                                style: const TextStyle(
+                                  color: AppPalette.orangeAccent,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                      ).animate().fadeIn(delay: 300.ms).slideY(begin: 0.2),
+                      ),
 
                       const SizedBox(height: 16),
 
-                      // Subtext
-                      Text(
-                        'Connect with elite coaches, get personalized training plans, and track your progress in real-time.',
-                        textAlign: TextAlign.center,
-                        style: GoogleFonts.inter(
-                          fontSize: 16,
-                          color: Colors.white.withValues(alpha: 0.8),
-                          height: 1.5,
+                      // Animated Description
+                      AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 500),
+                        child: Text(
+                          _slides[_currentPage].description,
+                          key: ValueKey<int>(_currentPage),
+                          textAlign: TextAlign.center,
+                          style: GoogleFonts.inter(
+                            fontSize: 16,
+                            color: Colors.white.withValues(alpha: 0.8),
+                            height: 1.5,
+                          ),
                         ),
-                      ).animate().fadeIn(delay: 400.ms).slideY(begin: 0.2),
+                      ),
 
                       const SizedBox(height: 24),
 
                       // Pagination Dots
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
-                        children: List.generate(_images.length, (index) {
+                        children: List.generate(_slides.length, (index) {
                           final isActive = index == _currentPage;
                           return AnimatedContainer(
                             duration: const Duration(milliseconds: 300),
@@ -211,33 +268,63 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
 
                       const SizedBox(height: 32),
 
-                      // Get Started Button
-                      ElevatedButton(
-                        onPressed: () => context.push('/role-selection'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppPalette.orangeAccent,
-                          foregroundColor: Colors.white,
-                          elevation: 0,
-                          minimumSize: const Size(double.infinity, 56),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
+                      // Get Started Button / Next Button
+                      // Logic: If last slide, show "Get Started". Else show "Next" or just dots?
+                      // User said: "on last picture get started button shuld apper".
+                      if (_currentPage == _slides.length - 1)
+                        ElevatedButton(
+                          onPressed: () => context.push('/role-selection'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppPalette.orangeAccent,
+                            foregroundColor: Colors.white,
+                            elevation: 0,
+                            minimumSize: const Size(double.infinity, 56),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                          ),
+                          child: const Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(
+                                'Get Started',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              SizedBox(width: 8),
+                              Icon(Icons.arrow_forward_rounded, size: 20),
+                            ],
+                          ),
+                        ).animate().fadeIn().scale()
+                      else
+                        ElevatedButton(
+                          onPressed: _onNext,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppPalette.orangeAccent,
+                            foregroundColor: Colors.white,
+                            elevation: 0,
+                            minimumSize: const Size(double.infinity, 56),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                          ),
+                          child: const Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(
+                                'Next',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              SizedBox(width: 8),
+                              Icon(Icons.arrow_forward_rounded, size: 20),
+                            ],
                           ),
                         ),
-                        child: const Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text(
-                              'Get Started',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            SizedBox(width: 8),
-                            Icon(Icons.arrow_forward_rounded, size: 20),
-                          ],
-                        ),
-                      ).animate().fadeIn(delay: 500.ms).slideY(begin: 0.2),
 
                       const SizedBox(height: 24),
 
@@ -274,4 +361,18 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
       ),
     );
   }
+}
+
+class WelcomeSlide {
+  final String imageAsset;
+  final String title1;
+  final String title2;
+  final String description;
+
+  WelcomeSlide({
+    required this.imageAsset,
+    required this.title1,
+    required this.title2,
+    required this.description,
+  });
 }

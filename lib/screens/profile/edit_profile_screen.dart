@@ -12,26 +12,8 @@ class EditProfileScreen extends StatefulWidget {
 
 class _EditProfileScreenState extends State<EditProfileScreen> {
   final TextEditingController _nameController = TextEditingController(
-    text: "Arjun Kumar",
+    text: "Coach Alex Johnson",
   );
-  String _selectedRole = 'Batsman';
-  String _selectedBattingStyle = 'Right Hand';
-  String _selectedBowlingStyle = 'Right Arm - Fast';
-
-  final List<String> _roles = [
-    'Batsman',
-    'Bowler',
-    'All-rounder',
-    'Wicket Keeper',
-  ];
-  final List<String> _battingStyles = ['Right Hand', 'Left Hand'];
-  final List<String> _bowlingStyles = [
-    'Right Arm - Fast',
-    'Right Arm - Spin',
-    'Left Arm - Fast',
-    'Left Arm - Spin',
-    'None',
-  ];
 
   @override
   void dispose() {
@@ -62,60 +44,50 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           onPressed: () => context.pop(),
         ),
       ),
-      bottomNavigationBar: Padding(
-        padding: const EdgeInsets.all(24.0),
-        child: ElevatedButton(
-          onPressed: () {
-            // TODO: Implement save logic
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Profile Updated Successfully!')),
-            );
-            context.pop();
-          },
-          style: ElevatedButton.styleFrom(
-            backgroundColor: AppPalette.navyPrimary,
-            foregroundColor: Colors.white,
-            padding: const EdgeInsets.symmetric(vertical: 16),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-            textStyle: GoogleFonts.outfit(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          child: const Text('Save Changes'),
-        ),
-      ),
+
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24.0),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Avatar Edit
             Center(
-              child: Stack(
+              child: Column(
                 children: [
-                  const CircleAvatar(
-                    radius: 60,
-                    backgroundImage: NetworkImage(
-                      'https://i.pravatar.cc/150?img=11',
-                    ),
+                  Stack(
+                    children: [
+                      const CircleAvatar(
+                        radius: 60,
+                        backgroundImage: NetworkImage(
+                          'https://i.pravatar.cc/150?img=11',
+                        ),
+                      ),
+                      Positioned(
+                        bottom: 0,
+                        right: 4,
+                        child: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: AppPalette.orangeAccent,
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.white, width: 2),
+                          ),
+                          child: const Icon(
+                            Icons.camera_alt,
+                            color: Colors.white,
+                            size: 20,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                  Positioned(
-                    bottom: 0,
-                    right: 4,
-                    child: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: AppPalette.orangeAccent,
-                        shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white, width: 2),
-                      ),
-                      child: const Icon(
-                        Icons.camera_alt,
-                        color: Colors.white,
-                        size: 20,
-                      ),
+                  const SizedBox(height: 12),
+                  Text(
+                    'Change Profile Photo',
+                    style: GoogleFonts.inter(
+                      color: AppPalette.orangeAccent,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
                     ),
                   ),
                 ],
@@ -123,85 +95,96 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             ),
             const SizedBox(height: 32),
 
-            // Form Fields
-            _buildTextField("Full Name", _nameController),
-            const SizedBox(height: 16),
-            _buildDropdown(
-              "Role",
-              _selectedRole,
-              _roles,
-              (val) => setState(() => _selectedRole = val!),
+            // Personal Information
+            Text(
+              "Personal Information",
+              style: GoogleFonts.outfit(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: AppPalette.navyPrimary,
+              ),
             ),
             const SizedBox(height: 16),
-            _buildDropdown(
-              "Batting Style",
-              _selectedBattingStyle,
-              _battingStyles,
-              (val) => setState(() => _selectedBattingStyle = val!),
+            _buildTextField("Full Name", _nameController, icon: Icons.person),
+            // "I am a Coach/Athlete" toggle explicitly OMITTED here
+            const SizedBox(height: 16),
+            _buildTextField(
+              "Bio",
+              TextEditingController(
+                text:
+                    "Certified strength and conditioning coach with over 8 years of experience helping athletes reach their peak performance.",
+              ),
+              maxLines: 4,
+            ),
+
+            const SizedBox(height: 32),
+
+            // Contact Details
+            Text(
+              "Contact Details",
+              style: GoogleFonts.outfit(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: AppPalette.navyPrimary,
+              ),
             ),
             const SizedBox(height: 16),
-            _buildDropdown(
-              "Bowling Style",
-              _selectedBowlingStyle,
-              _bowlingStyles,
-              (val) => setState(() => _selectedBowlingStyle = val!),
+            _buildTextField(
+              "Email Address",
+              TextEditingController(text: "alex.j@example.com"),
+              icon: Icons.email_outlined,
             ),
+            const SizedBox(height: 16),
+            _buildTextField(
+              "Phone Number",
+              TextEditingController(text: "+1 (555) 123-4567"),
+              icon: Icons.phone_outlined,
+            ),
+
+            const SizedBox(height: 32),
+
+            // Save Changes Button
+            ElevatedButton(
+              onPressed: () {
+                // TODO: Implement save logic
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Profile Updated Successfully!'),
+                  ),
+                );
+                context.pop();
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppPalette.navyPrimary,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                textStyle: GoogleFonts.outfit(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+                minimumSize: const Size(double.infinity, 56),
+              ),
+              child: const Text('Save Changes'),
+            ),
+
+            const SizedBox(
+              height: 80,
+            ), // Bottom spacing for potential FAB or scrolling
           ],
         ),
       ),
     );
   }
 
-  Widget _buildTextField(String label, TextEditingController controller) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: GoogleFonts.inter(
-            fontWeight: FontWeight.w600,
-            color: AppPalette.navyPrimary,
-            fontSize: 14,
-          ),
-        ),
-        const SizedBox(height: 8),
-        TextField(
-          controller: controller,
-          decoration: InputDecoration(
-            filled: true,
-            fillColor: Colors.grey[50],
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: Colors.grey[300]!),
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: Colors.grey[300]!),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(
-                color: AppPalette.navyPrimary,
-                width: 1.5,
-              ),
-            ),
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 16,
-              vertical: 16,
-            ),
-          ),
-          style: GoogleFonts.inter(color: AppPalette.textPrimaryLight),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildDropdown(
+  Widget _buildTextField(
     String label,
-    String value,
-    List<String> items,
-    ValueChanged<String?> onChanged,
-  ) {
+    TextEditingController controller, {
+    IconData? icon,
+    int maxLines = 1,
+  }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -209,38 +192,56 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           label,
           style: GoogleFonts.inter(
             fontWeight: FontWeight.w600,
-            color: AppPalette.navyPrimary,
+            color: AppPalette.navyPrimary.withValues(alpha: 0.8),
             fontSize: 14,
           ),
         ),
         const SizedBox(height: 8),
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
           decoration: BoxDecoration(
-            color: Colors.grey[50],
+            color: Colors.white,
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.grey[300]!),
-          ),
-          child: DropdownButtonHideUnderline(
-            child: DropdownButton<String>(
-              value: value,
-              isExpanded: true,
-              icon: const Icon(
-                Icons.keyboard_arrow_down,
-                color: AppPalette.navyPrimary,
+            border: Border.all(color: Colors.grey[200]!),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.03),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
               ),
-              items: items.map((String item) {
-                return DropdownMenuItem<String>(
-                  value: item,
-                  child: Text(
-                    item,
-                    style: GoogleFonts.inter(
-                      color: AppPalette.textPrimaryLight,
-                    ),
-                  ),
-                );
-              }).toList(),
-              onChanged: onChanged,
+            ],
+          ),
+          child: TextField(
+            controller: controller,
+            maxLines: maxLines,
+            decoration: InputDecoration(
+              filled: true,
+              fillColor: Colors.white,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide.none,
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide.none,
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(
+                  color: AppPalette.navyPrimary,
+                  width: 1,
+                ),
+              ),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 16,
+              ),
+              suffixIcon: icon != null
+                  ? Icon(icon, color: Colors.grey[400], size: 20)
+                  : null,
+            ),
+            style: GoogleFonts.inter(
+              color: AppPalette.textPrimaryLight,
+              fontWeight: FontWeight.w500,
             ),
           ),
         ),

@@ -63,14 +63,9 @@ class _AddPlayerScreenState extends State<AddPlayerScreen> {
             color: Colors.black,
           ),
           onPressed: () {
-            // If strictly onboarding, maybe restrict popping?
-            // But usually we allow going back.
-            if (context.canPop()) {
-              context.pop();
-            } else {
-              // Fallback if accessed via deep link or replacement
-              context.go('/guardian/home');
-            }
+            // Use context.go to ensure we return to the Players list safely
+            // avoiding potential stack issues with root navigator pops
+            context.go('/guardian/players');
           },
         ),
       ),

@@ -1,9 +1,9 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../../config/palette.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
+import '../../widgets/notification_button.dart';
 
 class CoachHomeScreen extends StatelessWidget {
   const CoachHomeScreen({super.key});
@@ -11,412 +11,458 @@ class CoachHomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      body: SafeArea(
-        child: SingleChildScrollView(
-          child: Padding(
-            padding: const EdgeInsets.all(24.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Header with Avatar
-                Row(
-                  children: [
-                    CircleAvatar(
-                      radius: 24,
-                      backgroundColor: AppPalette.navyPrimary,
-                      child: Text(
-                        'C',
-                        style: GoogleFonts.outfit(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 20,
+      backgroundColor: AppPalette.backgroundLight,
+      body: SingleChildScrollView(
+        child: Column(
+          children: [
+            // Dark Header Section
+            Container(
+              padding: EdgeInsets.fromLTRB(
+                24,
+                MediaQuery.of(context).padding.top + 20,
+                24,
+                30,
+              ),
+              decoration: const BoxDecoration(
+                color: AppPalette.navyPrimary,
+                borderRadius: BorderRadius.vertical(
+                  bottom: Radius.circular(32),
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const CircleAvatar(
+                        radius: 24,
+                        backgroundImage: NetworkImage(
+                          'https://i.pravatar.cc/150?img=11',
                         ),
                       ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
+                      const SizedBox(width: 12),
+                      Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Welcome back!',
+                            'OCT 24, 2023',
                             style: GoogleFonts.inter(
-                              fontSize: 14,
-                              color: AppPalette.textSecondaryLight,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white70, // Lighter text for date
+                              letterSpacing: 1,
                             ),
                           ),
                           Text(
-                            'Coach Dashboard',
+                            'Good Morning, Coach',
                             style: GoogleFonts.outfit(
-                              fontSize: 20,
+                              fontSize: 20, // Slightly smaller to fit
                               fontWeight: FontWeight.bold,
-                              color: AppPalette.textPrimaryLight,
+                              color: Colors.white,
                             ),
                           ),
                         ],
                       ),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.notifications_outlined),
-                      onPressed: () {},
-                      color: AppPalette.navyPrimary,
-                    ),
-                  ],
-                ).animate().fadeIn().slideX(begin: -0.1),
-
-                const SizedBox(height: 32),
-
-                // Stats Overview Card
-                Container(
-                  padding: const EdgeInsets.all(24),
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [AppPalette.navyPrimary, AppPalette.navyLight],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    borderRadius: BorderRadius.circular(24),
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppPalette.navyPrimary.withValues(alpha: 0.3),
-                        blurRadius: 20,
-                        offset: const Offset(0, 10),
-                      ),
+                      const Spacer(),
+                      const NotificationButton(hasNotification: true),
                     ],
                   ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                ],
+              ),
+            ),
+
+            // Content Body
+            Padding(
+              padding: const EdgeInsets.all(24.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Stats Cards
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildStatCard(
+                          Icons.timer_outlined,
+                          '3',
+                          'Sessions',
+                          Colors.indigo[50]!,
+                          AppPalette.navyPrimary,
+                          onTap: () => context.push('/coach/sessions'),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _buildStatCard(
+                          Icons.people_outline,
+                          '24',
+                          'Players',
+                          Colors.orange[50]!,
+                          Colors.orange,
+                          onTap: () => context.push('/coach/students'),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _buildStatCard(
+                          Icons.star_rounded,
+                          '4.8',
+                          'Rating',
+                          Colors.amber[50]!,
+                          Colors.amber,
+                        ),
+                      ),
+                    ],
+                  ).animate().fadeIn().slideX(),
+
+                  const SizedBox(height: 32),
+
+                  // Upcoming Sessions
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        'Today\'s Overview',
+                        'Upcoming Sessions',
                         style: GoogleFonts.outfit(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
-                          color: Colors.white,
+                          color: AppPalette.navyPrimary,
                         ),
                       ),
-                      const SizedBox(height: 20),
-                      const Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceAround,
-                        children: [
-                          _StatItem(
-                            icon: Icons.people_outline,
-                            value: '24',
-                            label: 'Students',
+                      TextButton(
+                        onPressed: () => context.go('/coach/sessions'),
+                        child: Text(
+                          'See all',
+                          style: GoogleFonts.inter(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: AppPalette.navyPrimary,
                           ),
-                          _StatItem(
-                            icon: Icons.event_available,
-                            value: '6',
-                            label: 'Sessions',
-                          ),
-                          _StatItem(
-                            icon: Icons.schedule,
-                            value: '8h',
-                            label: 'Hours',
-                          ),
-                        ],
+                        ),
                       ),
                     ],
                   ),
-                ).animate().fadeIn(delay: 200.ms).scale(delay: 200.ms),
-
-                const SizedBox(height: 32),
-
-                // Upcoming Sessions Header
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Upcoming Sessions',
-                      style: GoogleFonts.outfit(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: AppPalette.textPrimaryLight,
-                      ),
-                    ),
-                    TextButton(
-                      onPressed: () {},
-                      child: Text(
-                        'View All',
-                        style: GoogleFonts.inter(
-                          color: AppPalette.orangeAccent,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ],
-                ).animate().fadeIn(delay: 300.ms),
-
-                const SizedBox(height: 16),
-
-                // Session Cards
-                const _SessionCard(
-                  title: 'Batting Technique',
-                  time: '10:00 AM - 11:30 AM',
-                  students: '8 Students',
-                  color: AppPalette.orangeAccent,
-                ).animate().fadeIn(delay: 400.ms).slideX(begin: 0.2),
-
-                const SizedBox(height: 12),
-
-                const _SessionCard(
-                  title: 'Bowling Masterclass',
-                  time: '2:00 PM - 3:30 PM',
-                  students: '12 Students',
-                  color: AppPalette.navyPrimary,
-                ).animate().fadeIn(delay: 500.ms).slideX(begin: 0.2),
-
-                const SizedBox(height: 12),
-
-                const _SessionCard(
-                  title: 'Fielding Practice',
-                  time: '4:00 PM - 5:00 PM',
-                  students: '10 Students',
-                  color: AppPalette.success,
-                ).animate().fadeIn(delay: 600.ms).slideX(begin: 0.2),
-
-                const SizedBox(height: 32),
-
-                // Quick Actions
-                Text(
-                  'Quick Actions',
-                  style: GoogleFonts.outfit(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: AppPalette.textPrimaryLight,
+                  const SizedBox(height: 16),
+                  _buildSessionCard(
+                    context,
+                    'Field 2',
+                    'Quarterback Drills',
+                    '10:00 AM',
+                    'https://images.unsplash.com/photo-1566241142559-40e1dab266c6?auto=format&fit=crop&q=80&w=300',
                   ),
-                ).animate().fadeIn(delay: 700.ms),
+                  const SizedBox(height: 16),
+                  _buildSessionCard(
+                    context,
+                    'Room B',
+                    'Team Video Review',
+                    '02:00 PM',
+                    'https://images.unsplash.com/photo-1517649763962-0c623066013b?auto=format&fit=crop&q=80&w=300',
+                    labelColor: Colors.purple[100]!,
+                    labelTextColor: Colors.purple,
+                  ),
 
-                const SizedBox(height: 16),
+                  const SizedBox(height: 32),
 
-                Row(
-                  children: [
-                    Expanded(
-                      child: GestureDetector(
-                        onTap: () {
-                          context.push('/coach/create-session');
-                        },
-                        child: const _ActionCard(
-                          icon: Icons.add_circle_outline,
-                          label: 'New Session',
-                          color: AppPalette.orangeAccent,
-                        ).animate().fadeIn(delay: 800.ms).scale(delay: 800.ms),
-                      ),
+                  // Recent Activity
+                  Text(
+                    'Recent Activity',
+                    style: GoogleFonts.outfit(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: AppPalette.navyPrimary,
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: GestureDetector(
-                        onTap: () {
-                          context.push('/coach/students');
-                        },
-                        child: const _ActionCard(
-                          icon: Icons.people_outline,
-                          label: 'Students',
-                          color: AppPalette.navyPrimary,
-                        ).animate().fadeIn(delay: 900.ms).scale(delay: 900.ms),
-                      ),
-                    ),
-                  ],
-                ),
+                  ),
+                  const SizedBox(height: 16),
+                  _buildActivityItem(
+                    Icons.directions_run,
+                    Colors.orange[100]!,
+                    Colors.orange,
+                    'Mike T.',
+                    'logged 30 mins cardio',
+                    '15 mins ago',
+                  ),
+                  _buildActivityItem(
+                    Icons.local_hospital,
+                    Colors.red[100]!,
+                    Colors.red,
+                    'Emma R.',
+                    'updated injury status',
+                    '1 hr ago',
+                  ),
+                  _buildActivityItem(
+                    Icons.calendar_today,
+                    Colors.blue[100]!,
+                    Colors.blue,
+                    'Practice',
+                    'schedule changed for Friday',
+                    '2 hrs ago',
+                  ),
 
-                const SizedBox(height: 100), // Bottom nav spacing
-              ],
+                  const SizedBox(height: 80), // Footer spacing
+                ],
+              ),
             ),
-          ),
+          ],
+        ),
+      ),
+      floatingActionButton: Padding(
+        padding: const EdgeInsets.only(bottom: 80.0),
+        child: FloatingActionButton(
+          onPressed: () => context.push('/coach/create-session'),
+          backgroundColor: Colors.orange,
+          child: const Icon(Icons.add, color: Colors.white),
         ),
       ),
     );
   }
-}
 
-class _StatItem extends StatelessWidget {
-  final IconData icon;
-  final String value;
-  final String label;
-
-  const _StatItem({
-    required this.icon,
-    required this.value,
-    required this.label,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Icon(icon, color: Colors.white70, size: 28),
-        const SizedBox(height: 8),
-        Text(
-          value,
-          style: GoogleFonts.outfit(
-            fontSize: 24,
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
-          ),
+  Widget _buildStatCard(
+    IconData icon,
+    String value,
+    String label,
+    Color bgColor,
+    Color iconColor, {
+    VoidCallback? onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.03),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
         ),
-        Text(
-          label,
-          style: GoogleFonts.inter(fontSize: 12, color: Colors.white70),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(color: bgColor, shape: BoxShape.circle),
+              child: Icon(icon, color: iconColor, size: 20),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              label,
+              style: GoogleFonts.inter(
+                fontSize: 12,
+                color: AppPalette.textSecondaryLight,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              value,
+              style: GoogleFonts.outfit(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: AppPalette.navyPrimary,
+              ),
+            ),
+          ],
         ),
-      ],
+      ),
     );
   }
-}
 
-class _SessionCard extends StatelessWidget {
-  final String title;
-  final String time;
-  final String students;
-  final Color color;
-
-  const _SessionCard({
-    required this.title,
-    required this.time,
-    required this.students,
-    required this.color,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(20),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-        child: InkWell(
-          onTap: () => context.push('/session-details/1'),
-          child: Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.7),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: Colors.white.withValues(alpha: 0.2),
-                width: 1.5,
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.1),
-                  blurRadius: 20,
-                  offset: const Offset(0, 8),
-                ),
-              ],
-            ),
-            child: Row(
+  Widget _buildSessionCard(
+    BuildContext context,
+    String location,
+    String title,
+    String time,
+    String imageUrl, {
+    Color? labelColor,
+    Color? labelTextColor,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Container(
-                  width: 4,
-                  height: 60,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
-                    color: color,
-                    borderRadius: BorderRadius.circular(2),
+                    color: labelColor ?? Colors.blue[50],
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    location,
+                    style: GoogleFonts.inter(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: labelTextColor ?? AppPalette.navyPrimary,
+                    ),
                   ),
                 ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        title,
-                        style: GoogleFonts.outfit(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: AppPalette.textPrimaryLight,
+                const SizedBox(height: 12),
+                Text(
+                  title,
+                  style: GoogleFonts.outfit(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: AppPalette.navyPrimary,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Icon(
+                      Icons.access_time_filled,
+                      size: 14,
+                      color: Colors.grey[400],
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      time,
+                      style: GoogleFonts.inter(
+                        fontSize: 14,
+                        color: AppPalette.textSecondaryLight,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                InkWell(
+                  onTap: () => context.push('/session-details/1'),
+                  borderRadius: BorderRadius.circular(8),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.grey[100],
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          'View Plan', // Or "Details"
+                          style: GoogleFonts.inter(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: AppPalette.navyPrimary,
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 8),
-                      Row(
-                        children: [
-                          const Icon(
-                            Icons.schedule,
-                            size: 16,
-                            color: AppPalette.textSecondaryLight,
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            time,
-                            style: GoogleFonts.inter(
-                              fontSize: 13,
-                              color: AppPalette.textSecondaryLight,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 4),
-                      Row(
-                        children: [
-                          const Icon(
-                            Icons.people,
-                            size: 16,
-                            color: AppPalette.textSecondaryLight,
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            students,
-                            style: GoogleFonts.inter(
-                              fontSize: 13,
-                              color: AppPalette.textSecondaryLight,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
+                        const SizedBox(width: 4),
+                        const Icon(
+                          Icons.arrow_forward,
+                          size: 14,
+                          color: AppPalette.navyPrimary,
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-                Icon(
-                  Icons.arrow_forward_ios,
-                  size: 16,
-                  color: AppPalette.navyPrimary.withValues(alpha: 0.4),
                 ),
               ],
             ),
           ),
-        ),
+          const SizedBox(width: 16),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(16),
+            child: Image.network(
+              imageUrl,
+              width: 100,
+              height: 100,
+              fit: BoxFit.cover,
+            ),
+          ),
+        ],
       ),
     );
   }
-}
 
-class _ActionCard extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final Color color;
-
-  const _ActionCard({
-    required this.icon,
-    required this.label,
-    required this.color,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(16),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
-        child: Container(
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.15),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: color.withValues(alpha: 0.4), width: 1.5),
+  Widget _buildActivityItem(
+    IconData icon,
+    Color bgColor,
+    Color iconColor,
+    String name,
+    String action,
+    String time,
+  ) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.02),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
           ),
-          child: Column(
-            children: [
-              Icon(icon, color: color, size: 32),
-              const SizedBox(height: 8),
-              Text(
-                label,
-                style: GoogleFonts.outfit(
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                  color: color,
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(color: bgColor, shape: BoxShape.circle),
+            child: Icon(icon, color: iconColor, size: 20),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                RichText(
+                  text: TextSpan(
+                    style: GoogleFonts.inter(
+                      fontSize: 14,
+                      color: AppPalette.navyPrimary,
+                    ),
+                    children: [
+                      TextSpan(
+                        text: name,
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      TextSpan(
+                        text: ' $action',
+                        style: const TextStyle(
+                          color: AppPalette.textSecondaryLight,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            ],
+                const SizedBox(height: 4),
+                Text(
+                  time,
+                  style: GoogleFonts.inter(
+                    fontSize: 12,
+                    color: Colors.grey[400],
+                  ),
+                ),
+              ],
+            ),
           ),
-        ),
+          Icon(Icons.chevron_right, color: Colors.grey[300]),
+        ],
       ),
     );
   }
