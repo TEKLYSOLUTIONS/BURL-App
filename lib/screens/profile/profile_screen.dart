@@ -5,7 +5,9 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 
 class ProfileScreen extends StatelessWidget {
-  const ProfileScreen({super.key});
+  final bool isCoachView;
+  final String? playerId;
+  const ProfileScreen({super.key, this.isCoachView = false, this.playerId});
 
   @override
   Widget build(BuildContext context) {
@@ -40,13 +42,14 @@ class ProfileScreen extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
-                          IconButton(
-                            icon: const Icon(
-                              Icons.settings,
-                              color: Colors.white,
+                          if (!isCoachView)
+                            IconButton(
+                              icon: const Icon(
+                                Icons.settings,
+                                color: Colors.white,
+                              ),
+                              onPressed: () => context.push('/settings'),
                             ),
-                            onPressed: () => context.push('/settings'),
-                          ),
                         ],
                       ),
                     ),
@@ -122,33 +125,43 @@ class ProfileScreen extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 24),
               child: Column(
                 children: [
-                  _ProfileMenuItem(
-                    icon: Icons.person_outline,
-                    label: 'Personal Details',
-                    onTap: () => context.push('/edit-profile'),
-                  ),
+                  if (!isCoachView)
+                    _ProfileMenuItem(
+                      icon: Icons.person_outline,
+                      label: 'Personal Details',
+                      onTap: () => context.push('/edit-profile'),
+                    ),
+                  if (isCoachView)
+                    _ProfileMenuItem(
+                      icon: Icons.bar_chart,
+                      label: 'Performance Reports',
+                      onTap: () =>
+                          context.push('/player-reports/${playerId ?? '1'}'),
+                    ),
                   _ProfileMenuItem(
                     icon: Icons.history,
                     label: 'Booking History',
                     onTap: () {},
                   ),
-                  _ProfileMenuItem(
-                    icon: Icons.credit_card,
-                    label: 'Payment Methods',
-                    onTap: () {},
-                  ),
-                  _ProfileMenuItem(
-                    icon: Icons.notifications_outlined,
-                    label: 'Notifications',
-                    onTap: () {},
-                  ),
-                  const SizedBox(height: 24),
-                  _ProfileMenuItem(
-                    icon: Icons.logout,
-                    label: 'Log Out',
-                    color: AppPalette.error,
-                    onTap: () => context.go('/welcome'),
-                  ),
+                  if (!isCoachView) ...[
+                    _ProfileMenuItem(
+                      icon: Icons.credit_card,
+                      label: 'Payment Methods',
+                      onTap: () {},
+                    ),
+                    _ProfileMenuItem(
+                      icon: Icons.notifications_outlined,
+                      label: 'Notifications',
+                      onTap: () {},
+                    ),
+                    const SizedBox(height: 24),
+                    _ProfileMenuItem(
+                      icon: Icons.logout,
+                      label: 'Log Out',
+                      color: AppPalette.error,
+                      onTap: () => context.go('/welcome'),
+                    ),
+                  ],
                 ],
               ),
             ).animate().fadeIn(delay: 300.ms).slideY(begin: 0.1),

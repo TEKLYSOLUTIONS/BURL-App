@@ -21,7 +21,10 @@ class SessionDetailsScreen extends StatelessWidget {
           child: CircleAvatar(
             backgroundColor: Colors.white,
             child: IconButton(
-              icon: const Icon(Icons.arrow_back, color: Colors.black),
+              icon: const Icon(
+                Icons.arrow_back_ios_new_rounded,
+                color: Colors.black,
+              ),
               onPressed: () => context.pop(),
             ),
           ),
@@ -171,7 +174,11 @@ class SessionDetailsScreen extends StatelessWidget {
                             Icons.edit_calendar_outlined,
                             'Edit Plan',
                           ),
-                          _buildQuickAction(Icons.share_outlined, 'Share'),
+                          _buildQuickAction(
+                            Icons.assignment_add,
+                            'Report',
+                            onTap: () => context.push('/coach/session-report'),
+                          ),
                         ],
                       ),
 
@@ -423,26 +430,29 @@ class SessionDetailsScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildQuickAction(IconData icon, String label) {
-    return Column(
-      children: [
-        Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Colors.grey[100],
-            shape: BoxShape.circle,
+  Widget _buildQuickAction(IconData icon, String label, {VoidCallback? onTap}) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.grey[100],
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, color: AppPalette.navyPrimary),
           ),
-          child: Icon(icon, color: AppPalette.navyPrimary),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          label,
-          style: GoogleFonts.inter(
-            fontSize: 12,
-            color: AppPalette.textSecondaryLight,
+          const SizedBox(height: 8),
+          Text(
+            label,
+            style: GoogleFonts.inter(
+              fontSize: 12,
+              color: AppPalette.textSecondaryLight,
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:ionicons/ionicons.dart';
 import 'floating_nav_bar.dart';
 
 class CoachNavigation extends StatelessWidget {
@@ -18,8 +19,7 @@ class CoachNavigation extends StatelessWidget {
         items: const [
           Icons.home_rounded,
           Icons.event_available_rounded, // Availability
-          Icons.sports_cricket_rounded, // Sessions
-          Icons.groups_rounded, // Students
+          Ionicons.calendar_outline, // Sessions
           Icons.attach_money_rounded, // Earnings
           Icons.person_rounded, // Profile
         ],
@@ -32,9 +32,8 @@ class CoachNavigation extends StatelessWidget {
     if (location.startsWith('/coach/home')) return 0;
     if (location.startsWith('/coach/availability')) return 1;
     if (location.startsWith('/coach/sessions')) return 2;
-    if (location.startsWith('/coach/students')) return 3;
-    if (location.startsWith('/coach/earnings')) return 4;
-    if (location.startsWith('/coach/profile')) return 5;
+    if (location.startsWith('/coach/earnings')) return 3;
+    if (location.startsWith('/coach/profile')) return 4;
     return 0;
   }
 
@@ -50,12 +49,9 @@ class CoachNavigation extends StatelessWidget {
         context.go('/coach/sessions');
         break;
       case 3:
-        context.go('/coach/students');
-        break;
-      case 4:
         context.go('/coach/earnings');
         break;
-      case 5:
+      case 4:
         context.go('/coach/profile');
         break;
     }

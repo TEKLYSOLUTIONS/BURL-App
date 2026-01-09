@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../screens/auth/splash_screen.dart';
 import '../screens/auth/welcome_screen.dart';
-import '../screens/onboarding/app_onboarding_screen.dart'; // New Import
 import '../screens/auth/role_selection_screen.dart';
 import '../screens/auth/login_screen.dart';
 import '../screens/auth/register_screen.dart';
@@ -31,6 +30,7 @@ import '../screens/coach/earning_history_screen.dart';
 import '../screens/coach/availability_screen.dart';
 import '../screens/coach/session_report_screen.dart';
 import '../screens/settings/settings_screen.dart';
+import '../screens/player/player_reports_screen.dart';
 
 // Placeholder screens for other tabs
 class PlaceholderScreen extends StatelessWidget {
@@ -54,7 +54,7 @@ class AppRouter {
       GoRoute(path: '/', builder: (context, state) => const SplashScreen()),
       GoRoute(
         path: '/onboarding',
-        builder: (context, state) => const AppOnboardingScreen(),
+        builder: (context, state) => const WelcomeScreen(),
       ),
       GoRoute(
         path: '/welcome',
@@ -119,13 +119,24 @@ class AppRouter {
 
       GoRoute(
         path: '/guardian/player-details/:id',
-        builder: (context, state) =>
-            PlayerDetailsScreen(playerId: state.pathParameters['id'] ?? '1'),
+        builder: (context, state) {
+          final isCoach = state.uri.queryParameters['isCoach'] == 'true';
+          return PlayerDetailsScreen(
+            playerId: state.pathParameters['id'] ?? '1',
+            isCoachView: isCoach,
+          );
+        },
       ),
 
       GoRoute(
         path: '/guardian/edit-player',
         builder: (context, state) => const EditPlayerScreen(),
+      ),
+
+      GoRoute(
+        path: '/player-reports/:id',
+        builder: (context, state) =>
+            PlayerReportsScreen(playerId: state.pathParameters['id'] ?? '1'),
       ),
 
       // Coach Shell Route (6 Tabs)
@@ -144,7 +155,7 @@ class AppRouter {
           ),
           GoRoute(
             path: '/coach/sessions',
-            builder: (context, state) => const MySessionsScreen(),
+            builder: (context, state) => const MySessionsScreen(isCoach: true),
           ),
           GoRoute(
             path: '/coach/students',
@@ -156,7 +167,7 @@ class AppRouter {
           ),
           GoRoute(
             path: '/coach/profile',
-            builder: (context, state) => const ProfileScreen(),
+            builder: (context, state) => const CoachProfileScreen(coachId: '1'),
           ),
         ],
       ),
@@ -177,7 +188,7 @@ class AppRouter {
           ),
           GoRoute(
             path: '/player/sessions',
-            builder: (context, state) => const MySessionsScreen(),
+            builder: (context, state) => const MySessionsScreen(isCoach: false),
           ),
           GoRoute(
             path: '/player/profile',
@@ -212,7 +223,7 @@ class AppRouter {
           ),
           GoRoute(
             path: '/guardian/sessions',
-            builder: (context, state) => const MySessionsScreen(),
+            builder: (context, state) => const MySessionsScreen(isCoach: false),
           ),
           GoRoute(
             path: '/guardian/profile',

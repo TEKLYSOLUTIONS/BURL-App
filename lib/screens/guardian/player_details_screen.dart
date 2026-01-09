@@ -6,7 +6,12 @@ import '../../config/palette.dart';
 
 class PlayerDetailsScreen extends StatelessWidget {
   final String playerId;
-  const PlayerDetailsScreen({super.key, required this.playerId});
+  final bool isCoachView;
+  const PlayerDetailsScreen({
+    super.key,
+    required this.playerId,
+    this.isCoachView = false,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -31,13 +36,14 @@ class PlayerDetailsScreen extends StatelessWidget {
           onPressed: () => context.pop(),
         ),
         actions: [
-          IconButton(
-            icon: const Icon(
-              Icons.edit_outlined,
-              color: AppPalette.navyPrimary,
+          if (!isCoachView)
+            IconButton(
+              icon: const Icon(
+                Icons.edit_outlined,
+                color: AppPalette.navyPrimary,
+              ),
+              onPressed: () => context.push('/guardian/edit-player'),
             ),
-            onPressed: () => context.push('/guardian/edit-player'),
-          ),
         ],
       ),
       body: SingleChildScrollView(
@@ -157,7 +163,10 @@ class PlayerDetailsScreen extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 _buildSectionHeader('Recent Reports'),
-                TextButton(onPressed: () {}, child: const Text('View All')),
+                TextButton(
+                  onPressed: () => context.push('/player-reports/$playerId'),
+                  child: const Text('View All'),
+                ),
               ],
             ),
             const SizedBox(height: 8),
