@@ -74,12 +74,13 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                 child: Column(
                   children: [
                     _RoleOption(
-                      icon: Ionicons.shield_half_outline, // Coach/Strategy icon
+                      assetPath: 'assets/images/icon_role_coach.png',
                       title: 'Coach',
                       description: 'Manage teams & strategy',
                       value: 'coach',
                       groupValue: selectedRole,
-                      iconBgColor: const Color(0xFFE8F1F5), // Light Blue
+                      iconBgColor: Colors
+                          .transparent, // Removed bg as icon has it or is standalone
                       iconColor: AppPalette.navyPrimary,
                       onChanged: (value) =>
                           setState(() => selectedRole = value),
@@ -88,14 +89,12 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                     const SizedBox(height: 16),
 
                     _RoleOption(
-                      icon: Ionicons.flash_outline, // Player/Action icon
+                      assetPath: 'assets/images/icon_role_player.png',
                       title: 'Player',
                       description: 'Track stats & training',
                       value: 'player',
                       groupValue: selectedRole,
-                      iconBgColor: AppPalette.orangeAccent.withValues(
-                        alpha: 0.1,
-                      ), // Light Orange
+                      iconBgColor: Colors.transparent,
                       iconColor: AppPalette.orangeAccent,
                       onChanged: (value) =>
                           setState(() => selectedRole = value),
@@ -104,13 +103,13 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                     const SizedBox(height: 16),
 
                     _RoleOption(
-                      icon: Ionicons.people_outline, // Guardian/Team icon
+                      assetPath: 'assets/images/icon_role_guardian.png',
                       title: 'Guardian',
                       description: 'Monitor progress & schedules',
                       value: 'guardian',
                       groupValue: selectedRole,
-                      iconBgColor: const Color(0xFFE8F5E9), // Light Green
-                      iconColor: const Color(0xFF2E7D32), // Dark Green
+                      iconBgColor: Colors.transparent,
+                      iconColor: const Color(0xFF2E7D32),
                       onChanged: (value) =>
                           setState(() => selectedRole = value),
                     ).animate().fadeIn(delay: 400.ms).slideX(begin: -0.1),
@@ -192,7 +191,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
 }
 
 class _RoleOption extends StatelessWidget {
-  final IconData icon;
+  final String assetPath;
   final String title;
   final String description;
   final String value;
@@ -202,7 +201,7 @@ class _RoleOption extends StatelessWidget {
   final ValueChanged<String?> onChanged;
 
   const _RoleOption({
-    required this.icon,
+    required this.assetPath,
     required this.title,
     required this.description,
     required this.value,
@@ -242,12 +241,17 @@ class _RoleOption extends StatelessWidget {
           children: [
             // Icon
             Container(
-              padding: const EdgeInsets.all(12),
+              width: 50,
+              height: 50,
+              padding: const EdgeInsets.all(0),
               decoration: BoxDecoration(
                 color: iconBgColor,
                 borderRadius: BorderRadius.circular(16),
               ),
-              child: Icon(icon, color: iconColor, size: 24),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(16),
+                child: Image.asset(assetPath, fit: BoxFit.contain),
+              ),
             ),
             const SizedBox(width: 20),
             // Text

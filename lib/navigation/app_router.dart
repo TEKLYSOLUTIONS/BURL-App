@@ -25,12 +25,16 @@ import '../screens/guardian/home_screen.dart';
 import '../screens/guardian/add_player_screen.dart';
 import '../screens/guardian/player_details_screen.dart';
 import '../screens/guardian/edit_player_screen.dart';
+import '../screens/guardian/guardian_profile_screen.dart'; // New Import
+import '../screens/guardian/coach_details_screen.dart'; // New Import
 import '../screens/coach/students_screen.dart';
 import '../screens/coach/earning_history_screen.dart';
 import '../screens/coach/availability_screen.dart';
 import '../screens/coach/session_report_screen.dart';
 import '../screens/settings/settings_screen.dart';
 import '../screens/player/player_reports_screen.dart';
+import '../screens/notifications/notifications_screen.dart';
+import '../screens/notifications/notification_detail_screen.dart';
 
 // Placeholder screens for other tabs
 class PlaceholderScreen extends StatelessWidget {
@@ -79,7 +83,7 @@ class AppRouter {
         path: '/coach-details/:id',
         parentNavigatorKey: _rootNavigatorKey,
         builder: (context, state) =>
-            CoachProfileScreen(coachId: state.pathParameters['id'] ?? '1'),
+            CoachDetailsScreen(coachId: state.pathParameters['id'] ?? '1'),
       ),
 
       GoRoute(
@@ -103,12 +107,6 @@ class AppRouter {
         path: '/coach/session-report',
         parentNavigatorKey: _rootNavigatorKey,
         builder: (context, state) => const SessionReportScreen(),
-      ),
-
-      GoRoute(
-        path: '/coach/create-session',
-        parentNavigatorKey: _rootNavigatorKey,
-        builder: (context, state) => const CreateSessionScreen(),
       ),
 
       GoRoute(
@@ -169,6 +167,14 @@ class AppRouter {
             path: '/coach/profile',
             builder: (context, state) => const CoachProfileScreen(coachId: '1'),
           ),
+          GoRoute(
+            path: '/coach/notifications',
+            builder: (context, state) => const NotificationsScreen(),
+          ),
+          GoRoute(
+            path: '/coach/create-session',
+            builder: (context, state) => const CreateSessionScreen(),
+          ),
         ],
       ),
 
@@ -183,12 +189,12 @@ class AppRouter {
             builder: (context, state) => const PlayerHomeScreen(),
           ),
           GoRoute(
-            path: '/player/book',
-            builder: (context, state) => const SearchScreen(),
-          ),
-          GoRoute(
             path: '/player/sessions',
             builder: (context, state) => const MySessionsScreen(isCoach: false),
+          ),
+          GoRoute(
+            path: '/player/notifications',
+            builder: (context, state) => const NotificationsScreen(),
           ),
           GoRoute(
             path: '/player/profile',
@@ -227,9 +233,29 @@ class AppRouter {
           ),
           GoRoute(
             path: '/guardian/profile',
-            builder: (context, state) => const ProfileScreen(),
+            builder: (context, state) => const GuardianProfileScreen(),
+          ),
+          GoRoute(
+            path: '/guardian/notifications',
+            builder: (context, state) => const NotificationsScreen(),
           ),
         ],
+      ),
+      GoRoute(
+        path: '/notification-detail',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) {
+          final data = state.extra as Map<String, dynamic>;
+          return NotificationDetailScreen(
+            title: data['title'],
+            time: data['time'],
+            description: data['description'],
+            avatar: data['avatar'],
+            iconData: data['iconData'],
+            iconColor: data['iconColor'],
+            iconBg: data['iconBg'],
+          );
+        },
       ),
     ],
   );

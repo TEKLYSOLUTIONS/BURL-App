@@ -58,7 +58,7 @@ class _MySessionsScreenState extends State<MySessionsScreen>
                     const SizedBox(width: 40),
                     Expanded(
                       child: Text(
-                        'My Sessions',
+                        widget.isCoach ? 'My Sessions' : 'Sessions',
                         textAlign: TextAlign.center,
                         style: GoogleFonts.outfit(
                           fontSize: 28,
@@ -67,7 +67,14 @@ class _MySessionsScreenState extends State<MySessionsScreen>
                         ),
                       ),
                     ),
-                    const NotificationButton(hasNotification: true),
+                    NotificationButton(
+                      hasNotification: true,
+                      onTap: () => context.push(
+                        widget.isCoach
+                            ? '/coach/notifications'
+                            : '/player/notifications',
+                      ),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 24),
@@ -462,6 +469,25 @@ class _MySessionsScreenState extends State<MySessionsScreen>
                         fontSize: 13,
                         color: Colors.grey[600],
                         fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Row(
+                  children: [
+                    Icon(
+                      Icons.child_care, // Changed icon for variety
+                      size: 14,
+                      color: Colors.grey[500],
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      'For: ${session['title'] == 'Advanced Tennis Technique' ? 'Leo' : 'Mia'}',
+                      style: GoogleFonts.inter(
+                        fontSize: 13,
+                        color: AppPalette.navyPrimary,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
                   ],

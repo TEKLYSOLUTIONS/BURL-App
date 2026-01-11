@@ -64,7 +64,11 @@ class CoachHomeScreen extends StatelessWidget {
                         ],
                       ),
                       const Spacer(),
-                      const NotificationButton(hasNotification: true),
+                      const Spacer(),
+                      NotificationButton(
+                        hasNotification: true,
+                        onTap: () => context.push('/coach/notifications'),
+                      ),
                     ],
                   ),
                 ],

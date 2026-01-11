@@ -50,7 +50,10 @@ class CoachProfileScreen extends StatelessWidget {
                       ),
                     ),
                   ),
-                  const NotificationButton(hasNotification: true),
+                  NotificationButton(
+                    hasNotification: true,
+                    onTap: () => context.push('/coach/notifications'),
+                  ),
                 ],
               ),
             ),

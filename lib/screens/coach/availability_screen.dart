@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:go_router/go_router.dart';
 import 'package:table_calendar/table_calendar.dart';
 import '../../widgets/notification_button.dart';
 import '../../config/palette.dart';
@@ -110,7 +111,10 @@ class _CoachAvailabilityScreenState extends State<CoachAvailabilityScreen> {
                     ),
                   ),
                 ),
-                const NotificationButton(hasNotification: true),
+                NotificationButton(
+                  hasNotification: true,
+                  onTap: () => context.push('/coach/notifications'),
+                ),
               ],
             ),
           ),

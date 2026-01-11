@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import '../../config/palette.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:go_router/go_router.dart';
+import '../../widgets/notification_button.dart';
 
 class PlayerHomeScreen extends StatelessWidget {
   const PlayerHomeScreen({super.key});
@@ -40,6 +42,14 @@ class PlayerHomeScreen extends StatelessWidget {
                       ),
                     ],
                   ),
+                  const Spacer(),
+                  NotificationButton(
+                    hasNotification: false,
+                    onTap: () => context.push('/player/notifications'),
+                    iconColor: AppPalette.navyPrimary,
+                    backgroundColor: const Color(0xFFF1F5F9),
+                  ),
+                  const SizedBox(width: 12),
                   Container(
                     width: 45,
                     height: 45,

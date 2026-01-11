@@ -3,11 +3,15 @@ import 'package:flutter/material.dart';
 class NotificationButton extends StatelessWidget {
   final bool hasNotification;
   final VoidCallback? onTap;
+  final Color? iconColor;
+  final Color? backgroundColor;
 
   const NotificationButton({
     super.key,
     this.hasNotification = false,
     this.onTap,
+    this.iconColor,
+    this.backgroundColor,
   });
 
   @override
@@ -16,7 +20,9 @@ class NotificationButton extends StatelessWidget {
       width: 40,
       height: 40,
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.1), // Glassy effect
+        color:
+            backgroundColor ??
+            Colors.white.withValues(alpha: 0.1), // Glassy effect
         shape: BoxShape.circle,
       ),
       child: Material(
@@ -31,7 +37,7 @@ class NotificationButton extends StatelessWidget {
                 hasNotification
                     ? Icons.notifications
                     : Icons.notifications_none,
-                color: Colors.white,
+                color: iconColor ?? Colors.white,
                 size: 20,
               ),
               if (hasNotification)

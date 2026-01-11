@@ -127,13 +127,16 @@ class _CreateSessionScreenState extends State<CreateSessionScreen>
                   const SizedBox(height: 32),
 
                   _buildParticipantsSection(),
+                  const SizedBox(height: 32),
+                  _buildBottomAction(), // Moved to end of page
+                  const SizedBox(height: 40),
                 ],
               ),
             ),
           ),
         ],
       ),
-      bottomSheet: _buildBottomAction(),
+      // bottomSheet removed
     );
   }
 
@@ -786,17 +789,8 @@ class _CreateSessionScreenState extends State<CreateSessionScreen>
   Widget _buildBottomAction() {
     final isRecurring = _tabController.index == 1;
     return Container(
-      padding: const EdgeInsets.fromLTRB(24, 16, 24, 40),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 20,
-            offset: const Offset(0, -5),
-          ),
-        ],
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 0),
+      // Removed decoration as it's no longer a floating sheet
       child: ElevatedButton(
         onPressed: () {},
         style: ElevatedButton.styleFrom(

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:go_router/go_router.dart';
 import '../../widgets/notification_button.dart';
 import '../../config/palette.dart';
 
@@ -50,7 +51,10 @@ class _EarningHistoryScreenState extends State<EarningHistoryScreen> {
                     ),
                   ),
                 ),
-                const NotificationButton(hasNotification: true),
+                NotificationButton(
+                  hasNotification: true,
+                  onTap: () => context.push('/coach/notifications'),
+                ),
               ],
             ),
           ),

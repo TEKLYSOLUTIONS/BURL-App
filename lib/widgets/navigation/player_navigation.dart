@@ -18,8 +18,8 @@ class PlayerNavigation extends StatelessWidget {
         onTap: (int idx) => _onItemTapped(idx, context),
         items: const [
           Icons.home_rounded,
-          Ionicons.search_outline, // Book
-          Ionicons.calendar_outline, // Sessions
+          Ionicons.calendar_outline, // Sessions (Moved to 2nd pos)
+          Ionicons.notifications_outline, // Alerts (New)
           Icons.person_rounded,
         ],
       ),
@@ -29,8 +29,8 @@ class PlayerNavigation extends StatelessWidget {
   static int _calculateSelectedIndex(BuildContext context) {
     final String location = GoRouterState.of(context).uri.toString();
     if (location.startsWith('/player/home')) return 0;
-    if (location.startsWith('/player/book')) return 1;
-    if (location.startsWith('/player/sessions')) return 2;
+    if (location.startsWith('/player/sessions')) return 1;
+    if (location.startsWith('/player/notifications')) return 2;
     if (location.startsWith('/player/profile')) return 3;
     return 0;
   }
@@ -41,10 +41,10 @@ class PlayerNavigation extends StatelessWidget {
         context.go('/player/home');
         break;
       case 1:
-        context.go('/player/book');
+        context.go('/player/sessions');
         break;
       case 2:
-        context.go('/player/sessions');
+        context.go('/player/notifications');
         break;
       case 3:
         context.go('/player/profile');
