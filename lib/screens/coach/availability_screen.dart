@@ -3,7 +3,10 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
 import 'package:table_calendar/table_calendar.dart';
 import '../../widgets/notification_button.dart';
+<<<<<<< HEAD
 import '../../widgets/headers/coach_app_bar.dart';
+=======
+>>>>>>> c580486c100d6e4782b9991b06e70b9ceddc33ba
 import '../../config/palette.dart';
 import '../../widgets/pickers/ios_time_picker.dart';
 
@@ -84,6 +87,7 @@ class _CoachAvailabilityScreenState extends State<CoachAvailabilityScreen> {
       backgroundColor: Colors.grey[50], // Light grey background
       body: Column(
         children: [
+<<<<<<< HEAD
           CoachAppBar(
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -122,6 +126,56 @@ class _CoachAvailabilityScreenState extends State<CoachAvailabilityScreen> {
                       fontWeight: FontWeight.bold,
                     ),
                   ),
+=======
+          Container(
+            padding: EdgeInsets.only(
+              top: MediaQuery.of(context).padding.top + 20,
+              bottom: 24,
+              left: 24,
+              right: 24,
+            ),
+            decoration: const BoxDecoration(
+              color: AppPalette.navyPrimary,
+              borderRadius: BorderRadius.only(
+                bottomLeft: Radius.circular(30),
+                bottomRight: Radius.circular(30),
+              ),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const SizedBox(width: 40), // Balance the icon size
+                Expanded(
+                  child: Text(
+                    'Manage Availability',
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.outfit(
+                      fontSize: 28,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+                const NotificationButton(hasNotification: true),
+              ],
+            ),
+          ),
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Recurring Schedule Section
+                  Text(
+                    'Recurring Schedule',
+                    style: GoogleFonts.outfit(
+                      color: AppPalette.navyPrimary,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+>>>>>>> c580486c100d6e4782b9991b06e70b9ceddc33ba
                   const SizedBox(height: 4),
                   Text(
                     'Tap days to edit specific working hours.',
@@ -853,9 +907,67 @@ class _CoachAvailabilityScreenState extends State<CoachAvailabilityScreen> {
           initialTime = TimeOfDay(hour: hour, minute: minute);
         } catch (_) {}
 
+<<<<<<< HEAD
         final TimeOfDay? picked = await showIOSTidPicker(
           context: context,
           initialTime: initialTime,
+=======
+        final TimeOfDay? picked = await showTimePicker(
+          context: context,
+          initialTime: initialTime,
+          builder: (context, child) {
+            return Theme(
+              data: Theme.of(context).copyWith(
+                colorScheme: const ColorScheme.light(
+                  primary: AppPalette.navyPrimary,
+                  onPrimary: Colors.white,
+                  onSurface: AppPalette.navyPrimary,
+                ),
+                timePickerTheme: TimePickerThemeData(
+                  hourMinuteShape: const RoundedRectangleBorder(
+                    borderRadius: BorderRadius.all(Radius.circular(8)),
+                  ),
+                  dayPeriodBorderSide: const BorderSide(
+                    color: AppPalette.navyPrimary,
+                  ),
+                  dayPeriodColor: WidgetStateColor.resolveWith(
+                    (states) => states.contains(WidgetState.selected)
+                        ? AppPalette.navyPrimary
+                        : Colors.transparent,
+                  ),
+                  dayPeriodTextColor: WidgetStateColor.resolveWith(
+                    (states) => states.contains(WidgetState.selected)
+                        ? Colors.white
+                        : AppPalette.navyPrimary,
+                  ),
+                  hourMinuteColor: WidgetStateColor.resolveWith(
+                    (states) => states.contains(WidgetState.selected)
+                        ? AppPalette.navyPrimary
+                        : Colors.grey.shade200,
+                  ),
+                  hourMinuteTextColor: WidgetStateColor.resolveWith(
+                    (states) => states.contains(WidgetState.selected)
+                        ? Colors.white
+                        : AppPalette.navyPrimary,
+                  ),
+                  dialHandColor: AppPalette.navyPrimary,
+                  dialBackgroundColor: Colors.grey.shade200,
+                  dialTextColor: WidgetStateColor.resolveWith(
+                    (states) => states.contains(WidgetState.selected)
+                        ? Colors.white
+                        : AppPalette.navyPrimary,
+                  ),
+                ),
+                textButtonTheme: TextButtonThemeData(
+                  style: TextButton.styleFrom(
+                    foregroundColor: AppPalette.orangeAccent,
+                  ),
+                ),
+              ),
+              child: child!,
+            );
+          },
+>>>>>>> c580486c100d6e4782b9991b06e70b9ceddc33ba
         );
 
         if (picked != null) {

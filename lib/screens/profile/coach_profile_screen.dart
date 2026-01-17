@@ -4,7 +4,10 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 import '../../config/palette.dart';
 import '../../widgets/notification_button.dart';
+<<<<<<< HEAD
 import '../../widgets/headers/coach_app_bar.dart';
+=======
+>>>>>>> c580486c100d6e4782b9991b06e70b9ceddc33ba
 import '../settings/change_password_screen.dart';
 import '../settings/pro_upgrade_screen.dart';
 
@@ -22,8 +25,25 @@ class CoachProfileScreen extends StatelessWidget {
         // Move padding to inside Column for content only
         child: Column(
           children: [
+<<<<<<< HEAD
             CoachAppBar(
               backgroundColor: AppPalette.navyPrimary,
+=======
+            Container(
+              padding: EdgeInsets.only(
+                top: MediaQuery.of(context).padding.top + 20,
+                bottom: 24,
+                left: 24,
+                right: 24,
+              ),
+              decoration: const BoxDecoration(
+                color: AppPalette.navyPrimary,
+                borderRadius: BorderRadius.only(
+                  bottomLeft: Radius.circular(30),
+                  bottomRight: Radius.circular(30),
+                ),
+              ),
+>>>>>>> c580486c100d6e4782b9991b06e70b9ceddc33ba
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -33,17 +53,25 @@ class CoachProfileScreen extends StatelessWidget {
                       'Settings',
                       textAlign: TextAlign.center,
                       style: GoogleFonts.outfit(
+<<<<<<< HEAD
                         fontSize: 24,
+=======
+                        fontSize: 28,
+>>>>>>> c580486c100d6e4782b9991b06e70b9ceddc33ba
                         fontWeight: FontWeight.bold,
                         color: Colors.white,
                       ),
                     ),
                   ),
+<<<<<<< HEAD
                   NotificationButton(
                     hasNotification: true,
                     // Default values are suitable for dark background
                     onTap: () => context.push('/coach/notifications'),
                   ),
+=======
+                  const NotificationButton(hasNotification: true),
+>>>>>>> c580486c100d6e4782b9991b06e70b9ceddc33ba
                 ],
               ),
             ),

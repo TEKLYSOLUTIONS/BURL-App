@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:ionicons/ionicons.dart';
+<<<<<<< HEAD
 import '../../config/palette.dart';
+=======
+import 'floating_nav_bar.dart';
+>>>>>>> c580486c100d6e4782b9991b06e70b9ceddc33ba
 
 class CoachNavigation extends StatelessWidget {
   final Widget child;
@@ -22,6 +26,7 @@ class CoachNavigation extends StatelessWidget {
         showSelectedLabels: false,
         showUnselectedLabels: false,
         items: const [
+<<<<<<< HEAD
           BottomNavigationBarItem(icon: Icon(Icons.home_rounded), label: ''),
           BottomNavigationBarItem(
             icon: Icon(Icons.event_available_rounded),
@@ -36,6 +41,13 @@ class CoachNavigation extends StatelessWidget {
             label: '',
           ),
           BottomNavigationBarItem(icon: Icon(Icons.person_rounded), label: ''),
+=======
+          Icons.home_rounded,
+          Icons.event_available_rounded, // Availability
+          Ionicons.calendar_outline, // Sessions
+          Icons.attach_money_rounded, // Earnings
+          Icons.person_rounded, // Profile
+>>>>>>> c580486c100d6e4782b9991b06e70b9ceddc33ba
         ],
       ),
     );

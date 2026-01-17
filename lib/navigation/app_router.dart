@@ -166,6 +166,7 @@ class AppRouter {
           GoRoute(
             path: '/coach/profile',
             builder: (context, state) => const CoachProfileScreen(coachId: '1'),
+<<<<<<< HEAD
           ),
           GoRoute(
             path: '/coach/notifications',

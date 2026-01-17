@@ -128,16 +128,23 @@ class _CreateSessionScreenState extends State<CreateSessionScreen>
                   const SizedBox(height: 32),
 
                   _buildParticipantsSection(),
+<<<<<<< HEAD
                   const SizedBox(height: 32),
                   _buildBottomAction(), // Moved to end of page
                   const SizedBox(height: 40),
+=======
+>>>>>>> c580486c100d6e4782b9991b06e70b9ceddc33ba
                 ],
               ),
             ),
           ),
         ],
       ),
+<<<<<<< HEAD
       // bottomSheet removed
+=======
+      bottomSheet: _buildBottomAction(),
+>>>>>>> c580486c100d6e4782b9991b06e70b9ceddc33ba
     );
   }
 
@@ -398,7 +405,11 @@ class _CreateSessionScreenState extends State<CreateSessionScreen>
                 const SizedBox(height: 8),
                 InkWell(
                   onTap: () async {
+<<<<<<< HEAD
                     final time = await showIOSTidPicker(
+=======
+                    final time = await showTimePicker(
+>>>>>>> c580486c100d6e4782b9991b06e70b9ceddc33ba
                       context: context,
                       initialTime: slot.startTime,
                     );
@@ -790,8 +801,22 @@ class _CreateSessionScreenState extends State<CreateSessionScreen>
   Widget _buildBottomAction() {
     final isRecurring = _tabController.index == 1;
     return Container(
+<<<<<<< HEAD
       padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 0),
       // Removed decoration as it's no longer a floating sheet
+=======
+      padding: const EdgeInsets.fromLTRB(24, 16, 24, 40),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 20,
+            offset: const Offset(0, -5),
+          ),
+        ],
+      ),
+>>>>>>> c580486c100d6e4782b9991b06e70b9ceddc33ba
       child: ElevatedButton(
         onPressed: () {},
         style: ElevatedButton.styleFrom(

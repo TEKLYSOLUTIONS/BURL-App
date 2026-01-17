@@ -4,7 +4,10 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 import '../../widgets/notification_button.dart';
+<<<<<<< HEAD
 import '../../widgets/headers/coach_app_bar.dart';
+=======
+>>>>>>> c580486c100d6e4782b9991b06e70b9ceddc33ba
 
 class MySessionsScreen extends StatefulWidget {
   final bool isCoach;
@@ -36,6 +39,7 @@ class _MySessionsScreenState extends State<MySessionsScreen>
       backgroundColor: const Color(0xFFF5F7FA), // Light grey background
       body: Column(
         children: [
+<<<<<<< HEAD
           // Standardized Light Header
           // Conditional Header: Dark for Coach, Light for others
           CoachAppBar(
@@ -106,6 +110,68 @@ class _MySessionsScreenState extends State<MySessionsScreen>
               tabs: const [
                 Tab(text: 'Upcoming'),
                 Tab(text: 'Past'),
+=======
+          // Dark Header
+          Container(
+            padding: EdgeInsets.only(
+              top: MediaQuery.of(context).padding.top + 20,
+              bottom: 24,
+              left: 24,
+              right: 24,
+            ),
+            decoration: const BoxDecoration(
+              color: AppPalette.navyPrimary,
+              borderRadius: BorderRadius.only(
+                bottomLeft: Radius.circular(30),
+                bottomRight: Radius.circular(30),
+              ),
+            ),
+            child: Column(
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const SizedBox(width: 40),
+                    Expanded(
+                      child: Text(
+                        'My Sessions',
+                        textAlign: TextAlign.center,
+                        style: GoogleFonts.outfit(
+                          fontSize: 28,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                    const NotificationButton(hasNotification: true),
+                  ],
+                ),
+                const SizedBox(height: 24),
+                // Custom Tab/Toggle
+                Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: TabBar(
+                    controller: _tabController,
+                    indicator: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    labelColor: AppPalette.navyPrimary,
+                    unselectedLabelColor: Colors.white,
+                    labelStyle: GoogleFonts.inter(fontWeight: FontWeight.w600),
+                    dividerColor: Colors.transparent,
+                    indicatorSize: TabBarIndicatorSize.tab,
+                    tabs: const [
+                      Tab(text: 'Upcoming'),
+                      Tab(text: 'Past'),
+                    ],
+                  ),
+                ),
+>>>>>>> c580486c100d6e4782b9991b06e70b9ceddc33ba
               ],
             ),
           ),
@@ -122,6 +188,7 @@ class _MySessionsScreenState extends State<MySessionsScreen>
           ),
         ],
       ),
+<<<<<<< HEAD
       floatingActionButton: widget.isCoach
           ? FloatingActionButton(
               onPressed: () => context.push('/coach/create-session'),
@@ -129,6 +196,16 @@ class _MySessionsScreenState extends State<MySessionsScreen>
               child: const Icon(Icons.add, color: Colors.white),
             )
           : null,
+=======
+      floatingActionButton: Padding(
+        padding: const EdgeInsets.only(bottom: 80.0),
+        child: FloatingActionButton(
+          onPressed: () => context.push('/coach/create-session'),
+          backgroundColor: Colors.orange,
+          child: const Icon(Icons.add, color: Colors.white),
+        ),
+      ),
+>>>>>>> c580486c100d6e4782b9991b06e70b9ceddc33ba
     );
   }
 
@@ -476,6 +553,7 @@ class _MySessionsScreenState extends State<MySessionsScreen>
                     ),
                   ],
                 ),
+<<<<<<< HEAD
                 const SizedBox(height: 6),
                 Row(
                   children: [
@@ -495,6 +573,8 @@ class _MySessionsScreenState extends State<MySessionsScreen>
                     ),
                   ],
                 ),
+=======
+>>>>>>> c580486c100d6e4782b9991b06e70b9ceddc33ba
                 if (session['action'] != null) ...[
                   const SizedBox(height: 16),
                   InkWell(

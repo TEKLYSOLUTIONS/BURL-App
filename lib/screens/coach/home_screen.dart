@@ -4,7 +4,10 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
 import '../../widgets/notification_button.dart';
+<<<<<<< HEAD
 import '../../widgets/headers/coach_app_bar.dart';
+=======
+>>>>>>> c580486c100d6e4782b9991b06e70b9ceddc33ba
 
 class CoachHomeScreen extends StatelessWidget {
   const CoachHomeScreen({super.key});
@@ -17,14 +20,34 @@ class CoachHomeScreen extends StatelessWidget {
         child: Column(
           children: [
             // Dark Header Section
+<<<<<<< HEAD
             CoachAppBar(
+=======
+            Container(
+              padding: EdgeInsets.fromLTRB(
+                24,
+                MediaQuery.of(context).padding.top + 20,
+                24,
+                30,
+              ),
+              decoration: const BoxDecoration(
+                color: AppPalette.navyPrimary,
+                borderRadius: BorderRadius.vertical(
+                  bottom: Radius.circular(32),
+                ),
+              ),
+>>>>>>> c580486c100d6e4782b9991b06e70b9ceddc33ba
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
                     children: [
                       const CircleAvatar(
+<<<<<<< HEAD
                         radius: 20, // Reduced from 24
+=======
+                        radius: 24,
+>>>>>>> c580486c100d6e4782b9991b06e70b9ceddc33ba
                         backgroundImage: NetworkImage(
                           'https://i.pravatar.cc/150?img=11',
                         ),
@@ -36,16 +59,26 @@ class CoachHomeScreen extends StatelessWidget {
                           Text(
                             'OCT 24, 2023',
                             style: GoogleFonts.inter(
+<<<<<<< HEAD
                               fontSize: 10, // Reduced from 12
                               fontWeight: FontWeight.w600,
                               color: Colors.white70,
+=======
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white70, // Lighter text for date
+>>>>>>> c580486c100d6e4782b9991b06e70b9ceddc33ba
                               letterSpacing: 1,
                             ),
                           ),
                           Text(
                             'Good Morning, Coach',
                             style: GoogleFonts.outfit(
+<<<<<<< HEAD
                               fontSize: 18, // Reduced from 20
+=======
+                              fontSize: 20, // Slightly smaller to fit
+>>>>>>> c580486c100d6e4782b9991b06e70b9ceddc33ba
                               fontWeight: FontWeight.bold,
                               color: Colors.white,
                             ),
@@ -53,11 +86,15 @@ class CoachHomeScreen extends StatelessWidget {
                         ],
                       ),
                       const Spacer(),
+<<<<<<< HEAD
                       const Spacer(),
                       NotificationButton(
                         hasNotification: true,
                         onTap: () => context.push('/coach/notifications'),
                       ),
+=======
+                      const NotificationButton(hasNotification: true),
+>>>>>>> c580486c100d6e4782b9991b06e70b9ceddc33ba
                     ],
                   ),
                 ],
@@ -197,6 +234,7 @@ class CoachHomeScreen extends StatelessWidget {
           ],
         ),
       ),
+<<<<<<< HEAD
       floatingActionButton: FloatingActionButton(
         onPressed: () => context.push('/coach/create-session'),
         backgroundColor: Colors.orange,
@@ -256,11 +294,78 @@ class CoachHomeScreen extends StatelessWidget {
               ),
             ),
           ],
+=======
+      floatingActionButton: Padding(
+        padding: const EdgeInsets.only(bottom: 80.0),
+        child: FloatingActionButton(
+          onPressed: () => context.push('/coach/create-session'),
+          backgroundColor: Colors.orange,
+          child: const Icon(Icons.add, color: Colors.white),
+>>>>>>> c580486c100d6e4782b9991b06e70b9ceddc33ba
         ),
       ),
     );
   }
 
+<<<<<<< HEAD
+=======
+  Widget _buildStatCard(
+    IconData icon,
+    String value,
+    String label,
+    Color bgColor,
+    Color iconColor, {
+    VoidCallback? onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.03),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(color: bgColor, shape: BoxShape.circle),
+              child: Icon(icon, color: iconColor, size: 20),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              label,
+              style: GoogleFonts.inter(
+                fontSize: 12,
+                color: AppPalette.textSecondaryLight,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              value,
+              style: GoogleFonts.outfit(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: AppPalette.navyPrimary,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+>>>>>>> c580486c100d6e4782b9991b06e70b9ceddc33ba
   Widget _buildSessionCard(
     BuildContext context,
     String location,

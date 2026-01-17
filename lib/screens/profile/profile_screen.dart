@@ -33,14 +33,13 @@ class ProfileScreen extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
-                          if (!isCoachView)
-                            IconButton(
-                              icon: const Icon(
-                                Icons.settings,
-                                color: AppPalette.navyPrimary, // Dark Icon
-                              ),
-                              onPressed: () => context.push('/settings'),
+                          IconButton(
+                            icon: const Icon(
+                              Icons.settings,
+                              color: Colors.white,
                             ),
+                            onPressed: () => context.push('/settings'),
+                          ),
                         ],
                       ),
                     ),

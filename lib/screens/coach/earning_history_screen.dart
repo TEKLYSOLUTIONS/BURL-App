@@ -2,9 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+<<<<<<< HEAD
 import 'package:go_router/go_router.dart';
 import '../../widgets/notification_button.dart';
 import '../../widgets/headers/coach_app_bar.dart';
+=======
+import '../../widgets/notification_button.dart';
+>>>>>>> c580486c100d6e4782b9991b06e70b9ceddc33ba
 import '../../config/palette.dart';
 
 class EarningHistoryScreen extends StatefulWidget {
@@ -23,7 +27,24 @@ class _EarningHistoryScreenState extends State<EarningHistoryScreen> {
       backgroundColor: AppPalette.backgroundLight,
       body: Column(
         children: [
+<<<<<<< HEAD
           CoachAppBar(
+=======
+          Container(
+            padding: EdgeInsets.only(
+              top: MediaQuery.of(context).padding.top + 20,
+              bottom: 24,
+              left: 24,
+              right: 24,
+            ),
+            decoration: const BoxDecoration(
+              color: AppPalette.navyPrimary,
+              borderRadius: BorderRadius.only(
+                bottomLeft: Radius.circular(30),
+                bottomRight: Radius.circular(30),
+              ),
+            ),
+>>>>>>> c580486c100d6e4782b9991b06e70b9ceddc33ba
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -33,16 +54,24 @@ class _EarningHistoryScreenState extends State<EarningHistoryScreen> {
                     'Earnings',
                     textAlign: TextAlign.center,
                     style: GoogleFonts.outfit(
+<<<<<<< HEAD
                       fontSize: 24, // Consistent size
+=======
+                      fontSize: 28,
+>>>>>>> c580486c100d6e4782b9991b06e70b9ceddc33ba
                       fontWeight: FontWeight.bold,
                       color: Colors.white,
                     ),
                   ),
                 ),
+<<<<<<< HEAD
                 NotificationButton(
                   hasNotification: true,
                   onTap: () => context.push('/coach/notifications'),
                 ),
+=======
+                const NotificationButton(hasNotification: true),
+>>>>>>> c580486c100d6e4782b9991b06e70b9ceddc33ba
               ],
             ),
           ),
