@@ -3,6 +3,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:table_calendar/table_calendar.dart';
 import '../../config/palette.dart';
+import '../../widgets/pickers/ios_time_picker.dart';
 
 class CreateSessionScreen extends StatefulWidget {
   const CreateSessionScreen({super.key});
@@ -397,7 +398,7 @@ class _CreateSessionScreenState extends State<CreateSessionScreen>
                 const SizedBox(height: 8),
                 InkWell(
                   onTap: () async {
-                    final time = await showTimePicker(
+                    final time = await showIOSTidPicker(
                       context: context,
                       initialTime: slot.startTime,
                     );

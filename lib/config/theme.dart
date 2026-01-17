@@ -24,47 +24,47 @@ class AppTheme {
 
       // Typography
       textTheme: TextTheme(
-        displayLarge: GoogleFonts.inter(
+        displayLarge: GoogleFonts.plusJakartaSans(
           fontSize: 32,
           fontWeight: FontWeight.bold,
           color: AppPalette.navyPrimary,
         ),
-        displayMedium: GoogleFonts.inter(
+        displayMedium: GoogleFonts.plusJakartaSans(
           fontSize: 28,
           fontWeight: FontWeight.bold,
           color: AppPalette.navyPrimary,
         ),
-        displaySmall: GoogleFonts.inter(
+        displaySmall: GoogleFonts.plusJakartaSans(
           fontSize: 24,
           fontWeight: FontWeight.w600,
           color: AppPalette.navyPrimary,
         ),
-        headlineMedium: GoogleFonts.inter(
+        headlineMedium: GoogleFonts.plusJakartaSans(
           fontSize: 20,
           fontWeight: FontWeight.w600,
           color: AppPalette.navyPrimary,
         ),
-        titleLarge: GoogleFonts.inter(
+        titleLarge: GoogleFonts.plusJakartaSans(
           fontSize: 18,
           fontWeight: FontWeight.w600,
           color: AppPalette.navyPrimary, // Dark Text on White Cards
         ),
-        titleMedium: GoogleFonts.inter(
+        titleMedium: GoogleFonts.plusJakartaSans(
           fontSize: 16,
           fontWeight: FontWeight.w500,
           color: AppPalette.navyPrimary, // Dark Text on White Cards
         ),
-        bodyLarge: GoogleFonts.inter(
+        bodyLarge: GoogleFonts.plusJakartaSans(
           fontSize: 16,
           fontWeight: FontWeight.normal,
           color: AppPalette.navyPrimary,
         ),
-        bodyMedium: GoogleFonts.inter(
+        bodyMedium: GoogleFonts.plusJakartaSans(
           fontSize: 14,
           fontWeight: FontWeight.normal,
           color: AppPalette.navyPrimary,
         ),
-        labelLarge: GoogleFonts.inter(
+        labelLarge: GoogleFonts.plusJakartaSans(
           fontSize: 14,
           fontWeight: FontWeight.w600,
           color: AppPalette.white,
@@ -80,7 +80,7 @@ class AppTheme {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
-          textStyle: GoogleFonts.inter(
+          textStyle: GoogleFonts.plusJakartaSans(
             fontSize: 16,
             fontWeight: FontWeight.w600,
           ),
@@ -96,7 +96,7 @@ class AppTheme {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
-          textStyle: GoogleFonts.inter(
+          textStyle: GoogleFonts.plusJakartaSans(
             fontSize: 16,
             fontWeight: FontWeight.w600,
           ),
@@ -122,8 +122,10 @@ class AppTheme {
           horizontal: 16,
           vertical: 16,
         ),
-        labelStyle: GoogleFonts.inter(color: AppPalette.textSecondaryLight),
-        hintStyle: GoogleFonts.inter(color: AppPalette.textDisabled),
+        labelStyle: GoogleFonts.plusJakartaSans(
+          color: AppPalette.textSecondaryLight,
+        ),
+        hintStyle: GoogleFonts.plusJakartaSans(color: AppPalette.textDisabled),
       ),
 
       cardTheme: CardThemeData(
@@ -143,7 +145,7 @@ class AppTheme {
         elevation: 0,
         centerTitle: true,
         iconTheme: const IconThemeData(color: AppPalette.navyPrimary),
-        titleTextStyle: GoogleFonts.inter(
+        titleTextStyle: GoogleFonts.plusJakartaSans(
           fontSize: 18,
           fontWeight: FontWeight.w600,
           color: AppPalette.navyPrimary,
@@ -183,41 +185,41 @@ class AppTheme {
 
       // Typography (Dark Mode)
       textTheme: TextTheme(
-        displayLarge: GoogleFonts.inter(
+        displayLarge: GoogleFonts.plusJakartaSans(
           color: AppPalette.white, // onBackground
           fontSize: 32,
           fontWeight: FontWeight.bold,
         ),
-        displayMedium: GoogleFonts.inter(
+        displayMedium: GoogleFonts.plusJakartaSans(
           color: AppPalette.white,
           fontSize: 28,
           fontWeight: FontWeight.bold,
         ),
-        displaySmall: GoogleFonts.inter(
+        displaySmall: GoogleFonts.plusJakartaSans(
           color: AppPalette.white,
           fontSize: 24,
           fontWeight: FontWeight.w600,
         ),
-        headlineMedium: GoogleFonts.inter(
+        headlineMedium: GoogleFonts.plusJakartaSans(
           color: AppPalette.white, // Section headers on BG
           fontSize: 20,
           fontWeight: FontWeight.w600,
         ),
-        titleLarge: GoogleFonts.inter(
+        titleLarge: GoogleFonts.plusJakartaSans(
           color: AppPalette.navyPrimary, // Title inside White Cards
           fontSize: 18,
           fontWeight: FontWeight.w600,
         ),
-        titleMedium: GoogleFonts.inter(
+        titleMedium: GoogleFonts.plusJakartaSans(
           color: AppPalette.navyPrimary, // Subtitle inside cards
           fontSize: 16,
           fontWeight: FontWeight.w500,
         ),
-        bodyLarge: GoogleFonts.inter(
+        bodyLarge: GoogleFonts.plusJakartaSans(
           color: AppPalette.white, // Body on BG
           fontSize: 16,
         ),
-        bodyMedium: GoogleFonts.inter(
+        bodyMedium: GoogleFonts.plusJakartaSans(
           color: AppPalette.white, // Body on BG
           fontSize: 14,
         ),
@@ -232,7 +234,7 @@ class AppTheme {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
-          textStyle: GoogleFonts.inter(
+          textStyle: GoogleFonts.plusJakartaSans(
             fontSize: 16,
             fontWeight: FontWeight.w600,
           ),
@@ -268,8 +270,10 @@ class AppTheme {
             width: 2,
           ),
         ),
-        labelStyle: GoogleFonts.inter(color: AppPalette.textSecondaryDark),
-        hintStyle: GoogleFonts.inter(color: AppPalette.textDisabled),
+        labelStyle: GoogleFonts.plusJakartaSans(
+          color: AppPalette.textSecondaryDark,
+        ),
+        hintStyle: GoogleFonts.plusJakartaSans(color: AppPalette.textDisabled),
       ),
 
       cardTheme: CardThemeData(
@@ -287,7 +291,7 @@ class AppTheme {
         elevation: 0,
         centerTitle: true,
         iconTheme: const IconThemeData(color: AppPalette.white),
-        titleTextStyle: GoogleFonts.inter(
+        titleTextStyle: GoogleFonts.plusJakartaSans(
           color: AppPalette.white,
           fontSize: 18,
           fontWeight: FontWeight.w600,

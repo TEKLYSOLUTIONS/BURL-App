@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 import '../../widgets/notification_button.dart';
+import '../../widgets/headers/coach_app_bar.dart';
 
 class MySessionsScreen extends StatefulWidget {
   final bool isCoach;
@@ -35,73 +36,76 @@ class _MySessionsScreenState extends State<MySessionsScreen>
       backgroundColor: const Color(0xFFF5F7FA), // Light grey background
       body: Column(
         children: [
-          // Dark Header
-          Container(
-            padding: EdgeInsets.only(
-              top: MediaQuery.of(context).padding.top + 20,
-              bottom: 24,
-              left: 24,
-              right: 24,
-            ),
-            decoration: const BoxDecoration(
-              color: AppPalette.navyPrimary,
-              borderRadius: BorderRadius.only(
-                bottomLeft: Radius.circular(30),
-                bottomRight: Radius.circular(30),
-              ),
-            ),
-            child: Column(
+          // Standardized Light Header
+          // Conditional Header: Dark for Coach, Light for others
+          CoachAppBar(
+            backgroundColor: widget.isCoach
+                ? AppPalette.navyPrimary
+                : Colors.transparent,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const SizedBox(width: 40),
-                    Expanded(
-                      child: Text(
-                        widget.isCoach ? 'My Sessions' : 'Sessions',
-                        textAlign: TextAlign.center,
-                        style: GoogleFonts.outfit(
-                          fontSize: 28,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
+                const SizedBox(width: 40),
+                Expanded(
+                  child: Text(
+                    widget.isCoach ? 'My Sessions' : 'Sessions',
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.outfit(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: widget.isCoach
+                          ? Colors.white
+                          : AppPalette.navyPrimary,
                     ),
-                    NotificationButton(
-                      hasNotification: true,
-                      onTap: () => context.push(
-                        widget.isCoach
-                            ? '/coach/notifications'
-                            : '/player/notifications',
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 24),
-                // Custom Tab/Toggle
-                Container(
-                  padding: const EdgeInsets.all(4),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: TabBar(
-                    controller: _tabController,
-                    indicator: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    labelColor: AppPalette.navyPrimary,
-                    unselectedLabelColor: Colors.white,
-                    labelStyle: GoogleFonts.inter(fontWeight: FontWeight.w600),
-                    dividerColor: Colors.transparent,
-                    indicatorSize: TabBarIndicatorSize.tab,
-                    tabs: const [
-                      Tab(text: 'Upcoming'),
-                      Tab(text: 'Past'),
-                    ],
                   ),
                 ),
+                NotificationButton(
+                  hasNotification: true,
+                  iconColor: widget.isCoach
+                      ? Colors.white
+                      : AppPalette.navyPrimary,
+                  backgroundColor: widget.isCoach
+                      ? Colors.white.withValues(alpha: 0.1)
+                      : Colors.white,
+                  onTap: () => context.push(
+                    widget.isCoach
+                        ? '/coach/notifications'
+                        : '/player/notifications',
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // Tabs moved under the header
+          Container(
+            margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+            padding: const EdgeInsets.all(4),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.05),
+                  blurRadius: 4,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: TabBar(
+              controller: _tabController,
+              indicator: BoxDecoration(
+                color: AppPalette.navyPrimary,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              labelColor: Colors.white,
+              unselectedLabelColor: AppPalette.textSecondaryLight,
+              labelStyle: GoogleFonts.inter(fontWeight: FontWeight.w600),
+              dividerColor: Colors.transparent,
+              indicatorSize: TabBarIndicatorSize.tab,
+              tabs: const [
+                Tab(text: 'Upcoming'),
+                Tab(text: 'Past'),
               ],
             ),
           ),
@@ -118,14 +122,13 @@ class _MySessionsScreenState extends State<MySessionsScreen>
           ),
         ],
       ),
-      floatingActionButton: Padding(
-        padding: const EdgeInsets.only(bottom: 80.0),
-        child: FloatingActionButton(
-          onPressed: () => context.push('/coach/create-session'),
-          backgroundColor: Colors.orange,
-          child: const Icon(Icons.add, color: Colors.white),
-        ),
-      ),
+      floatingActionButton: widget.isCoach
+          ? FloatingActionButton(
+              onPressed: () => context.push('/coach/create-session'),
+              backgroundColor: Colors.orange,
+              child: const Icon(Icons.add, color: Colors.white),
+            )
+          : null,
     );
   }
 

@@ -19,21 +19,21 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
 
   final List<WelcomeSlide> _slides = [
     WelcomeSlide(
-      imageAsset: 'assets/images/welcome_batting.png',
+      imageAsset: 'assets/images/welcome_batting_light.png',
       title1: 'Master Your\n',
       title2: 'Game Skills',
       description:
           'Connect with elite coaches to perfect your technique and dominate in any sport.',
     ),
     WelcomeSlide(
-      imageAsset: 'assets/images/welcome_bowling.png',
+      imageAsset: 'assets/images/welcome_bowling_light.png',
       title1: 'Unleash Your\n',
       title2: 'Full Potential',
       description:
           'Get personalized training plans and analysis to reach the next level of performance.',
     ),
     WelcomeSlide(
-      imageAsset: 'assets/images/welcome_fielding.png',
+      imageAsset: 'assets/images/welcome_fielding_light.png',
       title1: 'Experience the\n',
       title2: 'Thrill of Victory',
       description:

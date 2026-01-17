@@ -25,16 +25,7 @@ class ProfileScreen extends StatelessWidget {
                   width: double.infinity,
                   margin: const EdgeInsets.only(bottom: 50),
                   decoration: const BoxDecoration(
-                    color: AppPalette.navyPrimary,
-                    borderRadius: BorderRadius.only(
-                      bottomLeft: Radius.circular(40),
-                      bottomRight: Radius.circular(40),
-                    ),
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [AppPalette.navyPrimary, AppPalette.navyLight],
-                    ),
+                    color: Colors.transparent, // Light Theme
                   ),
                   child: SafeArea(
                     child: Padding(
@@ -46,7 +37,7 @@ class ProfileScreen extends StatelessWidget {
                             IconButton(
                               icon: const Icon(
                                 Icons.settings,
-                                color: Colors.white,
+                                color: AppPalette.navyPrimary, // Dark Icon
                               ),
                               onPressed: () => context.push('/settings'),
                             ),
@@ -61,7 +52,7 @@ class ProfileScreen extends StatelessWidget {
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       border: Border.all(
-                        color: AppPalette.backgroundLight,
+                        color: Colors.white, // Match background
                         width: 4,
                       ),
                       boxShadow: [

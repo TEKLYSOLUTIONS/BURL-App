@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:ionicons/ionicons.dart';
-import 'floating_nav_bar.dart';
+import '../../config/palette.dart';
 
 class CoachNavigation extends StatelessWidget {
   final Widget child;
@@ -11,17 +11,31 @@ class CoachNavigation extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      extendBody: true,
       body: child,
-      bottomNavigationBar: FloatingNavBar(
+      bottomNavigationBar: BottomNavigationBar(
         currentIndex: _calculateSelectedIndex(context),
         onTap: (int idx) => _onItemTapped(idx, context),
+        type: BottomNavigationBarType.fixed,
+        selectedItemColor: AppPalette.orangeAccent,
+        unselectedItemColor: AppPalette.textDisabled,
+        backgroundColor: Theme.of(context).cardTheme.color,
+        showSelectedLabels: false,
+        showUnselectedLabels: false,
         items: const [
-          Icons.home_rounded,
-          Icons.event_available_rounded, // Availability
-          Ionicons.calendar_outline, // Sessions
-          Icons.attach_money_rounded, // Earnings
-          Icons.person_rounded, // Profile
+          BottomNavigationBarItem(icon: Icon(Icons.home_rounded), label: ''),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.event_available_rounded),
+            label: '',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Ionicons.calendar_outline),
+            label: '',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.attach_money_rounded),
+            label: '',
+          ),
+          BottomNavigationBarItem(icon: Icon(Icons.person_rounded), label: ''),
         ],
       ),
     );

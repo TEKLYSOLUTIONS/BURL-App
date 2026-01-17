@@ -4,6 +4,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 import '../../widgets/notification_button.dart';
+import '../../widgets/headers/coach_app_bar.dart';
 import '../../config/palette.dart';
 
 class EarningHistoryScreen extends StatefulWidget {
@@ -22,20 +23,7 @@ class _EarningHistoryScreenState extends State<EarningHistoryScreen> {
       backgroundColor: AppPalette.backgroundLight,
       body: Column(
         children: [
-          Container(
-            padding: EdgeInsets.only(
-              top: MediaQuery.of(context).padding.top + 20,
-              bottom: 24,
-              left: 24,
-              right: 24,
-            ),
-            decoration: const BoxDecoration(
-              color: AppPalette.navyPrimary,
-              borderRadius: BorderRadius.only(
-                bottomLeft: Radius.circular(30),
-                bottomRight: Radius.circular(30),
-              ),
-            ),
+          CoachAppBar(
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -45,7 +33,7 @@ class _EarningHistoryScreenState extends State<EarningHistoryScreen> {
                     'Earnings',
                     textAlign: TextAlign.center,
                     style: GoogleFonts.outfit(
-                      fontSize: 28,
+                      fontSize: 24, // Consistent size
                       fontWeight: FontWeight.bold,
                       color: Colors.white,
                     ),

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:ionicons/ionicons.dart';
-import 'floating_nav_bar.dart';
+import '../../config/palette.dart';
 
 class PlayerNavigation extends StatelessWidget {
   final Widget child;
@@ -11,16 +11,27 @@ class PlayerNavigation extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      extendBody: true,
       body: child,
-      bottomNavigationBar: FloatingNavBar(
+      bottomNavigationBar: BottomNavigationBar(
         currentIndex: _calculateSelectedIndex(context),
         onTap: (int idx) => _onItemTapped(idx, context),
+        type: BottomNavigationBarType.fixed,
+        selectedItemColor: AppPalette.orangeAccent,
+        unselectedItemColor: AppPalette.textDisabled,
+        backgroundColor: Theme.of(context).cardTheme.color,
+        showSelectedLabels: false,
+        showUnselectedLabels: false,
         items: const [
-          Icons.home_rounded,
-          Ionicons.calendar_outline, // Sessions (Moved to 2nd pos)
-          Ionicons.notifications_outline, // Alerts (New)
-          Icons.person_rounded,
+          BottomNavigationBarItem(icon: Icon(Icons.home_rounded), label: ''),
+          BottomNavigationBarItem(
+            icon: Icon(Ionicons.calendar_outline),
+            label: '',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Ionicons.notifications_outline),
+            label: '',
+          ),
+          BottomNavigationBarItem(icon: Icon(Icons.person_rounded), label: ''),
         ],
       ),
     );

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:ionicons/ionicons.dart';
-import 'floating_nav_bar.dart';
+import '../../config/palette.dart';
 
 class GuardianNavigation extends StatelessWidget {
   final Widget child;
@@ -11,17 +11,31 @@ class GuardianNavigation extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      extendBody: true, // Allows content to flow behind the floating navbar
       body: child,
-      bottomNavigationBar: FloatingNavBar(
+      bottomNavigationBar: BottomNavigationBar(
         currentIndex: _calculateSelectedIndex(context),
         onTap: (int idx) => _onItemTapped(idx, context),
+        type: BottomNavigationBarType.fixed,
+        selectedItemColor: AppPalette.orangeAccent,
+        unselectedItemColor: AppPalette.textDisabled,
+        backgroundColor: Theme.of(context).cardTheme.color,
+        showSelectedLabels: false,
+        showUnselectedLabels: false,
         items: const [
-          Icons.home_rounded,
-          Ionicons.search_outline, // Book
-          Icons.people_alt_rounded, // My Players
-          Ionicons.calendar_outline, // Sessions
-          Icons.person_rounded,
+          BottomNavigationBarItem(icon: Icon(Icons.home_rounded), label: ''),
+          BottomNavigationBarItem(
+            icon: Icon(Ionicons.search_outline),
+            label: '',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.people_alt_rounded),
+            label: '',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Ionicons.calendar_outline),
+            label: '',
+          ),
+          BottomNavigationBarItem(icon: Icon(Icons.person_rounded), label: ''),
         ],
       ),
     );

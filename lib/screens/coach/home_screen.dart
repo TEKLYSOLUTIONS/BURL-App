@@ -4,6 +4,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
 import '../../widgets/notification_button.dart';
+import '../../widgets/headers/coach_app_bar.dart';
 
 class CoachHomeScreen extends StatelessWidget {
   const CoachHomeScreen({super.key});
@@ -16,26 +17,14 @@ class CoachHomeScreen extends StatelessWidget {
         child: Column(
           children: [
             // Dark Header Section
-            Container(
-              padding: EdgeInsets.fromLTRB(
-                24,
-                MediaQuery.of(context).padding.top + 20,
-                24,
-                30,
-              ),
-              decoration: const BoxDecoration(
-                color: AppPalette.navyPrimary,
-                borderRadius: BorderRadius.vertical(
-                  bottom: Radius.circular(32),
-                ),
-              ),
+            CoachAppBar(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
                     children: [
                       const CircleAvatar(
-                        radius: 24,
+                        radius: 20, // Reduced from 24
                         backgroundImage: NetworkImage(
                           'https://i.pravatar.cc/150?img=11',
                         ),
@@ -47,16 +36,16 @@ class CoachHomeScreen extends StatelessWidget {
                           Text(
                             'OCT 24, 2023',
                             style: GoogleFonts.inter(
-                              fontSize: 12,
+                              fontSize: 10, // Reduced from 12
                               fontWeight: FontWeight.w600,
-                              color: Colors.white70, // Lighter text for date
+                              color: Colors.white70,
                               letterSpacing: 1,
                             ),
                           ),
                           Text(
                             'Good Morning, Coach',
                             style: GoogleFonts.outfit(
-                              fontSize: 20, // Slightly smaller to fit
+                              fontSize: 18, // Reduced from 20
                               fontWeight: FontWeight.bold,
                               color: Colors.white,
                             ),
@@ -208,13 +197,10 @@ class CoachHomeScreen extends StatelessWidget {
           ],
         ),
       ),
-      floatingActionButton: Padding(
-        padding: const EdgeInsets.only(bottom: 80.0),
-        child: FloatingActionButton(
-          onPressed: () => context.push('/coach/create-session'),
-          backgroundColor: Colors.orange,
-          child: const Icon(Icons.add, color: Colors.white),
-        ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () => context.push('/coach/create-session'),
+        backgroundColor: Colors.orange,
+        child: const Icon(Icons.add, color: Colors.white),
       ),
     );
   }
