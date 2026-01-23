@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
 import '../../config/palette.dart';
 import '../../widgets/notification_button.dart';
+import '../../services/auth_service.dart';
 
 class GuardianHomeScreen extends StatefulWidget {
   const GuardianHomeScreen({super.key});
@@ -15,6 +16,24 @@ class GuardianHomeScreen extends StatefulWidget {
 class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
   int _selectedTabIndex = 0;
   int _selectedDay = 25; // Matching the image (Wed 25)
+  String _userName = 'Guardian';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserData();
+  }
+
+  Future<void> _loadUserData() async {
+    final name = await AuthService.getUserName();
+    if (name != null) {
+      if (mounted) {
+        setState(() {
+          _userName = name.split(' ').first;
+        });
+      }
+    }
+  }
 
   // Mock sessions for carousel and child view
   final List<Map<String, dynamic>> _carouselSessions = [
@@ -70,7 +89,9 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Profile Header
-              const _ProfileHeader().animate().fadeIn(duration: 600.ms),
+              _ProfileHeader(
+                userName: _userName,
+              ).animate().fadeIn(duration: 600.ms),
               const SizedBox(height: 20),
 
               // Child Selection Tabs
@@ -431,7 +452,8 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
 }
 
 class _ProfileHeader extends StatelessWidget {
-  const _ProfileHeader();
+  final String userName;
+  const _ProfileHeader({required this.userName});
 
   @override
   Widget build(BuildContext context) {
@@ -460,7 +482,7 @@ class _ProfileHeader extends StatelessWidget {
               ),
               const SizedBox(height: 2),
               Text(
-                'Sarah Wilson',
+                userName,
                 style: Theme.of(context).textTheme.titleLarge?.copyWith(
                   fontWeight: FontWeight.bold,
                   fontSize: 20,

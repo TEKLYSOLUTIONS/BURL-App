@@ -4,6 +4,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:ionicons/ionicons.dart';
 import '../../config/palette.dart';
+import '../../services/auth_service.dart';
 
 class LoginScreen extends StatefulWidget {
   final String? role;
@@ -17,6 +18,16 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   bool _isPasswordVisible = false;
   bool _rememberMe = false;
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+  bool _isLoading = false;
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -99,11 +110,12 @@ class _LoginScreenState extends State<LoginScreen> {
               const SizedBox(height: 48),
 
               // Email Field
-              const _CustomTextField(
+              _CustomTextField(
                 label: 'Email Address',
                 hint: 'coach@example.com',
                 icon: Ionicons.mail_outline,
                 keyboardType: TextInputType.emailAddress,
+                controller: _emailController,
               ).animate().fadeIn(delay: 400.ms).slideX(begin: -0.1),
 
               const SizedBox(height: 16),
@@ -117,6 +129,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 isVisible: _isPasswordVisible,
                 onVisibilityChanged: () =>
                     setState(() => _isPasswordVisible = !_isPasswordVisible),
+                controller: _passwordController,
               ).animate().fadeIn(delay: 500.ms).slideX(begin: -0.1),
 
               const SizedBox(height: 12),
@@ -176,15 +189,49 @@ class _LoginScreenState extends State<LoginScreen> {
                 width: double.infinity,
                 height: 56,
                 child: ElevatedButton(
-                  onPressed: () {
-                    if (widget.role == 'coach') {
-                      context.go('/coach/home');
-                    } else if (widget.role == 'player') {
-                      context.go('/player/home');
-                    } else {
-                      context.go('/guardian/home');
-                    }
-                  },
+                  onPressed: _isLoading
+                      ? null
+                      : () async {
+                          setState(() => _isLoading = true);
+                          final success = await AuthService.login(
+                            _emailController.text,
+                            _passwordController.text,
+                          );
+
+                          if (!context.mounted) return;
+
+                          setState(() => _isLoading = false);
+
+                          if (success) {
+                            final role = await AuthService.getUserRole();
+                            if (!context.mounted) return;
+
+                            if (role == 'coach') {
+                              context.go('/coach/home');
+                            } else if (role == 'player') {
+                              context.go('/player/home');
+                            } else if (role == 'guardian') {
+                              context.go('/guardian/home');
+                            } else {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Unknown user role'),
+                                ),
+                              );
+                            }
+                          } else {
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                    'Login failed. Please check credentials.',
+                                  ),
+                                  backgroundColor: Colors.red,
+                                ),
+                              );
+                            }
+                          }
+                        },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppPalette.orangeAccent,
                     foregroundColor: Colors.white,
@@ -193,20 +240,29 @@ class _LoginScreenState extends State<LoginScreen> {
                       borderRadius: BorderRadius.circular(16),
                     ),
                   ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        'Log In',
-                        style: GoogleFonts.outfit(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
+                  child: _isLoading
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2,
+                          ),
+                        )
+                      : Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              'Log In',
+                              style: GoogleFonts.outfit(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            const Icon(Ionicons.arrow_forward, size: 20),
+                          ],
                         ),
-                      ),
-                      const SizedBox(width: 8),
-                      const Icon(Ionicons.arrow_forward, size: 20),
-                    ],
-                  ),
                 ),
               ).animate().fadeIn(delay: 700.ms).slideY(begin: 0.2),
 
@@ -304,6 +360,7 @@ class _CustomTextField extends StatelessWidget {
   final bool isVisible;
   final VoidCallback? onVisibilityChanged;
   final TextInputType keyboardType;
+  final TextEditingController? controller;
 
   const _CustomTextField({
     required this.label,
@@ -313,6 +370,7 @@ class _CustomTextField extends StatelessWidget {
     this.isVisible = false,
     this.onVisibilityChanged,
     this.keyboardType = TextInputType.text,
+    this.controller,
   });
 
   @override
@@ -336,6 +394,7 @@ class _CustomTextField extends StatelessWidget {
             border: Border.all(color: Colors.grey[200]!),
           ),
           child: TextFormField(
+            controller: controller,
             obscureText: isPassword && !isVisible,
             keyboardType: keyboardType,
             style: GoogleFonts.inter(

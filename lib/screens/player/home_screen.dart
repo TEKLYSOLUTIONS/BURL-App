@@ -4,17 +4,42 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
 import '../../widgets/notification_button.dart';
+import '../../services/auth_service.dart';
 
-class PlayerHomeScreen extends StatelessWidget {
+class PlayerHomeScreen extends StatefulWidget {
   const PlayerHomeScreen({super.key});
+
+  @override
+  State<PlayerHomeScreen> createState() => _PlayerHomeScreenState();
+}
+
+class _PlayerHomeScreenState extends State<PlayerHomeScreen> {
+  String _userName = 'Alex'; // Default matching design
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserData();
+  }
+
+  Future<void> _loadUserData() async {
+    final name = await AuthService.getUserName();
+    if (name != null) {
+      if (mounted) {
+        setState(() {
+          _userName = name.split(' ').first;
+        });
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppPalette.backgroundLight, // Pearl White / Off-white
+      backgroundColor: Colors.white,
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
+          padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -22,238 +47,350 @@ class PlayerHomeScreen extends StatelessWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  Row(
                     children: [
-                      Text(
-                        'Good Morning,',
-                        style: GoogleFonts.inter(
-                          fontSize: 14,
-                          color: AppPalette.textSecondaryLight,
+                      Container(
+                        width: 48,
+                        height: 48,
+                        decoration: const BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Color(0xFFFFE0B2), // Light Orange/Peach bg
+                        ),
+                        child: ClipOval(
+                          child: Image.network(
+                            'https://i.pravatar.cc/150?img=11', // Reusing placeholder
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) =>
+                                const Icon(
+                                  Icons.person,
+                                  color: AppPalette.orangeAccent,
+                                ),
+                          ),
                         ),
                       ),
-                      Text(
-                        'Akshar Patel',
-                        style: GoogleFonts.outfit(
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                          color: AppPalette.navyPrimary,
-                        ),
+                      const SizedBox(width: 12),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'OCT 24, TUESDAY',
+                            style: GoogleFonts.inter(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w600,
+                              color: AppPalette.textSecondaryLight,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            'Good morning, $_userName',
+                            style: GoogleFonts.outfit(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: AppPalette.navyPrimary,
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
-                  const Spacer(),
                   NotificationButton(
-                    hasNotification: false,
+                    hasNotification: true, // Show dot as per design
                     onTap: () => context.push('/player/notifications'),
                     iconColor: AppPalette.navyPrimary,
-                    backgroundColor: const Color(0xFFF1F5F9),
-                  ),
-                  const SizedBox(width: 12),
-                  Container(
-                    width: 45,
-                    height: 45,
-                    decoration: const BoxDecoration(
-                      shape: BoxShape.circle,
-                      image: DecorationImage(
-                        image: NetworkImage('https://i.pravatar.cc/150?img=11'),
-                        fit: BoxFit.cover,
-                      ),
-                    ),
+                    backgroundColor: const Color(0xFFF8F9FA),
                   ),
                 ],
               ).animate().fadeIn().slideY(begin: -0.2),
 
               const SizedBox(height: 24),
 
-              // 2. Search Bar
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 4,
-                ),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.05),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: TextField(
-                  decoration: InputDecoration(
-                    border: InputBorder.none,
-                    hintText: 'Find a coach or venue...',
-                    hintStyle: GoogleFonts.inter(
-                      color: AppPalette.textDisabled,
-                      fontSize: 14,
-                    ),
-                    icon: const Icon(
-                      Icons.search,
-                      color: AppPalette.textDisabled,
-                    ),
-                  ),
-                ),
-              ).animate().fadeIn(delay: 100.ms),
-
-              const SizedBox(height: 16),
-
-              // View All Link
-              Align(
-                alignment: Alignment.centerRight,
-                child: TextButton(
-                  onPressed: () {},
-                  child: Text(
-                    'View All',
-                    style: GoogleFonts.inter(
-                      color: AppPalette.orangeAccent,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 12,
-                    ),
-                  ),
-                ),
-              ).animate().fadeIn(delay: 200.ms),
-
-              // 3. Featured Session Card
-              Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(24),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.06),
-                      blurRadius: 20,
-                      offset: const Offset(0, 8),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  children: [
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Icon Box
-                        Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: AppPalette.orangeAccent.withValues(
-                              alpha: 0.1,
-                            ),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: const Icon(
-                            Icons.sports_cricket,
-                            color: AppPalette.orangeAccent,
-                            size: 24,
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        // Text Info
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Batting Technique',
-                                style: GoogleFonts.outfit(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                  color: AppPalette.navyPrimary,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                'with Coach Rahul Dravid',
-                                style: GoogleFonts.inter(
-                                  fontSize: 13,
-                                  color: AppPalette.textSecondaryLight,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        // Badge
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 6,
-                          ),
-                          decoration: BoxDecoration(
-                            color: AppPalette.orangeAccent,
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: Text(
-                            'Today',
-                            style: GoogleFonts.inter(
-                              color: Colors.white,
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 20),
-                    const Divider(color: AppPalette.divider, height: 1),
-                    const SizedBox(height: 16),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Row(
-                          children: [
-                            const Icon(
-                              Icons.access_time,
-                              size: 16,
-                              color: AppPalette.textSecondaryLight,
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              '4:00 PM - 5:00 PM',
-                              style: GoogleFonts.inter(
-                                fontSize: 13,
-                                color: AppPalette.textSecondaryLight,
-                              ),
-                            ),
-                          ],
-                        ),
-                        Row(
-                          children: [
-                            const Icon(
-                              Icons.location_on_outlined,
-                              size: 16,
-                              color: AppPalette.textSecondaryLight,
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              'Lords Stadium',
-                              style: GoogleFonts.inter(
-                                fontSize: 13,
-                                color: AppPalette.textSecondaryLight,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ).animate().fadeIn(delay: 300.ms).slideY(begin: 0.1),
-
-              const SizedBox(height: 24),
-
-              // Section Header
+              // 2. UP NEXT Section
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    'Top Coaches',
-                    style: GoogleFonts.outfit(
-                      fontSize: 18,
+                    'UP NEXT',
+                    style: GoogleFonts.inter(
+                      fontSize: 12,
                       fontWeight: FontWeight.bold,
+                      letterSpacing: 1.0,
+                      color: AppPalette.navyPrimary,
+                    ),
+                  ),
+                  GestureDetector(
+                    onTap: () {}, // Calendar view
+                    child: Text(
+                      'View Calendar',
+                      style: GoogleFonts.inter(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: AppPalette.orangeAccent,
+                      ),
+                    ),
+                  ),
+                ],
+              ).animate().fadeIn(delay: 100.ms),
+              const SizedBox(height: 12),
+
+              // Up Next Card
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: AppPalette.navyPrimary,
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppPalette.navyPrimary.withValues(alpha: 0.3),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Details
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.15),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Row(
+                                children: [
+                                  Container(
+                                    width: 6,
+                                    height: 6,
+                                    decoration: const BoxDecoration(
+                                      color: AppPalette.orangeAccent,
+                                      shape: BoxShape.circle,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    'Starts in 2h',
+                                    style: GoogleFonts.inter(
+                                      color: Colors.white,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              'Strength &\nConditioning',
+                              style: GoogleFonts.outfit(
+                                fontSize: 22,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                                height: 1.2,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'Gym A • Coach Mike Johnson',
+                              style: GoogleFonts.inter(
+                                color: Colors.white.withValues(alpha: 0.7),
+                                fontSize: 13,
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            Row(
+                              children: [
+                                const Icon(
+                                  Icons.access_time_rounded,
+                                  color: Colors.white70,
+                                  size: 16,
+                                ),
+                                const SizedBox(width: 6),
+                                Text(
+                                  '4:00 PM - 5:30 PM',
+                                  style: GoogleFonts.inter(
+                                    color: Colors.white.withValues(alpha: 0.9),
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                        // Coach Image
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(12),
+                          child: Image.network(
+                            'https://i.pravatar.cc/150?img=60',
+                            width: 60,
+                            height: 60,
+                            fit: BoxFit.cover,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 24),
+                    // Action Button
+                    Row(
+                      children: [
+                        Expanded(
+                          child: ElevatedButton(
+                            onPressed: () {},
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppPalette.orangeAccent,
+                              foregroundColor: Colors.white,
+                              elevation: 0,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                            ),
+                            child: Text(
+                              'Check In',
+                              style: GoogleFonts.outfit(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Container(
+                          width: 48,
+                          height: 48,
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: IconButton(
+                            onPressed: () {},
+                            icon: const Icon(
+                              Icons.info_outline,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ).animate().fadeIn(delay: 200.ms).slideY(begin: 0.1),
+
+              const SizedBox(height: 24),
+
+              // 3. Performance Metrics
+              Text(
+                'PERFORMANCE METRICS',
+                style: GoogleFonts.inter(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 1.0,
+                  color: AppPalette.navyPrimary,
+                ),
+              ).animate().fadeIn(delay: 300.ms),
+              const SizedBox(height: 12),
+
+              SizedBox(
+                height: 160,
+                child: ListView(
+                  scrollDirection: Axis.horizontal,
+                  clipBehavior: Clip.none,
+                  children: [
+                    _MetricCard(
+                      icon: Icons.speed,
+                      iconColor: Colors.blue,
+                      label: 'Speed Score',
+                      value: '85',
+                      trend: '+5% vs last\nweek',
+                      trendColor: Colors.green,
+                    ),
+                    const SizedBox(width: 12),
+                    _MetricCard(
+                      icon: Icons.favorite,
+                      iconColor: Colors.green,
+                      label: 'Recovery',
+                      value: '92%',
+                      trend: 'Ready to train',
+                      trendIsText: true,
+                      trendColor: Colors.green,
+                    ),
+                    const SizedBox(width: 12),
+                    _MetricCard(
+                      icon: Icons
+                          .fitness_center_rounded, // Assuming Attendance/Workouts
+                      iconColor: Colors.orange,
+                      label: 'Workouts', // Inferred label from '12'
+                      value: '12',
+                      trend: 'Completed',
+                      trendColor: Colors.grey,
+                    ),
+                  ],
+                ),
+              ).animate().fadeIn(delay: 400.ms).slideX(begin: 0.1),
+
+              const SizedBox(height: 24),
+
+              // 4. Quick Actions
+              Text(
+                'QUICK ACTIONS',
+                style: GoogleFonts.inter(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 1.0,
+                  color: AppPalette.navyPrimary,
+                ),
+              ).animate().fadeIn(delay: 500.ms),
+              const SizedBox(height: 12),
+
+              Row(
+                children: [
+                  Expanded(
+                    child: _QuickActionButton(
+                      icon: Icons.calendar_today_rounded,
+                      label: 'Book Coach',
+                      onTap: () {
+                        // Go to Search Screen (Guardian Book route is used for search currently)
+                        // Check app_router to see if specific route exists or reuse.
+                        // Using absolute path just in case.
+                        context.go('/player/search');
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: _QuickActionButton(
+                      icon: Icons.edit_note_rounded,
+                      label: 'Log Workout',
+                      onTap: () {},
+                    ),
+                  ),
+                ],
+              ).animate().fadeIn(delay: 600.ms),
+
+              const SizedBox(height: 24),
+
+              // 5. Featured Coaches
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'FEATURED COACHES',
+                    style: GoogleFonts.inter(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 1.0,
                       color: AppPalette.navyPrimary,
                     ),
                   ),
@@ -266,30 +403,30 @@ class PlayerHomeScreen extends StatelessWidget {
                     ),
                   ),
                 ],
-              ).animate().fadeIn(delay: 400.ms),
+              ).animate().fadeIn(delay: 700.ms),
+              const SizedBox(height: 12),
 
-              const SizedBox(height: 16),
+              Column(
+                children: [
+                  _FeaturedCoachCard(
+                    name: 'Sarah Connor',
+                    role: 'Sprinting • Agility',
+                    rating: '4.9',
+                    reviews: '120 reviews',
+                    imageUrl: 'https://i.pravatar.cc/150?img=5',
+                  ),
+                  const SizedBox(height: 12),
+                  _FeaturedCoachCard(
+                    name: 'David Chen',
+                    role: 'Endurance • Cardio',
+                    rating: '4.8',
+                    reviews: '85 reviews',
+                    imageUrl: 'https://i.pravatar.cc/150?img=3',
+                  ),
+                ],
+              ).animate().fadeIn(delay: 800.ms),
 
-              // 4. Coach List
-              const _CoachCard(
-                name: 'Coach Virat',
-                specialty: 'Cricket • Batting Specialist',
-                rating: 5.0,
-                hourlyRate: 50,
-                imageUrl: 'https://i.pravatar.cc/150?img=33',
-              ).animate().fadeIn(delay: 500.ms).slideX(begin: 0.1),
-
-              const SizedBox(height: 16),
-
-              const _CoachCard(
-                name: 'Coach Rohit',
-                specialty: 'Cricket • Batting Specialist',
-                rating: 4.8,
-                hourlyRate: 45,
-                imageUrl: 'https://i.pravatar.cc/150?img=12',
-              ).animate().fadeIn(delay: 600.ms).slideX(begin: 0.1),
-
-              const SizedBox(height: 80), // Bottom padding for floating nav
+              const SizedBox(height: 48), // Padding for bottom nav
             ],
           ),
         ),
@@ -298,50 +435,181 @@ class PlayerHomeScreen extends StatelessWidget {
   }
 }
 
-class _CoachCard extends StatelessWidget {
+class _MetricCard extends StatelessWidget {
+  final IconData icon;
+  final Color iconColor;
+  final String label;
+  final String value;
+  final String trend;
+  final Color trendColor;
+  final bool trendIsText;
+
+  const _MetricCard({
+    required this.icon,
+    required this.iconColor,
+    required this.label,
+    required this.value,
+    required this.trend,
+    required this.trendColor,
+    this.trendIsText = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 140,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.grey[100]!),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: iconColor.withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(icon, color: iconColor, size: 18),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  label,
+                  style: GoogleFonts.inter(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    color: AppPalette.textSecondaryLight,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            value,
+            style: GoogleFonts.outfit(
+              fontSize: 32,
+              fontWeight: FontWeight.bold,
+              color: AppPalette.navyPrimary,
+            ),
+          ),
+          const Spacer(),
+          Row(
+            children: [
+              if (!trendIsText)
+                Icon(Icons.trending_up, size: 14, color: trendColor),
+              if (!trendIsText) const SizedBox(width: 4),
+              Expanded(
+                child: Text(
+                  trend,
+                  style: GoogleFonts.inter(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: trendColor,
+                    height: 1.2,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _QuickActionButton extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  const _QuickActionButton({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.grey[200]!),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.03),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, color: AppPalette.navyPrimary, size: 24),
+            const SizedBox(width: 12),
+            Text(
+              label,
+              style: GoogleFonts.inter(
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+                color: AppPalette.navyPrimary,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _FeaturedCoachCard extends StatelessWidget {
   final String name;
-  final String specialty;
-  final double rating;
-  final int hourlyRate;
+  final String role;
+  final String rating;
+  final String reviews;
   final String imageUrl;
 
-  const _CoachCard({
+  const _FeaturedCoachCard({
     required this.name,
-    required this.specialty,
+    required this.role,
     required this.rating,
-    required this.hourlyRate,
+    required this.reviews,
     required this.imageUrl,
   });
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        border: Border.all(color: Colors.grey[100]!),
       ),
       child: Row(
         children: [
-          // Avatar
-          ClipRRect(
-            borderRadius: BorderRadius.circular(16),
-            child: Image.network(
-              imageUrl,
-              width: 70,
-              height: 70,
-              fit: BoxFit.cover,
-            ),
-          ),
+          CircleAvatar(radius: 28, backgroundImage: NetworkImage(imageUrl)),
           const SizedBox(width: 16),
-          // Info
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -355,35 +623,48 @@ class _CoachCard extends StatelessWidget {
                   ),
                 ),
                 Text(
-                  specialty,
+                  role,
                   style: GoogleFonts.inter(
-                    fontSize: 12,
+                    fontSize: 13,
                     color: AppPalette.textSecondaryLight,
                   ),
                 ),
-                const SizedBox(height: 8),
-                const Icon(
-                  Icons.star,
-                  size: 16,
-                  color: AppPalette.orangeAccent,
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    const Icon(Icons.star, size: 14, color: AppPalette.warning),
+                    const SizedBox(width: 4),
+                    Text(
+                      rating,
+                      style: GoogleFonts.inter(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: AppPalette.navyPrimary,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      '($reviews)',
+                      style: GoogleFonts.inter(
+                        fontSize: 12,
+                        color: AppPalette.textSecondaryLight,
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
           ),
-          // Price Tag
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: AppPalette.offWhite,
-              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppPalette.divider),
+              shape: BoxShape.circle,
             ),
-            child: Text(
-              '\$$hourlyRate/hr',
-              style: GoogleFonts.inter(
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
-                color: AppPalette.navyPrimary,
-              ),
+            child: const Icon(
+              Icons.arrow_forward_ios_rounded,
+              size: 16,
+              color: AppPalette.textSecondaryLight,
             ),
           ),
         ],

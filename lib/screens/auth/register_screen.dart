@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../config/palette.dart';
+import '../../services/auth_service.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
@@ -16,9 +17,24 @@ class RegisterScreen extends StatefulWidget {
 
 class _RegisterScreenState extends State<RegisterScreen> {
   final _formKey = GlobalKey<FormState>();
+  final _nameController = TextEditingController();
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+  final _confirmPasswordController = TextEditingController();
+  bool _isLoading = false;
+
   bool _isPasswordVisible = false;
   bool _isConfirmPasswordVisible = false;
   bool _agreedToTerms = false;
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _emailController.dispose();
+    _passwordController.dispose();
+    _confirmPasswordController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -79,20 +95,22 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 child: Column(
                   children: [
                     // Name Field
-                    const _CustomTextField(
+                    _CustomTextField(
                       label: 'Full Name',
                       hint: 'Enter your full name',
                       icon: Ionicons.person_outline,
+                      controller: _nameController,
                     ).animate().fadeIn(delay: 200.ms).slideX(begin: -0.1),
 
                     const SizedBox(height: 16),
 
                     // Email Field
-                    const _CustomTextField(
+                    _CustomTextField(
                       label: 'Email Address',
                       hint: 'name@example.com',
                       icon: Ionicons.mail_outline,
                       keyboardType: TextInputType.emailAddress,
+                      controller: _emailController,
                     ).animate().fadeIn(delay: 300.ms).slideX(begin: -0.1),
 
                     const SizedBox(height: 16),
@@ -107,6 +125,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       onVisibilityChanged: () => setState(
                         () => _isPasswordVisible = !_isPasswordVisible,
                       ),
+                      controller: _passwordController,
                     ).animate().fadeIn(delay: 400.ms).slideX(begin: -0.1),
 
                     const SizedBox(height: 16),
@@ -122,6 +141,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         () => _isConfirmPasswordVisible =
                             !_isConfirmPasswordVisible,
                       ),
+                      controller: _confirmPasswordController,
                     ).animate().fadeIn(delay: 500.ms).slideX(begin: -0.1),
 
                     const SizedBox(height: 24),
@@ -151,19 +171,68 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     const SizedBox(height: 32),
 
                     // Register Button
+                    // Register Button
                     SizedBox(
                       width: double.infinity,
                       height: 56,
                       child: ElevatedButton(
-                        onPressed: () {
-                          if (widget.role == 'coach') {
-                            context.go('/coach/home');
-                          } else if (widget.role == 'player') {
-                            context.go('/player/home');
-                          } else {
-                            context.go('/guardian/add-player');
-                          }
-                        },
+                        onPressed: _isLoading
+                            ? null
+                            : () async {
+                                if (!_agreedToTerms) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text(
+                                        'Please agree to the terms.',
+                                      ),
+                                      backgroundColor: Colors.red,
+                                    ),
+                                  );
+                                  return;
+                                }
+
+                                if (_passwordController.text !=
+                                    _confirmPasswordController.text) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text('Passwords do not match.'),
+                                      backgroundColor: Colors.red,
+                                    ),
+                                  );
+                                  return;
+                                }
+
+                                setState(() => _isLoading = true);
+                                final success = await AuthService.register(
+                                  _nameController.text,
+                                  _emailController.text,
+                                  _passwordController.text,
+                                  widget.role ?? 'player',
+                                );
+
+                                if (!context.mounted) return;
+
+                                setState(() => _isLoading = false);
+
+                                if (success) {
+                                  if (widget.role == 'coach') {
+                                    context.go('/coach/home');
+                                  } else if (widget.role == 'player') {
+                                    context.go('/player/home');
+                                  } else {
+                                    context.go('/guardian/add-player');
+                                  }
+                                } else {
+                                  if (context.mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text('Registration failed.'),
+                                        backgroundColor: Colors.red,
+                                      ),
+                                    );
+                                  }
+                                }
+                              },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppPalette.orangeAccent,
                           foregroundColor: Colors.white,
@@ -172,20 +241,29 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             borderRadius: BorderRadius.circular(16),
                           ),
                         ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text(
-                              'Register',
-                              style: GoogleFonts.outfit(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
+                        child: _isLoading
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  color: Colors.white,
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Text(
+                                    'Register',
+                                    style: GoogleFonts.outfit(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  const Icon(Ionicons.arrow_forward, size: 20),
+                                ],
                               ),
-                            ),
-                            const SizedBox(width: 8),
-                            const Icon(Ionicons.arrow_forward, size: 20),
-                          ],
-                        ),
                       ),
                     ).animate().fadeIn(delay: 700.ms).slideY(begin: 0.2),
 
@@ -317,6 +395,7 @@ class _CustomTextField extends StatelessWidget {
   final bool isVisible;
   final VoidCallback? onVisibilityChanged;
   final TextInputType keyboardType;
+  final TextEditingController? controller;
 
   const _CustomTextField({
     required this.label,
@@ -326,6 +405,7 @@ class _CustomTextField extends StatelessWidget {
     this.isVisible = false,
     this.onVisibilityChanged,
     this.keyboardType = TextInputType.text,
+    this.controller,
   });
 
   @override
@@ -349,6 +429,7 @@ class _CustomTextField extends StatelessWidget {
             border: Border.all(color: Colors.grey[200]!),
           ),
           child: TextFormField(
+            controller: controller,
             obscureText: isPassword && !isVisible,
             keyboardType: keyboardType,
             style: GoogleFonts.inter(

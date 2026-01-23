@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import '../../widgets/notification_button.dart';
+
 import '../../config/palette.dart';
 
-class SettingsScreen extends StatelessWidget {
-  const SettingsScreen({super.key});
+class PlayerProfileScreen extends StatelessWidget {
+  const PlayerProfileScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -14,64 +14,34 @@ class SettingsScreen extends StatelessWidget {
       backgroundColor: AppPalette.backgroundLight,
       body: Column(
         children: [
+          // Light Header (Matching Sessions Screen)
           Container(
             padding: EdgeInsets.only(
-              top: MediaQuery.of(context).padding.top + 20,
-              bottom: 24,
+              top: MediaQuery.of(context).padding.top + 16,
+              bottom: 16,
               left: 24,
               right: 24,
             ),
-            decoration: const BoxDecoration(
-              color: Colors.white, // Header Background
-              borderRadius: BorderRadius.only(
-                bottomLeft: Radius.circular(30),
-                bottomRight: Radius.circular(30),
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: Color(0x08000000),
-                  blurRadius: 20,
-                  offset: Offset(0, 10),
-                ),
-              ],
-            ),
+            color: Colors.transparent,
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                SizedBox(
+                const SizedBox(
                   width: 40,
-                  height: 40,
-                  child: IconButton(
-                    icon: const Icon(
-                      Icons.arrow_back,
-                      color: AppPalette.navyPrimary,
-                    ),
-                    padding: EdgeInsets.zero,
-                    onPressed: () {
-                      if (context.canPop()) {
-                        context.pop();
-                      } else {
-                        context.go('/');
-                      }
-                    },
-                  ),
-                ),
+                ), // Spacing to center title if needed, or just spacers
                 Expanded(
                   child: Text(
-                    'Settings',
+                    'Profile',
                     textAlign: TextAlign.center,
                     style: GoogleFonts.outfit(
-                      fontSize: 28,
+                      fontSize: 24, // Matching Sessions screen font size
                       fontWeight: FontWeight.bold,
                       color: AppPalette.navyPrimary,
                     ),
                   ),
                 ),
-                const NotificationButton(
-                  hasNotification: true,
-                  iconColor: AppPalette.navyPrimary,
-                  backgroundColor: AppPalette.backgroundLight,
-                ),
+                // Notification Button placeholder or actual button
+                const SizedBox(width: 40, height: 40),
               ],
             ),
           ),
@@ -98,19 +68,17 @@ class SettingsScreen extends StatelessWidget {
                       children: [
                         const CircleAvatar(
                           radius: 30,
-                          backgroundColor: AppPalette.navyPrimary,
-                          child: Icon(
-                            Icons.person,
-                            color: Colors.white,
-                            size: 30,
+                          backgroundImage: NetworkImage(
+                            'https://i.pravatar.cc/150?img=11',
                           ),
+                          backgroundColor: AppPalette.offWhite,
                         ),
                         const SizedBox(width: 16),
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'User Name',
+                              'Alex Johnson',
                               style: GoogleFonts.outfit(
                                 fontSize: 18,
                                 fontWeight: FontWeight.bold,
@@ -118,7 +86,7 @@ class SettingsScreen extends StatelessWidget {
                               ),
                             ),
                             Text(
-                              'user@example.com',
+                              'alex.j@example.com',
                               style: GoogleFonts.inter(
                                 color: AppPalette.textSecondaryLight,
                                 fontSize: 14,
@@ -133,7 +101,7 @@ class SettingsScreen extends StatelessWidget {
                             color: AppPalette.navyPrimary,
                           ),
                           onPressed: () {
-                            // Navigate to edit profile (assume exists or mock)
+                            context.push('/edit-profile');
                           },
                         ),
                       ],
@@ -154,7 +122,9 @@ class SettingsScreen extends StatelessWidget {
                   _buildSettingsItem(
                     icon: Icons.notifications_none,
                     title: 'Notifications',
-                    onTap: () {},
+                    onTap: () {
+                      context.push('/player/notifications');
+                    },
                   ),
                   const SizedBox(height: 12),
                   _buildSettingsItem(

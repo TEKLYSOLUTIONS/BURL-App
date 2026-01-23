@@ -78,7 +78,7 @@ class _BookingScreenState extends State<BookingScreen> {
                   ClipRRect(
                     borderRadius: BorderRadius.circular(12),
                     child: Image.network(
-                      'https://images.unsplash.com/photo-1531415074968-036ba1b575da?auto=format&fit=crop&q=80',
+                      'https://i.pravatar.cc/150?img=12', // Reliable placeholder
                       width: 80,
                       height: 80,
                       fit: BoxFit.cover,
@@ -156,7 +156,7 @@ class _BookingScreenState extends State<BookingScreen> {
               child: ListView.separated(
                 scrollDirection: Axis.horizontal,
                 itemCount: _dates.length,
-                separatorBuilder: (_, __) => const SizedBox(width: 12),
+                separatorBuilder: (_, _) => const SizedBox(width: 12),
                 itemBuilder: (context, index) {
                   final isSelected = index == _selectedDateIndex;
                   return GestureDetector(
@@ -263,7 +263,20 @@ class _BookingScreenState extends State<BookingScreen> {
               height: 56,
               child: ElevatedButton(
                 onPressed: () {
-                  // Navigate or confirm
+                  context.push(
+                    '/confirm-booking',
+                    extra: {
+                      'date': _dates[_selectedDateIndex].split(
+                        ', ',
+                      )[1], // e.g. "12" -> This assumes a certain format, can be improved but sticking to simple passing for now or pass defaults
+                      'time': _selectedTimeIndex != -1
+                          ? _times[_selectedTimeIndex]
+                          : '10:00 AM',
+                      'coachName':
+                          'Michael Ray', // Hardcoded in previous screen too
+                      'location': 'Sunnydale Sports Complex',
+                    },
+                  );
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppPalette.navyPrimary,

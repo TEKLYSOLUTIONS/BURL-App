@@ -38,7 +38,17 @@ class ProfileScreen extends StatelessWidget {
                               Icons.settings,
                               color: Colors.white,
                             ),
-                            onPressed: () => context.push('/settings'),
+                            onPressed: () {
+                              if (isCoachView) {
+                                // Coach view viewing player profile OR coach profile - Logic might need detail
+                                // Assuming 'isCoachView' true means a coach is looking at a player?
+                                // Actually ProfileScreen is used for 'Me' tab too.
+                                context.push('/settings');
+                              } else {
+                                // Player Profile
+                                context.push('/player/settings');
+                              }
+                            },
                           ),
                         ],
                       ),

@@ -310,7 +310,7 @@ class _CoachDetailsScreenState extends State<CoachDetailsScreen>
                                 'https://images.unsplash.com/photo-1599058945522-28d584b6f0ff',
                               ),
                               _buildGalleryItem(
-                                'https://images.unsplash.com/photo-1626248679462-8408becc9253',
+                                'https://i.pravatar.cc/300?img=25', // Working placeholder
                               ), // Tennis/Sports
                             ],
                           ),
@@ -455,11 +455,11 @@ class _CoachDetailsScreenState extends State<CoachDetailsScreen>
                 const SizedBox(width: 24),
                 Expanded(
                   child: ElevatedButton(
-                    onPressed: () {},
+                    onPressed: () {
+                      context.push('/booking');
+                    },
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(
-                        0xFF2E1A5C,
-                      ), // Dark purple/navy
+                      backgroundColor: AppPalette.orangeAccent, // Orange accent
                       padding: const EdgeInsets.symmetric(vertical: 16),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(16),

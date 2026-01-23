@@ -22,18 +22,18 @@ class _GuardianProfileScreenState extends State<GuardianProfileScreen> {
       backgroundColor: const Color(0xFFF5F7FA), // Light grey background
       appBar: AppBar(
         title: Text(
-          'Settings',
+          'Profile',
           style: GoogleFonts.outfit(
-            color: Colors.white,
+            color: AppPalette.navyPrimary,
             fontWeight: FontWeight.bold,
-            fontSize: 20,
+            fontSize: 24,
           ),
         ),
-        backgroundColor: AppPalette.navyPrimary,
+        backgroundColor: Colors.transparent,
         elevation: 0,
         centerTitle: true,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          icon: const Icon(Icons.arrow_back, color: AppPalette.navyPrimary),
           onPressed: () => context.pop(),
         ),
         actions: [

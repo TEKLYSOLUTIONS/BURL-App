@@ -1,11 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:ionicons/ionicons.dart';
-<<<<<<< HEAD
 import '../../config/palette.dart';
-=======
-import 'floating_nav_bar.dart';
->>>>>>> c580486c100d6e4782b9991b06e70b9ceddc33ba
 
 class GuardianNavigation extends StatelessWidget {
   final Widget child;
@@ -26,7 +22,6 @@ class GuardianNavigation extends StatelessWidget {
         showSelectedLabels: false,
         showUnselectedLabels: false,
         items: const [
-<<<<<<< HEAD
           BottomNavigationBarItem(icon: Icon(Icons.home_rounded), label: ''),
           BottomNavigationBarItem(
             icon: Icon(Ionicons.search_outline),
@@ -41,13 +36,6 @@ class GuardianNavigation extends StatelessWidget {
             label: '',
           ),
           BottomNavigationBarItem(icon: Icon(Icons.person_rounded), label: ''),
-=======
-          Icons.home_rounded,
-          Ionicons.search_outline, // Book
-          Icons.people_alt_rounded, // My Players
-          Ionicons.calendar_outline, // Sessions
-          Icons.person_rounded,
->>>>>>> c580486c100d6e4782b9991b06e70b9ceddc33ba
         ],
       ),
     );

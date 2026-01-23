@@ -10,8 +10,11 @@ import '../screens/coach/home_screen.dart';
 import '../screens/search/search_screen.dart';
 import '../screens/player/home_screen.dart';
 import '../screens/booking/booking_screen.dart';
+
+import '../screens/booking/confirm_booking_screen_simple.dart';
+import '../screens/booking/booking_success_screen.dart';
 import '../screens/sessions/my_sessions_screen.dart';
-import '../screens/profile/profile_screen.dart';
+
 import '../screens/guardian/my_players_screen.dart';
 import '../screens/profile/coach_profile_screen.dart';
 import '../screens/profile/edit_profile_screen.dart';
@@ -33,6 +36,7 @@ import '../screens/coach/availability_screen.dart';
 import '../screens/coach/session_report_screen.dart';
 import '../screens/settings/settings_screen.dart';
 import '../screens/player/player_reports_screen.dart';
+import '../screens/player/player_settings_screen.dart';
 import '../screens/notifications/notifications_screen.dart';
 import '../screens/notifications/notification_detail_screen.dart';
 
@@ -166,7 +170,6 @@ class AppRouter {
           GoRoute(
             path: '/coach/profile',
             builder: (context, state) => const CoachProfileScreen(coachId: '1'),
-<<<<<<< HEAD
           ),
           GoRoute(
             path: '/coach/notifications',
@@ -194,20 +197,38 @@ class AppRouter {
             builder: (context, state) => const MySessionsScreen(isCoach: false),
           ),
           GoRoute(
-            path: '/player/notifications',
-            builder: (context, state) => const NotificationsScreen(),
+            path: '/player/search',
+            builder: (context, state) => const SearchScreen(),
           ),
           GoRoute(
             path: '/player/profile',
-            builder: (context, state) => const ProfileScreen(),
+            builder: (context, state) => const PlayerProfileScreen(),
           ),
         ],
+      ),
+
+      GoRoute(
+        path: '/confirm-booking',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) {
+          final extra = state.extra as Map<String, dynamic>? ?? {};
+          return ConfirmBookingScreenSimple(bookingDetails: extra);
+        },
       ),
 
       GoRoute(
         path: '/booking',
         parentNavigatorKey: _rootNavigatorKey,
         builder: (context, state) => const BookingScreen(),
+      ),
+
+      GoRoute(
+        path: '/booking-success',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) {
+          final extra = state.extra as Map<String, dynamic>? ?? {};
+          return BookingSuccessScreen(bookingDetails: extra);
+        },
       ),
 
       // Guardian Shell Route (5 Tabs)
