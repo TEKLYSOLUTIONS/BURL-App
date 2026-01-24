@@ -4,16 +4,16 @@ class ApiConfig {
   // Environment Configuration
   // Set to true when building for production (physical devices)
   // Set to false when testing on emulator/simulator
-  static const bool isProduction = false;
+  static const bool isProduction = true; // ✅ PRODUCTION MODE ENABLED
 
   // Development URLs (for emulator/simulator testing)
   static const String _baseUrlAndroid = 'http://10.0.2.2:4000/api';
   static const String _baseUrlIOS = 'http://localhost:4000/api';
 
   // Production URL (for physical devices)
-  // TODO: Update this URL after deploying to Render.com
+  // ✅ Updated with Render.com deployment URL
   static const String _baseUrlProduction =
-      'https://your-app-name.onrender.com/api';
+      'https://cricket-coaching-backend.onrender.com/api';
 
   static String get baseUrl {
     // Use production URL when isProduction is true
