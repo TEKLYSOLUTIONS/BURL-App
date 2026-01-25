@@ -3,37 +3,106 @@ import '../../config/palette.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
+import '../../services/session_service.dart';
+import 'package:intl/intl.dart';
 
 class BookingScreen extends StatefulWidget {
-  const BookingScreen({super.key});
+  final String sessionId;
+
+  const BookingScreen({super.key, required this.sessionId});
 
   @override
   State<BookingScreen> createState() => _BookingScreenState();
 }
 
 class _BookingScreenState extends State<BookingScreen> {
+  bool _isLoading = true;
+  Map<String, dynamic>? _session;
   int _selectedDateIndex = 0;
   int _selectedTimeIndex = -1;
 
-  final List<String> _dates = [
-    'Mon, 12',
-    'Tue, 13',
-    'Wed, 14',
-    'Thu, 15',
-    'Fri, 16',
-    'Sat, 17',
-  ];
-  final List<String> _times = [
-    '09:00 AM',
-    '10:00 AM',
-    '11:00 AM',
-    '02:00 PM',
-    '03:00 PM',
-    '04:00 PM',
-  ];
+  List<DateTime> _availableDates = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchSessionDetails();
+  }
+
+  Future<void> _fetchSessionDetails() async {
+    try {
+      final session = await SessionService.getSessionById(widget.sessionId);
+
+      // Extract available dates from occurrences
+      final List<DateTime> dates = [];
+      if (session['occurrences'] != null) {
+        for (var occurrence in session['occurrences']) {
+          final date = DateTime.parse(occurrence['date']);
+          if (date.isAfter(DateTime.now())) {
+            dates.add(date);
+          }
+        }
+      }
+
+      dates.sort();
+
+      setState(() {
+        _session = session;
+        _availableDates = dates;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error loading session: $e')));
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return Scaffold(
+        appBar: AppBar(
+          title: Text(
+            'Book Session',
+            style: GoogleFonts.outfit(
+              fontWeight: FontWeight.bold,
+              color: AppPalette.navyPrimary,
+            ),
+          ),
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+        ),
+        body: const Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (_session == null) {
+      return Scaffold(
+        appBar: AppBar(
+          title: Text(
+            'Book Session',
+            style: GoogleFonts.outfit(
+              fontWeight: FontWeight.bold,
+              color: AppPalette.navyPrimary,
+            ),
+          ),
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+        ),
+        body: const Center(child: Text('Session not found')),
+      );
+    }
+
+    final sessionTitle = _session!['title'] ?? 'Session';
+    final coachName = _session!['coach']?['fullName'] ?? 'Coach';
+    final location = _session!['location'] ?? 'TBA';
+
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
@@ -99,7 +168,7 @@ class _BookingScreenState extends State<BookingScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Advanced Batting',
+                          sessionTitle,
                           style: GoogleFonts.outfit(
                             fontWeight: FontWeight.bold,
                             fontSize: 18,
@@ -108,7 +177,7 @@ class _BookingScreenState extends State<BookingScreen> {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          'with Coach Rahul D.',
+                          'with Coach $coachName',
                           style: GoogleFonts.inter(
                             fontSize: 14,
                             color: AppPalette.textSecondaryLight,
@@ -151,60 +220,76 @@ class _BookingScreenState extends State<BookingScreen> {
               ),
             ),
             const SizedBox(height: 16),
-            SizedBox(
-              height: 80,
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                itemCount: _dates.length,
-                separatorBuilder: (_, _) => const SizedBox(width: 12),
-                itemBuilder: (context, index) {
-                  final isSelected = index == _selectedDateIndex;
-                  return GestureDetector(
-                    onTap: () => setState(() => _selectedDateIndex = index),
-                    child: AnimatedContainer(
-                      duration: 300.ms,
-                      width: 70,
-                      decoration: BoxDecoration(
-                        color: isSelected
-                            ? AppPalette.navyPrimary
-                            : Colors.white,
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                          color: isSelected
-                              ? AppPalette.navyPrimary
-                              : AppPalette.divider,
-                        ),
-                      ),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            _dates[index].split(', ')[0],
-                            style: GoogleFonts.inter(
-                              color: isSelected
-                                  ? Colors.white70
-                                  : AppPalette.textSecondaryLight,
-                              fontSize: 12,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            _dates[index].split(', ')[1],
-                            style: GoogleFonts.outfit(
-                              color: isSelected
-                                  ? Colors.white
-                                  : AppPalette.textPrimaryLight,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 20,
-                            ),
-                          ),
-                        ],
+            _availableDates.isEmpty
+                ? Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Text(
+                      'No upcoming sessions available',
+                      style: GoogleFonts.inter(
+                        color: AppPalette.textSecondaryLight,
                       ),
                     ),
-                  );
-                },
-              ),
-            ).animate().fadeIn(delay: 200.ms),
+                  )
+                : SizedBox(
+                    height: 80,
+                    child: ListView.separated(
+                      scrollDirection: Axis.horizontal,
+                      itemCount: _availableDates.length,
+                      separatorBuilder: (_, _) => const SizedBox(width: 12),
+                      itemBuilder: (context, index) {
+                        final date = _availableDates[index];
+                        final isSelected = index == _selectedDateIndex;
+                        return GestureDetector(
+                          onTap: () =>
+                              setState(() => _selectedDateIndex = index),
+                          child: AnimatedContainer(
+                            duration: 300.ms,
+                            width: 70,
+                            decoration: BoxDecoration(
+                              color: isSelected
+                                  ? AppPalette.navyPrimary
+                                  : Colors.white,
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                color: isSelected
+                                    ? AppPalette.navyPrimary
+                                    : AppPalette.divider,
+                              ),
+                            ),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Text(
+                                  DateFormat('EEE').format(date),
+                                  style: GoogleFonts.inter(
+                                    color: isSelected
+                                        ? Colors.white70
+                                        : AppPalette.textSecondaryLight,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  DateFormat('d').format(date),
+                                  style: GoogleFonts.outfit(
+                                    color: isSelected
+                                        ? Colors.white
+                                        : AppPalette.textPrimaryLight,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 20,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ).animate().fadeIn(delay: 200.ms),
 
             const SizedBox(height: 24),
 
@@ -217,43 +302,48 @@ class _BookingScreenState extends State<BookingScreen> {
               ),
             ),
             const SizedBox(height: 16),
-            Wrap(
-              spacing: 12,
-              runSpacing: 12,
-              children: List.generate(_times.length, (index) {
-                final isSelected = index == _selectedTimeIndex;
-                return GestureDetector(
-                  onTap: () => setState(() => _selectedTimeIndex = index),
-                  child: AnimatedContainer(
-                    duration: 200.ms,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 12,
-                    ),
-                    decoration: BoxDecoration(
-                      color: isSelected
-                          ? AppPalette.orangeAccent
-                          : Colors.white,
-                      borderRadius: BorderRadius.circular(30),
-                      border: Border.all(
-                        color: isSelected
-                            ? AppPalette.orangeAccent
-                            : AppPalette.divider,
+            _availableDates.isEmpty
+                ? const SizedBox.shrink()
+                : Wrap(
+                    spacing: 12,
+                    runSpacing: 12,
+                    children: [
+                      GestureDetector(
+                        onTap: () => setState(() => _selectedTimeIndex = 0),
+                        child: AnimatedContainer(
+                          duration: 200.ms,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 20,
+                            vertical: 12,
+                          ),
+                          decoration: BoxDecoration(
+                            color: _selectedTimeIndex == 0
+                                ? AppPalette.orangeAccent
+                                : Colors.white,
+                            borderRadius: BorderRadius.circular(30),
+                            border: Border.all(
+                              color: _selectedTimeIndex == 0
+                                  ? AppPalette.orangeAccent
+                                  : AppPalette.divider,
+                            ),
+                          ),
+                          child: Text(
+                            _availableDates.isNotEmpty
+                                ? DateFormat(
+                                    'h:mm a',
+                                  ).format(_availableDates[_selectedDateIndex])
+                                : 'Select Date',
+                            style: GoogleFonts.inter(
+                              color: _selectedTimeIndex == 0
+                                  ? Colors.white
+                                  : AppPalette.textPrimaryLight,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
                       ),
-                    ),
-                    child: Text(
-                      _times[index],
-                      style: GoogleFonts.inter(
-                        color: isSelected
-                            ? Colors.white
-                            : AppPalette.textPrimaryLight,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                );
-              }),
-            ).animate().fadeIn(delay: 300.ms),
+                    ],
+                  ).animate().fadeIn(delay: 300.ms),
 
             const SizedBox(height: 40),
 
@@ -262,22 +352,26 @@ class _BookingScreenState extends State<BookingScreen> {
               width: double.infinity,
               height: 56,
               child: ElevatedButton(
-                onPressed: () {
-                  context.push(
-                    '/confirm-booking',
-                    extra: {
-                      'date': _dates[_selectedDateIndex].split(
-                        ', ',
-                      )[1], // e.g. "12" -> This assumes a certain format, can be improved but sticking to simple passing for now or pass defaults
-                      'time': _selectedTimeIndex != -1
-                          ? _times[_selectedTimeIndex]
-                          : '10:00 AM',
-                      'coachName':
-                          'Michael Ray', // Hardcoded in previous screen too
-                      'location': 'Sunnydale Sports Complex',
-                    },
-                  );
-                },
+                onPressed: _availableDates.isEmpty || _selectedTimeIndex == -1
+                    ? null
+                    : () {
+                        final selectedDate =
+                            _availableDates[_selectedDateIndex];
+                        context.push(
+                          '/confirm-booking',
+                          extra: {
+                            'sessionId': widget.sessionId,
+                            'session': _session,
+                            'occurrenceDate': selectedDate.toIso8601String(),
+                            'date': DateFormat(
+                              'EEE, MMM d',
+                            ).format(selectedDate),
+                            'time': DateFormat('h:mm a').format(selectedDate),
+                            'coachName': coachName,
+                            'location': location,
+                          },
+                        );
+                      },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppPalette.navyPrimary,
                   foregroundColor: Colors.white,

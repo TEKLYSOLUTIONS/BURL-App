@@ -6,6 +6,7 @@ import '../../widgets/notification_button.dart';
 import '../../widgets/headers/coach_app_bar.dart';
 import '../../config/palette.dart';
 import '../../widgets/app_time_picker.dart';
+import '../../services/coach_service.dart';
 
 class CoachAvailabilityScreen extends StatefulWidget {
   const CoachAvailabilityScreen({super.key});
@@ -19,9 +20,15 @@ class TimeInterval {
   String start;
   String end;
   TimeInterval({required this.start, required this.end});
+  
+  Map<String, dynamic> toJson() => {
+    'start': start,
+    'end': end,
+  };
 }
 
 class BlockedDate {
+  final String? id;
   final String title;
   final DateTime start;
   final DateTime end;
@@ -29,18 +36,44 @@ class BlockedDate {
   final IconData icon;
 
   BlockedDate({
+    this.id,
     required this.title,
     required this.start,
     required this.end,
     required this.color,
     required this.icon,
   });
+  
+  Map<String, dynamic> toJson() => {
+    'title': title,
+    'startDate': start.toIso8601String(),
+    'endDate': end.toIso8601String(),
+    'icon': _iconToString(icon),
+    'color': _colorToString(color),
+  };
+  
+  String _iconToString(IconData icon) {
+    if (icon == Icons.flight_takeoff) return 'flight';
+    if (icon == Icons.calendar_today) return 'calendar';
+    if (icon == Icons.block) return 'block';
+    return 'block';
+  }
+  
+  String _colorToString(Color color) {
+    if (color == Colors.orange) return 'orange';
+    if (color == Colors.blueGrey) return 'blueGrey';
+    if (color == Colors.redAccent) return 'red';
+    return 'red';
+  }
 }
 
 class _CoachAvailabilityScreenState extends State<CoachAvailabilityScreen> {
+  bool _isLoading = true;
+  bool _isSaving = false;
+
   // recurring schedule
   final List<String> _weekDays = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
-  final List<bool> _selectedWeekDays = [
+  List<bool> _selectedWeekDays = [
     true,
     true,
     true,
@@ -51,7 +84,7 @@ class _CoachAvailabilityScreenState extends State<CoachAvailabilityScreen> {
   ]; // M-F default
 
   // Multiple time intervals
-  final List<TimeInterval> _intervals = [
+  List<TimeInterval> _intervals = [
     TimeInterval(start: '09:00 AM', end: '05:00 PM'),
   ];
 
@@ -61,25 +94,172 @@ class _CoachAvailabilityScreenState extends State<CoachAvailabilityScreen> {
   DateTime? _selectedDay = DateTime.now();
 
   // Dynamic blocked dates list
-  final List<BlockedDate> _blockedDates = [
-    BlockedDate(
-      title: "Vacation",
-      start: DateTime.now().add(const Duration(days: 5)),
-      end: DateTime.now().add(const Duration(days: 7)),
-      color: Colors.orange,
-      icon: Icons.flight_takeoff,
-    ),
-    BlockedDate(
-      title: "Public Holiday",
-      start: DateTime.now().add(const Duration(days: 20)),
-      end: DateTime.now().add(const Duration(days: 20)),
-      color: Colors.blueGrey,
-      icon: Icons.calendar_today,
-    ),
-  ];
+  List<BlockedDate> _blockedDates = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadAvailability();
+  }
+
+  Future<void> _loadAvailability() async {
+    setState(() => _isLoading = true);
+
+    try {
+      final data = await CoachService.getCoachAvailability();
+      
+      // Debug: print the response
+      debugPrint('Availability data: $data');
+      
+      // Parse recurring schedule with null safety
+      if (data.containsKey('recurringSchedule') && data['recurringSchedule'] != null) {
+        final recurringSchedule = data['recurringSchedule'] as Map<String, dynamic>;
+        
+        // Parse active days
+        if (recurringSchedule.containsKey('activeDays')) {
+          final activeDays = List<int>.from(recurringSchedule['activeDays'] ?? [1, 2, 3, 4, 5]);
+          // Convert day numbers to selected array (0=Sun, 1=Mon, etc.)
+          _selectedWeekDays = List.generate(7, (index) => activeDays.contains(index));
+        }
+        
+        // Parse time intervals
+        if (recurringSchedule.containsKey('timeIntervals')) {
+          final timeIntervals = recurringSchedule['timeIntervals'];
+          if (timeIntervals is List && timeIntervals.isNotEmpty) {
+            _intervals = timeIntervals.map((ti) {
+              if (ti is Map) {
+                return TimeInterval(
+                  start: ti['start']?.toString() ?? '09:00 AM',
+                  end: ti['end']?.toString() ?? '05:00 PM',
+                );
+              }
+              return TimeInterval(start: '09:00 AM', end: '05:00 PM');
+            }).toList();
+          }
+        }
+      }
+
+      // Parse blocked dates with null safety
+      if (data.containsKey('blockedDates') && data['blockedDates'] != null) {
+        final blockedDates = data['blockedDates'];
+        if (blockedDates is List) {
+          _blockedDates = blockedDates.map((bd) {
+            if (bd is Map) {
+              return BlockedDate(
+                id: bd['_id']?.toString(),
+                title: bd['title']?.toString() ?? 'Blocked',
+                start: DateTime.parse(bd['startDate']?.toString() ?? DateTime.now().toIso8601String()),
+                end: DateTime.parse(bd['endDate']?.toString() ?? DateTime.now().toIso8601String()),
+                color: _parseColor(bd['color']?.toString()),
+                icon: _parseIcon(bd['icon']?.toString()),
+              );
+            }
+            return BlockedDate(
+              title: 'Blocked',
+              start: DateTime.now(),
+              end: DateTime.now(),
+              color: Colors.red,
+              icon: Icons.block,
+            );
+          }).toList();
+        }
+      }
+
+      setState(() => _isLoading = false);
+    } catch (e, stackTrace) {
+      debugPrint('Error loading availability: $e');
+      debugPrint('Stack trace: $stackTrace');
+      setState(() => _isLoading = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to load availability: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Color _parseColor(String? colorStr) {
+    switch (colorStr) {
+      case 'orange': return Colors.orange;
+      case 'blueGrey': return Colors.blueGrey;
+      case 'red': return Colors.redAccent;
+      default: return Colors.redAccent;
+    }
+  }
+
+  IconData _parseIcon(String? iconStr) {
+    switch (iconStr) {
+      case 'flight': return Icons.flight_takeoff;
+      case 'calendar': return Icons.calendar_today;
+      case 'block': return Icons.block;
+      default: return Icons.block;
+    }
+  }
+
+  Future<void> _saveAvailability() async {
+    setState(() => _isSaving = true);
+
+    try {
+      // Get active day numbers
+      final activeDays = <int>[];
+      for (int i = 0; i < _selectedWeekDays.length; i++) {
+        if (_selectedWeekDays[i]) {
+          activeDays.add(i == 0 ? 0 : i); // 0=Sunday, 1=Monday, etc.
+        }
+      }
+
+      final availabilityData = {
+        'recurringSchedule': {
+          'activeDays': activeDays,
+          'timeIntervals': _intervals.map((ti) => ti.toJson()).toList(),
+        },
+        'blockedDates': _blockedDates.map((bd) => {
+          if (bd.id != null) '_id': bd.id,
+          'title': bd.title,
+          'startDate': bd.start.toIso8601String(),
+          'endDate': bd.end.toIso8601String(),
+          'icon': bd._iconToString(bd.icon),
+          'color': bd._colorToString(bd.color),
+        }).toList(),
+      };
+
+      await CoachService.updateCoachAvailability(availabilityData);
+
+      setState(() => _isSaving = false);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Availability saved successfully!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      setState(() => _isSaving = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to save availability: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return Scaffold(
+        backgroundColor: Colors.grey[50],
+        body: const Center(child: CircularProgressIndicator()),
+      );
+    }
+
     return Scaffold(
       backgroundColor: Colors.grey[50], // Light grey background
       body: Column(
@@ -396,27 +576,36 @@ class _CoachAvailabilityScreenState extends State<CoachAvailabilityScreen> {
                         ),
 
                         const SizedBox(height: 24),
-                        InkWell(
-                          onTap: () {
-                            // Copy logic
-                          },
-                          child: Row(
-                            children: [
-                              const Icon(
-                                Icons.copy_all,
-                                color: AppPalette.orangeAccent,
-                                size: 20,
+                        
+                        // Save Button
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton(
+                            onPressed: _isSaving ? null : _saveAvailability,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppPalette.orangeAccent,
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
                               ),
-                              const SizedBox(width: 8),
-                              Text(
-                                'Copy to all weekdays',
-                                style: GoogleFonts.inter(
-                                  color: AppPalette.orangeAccent,
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 14,
-                                ),
-                              ),
-                            ],
+                            ),
+                            child: _isSaving
+                                ? const SizedBox(
+                                    height: 20,
+                                    width: 20,
+                                    child: CircularProgressIndicator(
+                                      color: Colors.white,
+                                      strokeWidth: 2,
+                                    ),
+                                  )
+                                : Text(
+                                    'Save Schedule',
+                                    style: GoogleFonts.inter(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 16,
+                                    ),
+                                  ),
                           ),
                         ),
                       ],
@@ -552,14 +741,75 @@ class _CoachAvailabilityScreenState extends State<CoachAvailabilityScreen> {
                       padding: const EdgeInsets.only(bottom: 12.0),
                       child: _buildBlockedItem(
                         blockedDate: blockedDate,
-                        onDelete: () {
-                          setState(() {
-                            _blockedDates.remove(blockedDate);
-                          });
+                        onDelete: () async {
+                          if (blockedDate.id != null) {
+                            try {
+                              await CoachService.removeBlockedDate(blockedDate.id!);
+                              setState(() {
+                                _blockedDates.remove(blockedDate);
+                              });
+                              if (mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Blocked date removed'),
+                                    backgroundColor: Colors.green,
+                                  ),
+                                );
+                              }
+                            } catch (e) {
+                              if (mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text('Failed to remove: $e'),
+                                    backgroundColor: Colors.red,
+                                  ),
+                                );
+                              }
+                            }
+                          } else {
+                            setState(() {
+                              _blockedDates.remove(blockedDate);
+                            });
+                          }
                         },
                       ),
                     );
                   }),
+                  
+                  const SizedBox(height: 32),
+
+                  // Save Changes Button at the end
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: _isSaving ? null : _saveAvailability,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppPalette.navyPrimary,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: _isSaving
+                          ? const SizedBox(
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(
+                                color: Colors.white,
+                                strokeWidth: 2,
+                              ),
+                            )
+                          : Text(
+                              'Save All Changes',
+                              style: GoogleFonts.inter(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                              ),
+                            ),
+                    ),
+                  ),
+                  
                   const SizedBox(height: 100), // Spacing for Floating Tab Bar
                 ],
               ),
@@ -801,20 +1051,55 @@ class _CoachAvailabilityScreenState extends State<CoachAvailabilityScreen> {
                         ),
                         const SizedBox(width: 8),
                         TextButton(
-                          onPressed: () {
+                          onPressed: () async {
                             if (titleController.text.isNotEmpty) {
-                              setState(() {
-                                _blockedDates.add(
-                                  BlockedDate(
-                                    title: titleController.text,
-                                    start: startDate,
-                                    end: endDate,
-                                    color: Colors.redAccent,
-                                    icon: Icons.block,
-                                  ),
+                              try {
+                                // Save to backend first
+                                final newBlockedDate = BlockedDate(
+                                  title: titleController.text,
+                                  start: startDate,
+                                  end: endDate,
+                                  color: Colors.redAccent,
+                                  icon: Icons.block,
                                 );
-                              });
-                              Navigator.pop(context);
+                                
+                                final savedData = await CoachService.addBlockedDate(
+                                  newBlockedDate.toJson(),
+                                );
+                                
+                                setState(() {
+                                  _blockedDates.add(
+                                    BlockedDate(
+                                      id: savedData['_id'],
+                                      title: titleController.text,
+                                      start: startDate,
+                                      end: endDate,
+                                      color: Colors.redAccent,
+                                      icon: Icons.block,
+                                    ),
+                                  );
+                                });
+                                Navigator.pop(context);
+                                
+                                if (mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text('Blocked date added'),
+                                      backgroundColor: Colors.green,
+                                    ),
+                                  );
+                                }
+                              } catch (e) {
+                                Navigator.pop(context);
+                                if (mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text('Failed to add: $e'),
+                                      backgroundColor: Colors.red,
+                                    ),
+                                  );
+                                }
+                              }
                             }
                           },
                           style: TextButton.styleFrom(

@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../config/palette.dart';
 import '../../widgets/notification_button.dart';
+import '../../services/profile_service.dart';
 
 class GuardianProfileScreen extends StatefulWidget {
   const GuardianProfileScreen({super.key});
@@ -13,11 +14,49 @@ class GuardianProfileScreen extends StatefulWidget {
 }
 
 class _GuardianProfileScreenState extends State<GuardianProfileScreen> {
+  bool _isLoading = true;
   bool _pushNotifications = true;
   bool _darkMode = false;
+  String _userName = 'Guardian';
+  String _userEmail = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchProfile();
+  }
+
+  Future<void> _fetchProfile() async {
+    try {
+      final profile = await ProfileService.getProfile();
+      setState(() {
+        _userName = profile['fullName'] ?? 'Guardian';
+        _userEmail = profile['email'] ?? '';
+
+        final prefs = profile['preferences'] as Map<String, dynamic>?;
+        if (prefs != null) {
+          _pushNotifications = prefs['pushNotifications'] ?? true;
+          _darkMode = prefs['darkMode'] ?? false;
+        }
+
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return Scaffold(
+        backgroundColor: const Color(0xFFF5F7FA),
+        body: const Center(child: CircularProgressIndicator()),
+      );
+    }
+
     return Scaffold(
       backgroundColor: const Color(0xFFF5F7FA), // Light grey background
       appBar: AppBar(
@@ -107,7 +146,7 @@ class _GuardianProfileScreenState extends State<GuardianProfileScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Sarah Wilson',
+                          _userName,
                           style: GoogleFonts.outfit(
                             fontSize: 20,
                             fontWeight: FontWeight.bold,
@@ -116,7 +155,9 @@ class _GuardianProfileScreenState extends State<GuardianProfileScreen> {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          'Guardian • Basic Plan',
+                          _userEmail.isNotEmpty
+                              ? _userEmail
+                              : 'Guardian • Basic Plan',
                           style: GoogleFonts.inter(
                             fontSize: 13,
                             color: Colors.grey[600],

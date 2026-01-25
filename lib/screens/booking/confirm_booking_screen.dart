@@ -3,6 +3,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
 import '../../config/palette.dart';
+import '../../services/booking_service.dart';
 
 class ConfirmBookingScreen extends StatefulWidget {
   final Map<String, dynamic> bookingDetails;
@@ -18,8 +19,10 @@ class _ConfirmBookingScreenState extends State<ConfirmBookingScreen> {
   String? _appliedPromoCode;
   double _discountAmount = 0.0;
   String? _promoError;
+  bool _isValidatingPromo = false;
+  bool _isProcessingPayment = false;
 
-  // Hardcoded values for demo matching the design
+  // Pricing values
   final double _sessionFee = 60.00;
   final double _serviceFee = 2.50;
   final double _tax = 0.00;
@@ -29,24 +32,38 @@ class _ConfirmBookingScreenState extends State<ConfirmBookingScreen> {
 
   double get _totalAmount => _sessionFee + _serviceFee + _tax - _discountAmount;
 
-  void _applyPromoCode() {
+  Future<void> _applyPromoCode() async {
     final code = _promoController.text.trim().toUpperCase();
     if (code.isEmpty) return;
 
     setState(() {
+      _isValidatingPromo = true;
       _promoError = null;
-      if (code == 'SUMMER10') {
-        _appliedPromoCode = 'SUMMER10';
-        _discountAmount = 10.00;
-      } else if (code == 'CRICKET50') {
-        _appliedPromoCode = 'CRICKET50';
-        _discountAmount = 30.00; // Arbitrary 50% max capped logic or similar
-      } else {
-        _promoError = "The code '$code' is invalid or has expired.";
-        _appliedPromoCode = null;
-        _discountAmount = 0.0;
-      }
     });
+
+    try {
+      final result = await BookingService.validatePromoCode(code);
+
+      setState(() {
+        _isValidatingPromo = false;
+        if (result['valid'] == true) {
+          _appliedPromoCode = result['code'];
+          _discountAmount = (result['discount'] as num).toDouble();
+          _promoError = null;
+        } else {
+          _appliedPromoCode = null;
+          _discountAmount = 0.0;
+          _promoError =
+              result['message'] ??
+              "The code '$code' is invalid or has expired.";
+        }
+      });
+    } catch (e) {
+      setState(() {
+        _isValidatingPromo = false;
+        _promoError = 'Error validating promo code';
+      });
+    }
   }
 
   void _removePromoCode() {
@@ -56,6 +73,58 @@ class _ConfirmBookingScreenState extends State<ConfirmBookingScreen> {
       _discountAmount = 0.0;
       _promoError = null;
     });
+  }
+
+  Future<void> _processPayment() async {
+    setState(() {
+      _isProcessingPayment = true;
+    });
+
+    try {
+      // Get booking details from widget
+      final sessionId = widget.bookingDetails['sessionId'];
+      final occurrenceDate = widget.bookingDetails['occurrenceDate'];
+
+      if (sessionId == null || occurrenceDate == null) {
+        throw Exception('Missing booking details');
+      }
+
+      // Determine payment method
+      final paymentMethod = _selectedPaymentMethod == 0 ? 'card' : 'apple_pay';
+
+      // Create booking
+      final booking = await BookingService.createBooking(
+        sessionId: sessionId,
+        occurrenceDate: occurrenceDate,
+        paymentMethod: paymentMethod,
+        promoCode: _appliedPromoCode,
+      );
+
+      setState(() {
+        _isProcessingPayment = false;
+      });
+
+      // Navigate to success screen with booking ID
+      if (mounted) {
+        context.push(
+          '/booking-success',
+          extra: {'bookingId': booking['_id'], ...widget.bookingDetails},
+        );
+      }
+    } catch (e) {
+      setState(() {
+        _isProcessingPayment = false;
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Booking failed: ${e.toString()}'),
+            backgroundColor: AppPalette.error,
+          ),
+        );
+      }
+    }
   }
 
   @override
@@ -532,7 +601,9 @@ class _ConfirmBookingScreenState extends State<ConfirmBookingScreen> {
                               ),
                             ),
                             ElevatedButton(
-                              onPressed: _applyPromoCode,
+                              onPressed: _isValidatingPromo
+                                  ? null
+                                  : _applyPromoCode,
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: AppPalette.orangeAccent
                                     .withValues(alpha: 0.1),
@@ -546,12 +617,24 @@ class _ConfirmBookingScreenState extends State<ConfirmBookingScreen> {
                                   vertical: 12,
                                 ),
                               ),
-                              child: Text(
-                                'Apply',
-                                style: GoogleFonts.inter(
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
+                              child: _isValidatingPromo
+                                  ? const SizedBox(
+                                      width: 16,
+                                      height: 16,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        valueColor:
+                                            AlwaysStoppedAnimation<Color>(
+                                              AppPalette.orangeAccent,
+                                            ),
+                                      ),
+                                    )
+                                  : Text(
+                                      'Apply',
+                                      style: GoogleFonts.inter(
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
                             ),
                           ],
                         ),
@@ -734,13 +817,7 @@ class _ConfirmBookingScreenState extends State<ConfirmBookingScreen> {
                     width: double.infinity,
                     height: 56,
                     child: ElevatedButton(
-                      onPressed: () {
-                        // Process Payment Logic (Mock)
-                        context.push(
-                          '/booking-success',
-                          extra: widget.bookingDetails,
-                        );
-                      },
+                      onPressed: _isProcessingPayment ? null : _processPayment,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppPalette.orangeAccent,
                         foregroundColor: Colors.white,

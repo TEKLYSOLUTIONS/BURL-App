@@ -6,6 +6,9 @@ import 'package:go_router/go_router.dart';
 import '../../widgets/notification_button.dart';
 import '../../services/auth_service.dart';
 
+import '../../services/dashboard_service.dart';
+import '../../utils/date_time_utils.dart';
+
 class PlayerHomeScreen extends StatefulWidget {
   const PlayerHomeScreen({super.key});
 
@@ -14,12 +17,18 @@ class PlayerHomeScreen extends StatefulWidget {
 }
 
 class _PlayerHomeScreenState extends State<PlayerHomeScreen> {
-  String _userName = 'Alex'; // Default matching design
+  String _userName = 'Player';
+  bool _isLoading = true;
+
+  Map<String, dynamic>? _upcomingSession;
+  Map<String, dynamic>? _stats;
+  Map<String, dynamic>? _performanceMetrics;
 
   @override
   void initState() {
     super.initState();
     _loadUserData();
+    _loadDashboardData();
   }
 
   Future<void> _loadUserData() async {
@@ -30,6 +39,29 @@ class _PlayerHomeScreenState extends State<PlayerHomeScreen> {
           _userName = name.split(' ').first;
         });
       }
+    }
+  }
+
+  Future<void> _loadDashboardData() async {
+    setState(() => _isLoading = true);
+    try {
+      final data = await DashboardService.getPlayerDashboard();
+      if (data != null && mounted) {
+        setState(() {
+          _stats = data['stats'];
+          final sessions = data['upcomingSessions'] as List?;
+          if (sessions != null && sessions.isNotEmpty) {
+            _upcomingSession = sessions[0];
+          }
+          _performanceMetrics = data['performanceMetrics'];
+          _isLoading = false;
+        });
+      } else {
+        if (mounted) setState(() => _isLoading = false);
+      }
+    } catch (e) {
+      debugPrint('Error loading player dashboard: $e');
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -73,7 +105,7 @@ class _PlayerHomeScreenState extends State<PlayerHomeScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'OCT 24, TUESDAY',
+                            DateTimeUtils.getCurrentDateFormatted(),
                             style: GoogleFonts.inter(
                               fontSize: 10,
                               fontWeight: FontWeight.w600,
@@ -83,7 +115,7 @@ class _PlayerHomeScreenState extends State<PlayerHomeScreen> {
                           ),
                           const SizedBox(height: 2),
                           Text(
-                            'Good morning, $_userName',
+                            '${DateTimeUtils.getGreeting()}, $_userName',
                             style: GoogleFonts.outfit(
                               fontSize: 18,
                               fontWeight: FontWeight.bold,
@@ -134,159 +166,222 @@ class _PlayerHomeScreenState extends State<PlayerHomeScreen> {
               const SizedBox(height: 12),
 
               // Up Next Card
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: AppPalette.navyPrimary,
-                  borderRadius: BorderRadius.circular(20),
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppPalette.navyPrimary.withValues(alpha: 0.3),
-                      blurRadius: 12,
-                      offset: const Offset(0, 4),
+              if (_isLoading)
+                const Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(20),
+                    child: CircularProgressIndicator(),
+                  ),
+                )
+              else if (_upcomingSession == null)
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    color: AppPalette.navyPrimary.withValues(alpha: 0.05),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: AppPalette.navyPrimary.withValues(alpha: 0.1),
                     ),
-                  ],
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Details
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 10,
-                                vertical: 4,
-                              ),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withValues(alpha: 0.15),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Row(
-                                children: [
-                                  Container(
-                                    width: 6,
-                                    height: 6,
-                                    decoration: const BoxDecoration(
-                                      color: AppPalette.orangeAccent,
-                                      shape: BoxShape.circle,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    'Starts in 2h',
-                                    style: GoogleFonts.inter(
-                                      color: Colors.white,
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(height: 16),
-                            Text(
-                              'Strength &\nConditioning',
-                              style: GoogleFonts.outfit(
-                                fontSize: 22,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                                height: 1.2,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              'Gym A • Coach Mike Johnson',
-                              style: GoogleFonts.inter(
-                                color: Colors.white.withValues(alpha: 0.7),
-                                fontSize: 13,
-                              ),
-                            ),
-                            const SizedBox(height: 12),
-                            Row(
+                  ),
+                  child: Column(
+                    children: [
+                      const Icon(
+                        Icons.event_busy,
+                        size: 48,
+                        color: Colors.grey,
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        'No upcoming sessions',
+                        style: GoogleFonts.inter(
+                          color: AppPalette.navyPrimary,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      ElevatedButton(
+                        onPressed: () => context.go('/player/search'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppPalette.orangeAccent,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        child: const Text('Find a Coach'),
+                      ),
+                    ],
+                  ),
+                ).animate().fadeIn()
+              else
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: AppPalette.navyPrimary,
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppPalette.navyPrimary.withValues(alpha: 0.3),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Details
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                const Icon(
-                                  Icons.access_time_rounded,
-                                  color: Colors.white70,
-                                  size: 16,
-                                ),
-                                const SizedBox(width: 6),
-                                Text(
-                                  '4:00 PM - 5:30 PM',
-                                  style: GoogleFonts.inter(
-                                    color: Colors.white.withValues(alpha: 0.9),
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w500,
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 10,
+                                    vertical: 4,
                                   ),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withValues(alpha: 0.15),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Container(
+                                        width: 6,
+                                        height: 6,
+                                        decoration: const BoxDecoration(
+                                          color: AppPalette.orangeAccent,
+                                          shape: BoxShape.circle,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        DateTimeUtils.formatRelativeTime(
+                                          _upcomingSession!['timeSlots'][0]['startTime'],
+                                        ),
+                                        style: GoogleFonts.inter(
+                                          color: Colors.white,
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(height: 16),
+                                Text(
+                                  _upcomingSession!['title'] ??
+                                      'Training Session',
+                                  style: GoogleFonts.outfit(
+                                    fontSize: 22,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                    height: 1.2,
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  '${_upcomingSession!['location'] ?? 'TBD'} • Coach ${_upcomingSession!['coach'] != null ? (_upcomingSession!['coach'] is String ? 'Unknown' : _upcomingSession!['coach']['fullName']) : 'Unknown'}',
+                                  style: GoogleFonts.inter(
+                                    color: Colors.white.withValues(alpha: 0.7),
+                                    fontSize: 13,
+                                  ),
+                                ),
+                                const SizedBox(height: 12),
+                                Row(
+                                  children: [
+                                    const Icon(
+                                      Icons.access_time_rounded,
+                                      color: Colors.white70,
+                                      size: 16,
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      DateTimeUtils.formatTime(
+                                        _upcomingSession!['timeSlots'][0]['startTime'],
+                                      ),
+                                      style: GoogleFonts.inter(
+                                        color: Colors.white.withValues(
+                                          alpha: 0.9,
+                                        ),
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ],
                             ),
-                          ],
-                        ),
-                        // Coach Image
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(12),
-                          child: Image.network(
-                            'https://i.pravatar.cc/150?img=60',
-                            width: 60,
-                            height: 60,
-                            fit: BoxFit.cover,
                           ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 24),
-                    // Action Button
-                    Row(
-                      children: [
-                        Expanded(
-                          child: ElevatedButton(
-                            onPressed: () {},
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppPalette.orangeAccent,
-                              foregroundColor: Colors.white,
-                              elevation: 0,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              padding: const EdgeInsets.symmetric(vertical: 14),
-                            ),
-                            child: Text(
-                              'Check In',
-                              style: GoogleFonts.outfit(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Container(
-                          width: 48,
-                          height: 48,
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.15),
+                          // Coach Image
+                          const SizedBox(width: 12),
+                          ClipRRect(
                             borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: IconButton(
-                            onPressed: () {},
-                            icon: const Icon(
-                              Icons.info_outline,
-                              color: Colors.white,
+                            child: Image.network(
+                              'https://i.pravatar.cc/150?img=60',
+                              width: 60,
+                              height: 60,
+                              fit: BoxFit.cover,
                             ),
                           ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ).animate().fadeIn(delay: 200.ms).slideY(begin: 0.1),
+                        ],
+                      ),
+                      const SizedBox(height: 24),
+                      // Action Button
+                      Row(
+                        children: [
+                          Expanded(
+                            child: ElevatedButton(
+                              onPressed: () {},
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppPalette.orangeAccent,
+                                foregroundColor: Colors.white,
+                                elevation: 0,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 14,
+                                ),
+                              ),
+                              child: Text(
+                                'Check In',
+                                style: GoogleFonts.outfit(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Container(
+                            width: 48,
+                            height: 48,
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: IconButton(
+                              onPressed: () {},
+                              icon: const Icon(
+                                Icons.info_outline,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ).animate().fadeIn(delay: 200.ms).slideY(begin: 0.1),
 
               const SizedBox(height: 24),
 
@@ -309,32 +404,32 @@ class _PlayerHomeScreenState extends State<PlayerHomeScreen> {
                   clipBehavior: Clip.none,
                   children: [
                     _MetricCard(
-                      icon: Icons.speed,
+                      icon: Icons.calendar_month,
                       iconColor: Colors.blue,
-                      label: 'Speed Score',
-                      value: '85',
-                      trend: '+5% vs last\nweek',
-                      trendColor: Colors.green,
+                      label: 'Sessions',
+                      value: '${_stats?['completedSessions'] ?? 0}',
+                      trend: 'Completed',
+                      trendColor: Colors.blue,
+                      trendIsText: true,
                     ),
                     const SizedBox(width: 12),
                     _MetricCard(
-                      icon: Icons.favorite,
+                      icon: Icons.timer,
                       iconColor: Colors.green,
-                      label: 'Recovery',
-                      value: '92%',
-                      trend: 'Ready to train',
+                      label: 'Training Hours',
+                      value: '${_stats?['hoursTraining'] ?? 0}',
+                      trend: 'Total Hours',
                       trendIsText: true,
                       trendColor: Colors.green,
                     ),
                     const SizedBox(width: 12),
                     _MetricCard(
-                      icon: Icons
-                          .fitness_center_rounded, // Assuming Attendance/Workouts
+                      icon: Icons.fitness_center_rounded,
                       iconColor: Colors.orange,
-                      label: 'Workouts', // Inferred label from '12'
-                      value: '12',
-                      trend: 'Completed',
-                      trendColor: Colors.grey,
+                      label: 'Skill Level',
+                      value: '${_performanceMetrics?['skillLevel'] ?? 0}',
+                      trend: '${_performanceMetrics?['improvement'] ?? 0}% +',
+                      trendColor: Colors.orange,
                     ),
                   ],
                 ),

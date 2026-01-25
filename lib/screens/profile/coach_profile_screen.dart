@@ -7,14 +7,73 @@ import '../../widgets/notification_button.dart';
 import '../../widgets/headers/coach_app_bar.dart';
 import '../settings/change_password_screen.dart';
 import '../settings/pro_upgrade_screen.dart';
+import '../../services/profile_service.dart';
 
-class CoachProfileScreen extends StatelessWidget {
+class CoachProfileScreen extends StatefulWidget {
   final String coachId; // Keep for compatibility if needed
 
   const CoachProfileScreen({super.key, required this.coachId});
 
   @override
+  State<CoachProfileScreen> createState() => _CoachProfileScreenState();
+}
+
+class _CoachProfileScreenState extends State<CoachProfileScreen> {
+  bool _isLoading = true;
+  Map<String, dynamic>? _profileData;
+  String _userName = 'Coach';
+  String _userEmail = '';
+  bool _pushNotifications = true;
+  bool _darkMode = false;
+  String _language = 'English (US)';
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchProfile();
+  }
+
+  Future<void> _fetchProfile() async {
+    try {
+      final profile = await ProfileService.getProfile();
+      setState(() {
+        _profileData = profile;
+        _userName = profile['fullName'] ?? 'Coach';
+        _userEmail = profile['email'] ?? '';
+
+        // Get preferences if they exist
+        final prefs = profile['preferences'] as Map<String, dynamic>?;
+        if (prefs != null) {
+          _pushNotifications = prefs['pushNotifications'] ?? true;
+          _darkMode = prefs['darkMode'] ?? false;
+          _language = prefs['language'] == 'en-US'
+              ? 'English (US)'
+              : prefs['language'] ?? 'English (US)';
+        }
+
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error loading profile: $e')));
+      }
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return Scaffold(
+        backgroundColor: Colors.white,
+        body: const Center(child: CircularProgressIndicator()),
+      );
+    }
+
     return Scaffold(
       backgroundColor: Colors.white,
 
@@ -100,7 +159,7 @@ class CoachProfileScreen extends StatelessWidget {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                'Coach Alex Johnson',
+                                _userName,
                                 style: GoogleFonts.outfit(
                                   fontSize: 18,
                                   fontWeight: FontWeight.bold,
@@ -109,7 +168,9 @@ class CoachProfileScreen extends StatelessWidget {
                               ),
                               const SizedBox(height: 4),
                               Text(
-                                'Head Coach • Pro Plan',
+                                _userEmail.isNotEmpty
+                                    ? _userEmail
+                                    : 'Head Coach',
                                 style: GoogleFonts.inter(
                                   fontSize: 13,
                                   color: AppPalette.textSecondaryLight,
@@ -117,7 +178,10 @@ class CoachProfileScreen extends StatelessWidget {
                               ),
                               const SizedBox(height: 4),
                               GestureDetector(
-                                onTap: () => context.push('/edit-profile'),
+                                onTap: () => context.push(
+                                  '/edit-profile',
+                                  extra: _profileData,
+                                ),
                                 child: Text(
                                   'Edit Profile',
                                   style: GoogleFonts.inter(
@@ -215,8 +279,10 @@ class CoachProfileScreen extends StatelessWidget {
                           iconColor: Colors.purple,
                           title: 'Push Notifications',
                           trailing: Switch(
-                            value: true,
-                            onChanged: (val) {},
+                            value: _pushNotifications,
+                            onChanged: (val) {
+                              setState(() => _pushNotifications = val);
+                            },
                             activeTrackColor: Colors.orange,
                             activeThumbColor: Colors.white,
                           ),
@@ -229,8 +295,10 @@ class CoachProfileScreen extends StatelessWidget {
                           iconColor: Colors.grey[700]!,
                           title: 'Dark Mode',
                           trailing: Switch(
-                            value: false, // Off in image
-                            onChanged: (val) {},
+                            value: _darkMode,
+                            onChanged: (val) {
+                              setState(() => _darkMode = val);
+                            },
                             activeTrackColor: Colors.grey[300],
                             activeThumbColor: Colors.white,
                           ),
@@ -246,7 +314,7 @@ class CoachProfileScreen extends StatelessWidget {
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Text(
-                                'English (US)',
+                                _language,
                                 style: GoogleFonts.inter(
                                   fontSize: 13,
                                   color: AppPalette.textSecondaryLight,

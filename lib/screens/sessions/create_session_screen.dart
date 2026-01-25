@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:table_calendar/table_calendar.dart';
+import 'package:intl/intl.dart';
 import '../../config/palette.dart';
 import '../../widgets/app_time_picker.dart';
+import '../../services/session_service.dart';
 
 class CreateSessionScreen extends StatefulWidget {
   const CreateSessionScreen({super.key});
@@ -42,6 +44,9 @@ class _CreateSessionScreenState extends State<CreateSessionScreen>
     'https://i.pravatar.cc/150?u=phil',
   ];
   final Set<int> _selectedParticipants = {0}; // Select first by default
+
+  // API State
+  bool _isCreating = false;
 
   @override
   void initState() {
@@ -787,35 +792,139 @@ class _CreateSessionScreenState extends State<CreateSessionScreen>
     );
   }
 
+  Future<void> _createSession() async {
+    // Validation
+    if (_titleController.text.trim().isEmpty) {
+      _showError('Please enter a session title');
+      return;
+    }
+
+    if (_selectedDays.isEmpty) {
+      _showError('Please select at least one date');
+      return;
+    }
+
+    if (_locationController.text.trim().isEmpty) {
+      _showError('Please enter a location');
+      return;
+    }
+
+    setState(() {
+      _isCreating = true;
+    });
+
+    try {
+      // Transform UI data to API format
+      final timeSlots = _timeSlots
+          .map(
+            (slot) => {
+              'startTime': {
+                'hour': slot.startTime.hour,
+                'minute': slot.startTime.minute,
+              },
+              'durationMinutes': slot.durationMinutes,
+            },
+          )
+          .toList();
+
+      final selectedDays = _selectedDays
+          .map((date) => DateFormat('yyyy-MM-dd').format(date))
+          .toList();
+
+      // Call API
+      await SessionService.createSession(
+        title: _titleController.text.trim(),
+        description: _descriptionController.text.trim(),
+        location: _locationController.text.trim(),
+        capacity: _capacity,
+        timeSlots: timeSlots,
+        selectedDays: selectedDays,
+        isRecurring: _tabController.index == 1,
+        participants: [], // Empty for now
+      );
+
+      if (mounted) {
+        // Show success message
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Session created successfully!'),
+            backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+          ),
+        );
+
+        // Navigate back
+        Navigator.pop(context, true);
+      }
+    } catch (e) {
+      if (mounted) {
+        _showError('Failed to create session: ${e.toString()}');
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isCreating = false;
+        });
+      }
+    }
+  }
+
+  void _showError(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.red,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ),
+    );
+  }
+
   Widget _buildBottomAction() {
     final isRecurring = _tabController.index == 1;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 0),
-      // Removed decoration as it's no longer a floating sheet
       child: ElevatedButton(
-        onPressed: () {},
+        onPressed: _isCreating ? null : _createSession,
         style: ElevatedButton.styleFrom(
           backgroundColor: AppPalette.orangeAccent,
+          disabledBackgroundColor: Colors.grey[400],
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
           padding: const EdgeInsets.symmetric(vertical: 16),
         ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              isRecurring ? 'Create Recurring Session' : 'Create Session',
-              style: GoogleFonts.outfit(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
+        child: _isCreating
+            ? const SizedBox(
+                height: 20,
+                width: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                ),
+              )
+            : Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    isRecurring ? 'Create Recurring Session' : 'Create Session',
+                    style: GoogleFonts.outfit(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  const Icon(
+                    Icons.calendar_today,
+                    color: Colors.white,
+                    size: 20,
+                  ),
+                ],
               ),
-            ),
-            const SizedBox(width: 8),
-            const Icon(Icons.calendar_today, color: Colors.white, size: 20),
-          ],
-        ),
       ),
     );
   }

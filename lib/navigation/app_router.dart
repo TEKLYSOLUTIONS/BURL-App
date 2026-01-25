@@ -13,6 +13,7 @@ import '../screens/booking/booking_screen.dart';
 
 import '../screens/booking/confirm_booking_screen_simple.dart';
 import '../screens/booking/booking_success_screen.dart';
+import '../screens/booking/my_bookings_screen.dart';
 import '../screens/sessions/my_sessions_screen.dart';
 
 import '../screens/guardian/my_players_screen.dart';
@@ -94,12 +95,24 @@ class AppRouter {
         path: '/session-details/:id',
         parentNavigatorKey: _rootNavigatorKey,
         builder: (context, state) =>
-            SessionDetailsScreen(sessionId: state.pathParameters['id'] ?? '1'),
+            SessionDetailsScreen(sessionId: state.pathParameters['id'] ?? ''),
       ),
 
       GoRoute(
         path: '/edit-profile',
-        builder: (context, state) => const EditProfileScreen(),
+        builder: (context, state) {
+          final profileData = state.extra as Map<String, dynamic>?;
+          return EditProfileScreen(profileData: profileData);
+        },
+      ),
+
+      GoRoute(
+        path: 'booking/:sessionId',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) {
+          final sessionId = state.pathParameters['sessionId']!;
+          return BookingScreen(sessionId: sessionId);
+        },
       ),
 
       GoRoute(
@@ -204,6 +217,10 @@ class AppRouter {
             path: '/player/profile',
             builder: (context, state) => const PlayerProfileScreen(),
           ),
+          GoRoute(
+            path: '/player/my-bookings',
+            builder: (context, state) => const MyBookingsScreen(),
+          ),
         ],
       ),
 
@@ -214,12 +231,6 @@ class AppRouter {
           final extra = state.extra as Map<String, dynamic>? ?? {};
           return ConfirmBookingScreenSimple(bookingDetails: extra);
         },
-      ),
-
-      GoRoute(
-        path: '/booking',
-        parentNavigatorKey: _rootNavigatorKey,
-        builder: (context, state) => const BookingScreen(),
       ),
 
       GoRoute(

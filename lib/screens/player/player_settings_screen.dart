@@ -4,12 +4,50 @@ import 'package:go_router/go_router.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 
 import '../../config/palette.dart';
+import '../../services/profile_service.dart';
 
-class PlayerProfileScreen extends StatelessWidget {
+class PlayerProfileScreen extends StatefulWidget {
   const PlayerProfileScreen({super.key});
 
   @override
+  State<PlayerProfileScreen> createState() => _PlayerProfileScreenState();
+}
+
+class _PlayerProfileScreenState extends State<PlayerProfileScreen> {
+  bool _isLoading = true;
+  String _userName = 'Player';
+  String _userEmail = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchProfile();
+  }
+
+  Future<void> _fetchProfile() async {
+    try {
+      final profile = await ProfileService.getProfile();
+      setState(() {
+        _userName = profile['fullName'] ?? 'Player';
+        _userEmail = profile['email'] ?? '';
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return Scaffold(
+        backgroundColor: AppPalette.backgroundLight,
+        body: const Center(child: CircularProgressIndicator()),
+      );
+    }
+
     return Scaffold(
       backgroundColor: AppPalette.backgroundLight,
       body: Column(
@@ -78,7 +116,7 @@ class PlayerProfileScreen extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'Alex Johnson',
+                              _userName,
                               style: GoogleFonts.outfit(
                                 fontSize: 18,
                                 fontWeight: FontWeight.bold,
@@ -86,7 +124,9 @@ class PlayerProfileScreen extends StatelessWidget {
                               ),
                             ),
                             Text(
-                              'alex.j@example.com',
+                              _userEmail.isNotEmpty
+                                  ? _userEmail
+                                  : 'player@example.com',
                               style: GoogleFonts.inter(
                                 color: AppPalette.textSecondaryLight,
                                 fontSize: 14,

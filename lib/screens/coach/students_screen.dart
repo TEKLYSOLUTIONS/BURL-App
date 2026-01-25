@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../config/palette.dart';
+import '../../services/coach_service.dart';
 
 class StudentsScreen extends StatefulWidget {
   const StudentsScreen({super.key});
@@ -13,55 +14,89 @@ class StudentsScreen extends StatefulWidget {
 
 class _StudentsScreenState extends State<StudentsScreen> {
   String _selectedFilter = 'All Students';
+  bool _isLoading = true;
 
-  // Mock Data with distinct status for filtering
-  final List<Map<String, dynamic>> _allStudents = [
-    {
-      'name': 'Alex Rivera',
-      'detail': 'Tennis • Forward',
-      'avatarUrl': 'https://i.pravatar.cc/150?img=11',
-      'status': 'Active',
-      'statusLabel': 'ON TRACK',
-      'statusColor': Colors.green[50]!,
-      'statusTextColor': Colors.green[700]!,
-      'showOnlineDot': true,
-      'onlineDotColor': Colors.green,
-    },
-    {
-      'name': 'Sarah Chen',
-      'detail': 'Swimming • 100m Free',
-      'avatarUrl': 'https://i.pravatar.cc/150?img=5',
-      'status': 'Injured',
-      'statusLabel': 'INJURED',
-      'statusColor': Colors.red[50]!,
-      'statusTextColor': Colors.red[700]!,
-      'showOnlineDot': true,
-      'onlineDotColor': Colors.red,
-      'actionIcon': Icons.local_hospital_outlined,
-    },
-    {
-      'name': 'Michael Johnson',
-      'detail': 'Track • Sprinter',
-      'avatarUrl': 'https://i.pravatar.cc/150?img=8',
-      'status': 'Needs Review',
-      'statusLabel': 'NEEDS REVIEW',
-      'statusColor': Colors.orange[50]!,
-      'statusTextColor': Colors.orange[800]!,
-      'actionIcon': Icons.priority_high,
-      'isActionAlert': true,
-    },
-    {
-      'name': 'Emily Davis',
-      'detail': 'Volleyball • Libero',
-      'avatarUrl': 'https://i.pravatar.cc/150?img=9',
-      'status': 'Active',
-      'statusLabel': 'ON TRACK',
-      'statusColor': Colors.green[50]!,
-      'statusTextColor': Colors.green[700]!,
-      'actionIcon': Icons.add,
-      'isFab': true,
-    },
-  ];
+  // API Data
+  List<Map<String, dynamic>> _allStudents = [];
+  int _totalCount = 0;
+  int _activeCount = 0;
+  int _needsReviewCount = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPlayers();
+  }
+
+  Future<void> _loadPlayers() async {
+    setState(() => _isLoading = true);
+
+    try {
+      final data = await CoachService.getCoachPlayers();
+      final players = data['players'] as List? ?? [];
+      final stats = data['stats'] as Map<String, dynamic>? ?? {};
+
+      setState(() {
+        _allStudents = players.map((player) {
+          // Map status from backend to display status
+          String status = 'Active';
+          String statusLabel = 'CONFIRMED';
+          Color statusColor = Colors.green[50]!;
+          Color statusTextColor = Colors.green[700]!;
+          
+          if (player['status'] == 'invited') {
+            status = 'Needs Review';
+            statusLabel = 'INVITED';
+            statusColor = Colors.orange[50]!;
+            statusTextColor = Colors.orange[800]!;
+          } else if (player['status'] == 'confirmed') {
+            status = 'Active';
+            statusLabel = 'CONFIRMED';
+            statusColor = Colors.green[50]!;
+            statusTextColor = Colors.green[700]!;
+          } else if (player['status'] == 'declined') {
+            status = 'Declined';
+            statusLabel = 'DECLINED';
+            statusColor = Colors.red[50]!;
+            statusTextColor = Colors.red[700]!;
+          } else if (player['status'] == 'waitlisted') {
+            status = 'Waitlisted';
+            statusLabel = 'WAITLISTED';
+            statusColor = Colors.blue[50]!;
+            statusTextColor = Colors.blue[700]!;
+          }
+
+          return {
+            'id': player['_id'],
+            'name': player['name'] ?? 'Unknown',
+            'detail': '${player['sessionsCount'] ?? 0} sessions',
+            'avatarUrl': player['avatarUrl'] ?? 'https://i.pravatar.cc/150',
+            'status': status,
+            'statusLabel': statusLabel,
+            'statusColor': statusColor,
+            'statusTextColor': statusTextColor,
+            'showOnlineDot': player['status'] == 'confirmed',
+            'onlineDotColor': Colors.green,
+          };
+        }).toList();
+
+        _totalCount = stats['total'] ?? 0;
+        _activeCount = stats['active'] ?? 0;
+        _needsReviewCount = stats['needsReview'] ?? 0;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() => _isLoading = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to load players: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
 
   List<Map<String, dynamic>> get _filteredStudents {
     if (_selectedFilter == 'All Students') return _allStudents;
@@ -91,7 +126,9 @@ class _StudentsScreenState extends State<StudentsScreen> {
           onPressed: () => context.pop(),
         ),
       ),
-      body: SingleChildScrollView(
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(
           24,
           10,
@@ -108,23 +145,23 @@ class _StudentsScreenState extends State<StudentsScreen> {
                 children: [
                   _buildSummaryCard(
                     title: 'TOTAL',
-                    value: '24',
-                    subtitle: '+2 This Month',
+                    value: _totalCount.toString(),
+                    subtitle: '${_allStudents.length} Players',
                     isDark: true,
                   ),
                   const SizedBox(width: 12),
                   _buildSummaryCard(
                     title: 'ACTIVE',
-                    value: '18',
-                    subtitle: '↗ 92% Attd.',
+                    value: _activeCount.toString(),
+                    subtitle: 'Confirmed',
                     subtitleColor: Colors.green,
                   ),
                   const SizedBox(width: 12),
                   _buildSummaryCard(
-                    title: 'INJURED',
-                    value: '3',
-                    subtitle: '⚠ Needs Review',
-                    subtitleColor: Colors.red,
+                    title: 'PENDING',
+                    value: _needsReviewCount.toString(),
+                    subtitle: 'Needs Review',
+                    subtitleColor: Colors.orange,
                   ),
                 ],
               ),
@@ -141,7 +178,7 @@ class _StudentsScreenState extends State<StudentsScreen> {
                   _buildFilterChip('Active'),
                   const SizedBox(width: 8),
                   _buildFilterChip(
-                    'Injured',
+                    'Declined',
                     hasDot: true,
                     dotColor: Colors.red,
                   ),
@@ -178,9 +215,6 @@ class _StudentsScreenState extends State<StudentsScreen> {
                   statusTextColor: student['statusTextColor'],
                   showOnlineDot: student['showOnlineDot'] ?? false,
                   onlineDotColor: student['onlineDotColor'] ?? Colors.green,
-                  actionIcon: student['actionIcon'],
-                  isActionAlert: student['isActionAlert'] ?? false,
-                  isFab: student['isFab'] ?? false,
                 );
               }),
           ],
@@ -323,9 +357,6 @@ class _StudentsScreenState extends State<StudentsScreen> {
     required Color statusTextColor,
     bool showOnlineDot = false,
     Color onlineDotColor = Colors.green,
-    IconData? actionIcon,
-    bool isActionAlert = false,
-    bool isFab = false,
   }) {
     return InkWell(
       onTap: () {
@@ -420,35 +451,7 @@ class _StudentsScreenState extends State<StudentsScreen> {
             ),
             Row(
               children: [
-                IconButton(
-                  onPressed: () {},
-                  icon: Icon(Icons.chat_bubble, color: Colors.grey[300]),
-                ),
-                if (isFab)
-                  Container(
-                    width: 48,
-                    height: 48,
-                    decoration: const BoxDecoration(
-                      color: Colors.orange,
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(actionIcon, color: Colors.white),
-                  )
-                else if (isActionAlert)
-                  Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      color: Colors.orange[50],
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(actionIcon, color: Colors.orange),
-                  )
-                else
-                  Icon(
-                    actionIcon ?? Icons.bar_chart_rounded,
-                    color: Colors.grey[400],
-                  ),
+                Icon(Icons.bar_chart_rounded, color: Colors.grey[400]),
               ],
             ),
           ],

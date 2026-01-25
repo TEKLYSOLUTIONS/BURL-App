@@ -6,6 +6,9 @@ import '../../config/palette.dart';
 import '../../widgets/notification_button.dart';
 import '../../services/auth_service.dart';
 
+import '../../utils/date_time_utils.dart';
+import '../../services/dashboard_service.dart';
+
 class GuardianHomeScreen extends StatefulWidget {
   const GuardianHomeScreen({super.key});
 
@@ -15,13 +18,21 @@ class GuardianHomeScreen extends StatefulWidget {
 
 class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
   int _selectedTabIndex = 0;
-  int _selectedDay = 25; // Matching the image (Wed 25)
+  int _selectedDay = DateTime.now().day;
   String _userName = 'Guardian';
+  bool _isLoading = true;
+
+  // Dynamic Data
+  List<dynamic> _managedPlayers = [];
+  List<dynamic> _upcomingSessions = [];
+  Map<String, dynamic>? _stats;
+  // List<dynamic> _recentActivity = [];
 
   @override
   void initState() {
     super.initState();
     _loadUserData();
+    _loadDashboardData();
   }
 
   Future<void> _loadUserData() async {
@@ -35,76 +46,79 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
     }
   }
 
-  // Mock sessions for carousel and child view
-  final List<Map<String, dynamic>> _carouselSessions = [
-    {
-      'title': 'Soccer Practice',
-      'subtitle': 'Technical Drills & Scrimmage',
-      'time': 'Today, 4:00 - 5:30 PM',
-      'location': 'Field 4, Central Park',
-      'child': 'Leo',
-      'image': 'assets/images/welcome_batting.png', // Placeholder
-    },
-    {
-      'title': 'Tennis Match',
-      'subtitle': 'Quarter Finals',
-      'time': 'Tomorrow, 10:00 - 11:30 AM',
-      'location': 'Court 1, Sports Complex',
-      'child': 'Mia',
-      'image': 'assets/images/welcome_fielding.png', // Placeholder
-    },
-  ];
+  Future<void> _loadDashboardData() async {
+    setState(() => _isLoading = true);
+    try {
+      final data = await DashboardService.getGuardianDashboard();
+      if (data != null && mounted) {
+        setState(() {
+          // Flatten the managed players structure if needed, depends on API
+          // API returns: managedPlayers: [{ player: { ... } }]
+          _managedPlayers = data['managedPlayers'] ?? [];
+          _upcomingSessions = data['upcomingSessions'] ?? [];
+          _stats = data['stats'];
+          // _recentActivity = data['recentActivity'] ?? [];
+          _isLoading = false;
+        });
+      } else {
+        if (mounted) setState(() => _isLoading = false);
+      }
+    } catch (e) {
+      debugPrint('Error loading guardian dashboard: $e');
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
 
-  final List<Map<String, dynamic>> _childSessions = [
-    {
-      'title': 'Batting Practice',
-      'coach': 'Coach Sarah',
-      'date': 'Tomorrow, 10:00 AM',
-      'status': 'Confirmed',
-      'statusColor': Colors.green[50], // Light Green
-      'statusTextColor': Colors.green[700],
-      'image': 'assets/images/welcome_batting.png',
-      'tag': 'Batting',
-    },
-    {
-      'title': 'Fielding Drills',
-      'coach': 'Coach Mike',
-      'date': 'Friday, 2:00 PM',
-      'status': 'Pending',
-      'statusColor': Colors.orange[50], // Light Orange
-      'statusTextColor': Colors.orange[800],
-      'image': 'assets/images/welcome_fielding.png',
-      'tag': 'Fielding',
-    },
-  ];
+  // Get filtered sessions for selected child
+  List<dynamic> _getFilteredSessions() {
+    if (_selectedTabIndex == 0) return _upcomingSessions;
+
+    // index 1 corresponds to _managedPlayers[0], index 2 to [1], etc.
+    if (_selectedTabIndex - 1 < _managedPlayers.length) {
+      final selectedPlayerId =
+          _managedPlayers[_selectedTabIndex - 1]['player']['_id'];
+
+      return _upcomingSessions.where((session) {
+        final assigned = session['assignedPlayers'] as List?;
+        if (assigned == null) return false;
+        return assigned.any((ap) => ap['player']['_id'] == selectedPlayerId);
+      }).toList();
+    }
+    return [];
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF5F7FA), // Light grey background
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Profile Header
-              _ProfileHeader(
-                userName: _userName,
-              ).animate().fadeIn(duration: 600.ms),
-              const SizedBox(height: 20),
+        child: _isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 16,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Profile Header
+                    _ProfileHeader(
+                      userName: _userName,
+                    ).animate().fadeIn(duration: 600.ms),
+                    const SizedBox(height: 20),
 
-              // Child Selection Tabs
-              _buildChildTabs().animate().fadeIn(delay: 200.ms),
-              const SizedBox(height: 24),
+                    // Child Selection Tabs
+                    _buildChildTabs().animate().fadeIn(delay: 200.ms),
+                    const SizedBox(height: 24),
 
-              if (_selectedTabIndex == 0)
-                _buildOverviewView()
-              else
-                _buildChildDetailView(),
-            ],
-          ),
-        ),
+                    if (_selectedTabIndex == 0)
+                      _buildOverviewView()
+                    else
+                      _buildChildDetailView(),
+                  ],
+                ),
+              ),
       ),
     );
   }
@@ -134,20 +148,24 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
           ],
         ).animate().fadeIn(delay: 300.ms),
         const SizedBox(height: 12),
-        SizedBox(
-          height: 220,
-          child: PageView.builder(
-            itemCount: _carouselSessions.length,
-            controller: PageController(viewportFraction: 0.92),
-            padEnds: false,
-            itemBuilder: (context, index) {
-              return Padding(
-                padding: const EdgeInsets.only(right: 12.0),
-                child: _UpNextCard(session: _carouselSessions[index]),
-              );
-            },
-          ),
-        ).animate().fadeIn(delay: 400.ms).slideY(begin: 0.1),
+        const SizedBox(height: 12),
+        if (_upcomingSessions.isEmpty)
+          const Center(child: Text("No upcoming sessions"))
+        else
+          SizedBox(
+            height: 220,
+            child: PageView.builder(
+              itemCount: _upcomingSessions.length,
+              controller: PageController(viewportFraction: 0.92),
+              padEnds: false,
+              itemBuilder: (context, index) {
+                return Padding(
+                  padding: const EdgeInsets.only(right: 12.0),
+                  child: _UpNextCard(session: _upcomingSessions[index]),
+                );
+              },
+            ),
+          ).animate().fadeIn(delay: 400.ms).slideY(begin: 0.1),
         const SizedBox(height: 24),
 
         // This Week Calendar (Styled Container)
@@ -158,46 +176,68 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
         _buildWeekCalendar().animate().fadeIn(delay: 600.ms),
         const SizedBox(height: 24),
 
-        // Performance Section
+        // Performance Section - Using Stats instead
         const _SectionHeader(
-          title: 'Performance',
+          title: 'Overview Stats',
         ).animate().fadeIn(delay: 700.ms),
         const SizedBox(height: 12),
-        const _PerformanceSection()
-            .animate()
-            .fadeIn(delay: 800.ms)
-            .slideY(begin: 0.1),
+        _buildStatsSection().animate().fadeIn(delay: 800.ms).slideY(begin: 0.1),
       ],
     );
   }
 
   Widget _buildChildDetailView() {
-    final childName = _selectedTabIndex == 1 ? 'Leo' : 'Mia';
+    String childName = 'Child';
+    if (_selectedTabIndex > 0 &&
+        _selectedTabIndex - 1 < _managedPlayers.length) {
+      childName = _managedPlayers[_selectedTabIndex - 1]['player']['fullName']
+          .split(' ')[0];
+    }
+
+    final sessions = _getFilteredSessions();
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Performance first for Child View
-        const _SectionHeader(title: 'Performance'),
+        // Using Stats instead of Performance for now
+        const _SectionHeader(title: 'Overview Stats'),
         const SizedBox(height: 12),
-        const _PerformanceSection(),
+        _buildStatsSection(),
         const SizedBox(height: 24),
 
         _SectionHeader(title: '$childName\'s Sessions'),
         const SizedBox(height: 12),
 
-        ListView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          itemCount: _childSessions.length,
-          itemBuilder: (context, index) {
-            return _buildSessionItem(_childSessions[index]);
-          },
-        ),
+        if (sessions.isEmpty)
+          const Padding(
+            padding: EdgeInsets.all(16.0),
+            child: Text("No sessions found for this child."),
+          )
+        else
+          ListView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: sessions.length,
+            itemBuilder: (context, index) {
+              return _buildSessionItem(sessions[index]);
+            },
+          ),
       ],
     ).animate().fadeIn(delay: 300.ms);
   }
 
-  Widget _buildSessionItem(Map<String, dynamic> session) {
+  Widget _buildSessionItem(dynamic session) {
+    String startTime = 'TBD';
+    if (session['timeSlots'] != null &&
+        (session['timeSlots'] as List).isNotEmpty) {
+      startTime = DateTimeUtils.formatTime(
+        session['timeSlots'][0]['startTime'],
+      );
+    }
+
+    // childName could be used for debugging or UI
+    // For now we don't display it in the session item
+
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(16),
@@ -216,13 +256,14 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
         children: [
           ClipRRect(
             borderRadius: BorderRadius.circular(12),
-            child: Image.asset(
-              session['image'],
+            child: Container(
               width: 60,
               height: 60,
-              fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) =>
-                  Container(width: 60, height: 60, color: Colors.grey[200]),
+              color: Colors.blue.shade50,
+              child: const Icon(
+                Icons.sports_cricket,
+                color: AppPalette.navyPrimary,
+              ),
             ),
           ),
           const SizedBox(width: 16),
@@ -231,7 +272,7 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  session['title'],
+                  session['title'] ?? 'Training Session',
                   style: GoogleFonts.outfit(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
@@ -240,7 +281,9 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  session['coach'],
+                  session['coach'] != null
+                      ? 'Coach ${session['coach']['fullName']}'
+                      : 'No Coach',
                   style: GoogleFonts.inter(
                     fontSize: 13,
                     color: Colors.grey[600],
@@ -248,7 +291,7 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  session['date'],
+                  startTime,
                   style: GoogleFonts.inter(
                     fontSize: 12,
                     color: Colors.grey[500],
@@ -260,13 +303,13 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
-              color: session['statusColor'],
+              color: Colors.green[50], // Defaulting to confirmed/green
               borderRadius: BorderRadius.circular(8),
             ),
             child: Text(
-              session['status'],
+              'Confirmed', // Placeholder status
               style: TextStyle(
-                color: session['statusTextColor'],
+                color: Colors.green[700],
                 fontWeight: FontWeight.bold,
                 fontSize: 11,
               ),
@@ -277,97 +320,282 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
     );
   }
 
-  Widget _buildChildTabs() {
-    final tabs = [
-      {'name': 'Overview', 'avatar': null},
-      {'name': 'Leo', 'avatar': 'https://i.pravatar.cc/150?u=leo'},
-      {'name': 'Mia', 'avatar': 'https://i.pravatar.cc/150?u=mia'},
-    ];
+  Widget _buildStatsSection() {
+    return Row(
+      children: [
+        // Managed Players Card
+        Expanded(
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.04),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Row(
+                  children: [
+                    Icon(
+                      Icons.people,
+                      color: AppPalette.orangeAccent,
+                      size: 20,
+                    ),
+                    SizedBox(width: 6),
+                    Text(
+                      'Active',
+                      style: TextStyle(
+                        color: AppPalette.orangeAccent,
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  '${_stats?['managedPlayers'] ?? 0}',
+                  style: GoogleFonts.outfit(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: AppPalette.navyPrimary,
+                  ),
+                ),
+                Text(
+                  'Players Managed',
+                  style: GoogleFonts.inter(
+                    fontSize: 12,
+                    color: AppPalette.textSecondaryLight,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(width: 12),
+        // Upcoming Sessions Card
+        Expanded(
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.04),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Row(
+                  children: [
+                    Icon(Icons.calendar_today, color: Colors.blue, size: 20),
+                    SizedBox(width: 6),
+                    Text(
+                      'Upcoming',
+                      style: TextStyle(
+                        color: Colors.blue,
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  '${_stats?['upcomingSessions'] ?? 0}',
+                  style: GoogleFonts.outfit(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: AppPalette.navyPrimary,
+                  ),
+                ),
+                Text(
+                  'Sessions Planned',
+                  style: GoogleFonts.inter(
+                    fontSize: 12,
+                    color: AppPalette.textSecondaryLight,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
 
+  Widget _buildChildTabs() {
     return SizedBox(
       height: 50,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
-        itemCount: tabs.length,
+        itemCount: _managedPlayers.length + 1, // +1 for "Overview"
         separatorBuilder: (context, index) => const SizedBox(width: 12),
         itemBuilder: (context, index) {
-          final tab = tabs[index];
           final isSelected = _selectedTabIndex == index;
 
-          return GestureDetector(
-            onTap: () {
-              setState(() {
-                _selectedTabIndex = index;
-              });
-            },
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(25),
-                border: Border.all(
-                  color: isSelected
-                      ? AppPalette.navyPrimary
-                      : Colors.transparent,
-                  width: isSelected ? 2 : 0,
+          if (index == 0) {
+            // Overview Tab
+            return GestureDetector(
+              onTap: () {
+                setState(() {
+                  _selectedTabIndex = index;
+                });
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
                 ),
-                boxShadow: [
-                  if (!isSelected)
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.05),
-                      blurRadius: 4,
-                      offset: const Offset(0, 2),
-                    ),
-                ],
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (tab['avatar'] != null) ...[
-                    CircleAvatar(
-                      radius: 14,
-                      backgroundImage: NetworkImage(tab['avatar'] as String),
-                      backgroundColor: AppPalette.orangeAccent,
-                    ),
-                    const SizedBox(width: 8),
-                  ] else if (index == 0) ...[
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(25),
+                  border: Border.all(
+                    color: isSelected
+                        ? AppPalette.navyPrimary
+                        : Colors.transparent,
+                    width: isSelected ? 2 : 0,
+                  ),
+                  boxShadow: [
+                    if (!isSelected)
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.05),
+                        blurRadius: 4,
+                        offset: const Offset(0, 2),
+                      ),
+                  ],
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
                     const Icon(
                       Icons.dashboard_rounded,
                       size: 18,
                       color: AppPalette.navyPrimary,
                     ),
                     const SizedBox(width: 8),
-                  ],
-                  Text(
-                    tab['name'] as String,
-                    style: TextStyle(
-                      color: AppPalette.navyPrimary,
-                      fontWeight: isSelected
-                          ? FontWeight.bold
-                          : FontWeight.w500,
-                      fontSize: 14,
+                    Text(
+                      'Overview',
+                      style: TextStyle(
+                        color: AppPalette.navyPrimary,
+                        fontWeight: isSelected
+                            ? FontWeight.bold
+                            : FontWeight.w500,
+                        fontSize: 14,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-          );
+            );
+          } else {
+            // Child Tabs
+            final player = _managedPlayers[index - 1];
+            final playerName = player['player']['fullName'].split(' ')[0];
+
+            return GestureDetector(
+              onTap: () {
+                setState(() {
+                  _selectedTabIndex = index;
+                });
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(25),
+                  border: Border.all(
+                    color: isSelected
+                        ? AppPalette.navyPrimary
+                        : Colors.transparent,
+                    width: isSelected ? 2 : 0,
+                  ),
+                  boxShadow: [
+                    if (!isSelected)
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.05),
+                        blurRadius: 4,
+                        offset: const Offset(0, 2),
+                      ),
+                  ],
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    CircleAvatar(
+                      radius: 14,
+                      // Placeholder logic for avatar, can use image URL if available
+                      backgroundColor: AppPalette.orangeAccent,
+                      child: Text(
+                        playerName[0],
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      playerName,
+                      style: TextStyle(
+                        color: AppPalette.navyPrimary,
+                        fontWeight: isSelected
+                            ? FontWeight.bold
+                            : FontWeight.w500,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }
         },
       ),
     );
   }
 
   Widget _buildWeekCalendar() {
-    // Matches the provided image style
-    final days = [
-      {'date': 23, 'day': 'Mon'},
-      {'date': 24, 'day': 'Tue'},
-      {'date': 25, 'day': 'Wed'},
-      {'date': 26, 'day': 'Thu'},
-      {'date': 27, 'day': 'Fri'},
-      {'date': 28, 'day': 'Sat'},
-      {'date': 29, 'day': 'Sun'},
-    ];
+    // Current Week (Dynamic)
+    final now = DateTime.now();
+    // Start from current day or start of week? Let's show current week (Mon-Sun)
+    // Find previous Monday
+    final startOfWeek = now.subtract(Duration(days: now.weekday - 1));
+
+    final days = List.generate(7, (index) {
+      final date = startOfWeek.add(Duration(days: index));
+      // Format day name: Mon, Tue etc.
+      final dayName = [
+        'Mon',
+        'Tue',
+        'Wed',
+        'Thu',
+        'Fri',
+        'Sat',
+        'Sun',
+      ][date.weekday - 1];
+
+      return {
+        'date': date.day,
+        'day': dayName,
+        'fullDate': date, // Use this for comparison if needed
+      };
+    });
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
@@ -435,9 +663,10 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
                     decoration: BoxDecoration(
                       color: isSelected
                           ? Colors.white.withValues(alpha: 0.5)
-                          : (date == 29
-                                ? AppPalette.orangeAccent
-                                : Colors.grey[300]), // Example logic
+                          : (date == DateTime.now().day
+                                ? AppPalette
+                                      .orangeAccent // Highlight today
+                                : Colors.grey[300]),
                       shape: BoxShape.circle,
                     ),
                   ),
@@ -470,7 +699,7 @@ class _ProfileHeader extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'GOOD MORNING',
+                DateTimeUtils.getGreeting(),
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: Theme.of(
                     context,
@@ -526,11 +755,28 @@ class _SectionHeader extends StatelessWidget {
 }
 
 class _UpNextCard extends StatelessWidget {
-  final Map<String, dynamic> session;
+  final dynamic session;
   const _UpNextCard({required this.session});
 
   @override
   Widget build(BuildContext context) {
+    String startTime = 'TBD';
+    if (session['timeSlots'] != null &&
+        (session['timeSlots'] as List).isNotEmpty) {
+      startTime = DateTimeUtils.formatTime(
+        session['timeSlots'][0]['startTime'],
+      );
+    }
+
+    String childName = 'Child';
+    if (session['assignedPlayers'] != null &&
+        (session['assignedPlayers'] as List).isNotEmpty) {
+      childName =
+          (session['assignedPlayers'][0]['player']['fullName'] as String).split(
+            ' ',
+          )[0];
+    }
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -587,7 +833,7 @@ class _UpNextCard extends StatelessWidget {
                       ),
                       const SizedBox(width: 4),
                       Text(
-                        'U15 TEAM',
+                        'CRICKET',
                         style: GoogleFonts.inter(
                           color: AppPalette.navyPrimary,
                           fontSize: 11,
@@ -610,7 +856,7 @@ class _UpNextCard extends StatelessWidget {
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: const Icon(
-                            Icons.sports_soccer, // Changed to match "Soccer"
+                            Icons.sports_cricket,
                             color: Color(0xFF2E7D32),
                             size: 24,
                           ),
@@ -629,7 +875,7 @@ class _UpNextCard extends StatelessWidget {
                               border: Border.all(color: Colors.white, width: 2),
                             ),
                             child: Text(
-                              session['child'],
+                              childName,
                               style: const TextStyle(
                                 color: Colors.white,
                                 fontSize: 9,
@@ -646,7 +892,7 @@ class _UpNextCard extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            session['title'],
+                            session['title'] ?? 'Training',
                             style: GoogleFonts.outfit(
                               fontWeight: FontWeight.bold,
                               fontSize: 18,
@@ -654,7 +900,7 @@ class _UpNextCard extends StatelessWidget {
                             ),
                           ),
                           Text(
-                            session['subtitle'],
+                            session['location'] ?? 'Field',
                             style: GoogleFonts.inter(
                               color: Colors.grey[500],
                               fontSize: 13,
@@ -665,16 +911,10 @@ class _UpNextCard extends StatelessWidget {
                     ),
                     ClipRRect(
                       borderRadius: BorderRadius.circular(12),
-                      child: Image.asset(
-                        session['image'],
+                      child: Container(
                         width: 60,
                         height: 60,
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) => Container(
-                          width: 60,
-                          height: 60,
-                          color: Colors.grey[200],
-                        ),
+                        color: Colors.grey[100],
                       ),
                     ),
                   ],
@@ -686,7 +926,7 @@ class _UpNextCard extends StatelessWidget {
                     const SizedBox(width: 6),
                     Flexible(
                       child: Text(
-                        session['time'],
+                        startTime,
                         style: GoogleFonts.inter(
                           color: Colors.grey[600],
                           fontSize: 13,
@@ -699,7 +939,7 @@ class _UpNextCard extends StatelessWidget {
                     const SizedBox(width: 6),
                     Flexible(
                       child: Text(
-                        'Field 4, Central Park', // Mock
+                        session['location'] ?? 'TBD',
                         style: GoogleFonts.inter(
                           color: Colors.grey[600],
                           fontSize: 13,
@@ -711,12 +951,7 @@ class _UpNextCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 12),
                 GestureDetector(
-                  // Added GestureDetector
-                  onTap: () {
-                    context.push(
-                      '/session-details/${session['id'] ?? '1'}',
-                    ); // Navigate to details
-                  },
+                  onTap: () {},
                   child: Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 16,
@@ -752,120 +987,6 @@ class _UpNextCard extends StatelessWidget {
           ),
         ],
       ),
-    );
-  }
-}
-
-class _PerformanceSection extends StatelessWidget {
-  const _PerformanceSection();
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        // Attendance Card
-        Expanded(
-          child: Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.04),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Row(
-                  children: [
-                    Icon(
-                      Icons.trending_up,
-                      color: AppPalette.success,
-                      size: 20,
-                    ),
-                    SizedBox(width: 6),
-                    Text(
-                      '+2%',
-                      style: TextStyle(
-                        color: AppPalette.success,
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  '95%',
-                  style: GoogleFonts.outfit(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 32,
-                    color: AppPalette.navyPrimary,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'Attendance Rate',
-                  style: GoogleFonts.inter(
-                    color: AppPalette.textSecondaryLight,
-                    fontSize: 12,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(4),
-                  child: const LinearProgressIndicator(
-                    value: 0.95,
-                    backgroundColor: AppPalette.divider,
-                    valueColor: AlwaysStoppedAnimation<Color>(
-                      AppPalette.navyPrimary,
-                    ),
-                    minHeight: 6,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(width: 16),
-        // Drills Missed Card (Empty/Placeholder style to match image)
-        Expanded(
-          child: Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.04),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Icon(Icons.error_outline, color: Colors.orange, size: 20),
-                const SizedBox(height: 45), // Maintain height similarity
-                Text(
-                  'Needs Focus', // Mock
-                  style: GoogleFonts.outfit(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 20,
-                    color: AppPalette.navyPrimary,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ],
     );
   }
 }
