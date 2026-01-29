@@ -3,9 +3,11 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 import '../../widgets/notification_button.dart';
 import '../../widgets/headers/coach_app_bar.dart';
 import '../../config/palette.dart';
+import '../../services/earnings_service.dart';
 
 class EarningHistoryScreen extends StatefulWidget {
   const EarningHistoryScreen({super.key});
@@ -16,9 +18,155 @@ class EarningHistoryScreen extends StatefulWidget {
 
 class _EarningHistoryScreenState extends State<EarningHistoryScreen> {
   String _selectedPeriod = 'Monthly';
+  bool _isLoading = true;
+  Map<String, dynamic> _summaryData = {};
+  List<Map<String, dynamic>> _periodData = [];
+  List<Map<String, dynamic>> _recentActivity = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadEarningsData();
+  }
+
+  Future<void> _loadEarningsData() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      // Load all earnings data in parallel
+      final results = await Future.wait([
+        EarningsService.getEarningsSummary(),
+        EarningsService.getEarningsByPeriod(type: _selectedPeriod.toLowerCase()),
+      ]);
+
+      setState(() {
+        _summaryData = results[0];
+        _periodData = List<Map<String, dynamic>>.from(results[1]['earnings'] ?? []);
+        _recentActivity = List<Map<String, dynamic>>.from(_summaryData['recentActivity'] ?? []);
+        _isLoading = false;
+      });
+    } catch (e) {
+      debugPrint('Load earnings error: $e');
+      setState(() {
+        _isLoading = false;
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to load earnings data: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _onPeriodChanged(String period) async {
+    setState(() {
+      _selectedPeriod = period;
+      _isLoading = true;
+    });
+
+    try {
+      final data = await EarningsService.getEarningsByPeriod(
+        type: period.toLowerCase(),
+      );
+
+      setState(() {
+        _periodData = List<Map<String, dynamic>>.from(data['earnings'] ?? []);
+        _isLoading = false;
+      });
+    } catch (e) {
+      debugPrint('Period change error: $e');
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _handleCashOut() async {
+    final totalBalance = _summaryData['totalBalance'] ?? 0.0;
+
+    if (totalBalance <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No balance available for cash out'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    try {
+      final result = await EarningsService.requestCashOut(amount: totalBalance);
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(result['message'] ?? 'Cash out request submitted'),
+            backgroundColor: AppPalette.success,
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to process cash out: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return Scaffold(
+        backgroundColor: AppPalette.backgroundLight,
+        body: Column(
+          children: [
+            CoachAppBar(
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const SizedBox(width: 40),
+                  Expanded(
+                    child: Text(
+                      'Earnings',
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.outfit(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                  NotificationButton(
+                    onTap: () => context.push('/coach/notifications'),
+                  ),
+                ],
+              ),
+            ),
+            const Expanded(
+              child: Center(
+                child: CircularProgressIndicator(),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final totalBalance = (_summaryData['totalBalance'] ?? 0).toDouble();
+    final percentageChange = (_summaryData['trend']?['percentageChange'] ?? 0).toDouble();
+    final changeAmount = (_summaryData['trend']?['changeAmount'] ?? 0).toDouble();
+    final currentMonthTotal = (_summaryData['currentMonth']?['total'] ?? 0).toDouble();
+
     return Scaffold(
       backgroundColor: AppPalette.backgroundLight,
       body: Column(
@@ -33,137 +181,143 @@ class _EarningHistoryScreenState extends State<EarningHistoryScreen> {
                     'Earnings',
                     textAlign: TextAlign.center,
                     style: GoogleFonts.outfit(
-                      fontSize: 24, // Consistent size
+                      fontSize: 24,
                       fontWeight: FontWeight.bold,
                       color: Colors.white,
                     ),
                   ),
                 ),
                 NotificationButton(
-                  hasNotification: true,
                   onTap: () => context.push('/coach/notifications'),
                 ),
               ],
             ),
           ),
           Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Total Balance Card
-                  Container(
-                    padding: const EdgeInsets.all(24),
-                    decoration: BoxDecoration(
-                      color: AppPalette.navyPrimary,
-                      borderRadius: BorderRadius.circular(32),
-                      boxShadow: [
-                        BoxShadow(
-                          color: AppPalette.navyPrimary.withValues(alpha: 0.3),
-                          blurRadius: 20,
-                          offset: const Offset(0, 10),
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              'TOTAL BALANCE',
-                              style: GoogleFonts.inter(
-                                color: Colors.white.withValues(alpha: 0.7),
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                                letterSpacing: 1.0,
+            child: RefreshIndicator(
+              onRefresh: _loadEarningsData,
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Total Balance Card
+                    Container(
+                      padding: const EdgeInsets.all(24),
+                      decoration: BoxDecoration(
+                        color: AppPalette.navyPrimary,
+                        borderRadius: BorderRadius.circular(32),
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppPalette.navyPrimary.withValues(alpha: 0.3),
+                            blurRadius: 20,
+                            offset: const Offset(0, 10),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                'TOTAL BALANCE',
+                                style: GoogleFonts.inter(
+                                  color: Colors.white.withValues(alpha: 0.7),
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  letterSpacing: 1.0,
+                                ),
                               ),
+                              if (percentageChange != 0)
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 4,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF2C3E50),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Icon(
+                                        percentageChange >= 0
+                                            ? Icons.trending_up
+                                            : Icons.trending_down,
+                                        color: percentageChange >= 0
+                                            ? AppPalette.success
+                                            : Colors.red,
+                                        size: 14,
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        EarningsService.formatPercentageChange(percentageChange),
+                                        style: GoogleFonts.outfit(
+                                          color: Colors.white,
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            EarningsService.formatCurrency(totalBalance),
+                            style: GoogleFonts.outfit(
+                              color: Colors.white,
+                              fontSize: 40,
+                              fontWeight: FontWeight.bold,
                             ),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 4,
-                              ),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF2C3E50), // Darker Navy
-                                borderRadius: BorderRadius.circular(8),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Last updated ${DateFormat('MMM d, h:mm a').format(DateTime.now())}',
+                            style: GoogleFonts.inter(
+                              color: Colors.white.withValues(alpha: 0.5),
+                              fontSize: 12,
+                            ),
+                          ),
+                          const SizedBox(height: 24),
+                          SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton(
+                              onPressed: _handleCashOut,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppPalette.orangeAccent,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                                padding: const EdgeInsets.symmetric(vertical: 16),
                               ),
                               child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
                                   const Icon(
-                                    Icons.trending_up,
-                                    color: AppPalette.success,
-                                    size: 14,
+                                    Icons.wallet,
+                                    color: Colors.white,
+                                    size: 20,
                                   ),
-                                  const SizedBox(width: 4),
+                                  const SizedBox(width: 8),
                                   Text(
-                                    '+15%',
+                                    'Cash Out Now',
                                     style: GoogleFonts.outfit(
                                       color: Colors.white,
-                                      fontSize: 12,
+                                      fontSize: 16,
                                       fontWeight: FontWeight.bold,
                                     ),
                                   ),
                                 ],
                               ),
                             ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          '\$1,240.50',
-                          style: GoogleFonts.outfit(
-                            color: Colors.white,
-                            fontSize: 40,
-                            fontWeight: FontWeight.bold,
                           ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'Last updated just now',
-                          style: GoogleFonts.inter(
-                            color: Colors.white.withValues(alpha: 0.5),
-                            fontSize: 12,
-                          ),
-                        ),
-                        const SizedBox(height: 24),
-                        SizedBox(
-                          width: double.infinity,
-                          child: ElevatedButton(
-                            onPressed: () {},
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppPalette.orangeAccent,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(16),
-                              ),
-                              padding: const EdgeInsets.symmetric(vertical: 16),
-                            ),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                const Icon(
-                                  Icons.wallet,
-                                  color: Colors.white,
-                                  size: 20,
-                                ),
-                                const SizedBox(width: 8),
-                                Text(
-                                  'Cash Out Now',
-                                  style: GoogleFonts.outfit(
-                                    color: Colors.white,
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ).animate().fadeIn().slideY(begin: 0.1),
+                        ],
+                      ),
+                    ).animate().fadeIn().slideY(begin: 0.1),
 
                   const SizedBox(height: 24),
 
@@ -201,7 +355,7 @@ class _EarningHistoryScreenState extends State<EarningHistoryScreen> {
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            '\$3,450',
+                            EarningsService.formatCurrency(currentMonthTotal),
                             style: GoogleFonts.outfit(
                               color: AppPalette.navyPrimary,
                               fontSize: 24,
@@ -210,24 +364,29 @@ class _EarningHistoryScreenState extends State<EarningHistoryScreen> {
                           ),
                         ],
                       ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 8,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppPalette.success.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          '+ \$420 vs last month',
-                          style: GoogleFonts.outfit(
-                            color: AppPalette.success,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 12,
+                      if (changeAmount != 0)
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 8,
+                          ),
+                          decoration: BoxDecoration(
+                            color: changeAmount >= 0
+                                ? AppPalette.success.withValues(alpha: 0.1)
+                                : Colors.red.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            '${changeAmount >= 0 ? '+ ' : ''}${EarningsService.formatCurrency(changeAmount)} vs last month',
+                            style: GoogleFonts.outfit(
+                              color: changeAmount >= 0
+                                  ? AppPalette.success
+                                  : Colors.red,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12,
+                            ),
                           ),
                         ),
-                      ),
                     ],
                   ),
                   const SizedBox(height: 24),
@@ -235,32 +394,42 @@ class _EarningHistoryScreenState extends State<EarningHistoryScreen> {
                   // Bar Chart
                   SizedBox(
                     height: 180,
-                    child: BarChart(
-                      BarChartData(
-                        gridData: const FlGridData(show: false),
-                        titlesData: FlTitlesData(
-                          bottomTitles: AxisTitles(
-                            sideTitles: SideTitles(
-                              showTitles: true,
-                              getTitlesWidget: (value, meta) {
-                                return _getBottomTitles(value, meta);
-                              },
+                    child: _periodData.isEmpty
+                        ? Center(
+                            child: Text(
+                              'No earnings data for this period',
+                              style: GoogleFonts.inter(
+                                color: Colors.grey,
+                                fontSize: 14,
+                              ),
+                            ),
+                          )
+                        : BarChart(
+                            BarChartData(
+                              gridData: const FlGridData(show: false),
+                              titlesData: FlTitlesData(
+                                bottomTitles: AxisTitles(
+                                  sideTitles: SideTitles(
+                                    showTitles: true,
+                                    getTitlesWidget: (value, meta) {
+                                      return _getBottomTitles(value, meta);
+                                    },
+                                  ),
+                                ),
+                                leftTitles: const AxisTitles(
+                                  sideTitles: SideTitles(showTitles: false),
+                                ),
+                                topTitles: const AxisTitles(
+                                  sideTitles: SideTitles(showTitles: false),
+                                ),
+                                rightTitles: const AxisTitles(
+                                  sideTitles: SideTitles(showTitles: false),
+                                ),
+                              ),
+                              borderData: FlBorderData(show: false),
+                              barGroups: _getBarGroups(),
                             ),
                           ),
-                          leftTitles: const AxisTitles(
-                            sideTitles: SideTitles(showTitles: false),
-                          ),
-                          topTitles: const AxisTitles(
-                            sideTitles: SideTitles(showTitles: false),
-                          ),
-                          rightTitles: const AxisTitles(
-                            sideTitles: SideTitles(showTitles: false),
-                          ),
-                        ),
-                        borderData: FlBorderData(show: false),
-                        barGroups: _getBarGroups(),
-                      ),
-                    ),
                   ).animate().fadeIn(delay: 200.ms),
 
                   const SizedBox(height: 32),
@@ -275,12 +444,13 @@ class _EarningHistoryScreenState extends State<EarningHistoryScreen> {
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
                           color: AppPalette.navyPrimary,
-                          height:
-                              1.2, // Fix vertical alignment/padding visually
+                          height: 1.2,
                         ),
                       ),
                       TextButton(
-                        onPressed: () {},
+                        onPressed: () {
+                          context.push('/coach/earnings/history');
+                        },
                         child: Text(
                           'See All',
                           style: GoogleFonts.inter(
@@ -293,44 +463,45 @@ class _EarningHistoryScreenState extends State<EarningHistoryScreen> {
                   ),
                   const SizedBox(height: 16),
 
-                  _buildActivityItem(
-                    name: 'Marcus Johnson',
-                    detail: '1-on-1 Coaching • Oct 24',
-                    amount: '+\$60.00',
-                    isCompleted: true,
-                    avatarUrl: 'https://i.pravatar.cc/150?img=11',
-                  ),
-                  _buildActivityItem(
-                    name: 'Sarah Williams',
-                    detail: 'Group Drill • Oct 23',
-                    amount: '+\$120.00',
-                    isCompleted: true,
-                    avatarUrl: 'https://i.pravatar.cc/150?img=5',
-                  ),
-                  _buildActivityItem(
-                    name: 'Team Fury',
-                    detail: 'Monthly Retainer • Oct 20',
-                    amount: '+\$500.00',
-                    isCompleted: true,
-                    avatarUrl:
-                        'https://ui-avatars.com/api/?name=Team+Fury&background=EBF4FF&color=7F9CF5',
-                  ),
-                  _buildActivityItem(
-                    name: 'Emily Chen',
-                    detail: 'Video Analysis • Oct 19',
-                    amount: '+\$45.00',
-                    isCompleted: false, // Pending
-                    statusText: 'Pending',
-                    avatarUrl: 'https://i.pravatar.cc/150?img=9',
-                  ),
+                  if (_recentActivity.isEmpty)
+                    Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(32.0),
+                        child: Text(
+                          'No recent activity',
+                          style: GoogleFonts.inter(
+                            color: Colors.grey,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ),
+                    ),
+                  if (_recentActivity.isNotEmpty)
+                    ..._recentActivity.map((activity) {
+                      final player = activity['player'] ?? {};
+                      final playerName = '${player['firstName'] ?? ''} ${player['lastName'] ?? ''}'.trim();
+                      final amount = ((activity['netAmount'] ?? activity['amount']) ?? 0).toDouble();
+                      final sessionDate = DateTime.tryParse(activity['sessionDate'] ?? '');
+                      final status = activity['status'] ?? 'confirmed';
 
-                  const SizedBox(height: 80), // Padding at bottom for scrolling
+                      return _buildActivityItem(
+                        name: playerName.isEmpty ? 'Unknown Player' : playerName,
+                        detail: '${activity['sessionTitle'] ?? 'Session'} • ${sessionDate != null ? DateFormat('MMM d').format(sessionDate) : 'Unknown date'}',
+                        amount: '+${EarningsService.formatCurrency(amount)}',
+                        isCompleted: status == 'confirmed' || status == 'paid',
+                        statusText: status == 'pending' ? 'Pending' : 'Completed',
+                        avatarUrl: player['avatar'] ?? 'https://ui-avatars.com/api/?name=${Uri.encodeComponent(playerName)}&background=EBF4FF&color=7F9CF5',
+                      );
+                    }),
+
+                  const SizedBox(height: 80),
                 ],
               ),
             ),
           ),
-        ],
-      ),
+        ),
+      ],
+    )
     );
   }
 
@@ -338,9 +509,9 @@ class _EarningHistoryScreenState extends State<EarningHistoryScreen> {
     final isSelected = _selectedPeriod == text;
     return GestureDetector(
       onTap: () {
-        setState(() {
-          _selectedPeriod = text;
-        });
+        if (_selectedPeriod != text) {
+          _onPeriodChanged(text);
+        }
       },
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 12),
@@ -370,30 +541,41 @@ class _EarningHistoryScreenState extends State<EarningHistoryScreen> {
   }
 
   Widget _getBottomTitles(double value, TitleMeta meta) {
-    String text = '';
-    bool isBold = false;
+    if (_periodData.isEmpty) return const SizedBox();
+    
     int index = value.toInt();
+    if (index < 0 || index >= _periodData.length) return const SizedBox();
 
+    String text = '';
+    bool isBold = index == _periodData.length - 1;
+
+    // Get the label from the API data
+    final periodId = _periodData[index]['_id']?.toString() ?? '';
+    
     switch (_selectedPeriod) {
       case 'Weekly':
-        if (index >= 0 && index < 4) {
-          text = 'W${index + 1}';
-          if (index == 3) isBold = true;
-        }
+        text = 'W${index + 1}';
         break;
       case 'Monthly':
-        const months = ['Jul', 'Aug', 'Sep', 'Oct'];
-        if (index >= 0 && index < months.length) {
-          text = months[index];
-          if (index == 3) isBold = true;
+        // periodId format: "2024-10" -> "Oct"
+        if (periodId.isNotEmpty) {
+          try {
+            final parts = periodId.split('-');
+            if (parts.length >= 2) {
+              final month = int.tryParse(parts[1]) ?? 1;
+              final monthNames = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+              text = monthNames[month];
+            }
+          } catch (e) {
+            text = 'M${index + 1}';
+          }
+        } else {
+          text = 'M${index + 1}';
         }
         break;
       case 'Yearly':
-        const years = ['2021', '2022', '2023', '2024'];
-        if (index >= 0 && index < years.length) {
-          text = years[index];
-          if (index == 3) isBold = true;
-        }
+        // periodId is year number
+        text = periodId.isEmpty ? '${DateTime.now().year - (_periodData.length - 1 - index)}' : periodId;
         break;
     }
 
@@ -402,21 +584,13 @@ class _EarningHistoryScreenState extends State<EarningHistoryScreen> {
   }
 
   List<BarChartGroupData> _getBarGroups() {
-    List<double> values;
-    switch (_selectedPeriod) {
-      case 'Weekly':
-        values = [8, 12, 10, 16];
-        break;
-      case 'Monthly':
-        values = [14, 11, 15, 18];
-        break;
-      case 'Yearly':
-        values = [10, 14, 12, 17];
-        break;
-      default:
-        values = [8, 12, 10, 16];
+    if (_periodData.isEmpty) {
+      return [];
     }
 
+    // Get values from API data and convert to double
+    final values = _periodData.map((e) => ((e['total'] ?? 0).toDouble()) / 100).toList();
+    
     return List.generate(values.length, (index) {
       // Highlight the last bar
       final color = index == values.length - 1

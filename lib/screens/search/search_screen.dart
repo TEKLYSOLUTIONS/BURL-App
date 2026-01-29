@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import '../../config/palette.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../services/search_service.dart';
 
 class SearchScreen extends StatefulWidget {
   const SearchScreen({super.key});
@@ -13,151 +14,362 @@ class SearchScreen extends StatefulWidget {
 
 class _SearchScreenState extends State<SearchScreen> {
   final TextEditingController _searchController = TextEditingController();
+  final SearchService _searchService = SearchService();
+
+  bool _isLoading = false;
+  bool _hasSearched = false;
+  String? _error;
+  List<dynamic> _coaches = [];
+  List<dynamic> _sessions = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadRecommendedCoaches();
+    _searchController.addListener(_onSearchChanged);
+  }
+
+  void _onSearchChanged() {
+    // Update UI to show/hide clear button
+    setState(() {});
+  }
+
+  Future<void> _loadRecommendedCoaches() async {
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+
+    try {
+      final result = await _searchService.searchCoaches(limit: 10);
+      if (mounted) {
+        setState(() {
+          _coaches = result['data'] ?? [];
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _error = e.toString();
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _performSearch(String query) async {
+    if (query.trim().isEmpty) {
+      setState(() {
+        _hasSearched = false;
+        _sessions = [];
+      });
+      _loadRecommendedCoaches();
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+      _hasSearched = true;
+      _error = null;
+    });
+
+    try {
+      final result = await _searchService.searchAll(query: query, limit: 10);
+      if (mounted) {
+        setState(() {
+          _coaches = result['data']['coaches'] ?? [];
+          _sessions = result['data']['sessions'] ?? [];
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _error = e.toString();
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _searchController.removeListener(_onSearchChanged);
+    _searchController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Search Header
-              Text(
-                'Search',
-                style: GoogleFonts.outfit(
-                  fontSize: 32,
-                  fontWeight: FontWeight.bold,
-                  color: AppPalette.navyPrimary,
-                ),
-              ).animate().fadeIn().slideX(begin: -0.1),
-
-              const SizedBox(height: 24),
-
-              // Search Bar
-              Container(
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(30),
-                  border: Border.all(color: AppPalette.divider),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.05),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: TextField(
-                  controller: _searchController,
-                  autofocus: false,
-                  decoration: InputDecoration(
-                    hintText: 'Search for coaches, venues...',
-                    hintStyle: GoogleFonts.inter(color: Colors.grey[500]),
-                    prefixIcon: const Icon(
-                      Icons.search,
+        child: Column(
+          children: [
+            // Header and Search Bar - Fixed at top
+            Padding(
+              padding: const EdgeInsets.all(24.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Search Header
+                  Text(
+                    'Search',
+                    style: GoogleFonts.outfit(
+                      fontSize: 32,
+                      fontWeight: FontWeight.bold,
                       color: AppPalette.navyPrimary,
                     ),
-                    border: InputBorder.none,
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 16,
+                  ).animate().fadeIn().slideX(begin: -0.1),
+
+                  const SizedBox(height: 24),
+
+                  // Search Bar
+                  Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(30),
+                      border: Border.all(color: Colors.grey[300]!),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.05),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
                     ),
-                  ),
-                ),
-              ).animate().fadeIn(delay: 200.ms).slideY(begin: 0.1),
-
-              const SizedBox(height: 32),
-
-              // Recommended Coaches Section
-              Text(
-                'Recommended Coaches',
-                style: GoogleFonts.outfit(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                  color: AppPalette.navyPrimary,
-                ),
-              ).animate().fadeIn(delay: 300.ms),
-              const SizedBox(height: 16),
-
-              SizedBox(
-                height: 160,
-                child: ListView(
-                  scrollDirection: Axis.horizontal,
-                  children: [
-                    _CoachCard(
-                      name: 'Rahul Dravid',
-                      role: 'Batting Coach',
-                      rating: '4.9',
-                      imageUrl: 'https://i.pravatar.cc/150?u=coach1',
-                      onTap: () => context.push('/coach-details/1'),
+                    child: TextField(
+                      controller: _searchController,
+                      autofocus: false,
+                      onSubmitted: _performSearch,
+                      onChanged: (value) {
+                        // Debounce search
+                        if (value.isEmpty) {
+                          _performSearch(value);
+                        }
+                      },
+                      decoration: InputDecoration(
+                        hintText: 'Search for coaches, sessions...',
+                        hintStyle: GoogleFonts.inter(color: Colors.grey[500]),
+                        prefixIcon: const Icon(
+                          Icons.search,
+                          color: Colors.orange,
+                        ),
+                        suffixIcon: _searchController.text.isNotEmpty
+                            ? IconButton(
+                                icon: const Icon(Icons.clear, color: Colors.grey),
+                                onPressed: () {
+                                  _searchController.clear();
+                                  _performSearch('');
+                                },
+                              )
+                            : null,
+                        border: InputBorder.none,
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 16,
+                        ),
+                      ),
                     ),
-                    const SizedBox(width: 16),
-                    _CoachCard(
-                      name: 'Zaheer Khan',
-                      role: 'Bowling Coach',
-                      rating: '4.8',
-                      imageUrl: 'https://i.pravatar.cc/150?u=coach2',
-                      onTap: () => context.push('/coach-details/2'),
-                    ),
-                    const SizedBox(width: 16),
-                    _CoachCard(
-                      name: 'Jonty Rhodes',
-                      role: 'Fielding Coach',
-                      rating: '5.0',
-                      imageUrl: 'https://i.pravatar.cc/150?u=coach3',
-                      onTap: () => context.push('/coach-details/3'),
-                    ),
-                  ],
-                ),
-              ).animate().fadeIn(delay: 400.ms).slideX(),
-
-              const SizedBox(height: 32),
-
-              // Sessions Section
-              Text(
-                'Sessions',
-                style: GoogleFonts.outfit(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                  color: AppPalette.navyPrimary,
-                ),
-              ).animate().fadeIn(delay: 500.ms),
-              const SizedBox(height: 16),
-
-              // Session List
-              Column(
-                children: [
-                  _SearchResultItem(
-                    title: 'Bowling Masterclass',
-                    subtitle: 'Tomorrow • 10:00 AM',
-                    icon: Icons.sports_cricket,
-                    onTap: () {},
-                  ),
-                  const SizedBox(height: 12),
-                  _SearchResultItem(
-                    title: 'Advanced Batting',
-                    subtitle: 'Friday • 4:00 PM',
-                    icon: Icons.sports_cricket,
-                    onTap: () {},
-                  ),
-                  const SizedBox(height: 12),
-                  _SearchResultItem(
-                    title: 'Wicket Keeping Drills',
-                    subtitle: 'Saturday • 9:00 AM',
-                    icon: Icons.sports_handball,
-                    onTap: () {},
-                  ),
-                ].animate(interval: 100.ms).fadeIn().slideX(begin: 0.1),
+                  ).animate().fadeIn(delay: 200.ms).slideY(begin: 0.1),
+                ],
               ),
-              const SizedBox(height: 48),
-            ],
-          ),
+            ),
+
+            // Results - Scrollable
+            Expanded(
+              child: _isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : _error != null
+                      ? Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.error_outline,
+                                  size: 64, color: Colors.grey[400]),
+                              const SizedBox(height: 16),
+                              Text('Failed to load results',
+                                  style: GoogleFonts.inter(
+                                      fontSize: 16, color: Colors.grey[600])),
+                              const SizedBox(height: 8),
+                              TextButton(
+                                onPressed: () {
+                                  if (_hasSearched) {
+                                    _performSearch(_searchController.text);
+                                  } else {
+                                    _loadRecommendedCoaches();
+                                  }
+                                },
+                                child: const Text('Retry'),
+                              ),
+                            ],
+                          ),
+                        )
+                      : SingleChildScrollView(
+                          padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Coaches Section
+                              if (_coaches.isNotEmpty) ...[
+                                Text(
+                                  _hasSearched
+                                      ? 'Coaches (${_coaches.length})'
+                                      : 'Recommended Coaches',
+                                  style: GoogleFonts.outfit(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w600,
+                                    color: AppPalette.navyPrimary,
+                                  ),
+                                ).animate().fadeIn(delay: 300.ms),
+                                const SizedBox(height: 16),
+
+                                SizedBox(
+                                  height: 160,
+                                  child: ListView.separated(
+                                    scrollDirection: Axis.horizontal,
+                                    itemCount: _coaches.length,
+                                    separatorBuilder: (context, index) =>
+                                        const SizedBox(width: 16),
+                                    itemBuilder: (context, index) {
+                                      final coach = _coaches[index];
+                                      final user = coach['userId'];
+                                      return _CoachCard(
+                                        name: user?['fullName'] ?? 'Unknown',
+                                        role: (coach['specializations'] as List?)
+                                                ?.join(', ') ??
+                                            'Coach',
+                                        rating: coach['ratings']?['overall']
+                                                ?.toStringAsFixed(1) ??
+                                            '0.0',
+                                        imageUrl: user?['profilePhoto'] ??
+                                            'https://i.pravatar.cc/150?u=${coach['_id']}',
+                                        onTap: () {
+                                          // Navigate to coach details
+                                          context.push(
+                                              '/coach-details/${coach['_id']}');
+                                        },
+                                      );
+                                    },
+                                  ),
+                                ).animate().fadeIn(delay: 400.ms).slideX(),
+
+                                const SizedBox(height: 32),
+                              ],
+
+                              // Sessions Section
+                              if (_sessions.isNotEmpty) ...[
+                                Text(
+                                  'Sessions (${_sessions.length})',
+                                  style: GoogleFonts.outfit(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w600,
+                                    color: AppPalette.navyPrimary,
+                                  ),
+                                ).animate().fadeIn(delay: 500.ms),
+                                const SizedBox(height: 16),
+
+                                Column(
+                                  children: _sessions.map((session) {
+                                    final timeSlots =
+                                        session['timeSlots'] as List?;
+                                    final firstSlot = timeSlots?.isNotEmpty ==
+                                            true
+                                        ? timeSlots!.first
+                                        : null;
+                                    final startTime = firstSlot != null
+                                        ? DateTime.parse(
+                                            firstSlot['startTime'])
+                                        : null;
+
+                                    return Padding(
+                                      padding:
+                                          const EdgeInsets.only(bottom: 12),
+                                      child: _SearchResultItem(
+                                        title: session['title'] ?? 'Session',
+                                        subtitle: startTime != null
+                                            ? '${_formatDate(startTime)} • ${_formatTime(startTime)}'
+                                            : 'Date TBD',
+                                        icon: Icons.sports_cricket,
+                                        onTap: () {
+                                          context.push(
+                                              '/session-details/${session['_id']}');
+                                        },
+                                      ),
+                                    );
+                                  }).toList(),
+                                ).animate().fadeIn().slideX(begin: 0.1),
+                              ],
+
+                              // Empty state
+                              if (_coaches.isEmpty && _sessions.isEmpty) ...[
+                                Center(
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(48.0),
+                                    child: Column(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: [
+                                        Icon(Icons.search_off,
+                                            size: 64, color: Colors.grey[300]),
+                                        const SizedBox(height: 16),
+                                        Text(
+                                          _hasSearched
+                                              ? 'No results found'
+                                              : 'No coaches available',
+                                          style: GoogleFonts.outfit(
+                                            fontSize: 18,
+                                            fontWeight: FontWeight.w600,
+                                            color: Colors.grey[600],
+                                          ),
+                                        ),
+                                        const SizedBox(height: 8),
+                                        Text(
+                                          _hasSearched
+                                              ? 'Try different search terms'
+                                              : 'Check back later',
+                                          style: GoogleFonts.inter(
+                                            fontSize: 14,
+                                            color: Colors.grey[500],
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ],
+
+                              const SizedBox(height: 48),
+                            ],
+                          ),
+                        ),
+            ),
+          ],
         ),
       ),
     );
+  }
+
+  String _formatDate(DateTime date) {
+    final now = DateTime.now();
+    final tomorrow = DateTime(now.year, now.month, now.day + 1);
+    final sessionDate = DateTime(date.year, date.month, date.day);
+
+    if (sessionDate == DateTime(now.year, now.month, now.day)) {
+      return 'Today';
+    } else if (sessionDate == tomorrow) {
+      return 'Tomorrow';
+    } else {
+      return '${date.day}/${date.month}/${date.year}';
+    }
+  }
+
+  String _formatTime(DateTime time) {
+    final hour = time.hour > 12 ? time.hour - 12 : time.hour;
+    final minute = time.minute.toString().padLeft(2, '0');
+    final period = time.hour >= 12 ? 'PM' : 'AM';
+    return '$hour:$minute $period';
   }
 }
 

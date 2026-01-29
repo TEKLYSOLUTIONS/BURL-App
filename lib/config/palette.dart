@@ -39,7 +39,9 @@ class AppPalette {
 
   // Status Colors
   static const Color success = Color(0xFF16A34A);
+  static const Color successGreen = Color(0xFF16A34A);
   static const Color warning = Color(0xFFF59E0B);
+  static const Color errorRed = Color(0xFFBA1A1A);
 
   // Legacy/Compatibility Aliases
   static const Color navyBlue = navyPrimary;

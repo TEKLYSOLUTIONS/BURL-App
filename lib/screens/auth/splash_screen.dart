@@ -43,7 +43,7 @@ class _SplashScreenState extends State<SplashScreen>
     // Navigate after splash
     Future.delayed(const Duration(seconds: 3), () {
       if (mounted) {
-        context.go('/onboarding');
+        context.go('/welcome');
       }
     });
   }

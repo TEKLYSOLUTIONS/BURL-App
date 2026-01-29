@@ -43,7 +43,7 @@ class BookingSuccessScreen extends StatelessWidget {
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.more_vert, color: AppPalette.navyPrimary),
+            icon: const Icon(Icons.more_vert, color: Colors.orange),
             onPressed: () {},
           ),
         ],
@@ -332,7 +332,7 @@ class BookingSuccessScreen extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(width: 8),
-                  const Icon(Icons.copy, size: 16, color: Colors.grey),
+                  const Icon(Icons.copy, size: 16, color: Colors.orange),
                 ],
               ),
 

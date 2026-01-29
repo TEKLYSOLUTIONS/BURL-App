@@ -3,8 +3,12 @@ import 'package:go_router/go_router.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:ionicons/ionicons.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../config/palette.dart';
-import '../../services/auth_service.dart';
+import '../../services/firebase_auth_service.dart';
+import 'dart:io';
 
 class LoginScreen extends StatefulWidget {
   final String? role;
@@ -20,13 +24,263 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _rememberMe = false;
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _authService = FirebaseAuthService();
   bool _isLoading = false;
+  String? _userRole; // Store actual user role from backend
 
   @override
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
+  }
+
+  Future<void> _handleLogin() async {
+    if (_emailController.text.trim().isEmpty || _passwordController.text.isEmpty) {
+      _showSnackBar('Please enter email and password', isError: true);
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    try {
+      // First, try local authentication (for existing MongoDB users)
+      debugPrint('🔐 Attempting login for: ${_emailController.text.trim()}');
+      final localSuccess = await _tryLocalLogin();
+      
+      if (localSuccess) {
+        debugPrint('✅ Local authentication successful');
+        if (!mounted) return;
+        _navigateToHome();
+        return;
+      }
+      
+      // If local auth fails, try Firebase authentication (for new users)
+      debugPrint('🔄 Local auth failed, trying Firebase...');
+      try {
+        // Get stored role from registration
+        final prefs = await SharedPreferences.getInstance();
+        final storedRole = prefs.getString('pending_role');
+        final storedEmail = prefs.getString('pending_email');
+        
+        String? roleToUse;
+        if (storedEmail == _emailController.text.trim()) {
+          roleToUse = storedRole;
+          debugPrint('📝 Using stored role for first login: $roleToUse');
+        } else {
+          debugPrint('⚠️ No stored role found or email mismatch');
+        }
+        
+        debugPrint('🔑 Calling signIn with role: $roleToUse');
+        
+        await _authService.signIn(
+          email: _emailController.text.trim(),
+          password: _passwordController.text,
+          role: roleToUse,
+        );
+
+        debugPrint('✅ Firebase authentication successful');
+        
+        // Clear stored values after successful login and MongoDB sync
+        if (storedEmail == _emailController.text.trim()) {
+          await prefs.remove('pending_role');
+          await prefs.remove('pending_email');
+          debugPrint('🗑️ Cleared stored registration data');
+        }
+        
+        // Get Firebase ID token and save it
+        final firebaseToken = await _authService.getIdToken();
+        if (firebaseToken != null) {
+          await prefs.setString('auth_token', firebaseToken);
+          debugPrint('💾 Firebase token saved to SharedPreferences');
+        }
+        
+        // Fetch user profile from backend to get actual role
+        await _fetchUserProfile();
+        
+        if (!mounted) return;
+        _navigateToHome();
+      } on Exception catch (firebaseError) {
+        debugPrint('❌ Firebase auth also failed: $firebaseError');
+        throw Exception('Login failed. Please check your credentials.');
+      }
+    } catch (e) {
+      if (!mounted) return;
+      _showSnackBar(e.toString(), isError: true);
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  Future<bool> _tryLocalLogin() async {
+    try {
+      debugPrint('🔄 Attempting local authentication...');
+      final response = await http.post(
+        Uri.parse('http://localhost:4000/api/auth/login'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'email': _emailController.text.trim(),
+          'password': _passwordController.text,
+        }),
+      );
+
+      debugPrint('📡 Local auth response: ${response.statusCode}');
+      
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final userRole = data['user']['role'] as String?;
+        final accessToken = data['accessToken'] as String?;
+        
+        debugPrint('✅ Local auth successful');
+        debugPrint('👤 User role from MongoDB: $userRole');
+        debugPrint('🔑 Access token received: ${accessToken != null}');
+        
+        // Save JWT token to SharedPreferences for API calls
+        if (accessToken != null) {
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setString('auth_token', accessToken);
+          debugPrint('💾 Token saved to SharedPreferences');
+        }
+        
+        // Store the user role for navigation
+        if (mounted) {
+          setState(() {
+            _userRole = userRole;
+          });
+        }
+        
+        return true;
+      }
+      debugPrint('❌ Local auth failed: ${response.statusCode} - ${response.body}');
+      return false;
+    } catch (e) {
+      debugPrint('❌ Local auth error: $e');
+      return false;
+    }
+  }
+
+  Future<void> _fetchUserProfile() async {
+    try {
+      debugPrint('📥 Fetching user profile from backend...');
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('auth_token');
+      
+      if (token == null) {
+        debugPrint('⚠️ No auth token found, skipping profile fetch');
+        return;
+      }
+      
+      final response = await http.get(
+        Uri.parse('http://localhost:4000/api/users/profile'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+      
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final userRole = data['user']?['role'] as String?;
+        debugPrint('👤 User role from profile: $userRole');
+        
+        if (mounted && userRole != null) {
+          setState(() {
+            _userRole = userRole;
+          });
+        }
+      } else {
+        debugPrint('⚠️ Failed to fetch profile: ${response.statusCode}');
+      }
+    } catch (e) {
+      debugPrint('❌ Error fetching profile: $e');
+    }
+  }
+
+  void _navigateToHome() {
+    // Use the actual user role from database, not widget.role
+    final roleToUse = _userRole ?? widget.role ?? 'player';
+    debugPrint('🏠 Navigating to home: $roleToUse');
+    
+    if (roleToUse == 'coach') {
+      context.go('/coach/home');
+    } else if (roleToUse == 'player') {
+      context.go('/player/home');
+    } else if (roleToUse == 'guardian') {
+      context.go('/guardian/home');
+    } else {
+      context.go('/player/home'); // default
+    }
+  }
+
+  Future<void> _handleGoogleSignIn() async {
+    setState(() => _isLoading = true);
+    
+    try {
+      await _authService.signInWithGoogle();
+      
+      if (!mounted) return;
+      
+      // Navigate based on role
+      if (widget.role == 'coach') {
+        context.go('/coach/home');
+      } else if (widget.role == 'player') {
+        context.go('/player/home');
+      } else if (widget.role == 'guardian') {
+        context.go('/guardian/home');
+      } else {
+        context.go('/player/home');
+      }
+    } catch (e) {
+      if (!mounted) return;
+      _showSnackBar(e.toString(), isError: true);
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  Future<void> _handleAppleSignIn() async {
+    setState(() => _isLoading = true);
+    
+    try {
+      await _authService.signInWithApple();
+      
+      if (!mounted) return;
+      
+      // Navigate based on role
+      if (widget.role == 'coach') {
+        context.go('/coach/home');
+      } else if (widget.role == 'player') {
+        context.go('/player/home');
+      } else if (widget.role == 'guardian') {
+        context.go('/guardian/home');
+      } else {
+        context.go('/player/home');
+      }
+    } catch (e) {
+      if (!mounted) return;
+      _showSnackBar(e.toString(), isError: true);
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  void _showSnackBar(String message, {bool isError = false}) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: isError ? Colors.red : AppPalette.successGreen,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+        ),
+      ),
+    );
   }
 
   @override
@@ -189,49 +443,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 width: double.infinity,
                 height: 56,
                 child: ElevatedButton(
-                  onPressed: _isLoading
-                      ? null
-                      : () async {
-                          setState(() => _isLoading = true);
-                          final success = await AuthService.login(
-                            _emailController.text,
-                            _passwordController.text,
-                          );
-
-                          if (!context.mounted) return;
-
-                          setState(() => _isLoading = false);
-
-                          if (success) {
-                            final role = await AuthService.getUserRole();
-                            if (!context.mounted) return;
-
-                            if (role == 'coach') {
-                              context.go('/coach/home');
-                            } else if (role == 'player') {
-                              context.go('/player/home');
-                            } else if (role == 'guardian') {
-                              context.go('/guardian/home');
-                            } else {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('Unknown user role'),
-                                ),
-                              );
-                            }
-                          } else {
-                            if (context.mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text(
-                                    'Login failed. Please check credentials.',
-                                  ),
-                                  backgroundColor: Colors.red,
-                                ),
-                              );
-                            }
-                          }
-                        },
+                  onPressed: _isLoading ? null : _handleLogin,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppPalette.orangeAccent,
                     foregroundColor: Colors.white,
@@ -296,17 +508,18 @@ class _LoginScreenState extends State<LoginScreen> {
                   Expanded(
                     child: _SocialButton(
                       assetPath: 'assets/images/logo_google.png',
-                      onTap: () {},
+                      onTap: _handleGoogleSignIn,
                     ),
                   ),
                   const SizedBox(width: 16),
-                  Expanded(
-                    child: _SocialButton(
-                      assetPath: 'assets/images/logo_apple.png',
-                      isApple: true,
-                      onTap: () {},
+                  if (Platform.isIOS || Platform.isMacOS)
+                    Expanded(
+                      child: _SocialButton(
+                        assetPath: 'assets/images/logo_apple.png',
+                        isApple: true,
+                        onTap: _handleAppleSignIn,
+                      ),
                     ),
-                  ),
                 ],
               ).animate().fadeIn(delay: 900.ms),
 
@@ -316,11 +529,8 @@ class _LoginScreenState extends State<LoginScreen> {
               Center(
                 child: GestureDetector(
                   onTap: () {
-                    if (widget.role != null) {
-                      context.go('/register?role=${widget.role}');
-                    } else {
-                      context.go('/register');
-                    }
+                    // Navigate to role selection instead of directly to register
+                    context.go('/role-selection');
                   },
                   child: RichText(
                     text: TextSpan(
@@ -389,9 +599,8 @@ class _CustomTextField extends StatelessWidget {
         const SizedBox(height: 8),
         Container(
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: Colors.grey[100],
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.grey[200]!),
           ),
           child: TextFormField(
             controller: controller,
@@ -417,7 +626,13 @@ class _CustomTextField extends StatelessWidget {
                       onPressed: onVisibilityChanged,
                     )
                   : null,
+              filled: true,
+              fillColor: Colors.transparent,
               border: InputBorder.none,
+              enabledBorder: InputBorder.none,
+              focusedBorder: InputBorder.none,
+              errorBorder: InputBorder.none,
+              focusedErrorBorder: InputBorder.none,
               contentPadding: const EdgeInsets.symmetric(
                 horizontal: 16,
                 vertical: 14,

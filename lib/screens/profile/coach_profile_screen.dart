@@ -99,8 +99,6 @@ class _CoachProfileScreenState extends State<CoachProfileScreen> {
                     ),
                   ),
                   NotificationButton(
-                    hasNotification: true,
-                    // Default values are suitable for dark background
                     onTap: () => context.push('/coach/notifications'),
                   ),
                 ],
@@ -213,8 +211,8 @@ class _CoachProfileScreenState extends State<CoachProfileScreen> {
                       children: [
                         _buildListTile(
                           icon: Icons.lock_outline,
-                          iconBgColor: Colors.blue[50]!,
-                          iconColor: Colors.blue,
+                          iconBgColor: Colors.orange[50]!,
+                          iconColor: Colors.orange,
                           title: 'Change Password',
                           onTap: () => Navigator.push(
                             context,
@@ -347,25 +345,24 @@ class _CoachProfileScreenState extends State<CoachProfileScreen> {
                       children: [
                         _buildListTile(
                           icon: Icons.help_outline,
-                          iconBgColor: Colors.green[50]!,
-                          iconColor: Colors.green,
+                          iconBgColor: Colors.orange[50]!,
+                          iconColor: Colors.orange,
                           title: 'Help Center',
                           onTap: () {},
                         ),
                         const Divider(height: 1, color: Color(0xFFEEEEEE)),
                         _buildListTile(
                           icon: Icons.privacy_tip_outlined,
-                          iconBgColor: Colors.blueGrey[50]!,
-                          iconColor: Colors.blueGrey,
+                          iconBgColor: Colors.orange[50]!,
+                          iconColor: Colors.orange,
                           title: 'Privacy Policy',
                           onTap: () {},
                         ),
                         const Divider(height: 1, color: Color(0xFFEEEEEE)),
                         _buildListTile(
                           icon: Icons.description_outlined,
-                          iconBgColor: Colors
-                              .grey[100]!, // Should actually be different icon from image
-                          iconColor: Colors.grey[700]!,
+                          iconBgColor: Colors.orange[50]!,
+                          iconColor: Colors.orange,
                           title: 'Terms of Service',
                           onTap: () {},
                         ),

@@ -400,7 +400,7 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
               children: [
                 const Row(
                   children: [
-                    Icon(Icons.calendar_today, color: Colors.blue, size: 20),
+                    Icon(Icons.calendar_today, color: Colors.orange, size: 20),
                     SizedBox(width: 6),
                     Text(
                       'Upcoming',
@@ -721,10 +721,8 @@ class _ProfileHeader extends StatelessWidget {
           ),
         ),
         NotificationButton(
-          hasNotification: true, // You can make this dynamic later
           onTap: () => context.push('/guardian/notifications'),
-          iconColor:
-              AppPalette.navyPrimary, // Makes it visible on light background
+          iconColor: AppPalette.navyPrimary,
           backgroundColor: const Color(0xFFF1F5F9),
         ),
       ],

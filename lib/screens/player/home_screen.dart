@@ -127,7 +127,6 @@ class _PlayerHomeScreenState extends State<PlayerHomeScreen> {
                     ],
                   ),
                   NotificationButton(
-                    hasNotification: true, // Show dot as per design
                     onTap: () => context.push('/player/notifications'),
                     iconColor: AppPalette.navyPrimary,
                     backgroundColor: const Color(0xFFF8F9FA),

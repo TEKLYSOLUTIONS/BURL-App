@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "718597555031",
+    "project_id": "burl-ad60f",
+    "storage_bucket": "burl-ad60f.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:718597555031:android:ca970f95115285e862f412",
+        "android_client_info": {
+          "package_name": "com.example.cricketcoachflutter"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAHkVo1IzZRGXyMZjLbnhLSg59-DD1Chcw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -451,7 +451,7 @@ class _StudentsScreenState extends State<StudentsScreen> {
             ),
             Row(
               children: [
-                Icon(Icons.bar_chart_rounded, color: Colors.grey[400]),
+                Icon(Icons.bar_chart_rounded, color: Colors.orange),
               ],
             ),
           ],

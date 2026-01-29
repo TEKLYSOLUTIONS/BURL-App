@@ -153,14 +153,21 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                   margin: const EdgeInsets.symmetric(horizontal: 16.0),
                   padding: const EdgeInsets.all(24.0),
                   decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.7),
+                    color: Colors.white.withValues(alpha: 0.95),
                     borderRadius: const BorderRadius.vertical(
                       top: Radius.circular(32),
                       bottom: Radius.circular(32),
                     ),
                     border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.1),
+                      color: Colors.black.withValues(alpha: 0.05),
                     ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.1),
+                        blurRadius: 20,
+                        offset: const Offset(0, 10),
+                      ),
+                    ],
                   ),
                   child: Column(
                     children: [
@@ -171,10 +178,10 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                           vertical: 8,
                         ),
                         decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.15),
+                          color: Colors.black.withValues(alpha: 0.05),
                           borderRadius: BorderRadius.circular(20),
                           border: Border.all(
-                            color: Colors.white.withValues(alpha: 0.2),
+                            color: Colors.black.withValues(alpha: 0.05),
                           ),
                         ),
                         child: Row(
@@ -191,7 +198,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                               style: GoogleFonts.inter(
                                 fontSize: 12,
                                 fontWeight: FontWeight.w600,
-                                color: Colors.white,
+                                color: Colors.black87,
                                 letterSpacing: 0.5,
                               ),
                             ),
@@ -212,7 +219,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                               fontSize: 32,
                               fontWeight: FontWeight.bold,
                               height: 1.1,
-                              color: Colors.white,
+                              color: Colors.black,
                             ),
                             children: [
                               TextSpan(text: _slides[_currentPage].title1),
@@ -238,7 +245,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                           textAlign: TextAlign.center,
                           style: GoogleFonts.inter(
                             fontSize: 16,
-                            color: Colors.white.withValues(alpha: 0.8),
+                            color: Colors.black54,
                             height: 1.5,
                           ),
                         ),
@@ -259,7 +266,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                             decoration: BoxDecoration(
                               color: isActive
                                   ? AppPalette.orangeAccent
-                                  : Colors.white.withValues(alpha: 0.3),
+                                  : Colors.black.withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(3),
                             ),
                           );
@@ -269,8 +276,6 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                       const SizedBox(height: 32),
 
                       // Get Started Button / Next Button
-                      // Logic: If last slide, show "Get Started". Else show "Next" or just dots?
-                      // User said: "on last picture get started button shuld apper".
                       if (_currentPage == _slides.length - 1)
                         ElevatedButton(
                           onPressed: () => context.push('/role-selection'),
@@ -335,7 +340,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                           text: TextSpan(
                             style: GoogleFonts.inter(
                               fontSize: 15,
-                              color: Colors.white.withValues(alpha: 0.9),
+                              color: Colors.black87,
                             ),
                             children: [
                               const TextSpan(text: 'Already have an account? '),

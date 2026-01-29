@@ -120,7 +120,6 @@ class _CoachHomeScreenState extends State<CoachHomeScreen> {
                       ),
                       const Spacer(),
                       NotificationButton(
-                        hasNotification: true,
                         onTap: () => context.push('/coach/notifications'),
                       ),
                     ],
@@ -560,7 +559,7 @@ class _CoachHomeScreenState extends State<CoachHomeScreen> {
               ],
             ),
           ),
-          Icon(Icons.chevron_right, color: Colors.grey[300]),
+          Icon(Icons.chevron_right, color: Colors.orange),
         ],
       ),
     );

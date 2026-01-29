@@ -182,7 +182,7 @@ class _SessionDetailsScreenState extends State<SessionDetailsScreen> {
     final timeSlots = _session!['timeSlots'] as List? ?? [];
     final firstTimeSlot = timeSlots.isNotEmpty ? timeSlots[0] : null;
     final startTime = firstTimeSlot != null
-        ? DateTime.parse(firstTimeSlot['startTime'] as String)
+        ? DateTime.parse(firstTimeSlot['startTime'] as String).toLocal()
         : DateTime.now();
     final duration = firstTimeSlot != null
         ? firstTimeSlot['durationMinutes'] as int
@@ -192,13 +192,13 @@ class _SessionDetailsScreenState extends State<SessionDetailsScreen> {
     Map<String, dynamic>? coach;
     final createdByValue = _session!['createdBy'];
     final coachValue = _session!['coach'];
-    
+
     if (createdByValue is Map<String, dynamic>) {
       coach = createdByValue;
     } else if (coachValue is Map<String, dynamic>) {
       coach = coachValue;
     }
-    
+
     final isCoach = _userRole == 'coach';
 
     return Scaffold(
@@ -230,7 +230,7 @@ class _SessionDetailsScreenState extends State<SessionDetailsScreen> {
         actions: [
           if (isCoach)
             PopupMenuButton<String>(
-              icon: const Icon(Icons.more_vert, color: Colors.black),
+              icon: const Icon(Icons.more_vert, color: Colors.orange),
               onSelected: (value) {
                 if (value == 'edit') {
                   // Navigate to edit screen (not yet implemented)
@@ -246,7 +246,7 @@ class _SessionDetailsScreenState extends State<SessionDetailsScreen> {
                   value: 'edit',
                   child: Row(
                     children: [
-                      Icon(Icons.edit, size: 20),
+                      Icon(Icons.edit, size: 20, color: Colors.orange),
                       SizedBox(width: 12),
                       Text('Edit Session'),
                     ],
@@ -520,10 +520,10 @@ class _SessionDetailsScreenState extends State<SessionDetailsScreen> {
                           final timeSlot = entry.value;
                           final occStartTime = DateTime.parse(
                             timeSlot['startTime'] as String,
-                          );
+                          ).toLocal();
                           final occEndTime = DateTime.parse(
                             timeSlot['endTime'] as String,
-                          );
+                          ).toLocal();
 
                           return Container(
                             margin: const EdgeInsets.only(bottom: 12),

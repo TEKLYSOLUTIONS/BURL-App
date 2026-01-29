@@ -125,7 +125,6 @@ class _MySessionsScreenState extends State<MySessionsScreen>
                   ),
                 ),
                 NotificationButton(
-                  hasNotification: true,
                   iconColor: widget.isCoach
                       ? Colors.white
                       : AppPalette.navyPrimary,
@@ -282,7 +281,7 @@ class _MySessionsScreenState extends State<MySessionsScreen>
     if (timeSlots.isEmpty) return const SizedBox.shrink();
 
     final timeSlot = timeSlots[0];
-    final startTime = DateTime.parse(timeSlot['startTime'] as String);
+    final startTime = DateTime.parse(timeSlot['startTime'] as String).toLocal();
     final duration = timeSlot['durationMinutes'] as int;
 
     return Container(
@@ -431,16 +430,16 @@ class _MySessionsScreenState extends State<MySessionsScreen>
   Widget _buildStudentSessionCard(Map<String, dynamic> booking, int index) {
     // For players/guardians, the data is a booking with nested session
     final session = booking['session'] as Map<String, dynamic>? ?? {};
-    final occurrenceDate = booking['occurrenceDate'] != null 
+    final occurrenceDate = booking['occurrenceDate'] != null
         ? DateTime.parse(booking['occurrenceDate'] as String)
         : DateTime.now();
     final bookingStatus = booking['status'] as String? ?? 'pending';
-    
+
     // Map booking status to display status
     String displayStatus;
     Color statusColor;
     Color statusTextColor;
-    
+
     switch (bookingStatus.toLowerCase()) {
       case 'confirmed':
         displayStatus = 'Confirmed';
@@ -467,7 +466,7 @@ class _MySessionsScreenState extends State<MySessionsScreen>
         statusColor = Colors.grey[50]!;
         statusTextColor = Colors.grey[700]!;
     }
-    
+
     return Container(
       margin: const EdgeInsets.only(bottom: 20),
       padding: const EdgeInsets.all(16),
@@ -570,7 +569,9 @@ class _MySessionsScreenState extends State<MySessionsScreen>
                     ),
                     const SizedBox(width: 6),
                     Text(
-                      (session['coach'] as Map<String, dynamic>?)?['fullName'] as String? ?? 'Unknown Coach',
+                      (session['coach'] as Map<String, dynamic>?)?['fullName']
+                              as String? ??
+                          'Unknown Coach',
                       style: GoogleFonts.inter(
                         fontSize: 13,
                         color: Colors.grey[600],
@@ -604,11 +605,7 @@ class _MySessionsScreenState extends State<MySessionsScreen>
                 const SizedBox(height: 6),
                 Row(
                   children: [
-                    Icon(
-                      Icons.person,
-                      size: 14,
-                      color: AppPalette.navyPrimary,
-                    ),
+                    Icon(Icons.person, size: 14, color: AppPalette.navyPrimary),
                     const SizedBox(width: 6),
                     Text(
                       'For: ${(booking['player'] as Map<String, dynamic>?)?['fullName'] as String? ?? 'Unknown Player'}',

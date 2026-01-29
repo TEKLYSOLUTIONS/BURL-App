@@ -63,7 +63,7 @@ class _CoachDetailsScreenState extends State<CoachDetailsScreen>
               backgroundColor: Colors.white,
               child: IconButton(
                 icon: const Icon(Icons.share_outlined, size: 20),
-                color: Colors.black,
+                color: Colors.orange,
                 onPressed: () {},
               ),
             ),

@@ -29,6 +29,8 @@ class SessionService {
     required List<String> selectedDays,
     required bool isRecurring,
     List<String> participants = const [],
+    double priceAmount = 0.0,
+    bool pricePerPerson = true,
   }) async {
     try {
       final httpResponse = await ApiService.post('sessions', {
@@ -40,6 +42,11 @@ class SessionService {
         'selectedDays': selectedDays,
         'isRecurring': isRecurring,
         'participants': participants,
+        'pricing': {
+          'amount': priceAmount,
+          'currency': 'USD',
+          'pricePerPerson': pricePerPerson,
+        },
       });
 
       final responseData =

@@ -15,10 +15,10 @@ class EditProfileScreen extends StatefulWidget {
 
 class _EditProfileScreenState extends State<EditProfileScreen> {
   final _formKey = GlobalKey<FormState>();
-  late TextEditingController _nameController;
-  late TextEditingController _emailController;
-  late TextEditingController _phoneController;
-  late TextEditingController _bioController;
+  final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _phoneController = TextEditingController();
+  final TextEditingController _bioController = TextEditingController();
 
   bool _isLoading = false;
   bool _isSaving = false;
@@ -38,18 +38,16 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
   void _initializeWithData(Map<String, dynamic> data) {
     _userRole = data['role'] ?? '';
-    _nameController = TextEditingController(text: data['fullName'] ?? '');
-    _emailController = TextEditingController(text: data['email'] ?? '');
-    _phoneController = TextEditingController(
-      text: data['phone'] ?? data['phoneNumber'] ?? '',
-    );
+    _nameController.text = data['fullName'] ?? '';
+    _emailController.text = data['email'] ?? '';
+    _phoneController.text = data['phone'] ?? data['phoneNumber'] ?? '';
 
     // Get role-specific data
     String bio = '';
     if (_userRole == 'coach' && data['coachProfile'] != null) {
       bio = data['coachProfile']['bio'] ?? '';
     }
-    _bioController = TextEditingController(text: bio);
+    _bioController.text = bio;
   }
 
   Future<void> _fetchAndInitialize() async {

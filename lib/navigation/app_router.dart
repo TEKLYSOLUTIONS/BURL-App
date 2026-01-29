@@ -5,6 +5,9 @@ import '../screens/auth/welcome_screen.dart';
 import '../screens/auth/role_selection_screen.dart';
 import '../screens/auth/login_screen.dart';
 import '../screens/auth/register_screen.dart';
+import '../screens/auth/forgot_password_screen.dart';
+import '../screens/legal/terms_screen.dart';
+import '../screens/legal/privacy_policy_screen.dart';
 import '../screens/sessions/create_session_screen.dart'; // New Import // New Import
 import '../screens/coach/home_screen.dart';
 import '../screens/search/search_screen.dart';
@@ -18,7 +21,7 @@ import '../screens/sessions/my_sessions_screen.dart';
 
 import '../screens/guardian/my_players_screen.dart';
 import '../screens/profile/coach_profile_screen.dart';
-import '../screens/profile/edit_profile_screen.dart';
+import '../screens/profile/complete_coach_profile_screen.dart';
 import '../screens/sessions/session_details_screen.dart';
 import '../widgets/navigation/guardian_navigation.dart';
 import '../widgets/navigation/coach_navigation.dart';
@@ -62,10 +65,6 @@ class AppRouter {
     routes: [
       GoRoute(path: '/', builder: (context, state) => const SplashScreen()),
       GoRoute(
-        path: '/onboarding',
-        builder: (context, state) => const WelcomeScreen(),
-      ),
-      GoRoute(
         path: '/welcome',
         builder: (context, state) => const WelcomeScreen(),
       ),
@@ -82,6 +81,18 @@ class AppRouter {
         path: '/register',
         builder: (context, state) =>
             RegisterScreen(role: state.uri.queryParameters['role']),
+      ),
+      GoRoute(
+        path: '/forgot-password',
+        builder: (context, state) => const ForgotPasswordScreen(),
+      ),
+      GoRoute(
+        path: '/terms',
+        builder: (context, state) => const TermsScreen(),
+      ),
+      GoRoute(
+        path: '/privacy-policy',
+        builder: (context, state) => const PrivacyPolicyScreen(),
       ),
 
       GoRoute(
@@ -102,7 +113,7 @@ class AppRouter {
         path: '/edit-profile',
         builder: (context, state) {
           final profileData = state.extra as Map<String, dynamic>?;
-          return EditProfileScreen(profileData: profileData);
+          return CompleteCoachProfileScreen(profileData: profileData);
         },
       ),
 

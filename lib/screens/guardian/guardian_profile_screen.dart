@@ -79,7 +79,6 @@ class _GuardianProfileScreenState extends State<GuardianProfileScreen> {
           Padding(
             padding: const EdgeInsets.only(right: 16.0),
             child: NotificationButton(
-              hasNotification: true,
               onTap: () => context.push('/guardian/notifications'),
             ),
           ),
@@ -376,7 +375,7 @@ class _GuardianProfileScreenState extends State<GuardianProfileScreen> {
           color: const Color(0xFFF5F7FA),
           borderRadius: BorderRadius.circular(10),
         ),
-        child: Icon(icon, color: AppPalette.navyPrimary, size: 22),
+        child: Icon(icon, color: Colors.orange, size: 22),
       ),
       title: Text(
         title,

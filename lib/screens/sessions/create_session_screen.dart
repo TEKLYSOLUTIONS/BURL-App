@@ -1,11 +1,15 @@
+import 'dart:async'; // Add this for Timer
 import 'package:flutter/material.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:table_calendar/table_calendar.dart';
 import 'package:intl/intl.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:table_calendar/table_calendar.dart';
 import '../../config/palette.dart';
 import '../../widgets/app_time_picker.dart';
+import '../../services/places_service.dart';
 import '../../services/session_service.dart';
+import '../../widgets/notification_button.dart';
+import 'package:go_router/go_router.dart';
 
 class CreateSessionScreen extends StatefulWidget {
   const CreateSessionScreen({super.key});
@@ -20,30 +24,40 @@ class _CreateSessionScreenState extends State<CreateSessionScreen>
   final _titleController = TextEditingController();
   final _descriptionController = TextEditingController();
   final _locationController = TextEditingController();
+  final _priceController = TextEditingController();
   late TabController _tabController;
 
-  // Calendar State
-  DateTime _focusedDay = DateTime.now();
-  final Set<DateTime> _selectedDays = {DateTime.now()};
+  // Autocomplete State
+  List<PlacePrediction> _predictions = [];
+  Timer? _debounce;
+  final LayerLink _layerLink = LayerLink(); // For Overlay
+  OverlayEntry? _overlayEntry;
+  final FocusNode _locationFocus = FocusNode();
 
-  // Time Slots State
-  final List<TimeSlot> _timeSlots = [
-    TimeSlot(
-      startTime: const TimeOfDay(hour: 9, minute: 0),
-      durationMinutes: 90,
-    ),
+  // Calendar State
+  DateTime _focusedDay = DateTime.now(); // Re-added
+
+  // Single Session State
+  DateTime _singleDate = DateTime.now();
+  // List of time slots for single session: [{startTime, endTime}]
+  final List<Map<String, TimeOfDay>> _singleTimeSlots = [
+    {
+      'startTime': const TimeOfDay(hour: 9, minute: 0),
+      'endTime': const TimeOfDay(hour: 10, minute: 30),
+    },
   ];
+
+  // Recurring (Packet) State
+  // Map of dates to their timeslots: {DateTime: [{startTime, endTime}]}
+  final Map<DateTime, List<Map<String, TimeOfDay>>> _recurringTimeslots = {};
+  DateTime? _selectedRecurringDate; // Currently selected date for editing timeslots
 
   // Logistics State
   int _capacity = 18;
-
-  // Participants State
-  final List<String> _participants = [
-    'https://i.pravatar.cc/150?u=kevin',
-    'https://i.pravatar.cc/150?u=marcus',
-    'https://i.pravatar.cc/150?u=phil',
-  ];
-  final Set<int> _selectedParticipants = {0}; // Select first by default
+  bool _pricePerPerson = true; // true = per person, false = per session
+  LatLng? _selectedLocation;
+  GoogleMapController? _mapController;
+  final Set<Marker> _markers = {};
 
   // API State
   bool _isCreating = false;
@@ -54,14 +68,7 @@ class _CreateSessionScreenState extends State<CreateSessionScreen>
     _tabController = TabController(length: 2, vsync: this);
     _tabController.addListener(() {
       if (!_tabController.indexIsChanging) {
-        setState(() {
-          // Clear multiple selections if switching to Single
-          if (_tabController.index == 0 && _selectedDays.length > 1) {
-            final first = _selectedDays.first;
-            _selectedDays.clear();
-            _selectedDays.add(first);
-          }
-        });
+        setState(() {}); // Rebuild to toggle UI
       }
     });
   }
@@ -71,30 +78,32 @@ class _CreateSessionScreenState extends State<CreateSessionScreen>
     _titleController.dispose();
     _descriptionController.dispose();
     _locationController.dispose();
+    _priceController.dispose();
     _tabController.dispose();
     super.dispose();
   }
 
+  // Normalize date to remove time component for map key
+  DateTime _normalizeDate(DateTime date) {
+    return DateTime(date.year, date.month, date.day);
+  }
+
+  // Handler for Calendar selection
   void _onDaySelected(DateTime selectedDay, DateTime focusedDay) {
     setState(() {
       _focusedDay = focusedDay;
-      if (_tabController.index == 0) {
-        // Single Session: Clear and select only one
-        _selectedDays.clear();
-        _selectedDays.add(selectedDay);
-      } else {
-        // Recurring Session: Toggle selection
-        if (_isDaySelected(selectedDay)) {
-          _selectedDays.removeWhere((d) => isSameDay(d, selectedDay));
-        } else {
-          _selectedDays.add(selectedDay);
-        }
-      }
     });
-  }
 
-  bool _isDaySelected(DateTime day) {
-    return _selectedDays.any((d) => isSameDay(d, day));
+    if (_tabController.index == 1) {
+      // Recurring tab - select this date to show/edit timeslots
+      setState(() {
+        _selectedRecurringDate = _normalizeDate(selectedDay);
+        // Initialize with empty list if no timeslots exist
+        if (!_recurringTimeslots.containsKey(_selectedRecurringDate)) {
+          _recurringTimeslots[_selectedRecurringDate!] = [];
+        }
+      });
+    }
   }
 
   @override
@@ -126,15 +135,17 @@ class _CreateSessionScreenState extends State<CreateSessionScreen>
                   ),
                   const SizedBox(height: 32),
 
-                  _buildScheduleSection(),
+                  // Schedule Section (Conditional)
+                  if (_tabController.index == 0)
+                    _buildSingleSessionSchedule()
+                  else
+                    _buildRecurringSessionSchedule(),
+
                   const SizedBox(height: 32),
 
                   _buildLogisticsSection(),
                   const SizedBox(height: 32),
-
-                  _buildParticipantsSection(),
-                  const SizedBox(height: 32),
-                  _buildBottomAction(), // Moved to end of page
+                  _buildBottomAction(),
                   const SizedBox(height: 40),
                 ],
               ),
@@ -142,7 +153,6 @@ class _CreateSessionScreenState extends State<CreateSessionScreen>
           ),
         ],
       ),
-      // bottomSheet removed
     );
   }
 
@@ -164,6 +174,7 @@ class _CreateSessionScreenState extends State<CreateSessionScreen>
       child: Column(
         children: [
           Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               IconButton(
                 onPressed: () => Navigator.pop(context),
@@ -176,13 +187,17 @@ class _CreateSessionScreenState extends State<CreateSessionScreen>
                   'Create Session',
                   textAlign: TextAlign.center,
                   style: GoogleFonts.outfit(
-                    color: Colors.white,
-                    fontSize: 20,
+                    fontSize: 24,
                     fontWeight: FontWeight.bold,
+                    color: Colors.white,
                   ),
                 ),
               ),
-              const SizedBox(width: 24), // Balance the back button
+              NotificationButton(
+                iconColor: Colors.white,
+                backgroundColor: Colors.white.withValues(alpha: 0.1),
+                onTap: () => context.push('/coach/notifications'),
+              ),
             ],
           ),
           const SizedBox(height: 24),
@@ -270,7 +285,371 @@ class _CreateSessionScreenState extends State<CreateSessionScreen>
     );
   }
 
-  Widget _buildScheduleSection() {
+  // --- Single Session UI ---
+  Widget _buildSingleSessionSchedule() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Date & Time',
+          style: GoogleFonts.outfit(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: AppPalette.navyPrimary,
+          ),
+        ),
+        const SizedBox(height: 16),
+
+        // Calendar Container
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.03),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: TableCalendar(
+            firstDay: DateTime.now(),
+            lastDay: DateTime.now().add(const Duration(days: 365)),
+            focusedDay: _singleDate,
+            selectedDayPredicate: (day) => isSameDay(_singleDate, day),
+            onDaySelected: (selectedDay, focusedDay) {
+              setState(() {
+                _singleDate = selectedDay;
+              });
+            },
+            calendarFormat: CalendarFormat.month,
+            headerStyle: HeaderStyle(
+              titleCentered: true,
+              formatButtonVisible: false,
+              titleTextStyle: GoogleFonts.outfit(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: AppPalette.navyPrimary,
+              ),
+              leftChevronIcon: Container(
+                padding: const EdgeInsets.all(4),
+                decoration: BoxDecoration(
+                  color: Colors.grey[100],
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.chevron_left,
+                  size: 20,
+                  color: Colors.grey,
+                ),
+              ),
+              rightChevronIcon: Container(
+                padding: const EdgeInsets.all(4),
+                decoration: BoxDecoration(
+                  color: Colors.grey[100],
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.chevron_right,
+                  size: 20,
+                  color: Colors.grey,
+                ),
+              ),
+            ),
+            daysOfWeekStyle: DaysOfWeekStyle(
+              weekdayStyle: GoogleFonts.inter(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: Colors.grey[400],
+              ),
+              weekendStyle: GoogleFonts.inter(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: Colors.grey[400],
+              ),
+            ),
+            calendarStyle: CalendarStyle(
+              outsideDaysVisible: false,
+              defaultTextStyle: GoogleFonts.inter(
+                fontWeight: FontWeight.w500,
+                color: AppPalette.navyPrimary,
+              ),
+              weekendTextStyle: GoogleFonts.inter(
+                fontWeight: FontWeight.w500,
+                color: AppPalette.navyPrimary,
+              ),
+              selectedDecoration: const BoxDecoration(
+                color: AppPalette.orangeAccent,
+                shape: BoxShape.circle,
+              ),
+              todayDecoration: BoxDecoration(
+                color: Colors.transparent,
+                shape: BoxShape.circle,
+                border: Border.all(color: AppPalette.orangeAccent, width: 1),
+              ),
+              todayTextStyle: GoogleFonts.inter(
+                fontWeight: FontWeight.w500,
+                color: AppPalette.orangeAccent,
+              ),
+              disabledTextStyle: GoogleFonts.inter(color: Colors.grey[300]),
+            ),
+          ),
+        ),
+
+        const SizedBox(height: 24),
+
+        // Time Slots Section
+        Text(
+          'Time Slots',
+          style: GoogleFonts.outfit(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: AppPalette.navyPrimary,
+          ),
+        ),
+        const SizedBox(height: 12),
+
+        // Time Slots List
+        ..._singleTimeSlots.asMap().entries.map((entry) {
+          final index = entry.key;
+          final slot = entry.value;
+          return _buildTimeSlotRow(index, slot);
+        }),
+
+        const SizedBox(height: 12),
+
+        // Add Time Slot Button
+        InkWell(
+          onTap: () {
+            setState(() {
+              // Add a new time slot starting after the last one
+              final lastSlot = _singleTimeSlots.last;
+              final lastEndTime = lastSlot['endTime']!;
+              final newStartHour = lastEndTime.hour + 1;
+              _singleTimeSlots.add({
+                'startTime': TimeOfDay(
+                  hour: newStartHour > 23 ? 9 : newStartHour,
+                  minute: 0,
+                ),
+                'endTime': TimeOfDay(
+                  hour: newStartHour > 22 ? 10 : newStartHour + 1,
+                  minute: 30,
+                ),
+              });
+            });
+          },
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: 14),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: AppPalette.orangeAccent.withValues(alpha: 0.5),
+                width: 1.5,
+                style: BorderStyle.solid,
+              ),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    color: AppPalette.orangeAccent.withValues(alpha: 0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.add,
+                    size: 16,
+                    color: AppPalette.orangeAccent,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'Add Time Slot',
+                  style: GoogleFonts.inter(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: AppPalette.orangeAccent,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // Build individual time slot row with start and end time
+  Widget _buildTimeSlotRow(int index, Map<String, TimeOfDay> slot) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        children: [
+          // Start Time
+          Expanded(
+            child: InkWell(
+              onTap: () async {
+                final picked = await AppTimePicker.show(
+                  context,
+                  initialTime: slot['startTime']!,
+                );
+                if (picked != null) {
+                  setState(() {
+                    _singleTimeSlots[index]['startTime'] = picked;
+                  });
+                }
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 12,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.grey[200]!),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      _formatTimeOfDay(slot['startTime']!),
+                      style: GoogleFonts.inter(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: AppPalette.navyPrimary,
+                      ),
+                    ),
+                    Row(
+                      children: [
+                        const Icon(
+                          Icons.access_time,
+                          size: 16,
+                          color: Colors.grey,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          'START',
+                          style: GoogleFonts.inter(
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.grey[400],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          // End Time
+          Expanded(
+            child: InkWell(
+              onTap: () async {
+                final picked = await AppTimePicker.show(
+                  context,
+                  initialTime: slot['endTime']!,
+                );
+                if (picked != null) {
+                  setState(() {
+                    _singleTimeSlots[index]['endTime'] = picked;
+                  });
+                }
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 12,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.grey[200]!),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      _formatTimeOfDay(slot['endTime']!),
+                      style: GoogleFonts.inter(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: AppPalette.navyPrimary,
+                      ),
+                    ),
+                    Row(
+                      children: [
+                        const Icon(
+                          Icons.access_time,
+                          size: 16,
+                          color: Colors.grey,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          'END',
+                          style: GoogleFonts.inter(
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.grey[400],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          // Remove button (only if more than one slot)
+          if (_singleTimeSlots.length > 1) ...[
+            const SizedBox(width: 8),
+            InkWell(
+              onTap: () {
+                setState(() {
+                  _singleTimeSlots.removeAt(index);
+                });
+              },
+              child: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.red[50],
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(Icons.remove, size: 16, color: Colors.red[400]),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  // Helper to format TimeOfDay to AM/PM string
+  String _formatTimeOfDay(TimeOfDay time) {
+    final hour = time.hourOfPeriod == 0 ? 12 : time.hourOfPeriod;
+    final minute = time.minute.toString().padLeft(2, '0');
+    final period = time.period == DayPeriod.am ? 'AM' : 'PM';
+    return '$hour:$minute $period';
+  }
+
+  // --- Recurring (Packet) UI ---
+  Widget _buildRecurringSessionSchedule() {
+    // Count total sessions from all dates
+    int totalSessions = _recurringTimeslots.values
+        .fold(0, (sum, slots) => sum + slots.length);
+
+    // Get current timeslots for selected date
+    final currentTimeslots = _selectedRecurringDate != null
+        ? (_recurringTimeslots[_selectedRecurringDate!] ?? [])
+        : <Map<String, TimeOfDay>>[];
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -278,45 +657,82 @@ class _CreateSessionScreenState extends State<CreateSessionScreen>
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
-              'Schedule & Time',
+              'Recurring Sessions',
               style: GoogleFonts.outfit(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
                 color: AppPalette.navyPrimary,
               ),
             ),
-            if (_tabController.index ==
-                1) // Only show RECURRING label in Recurring mode
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: Colors.orange[50],
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  'RECURRING',
-                  style: GoogleFonts.inter(
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.orange[800],
-                    letterSpacing: 0.5,
-                  ),
-                ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: AppPalette.orangeAccent.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(12),
               ),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.event_available,
+                    size: 14,
+                    color: AppPalette.orangeAccent,
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    '$totalSessions Timeslots',
+                    style: GoogleFonts.inter(
+                      fontWeight: FontWeight.bold,
+                      color: AppPalette.orangeAccent,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ],
         ),
         const SizedBox(height: 16),
+
+        // Instructions
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: Colors.blue[50],
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.blue[100]!),
+          ),
+          child: Row(
+            children: [
+              Icon(Icons.info_outline, size: 18, color: Colors.blue[700]),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Select a date to add timeslots. Highlighted dates have sessions.',
+                  style: GoogleFonts.inter(
+                    fontSize: 12,
+                    color: Colors.blue[900],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+
+        // Calendar Integration
         Container(
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(20),
           ),
-          padding: const EdgeInsets.only(bottom: 12),
+          padding: const EdgeInsets.fromLTRB(8, 0, 8, 12),
           child: TableCalendar(
-            firstDay: DateTime.now().subtract(const Duration(days: 0)),
+            firstDay: DateTime.now(),
             lastDay: DateTime.now().add(const Duration(days: 365)),
             focusedDay: _focusedDay,
-            selectedDayPredicate: _isDaySelected,
+            selectedDayPredicate: (day) =>
+                _selectedRecurringDate != null &&
+                isSameDay(day, _selectedRecurringDate!),
             onDaySelected: _onDaySelected,
             calendarFormat: CalendarFormat.month,
             headerStyle: HeaderStyle(
@@ -356,194 +772,316 @@ class _CreateSessionScreenState extends State<CreateSessionScreen>
                 color: Colors.grey[400],
               ),
             ),
+            calendarBuilders: CalendarBuilders(
+              defaultBuilder: (context, day, focusedDay) {
+                final normalizedDay = _normalizeDate(day);
+                final timeslotCount =
+                    _recurringTimeslots[normalizedDay]?.length ?? 0;
+                // Only show colored marker if the date has actual timeslots
+                if (timeslotCount > 0 &&
+                    !isSameDay(day, _selectedRecurringDate)) {
+                  return Container(
+                    margin: const EdgeInsets.all(4),
+                    decoration: BoxDecoration(
+                      color: AppPalette.orangeAccent.withValues(alpha: 0.1),
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: AppPalette.orangeAccent,
+                        width: 2,
+                      ),
+                    ),
+                    child: Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            '${day.day}',
+                            style: GoogleFonts.inter(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: AppPalette.navyPrimary,
+                            ),
+                          ),
+                          Container(
+                            margin: const EdgeInsets.only(top: 2),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 4,
+                              vertical: 1,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppPalette.orangeAccent,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              '$timeslotCount',
+                              style: GoogleFonts.inter(
+                                fontSize: 8,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }
+                return null;
+              },
+            ),
           ),
         ),
         const SizedBox(height: 24),
-        Text(
-          'DEFINED TIME SLOTS',
-          style: GoogleFonts.inter(
-            fontSize: 10,
-            fontWeight: FontWeight.bold,
-            color: Colors.grey[500],
-            letterSpacing: 1,
-          ),
-        ),
-        const SizedBox(height: 12),
-        ..._timeSlots.asMap().entries.map(
-          (entry) => _buildTimeSlotCard(entry.key, entry.value),
-        ),
-        _buildAddTimeSlotButton(),
-      ],
-    );
-  }
 
-  Widget _buildTimeSlotCard(int index, TimeSlot slot) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey[200]!),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Start Time',
-                  style: GoogleFonts.inter(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w600,
-                    color: AppPalette.navyPrimary,
-                  ),
+        // Show timeslots section for selected date
+        if (_selectedRecurringDate != null) ...[
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Time Slots',
+                style: GoogleFonts.outfit(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: AppPalette.navyPrimary,
                 ),
-                const SizedBox(height: 8),
-                InkWell(
-                  onTap: () async {
-                    final time = await AppTimePicker.show(
-                      context,
-                      initialTime: slot.startTime,
-                    );
-                    if (time != null) {
-                      setState(() {
-                        _timeSlots[index] = slot.copyWith(startTime: time);
-                      });
-                    }
-                  },
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 10,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.grey[50],
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          slot.startTime.format(context),
-                          style: GoogleFonts.inter(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500,
-                            color: AppPalette.navyPrimary,
-                          ),
-                        ),
-                        const Icon(
-                          Icons.access_time_filled,
-                          size: 16,
-                          color: Colors.grey,
-                        ),
-                      ],
-                    ),
-                  ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: Colors.grey[100],
+                  borderRadius: BorderRadius.circular(8),
                 ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Duration',
-                  style: GoogleFonts.inter(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w600,
-                    color: AppPalette.navyPrimary,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  decoration: BoxDecoration(
-                    color: Colors.grey[50],
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: DropdownButtonHideUnderline(
-                    child: DropdownButton<int>(
-                      value: slot.durationMinutes,
-                      isExpanded: true,
-                      icon: const Icon(Icons.expand_more, size: 16),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.calendar_today,
+                      size: 12,
+                      color: AppPalette.orangeAccent,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      DateFormat('MMM d').format(_selectedRecurringDate!),
                       style: GoogleFonts.inter(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
                         color: AppPalette.navyPrimary,
                       ),
-                      items: [30, 60, 90, 120].map((int value) {
-                        return DropdownMenuItem<int>(
-                          value: value,
-                          child: Text('$value min'),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+
+          // Time slots list
+          ...currentTimeslots.asMap().entries.map((entry) {
+            final index = entry.key;
+            final slot = entry.value;
+            return Container(
+              margin: const EdgeInsets.only(bottom: 12),
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Colors.grey[100]!),
+              ),
+              child: Row(
+                children: [
+                  // Start Time
+                  Expanded(
+                    child: InkWell(
+                      onTap: () async {
+                        final picked = await AppTimePicker.show(
+                          context,
+                          initialTime: slot['startTime']!,
                         );
-                      }).toList(),
-                      onChanged: (val) {
-                        if (val != null) {
+                        if (picked != null) {
                           setState(() {
-                            _timeSlots[index] = slot.copyWith(
-                              durationMinutes: val,
-                            );
+                            _recurringTimeslots[_selectedRecurringDate!]![index]
+                                ['startTime'] = picked;
                           });
                         }
                       },
+                      child: Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.grey[50],
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.grey[200]!),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(
+                              Icons.access_time,
+                              size: 16,
+                              color: Colors.grey,
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                _formatTimeOfDay(slot['startTime']!),
+                                style: GoogleFonts.inter(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppPalette.navyPrimary,
+                                ),
+                              ),
+                            ),
+                            Text(
+                              'START',
+                              style: GoogleFonts.inter(
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.grey[400],
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
                   ),
-                ),
-              ],
-            ),
-          ),
-          if (_timeSlots.length > 1)
-            IconButton(
+                  const SizedBox(width: 12),
+                  // End Time
+                  Expanded(
+                    child: InkWell(
+                      onTap: () async {
+                        final picked = await AppTimePicker.show(
+                          context,
+                          initialTime: slot['endTime']!,
+                        );
+                        if (picked != null) {
+                          setState(() {
+                            _recurringTimeslots[_selectedRecurringDate!]![index]
+                                ['endTime'] = picked;
+                          });
+                        }
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.grey[50],
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.grey[200]!),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(
+                              Icons.access_time,
+                              size: 16,
+                              color: Colors.grey,
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                _formatTimeOfDay(slot['endTime']!),
+                                style: GoogleFonts.inter(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppPalette.navyPrimary,
+                                ),
+                              ),
+                            ),
+                            Text(
+                              'END',
+                              style: GoogleFonts.inter(
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.grey[400],
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  // Delete button
+                  if (currentTimeslots.length > 1) ...[
+                    const SizedBox(width: 8),
+                    IconButton(
+                      icon: const Icon(Icons.delete_outline, color: Colors.red),
+                      onPressed: () {
+                        setState(() {
+                          _recurringTimeslots[_selectedRecurringDate!]!
+                              .removeAt(index);
+                          // If no timeslots left, remove the date
+                          if (_recurringTimeslots[_selectedRecurringDate!]!
+                              .isEmpty) {
+                            _recurringTimeslots.remove(_selectedRecurringDate);
+                            _selectedRecurringDate = null;
+                          }
+                        });
+                      },
+                    ),
+                  ],
+                ],
+              ),
+            );
+          }),
+
+          // Add time slot button
+          const SizedBox(height: 8),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
               onPressed: () {
                 setState(() {
-                  _timeSlots.removeAt(index);
+                  final lastSlot = currentTimeslots.isNotEmpty
+                      ? currentTimeslots.last
+                      : null;
+                  _recurringTimeslots[_selectedRecurringDate!]!.add({
+                    'startTime': lastSlot?['endTime'] ??
+                        const TimeOfDay(hour: 9, minute: 0),
+                    'endTime': TimeOfDay(
+                      hour: (lastSlot?['endTime']?.hour ?? 9) + 1,
+                      minute: lastSlot?['endTime']?.minute ?? 30,
+                    ),
+                  });
                 });
               },
-              icon: Icon(Icons.close, size: 16, color: Colors.grey[400]),
-            ),
-        ],
-      ),
-    ).animate().fadeIn().slideX();
-  }
-
-  Widget _buildAddTimeSlotButton() {
-    return InkWell(
-      onTap: () {
-        setState(() {
-          _timeSlots.add(
-            TimeSlot(
-              startTime: const TimeOfDay(hour: 16, minute: 30),
-              durationMinutes: 60,
-            ),
-          );
-        });
-      },
-      borderRadius: BorderRadius.circular(16),
-      child: DottedBorderContainer(
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(
-              Icons.add_circle,
-              color: AppPalette.orangeAccent,
-              size: 20,
-            ),
-            const SizedBox(width: 8),
-            Text(
-              'Add Another Time Slot',
-              style: GoogleFonts.outfit(
-                fontWeight: FontWeight.bold,
-                color: AppPalette.navyPrimary,
-                fontSize: 14,
+              icon: const Icon(Icons.add, color: Colors.orange),
+              label: Text(
+                'Add Time Slot',
+                style: GoogleFonts.inter(fontWeight: FontWeight.w600),
+              ),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppPalette.orangeAccent,
+                side: const BorderSide(color: AppPalette.orangeAccent),
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
             ),
-          ],
-        ),
-      ),
+          ),
+
+          // Remove date button
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: TextButton.icon(
+              onPressed: () {
+                setState(() {
+                  _recurringTimeslots.remove(_selectedRecurringDate);
+                  _selectedRecurringDate = null;
+                });
+              },
+              icon: const Icon(Icons.delete_outline, color: Colors.orange),
+              label: Text(
+                'Remove This Date',
+                style: GoogleFonts.inter(fontWeight: FontWeight.w600),
+              ),
+              style: TextButton.styleFrom(
+                foregroundColor: Colors.red,
+                padding: const EdgeInsets.symmetric(vertical: 12),
+              ),
+            ),
+          ),
+        ],
+      ],
     );
   }
 
@@ -565,24 +1103,63 @@ class _CreateSessionScreenState extends State<CreateSessionScreen>
               ),
             ),
             const SizedBox(height: 8),
-            TextField(
-              controller: _locationController,
-              decoration: InputDecoration(
-                prefixIcon: const Icon(
-                  Icons.location_on,
-                  color: AppPalette.orangeAccent,
+            // Search Box wrapped in CompositedTransformTarget for Overlay
+            CompositedTransformTarget(
+              link: _layerLink,
+              child: TextField(
+                controller: _locationController,
+                focusNode: _locationFocus,
+                decoration: InputDecoration(
+                  prefixIcon: const Icon(
+                    Icons.location_on,
+                    color: AppPalette.orangeAccent,
+                  ),
+                  hintText: 'Search or pick on map...',
+                  hintStyle: GoogleFonts.inter(color: Colors.grey[400]),
+                  filled: true,
+                  fillColor: Colors.white,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide.none,
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 14,
+                  ),
                 ),
-                hintText: 'Search for training ground...',
-                hintStyle: GoogleFonts.inter(color: Colors.grey[400]),
-                filled: true,
-                fillColor: Colors.white,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide.none,
-                ),
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 14,
+                onChanged: _onSearchChanged,
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // Inline Map Preview
+            ClipRRect(
+              borderRadius: BorderRadius.circular(16),
+              child: SizedBox(
+                height: 200,
+                width: double.infinity,
+                child: GoogleMap(
+                  initialCameraPosition: const CameraPosition(
+                    target: LatLng(37.422131, -122.084801), // Default
+                    zoom: 14,
+                  ),
+                  onMapCreated: (controller) {
+                    _mapController = controller;
+                    if (_selectedLocation != null) {
+                      _mapController?.moveCamera(
+                        CameraUpdate.newLatLng(_selectedLocation!),
+                      );
+                    }
+                  },
+                  onTap: _onMapTapped,
+                  markers: _markers,
+                  myLocationEnabled: true,
+                  myLocationButtonEnabled: true,
+                  zoomControlsEnabled: true,
+                  zoomGesturesEnabled: true,
+                  scrollGesturesEnabled: true,
+                  rotateGesturesEnabled: true,
+                  tiltGesturesEnabled: true,
                 ),
               ),
             ),
@@ -615,18 +1192,257 @@ class _CreateSessionScreenState extends State<CreateSessionScreen>
             ],
           ),
         ),
+        const SizedBox(height: 16),
+        
+        // Pricing Section
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const Icon(Icons.attach_money, color: AppPalette.orangeAccent),
+                  const SizedBox(width: 12),
+                  Text(
+                    'Session Fee',
+                    style: GoogleFonts.inter(
+                      fontWeight: FontWeight.w600,
+                      color: AppPalette.navyPrimary,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _priceController,
+                keyboardType: TextInputType.number,
+                decoration: InputDecoration(
+                  prefixText: '\$ ',
+                  hintText: '60',
+                  hintStyle: GoogleFonts.inter(color: Colors.grey[400]),
+                  filled: true,
+                  fillColor: AppPalette.backgroundLight,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide.none,
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 14,
+                  ),
+                ),
+              ),
+              // Only show pricing type selector for recurring sessions
+              if (_tabController.index == 1) ...[
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: InkWell(
+                        onTap: () => setState(() => _pricePerPerson = true),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          decoration: BoxDecoration(
+                            color: _pricePerPerson
+                                ? Colors.orange.withValues(alpha: 0.1)
+                                : Colors.transparent,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: _pricePerPerson
+                                  ? Colors.orange
+                                  : Colors.grey[300]!,
+                            ),
+                          ),
+                          child: Text(
+                            'Per Day',
+                            textAlign: TextAlign.center,
+                            style: GoogleFonts.inter(
+                              fontWeight: _pricePerPerson
+                                  ? FontWeight.w600
+                                  : FontWeight.normal,
+                              color: _pricePerPerson
+                                  ? Colors.orange
+                                  : Colors.grey[600],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: InkWell(
+                        onTap: () => setState(() => _pricePerPerson = false),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          decoration: BoxDecoration(
+                            color: !_pricePerPerson
+                                ? Colors.orange.withValues(alpha: 0.1)
+                                : Colors.transparent,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: !_pricePerPerson
+                                  ? Colors.orange
+                                  : Colors.grey[300]!,
+                            ),
+                          ),
+                          child: Text(
+                            'Per Session',
+                            textAlign: TextAlign.center,
+                            style: GoogleFonts.inter(
+                              fontWeight: !_pricePerPerson
+                                  ? FontWeight.w600
+                                  : FontWeight.normal,
+                              color: !_pricePerPerson
+                                  ? Colors.orange
+                                  : Colors.grey[600],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ],
+          ),
+        ),
       ],
     );
+  }
+
+  void _onSearchChanged(String query) {
+    if (_debounce?.isActive ?? false) _debounce!.cancel();
+    _debounce = Timer(const Duration(milliseconds: 500), () async {
+      if (query.isEmpty) {
+        _removeOverlay();
+        return;
+      }
+
+      final predictions = await PlacesService.getAutocomplete(query);
+      if (mounted) {
+        setState(() {
+          _predictions = predictions;
+        });
+        if (_predictions.isNotEmpty) {
+          _showOverlay();
+        } else {
+          _removeOverlay();
+        }
+      }
+    });
+  }
+
+  void _showOverlay() {
+    _removeOverlay();
+    // context.findRenderObject() not needed if we rely on LayerLink which is pre-composited
+
+    _overlayEntry = OverlayEntry(
+      builder: (context) => Positioned(
+        width: MediaQuery.of(context).size.width - 48, // 24 padding each side
+        child: CompositedTransformFollower(
+          link: _layerLink,
+          showWhenUnlinked: false,
+          offset: const Offset(0, 50),
+          child: Material(
+            elevation: 4,
+            borderRadius: BorderRadius.circular(12),
+            color: Colors.white,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxHeight: 200),
+              child: ListView.separated(
+                padding: EdgeInsets.zero,
+                shrinkWrap: true,
+                itemCount: _predictions.length,
+                separatorBuilder: (context, index) => const Divider(height: 1),
+                itemBuilder: (context, index) {
+                  final p = _predictions[index];
+                  return ListTile(
+                    dense: true,
+                    title: Text(
+                      p.mainText,
+                      style: GoogleFonts.inter(fontWeight: FontWeight.w600),
+                    ),
+                    subtitle: Text(
+                      p.secondaryText,
+                      style: GoogleFonts.inter(fontSize: 12),
+                    ),
+                    onTap: () => _onPredictionSelected(p),
+                  );
+                },
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    Overlay.of(context).insert(_overlayEntry!);
+  }
+
+  void _removeOverlay() {
+    _overlayEntry?.remove();
+    _overlayEntry = null;
+  }
+
+  Future<void> _onPredictionSelected(PlacePrediction prediction) async {
+    _removeOverlay();
+    _locationController.text = prediction.description;
+    _locationFocus.unfocus();
+
+    final details = await PlacesService.getPlaceDetails(prediction.placeId);
+    if (details != null && mounted) {
+      _onMapTapped(details.location);
+    }
+  }
+
+  void _onMapTapped(LatLng position) async {
+    setState(() {
+      _selectedLocation = position;
+      _markers.clear();
+      _markers.add(
+        Marker(
+          markerId: const MarkerId('selected'),
+          position: position,
+          icon: BitmapDescriptor.defaultMarkerWithHue(
+            BitmapDescriptor.hueOrange,
+          ),
+        ),
+      );
+      // Show coordinates temporarily while fetching address
+      _locationController.text =
+          "${position.latitude.toStringAsFixed(4)}, ${position.longitude.toStringAsFixed(4)}";
+    });
+
+    // Animate camera to center
+    _mapController?.animateCamera(CameraUpdate.newLatLng(position));
+
+    // Reverse geocode to get place name/address
+    final address = await PlacesService.reverseGeocode(
+      position.latitude,
+      position.longitude,
+    );
+    if (address != null && mounted) {
+      setState(() {
+        _locationController.text = address;
+      });
+    }
   }
 
   Widget _buildStepper({
     required int value,
     required ValueChanged<int> onChanged,
+    int min = 1,
+    int max = 100,
   }) {
     return Row(
       children: [
         InkWell(
-          onTap: () => value > 1 ? onChanged(value - 1) : null,
+          onTap: () => value > min ? onChanged(value - 1) : null,
           child: Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
@@ -647,7 +1463,7 @@ class _CreateSessionScreenState extends State<CreateSessionScreen>
         ),
         const SizedBox(width: 16),
         InkWell(
-          onTap: () => onChanged(value + 1),
+          onTap: () => value < max ? onChanged(value + 1) : null,
           child: Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
@@ -661,258 +1477,36 @@ class _CreateSessionScreenState extends State<CreateSessionScreen>
     );
   }
 
-  Widget _buildParticipantsSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildSectionHeader(
-          'Assign Players',
-          action: TextButton.icon(
-            onPressed: () {},
-            icon: const Icon(
-              Icons.add,
-              size: 16,
-              color: AppPalette.orangeAccent,
-            ),
-            label: Text(
-              'Add All',
-              style: GoogleFonts.inter(
-                fontWeight: FontWeight.bold,
-                color: AppPalette.orangeAccent,
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(height: 16),
-        SizedBox(
-          height: 100,
-          child: ListView(
-            scrollDirection: Axis.horizontal,
-            children: [
-              ..._participants.asMap().entries.map((entry) {
-                final isSelected = _selectedParticipants.contains(entry.key);
-                final names = ['Kevin D.', 'Marcus R.', 'Phil F.'];
-                return Padding(
-                  padding: const EdgeInsets.only(right: 16),
-                  child: Column(
-                    children: [
-                      InkWell(
-                        onTap: () {
-                          setState(() {
-                            if (isSelected) {
-                              _selectedParticipants.remove(entry.key);
-                            } else {
-                              _selectedParticipants.add(entry.key);
-                            }
-                          });
-                        },
-                        child: Stack(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(3),
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                border: Border.all(
-                                  color: isSelected
-                                      ? AppPalette.orangeAccent
-                                      : Colors.transparent,
-                                  width: 2,
-                                ),
-                              ),
-                              child: CircleAvatar(
-                                radius: 28,
-                                backgroundImage: NetworkImage(entry.value),
-                              ),
-                            ),
-                            if (isSelected)
-                              Positioned(
-                                right: 0,
-                                bottom: 0,
-                                child: Container(
-                                  padding: const EdgeInsets.all(4),
-                                  decoration: const BoxDecoration(
-                                    color: AppPalette.orangeAccent,
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: const Icon(
-                                    Icons.check,
-                                    size: 10,
-                                    color: Colors.white,
-                                  ),
-                                ),
-                              ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        names[entry.key],
-                        style: GoogleFonts.inter(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: AppPalette.navyPrimary,
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              }),
-              Column(
-                children: [
-                  Container(
-                    height: 62, // Matches avatar size with padding
-                    width: 62,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: Colors.grey[300]!,
-                        style: BorderStyle
-                            .solid, // Dashed would strictly require custom painter
-                        width: 1,
-                      ),
-                    ),
-                    child: const Icon(Icons.group_add, color: Colors.grey),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Teams',
-                    style: GoogleFonts.inter(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.grey[500],
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  Future<void> _createSession() async {
-    // Validation
-    if (_titleController.text.trim().isEmpty) {
-      _showError('Please enter a session title');
-      return;
-    }
-
-    if (_selectedDays.isEmpty) {
-      _showError('Please select at least one date');
-      return;
-    }
-
-    if (_locationController.text.trim().isEmpty) {
-      _showError('Please enter a location');
-      return;
-    }
-
-    setState(() {
-      _isCreating = true;
-    });
-
-    try {
-      // Transform UI data to API format
-      final timeSlots = _timeSlots
-          .map(
-            (slot) => {
-              'startTime': {
-                'hour': slot.startTime.hour,
-                'minute': slot.startTime.minute,
-              },
-              'durationMinutes': slot.durationMinutes,
-            },
-          )
-          .toList();
-
-      final selectedDays = _selectedDays
-          .map((date) => DateFormat('yyyy-MM-dd').format(date))
-          .toList();
-
-      // Call API
-      await SessionService.createSession(
-        title: _titleController.text.trim(),
-        description: _descriptionController.text.trim(),
-        location: _locationController.text.trim(),
-        capacity: _capacity,
-        timeSlots: timeSlots,
-        selectedDays: selectedDays,
-        isRecurring: _tabController.index == 1,
-        participants: [], // Empty for now
-      );
-
-      if (mounted) {
-        // Show success message
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('Session created successfully!'),
-            backgroundColor: Colors.green,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
-            ),
-          ),
-        );
-
-        // Navigate back
-        Navigator.pop(context, true);
-      }
-    } catch (e) {
-      if (mounted) {
-        _showError('Failed to create session: ${e.toString()}');
-      }
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isCreating = false;
-        });
-      }
-    }
-  }
-
-  void _showError(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.red,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      ),
-    );
-  }
-
   Widget _buildBottomAction() {
-    final isRecurring = _tabController.index == 1;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 0),
+    return SizedBox(
+      width: double.infinity,
       child: ElevatedButton(
         onPressed: _isCreating ? null : _createSession,
         style: ElevatedButton.styleFrom(
           backgroundColor: AppPalette.orangeAccent,
-          disabledBackgroundColor: Colors.grey[400],
+          padding: const EdgeInsets.symmetric(vertical: 16),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
-          padding: const EdgeInsets.symmetric(vertical: 16),
+          elevation: 4,
+          shadowColor: AppPalette.orangeAccent.withValues(alpha: 0.4),
         ),
         child: _isCreating
             ? const SizedBox(
-                height: 20,
-                width: 20,
+                height: 24,
+                width: 24,
                 child: CircularProgressIndicator(
+                  color: Colors.white,
                   strokeWidth: 2,
-                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                 ),
               )
             : Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(
-                    isRecurring ? 'Create Recurring Session' : 'Create Session',
+                    'Create Session',
                     style: GoogleFonts.outfit(
-                      fontSize: 16,
+                      fontSize: 18,
                       fontWeight: FontWeight.bold,
                       color: Colors.white,
                     ),
@@ -926,6 +1520,147 @@ class _CreateSessionScreenState extends State<CreateSessionScreen>
                 ],
               ),
       ),
+    );
+  }
+
+  Future<void> _createSession() async {
+    if (_titleController.text.trim().isEmpty) {
+      _showError('Please enter a session title');
+      return;
+    }
+
+    // Validate that session date is not in the past
+    final now = DateTime.now();
+    if (_tabController.index == 0) {
+      // Single session - check if any time slot is in the past
+      for (final slot in _singleTimeSlots) {
+        final startTime = slot['startTime']!;
+        final sessionDateTime = DateTime(
+          _singleDate.year,
+          _singleDate.month,
+          _singleDate.day,
+          startTime.hour,
+          startTime.minute,
+        );
+        if (sessionDateTime.isBefore(now)) {
+          _showError('Cannot create a session in the past');
+          return;
+        }
+      }
+    } else {
+      // Recurring sessions - check if any date is in the past
+      for (final entry in _recurringTimeslots.entries) {
+        final date = entry.key;
+        for (final slot in entry.value) {
+          final startTime = slot['startTime']!;
+          final sessionDateTime = DateTime(
+            date.year,
+            date.month,
+            date.day,
+            startTime.hour,
+            startTime.minute,
+          );
+          if (sessionDateTime.isBefore(now)) {
+            _showError('Cannot create sessions with past dates');
+            return;
+          }
+        }
+      }
+
+      // Check if there are any timeslots
+      if (_recurringTimeslots.isEmpty) {
+        _showError('Please add at least one recurring session date');
+        return;
+      }
+    }
+
+    setState(() => _isCreating = true);
+
+    try {
+      // Prepare data in the format expected by the backend
+      List<String> selectedDays;
+      List<Map<String, dynamic>> timeSlots;
+
+      if (_tabController.index == 0) {
+        // Single session - convert time slots to backend format
+        selectedDays = [_singleDate.toIso8601String().split('T')[0]];
+        timeSlots = _singleTimeSlots.map((slot) {
+          final startTime = slot['startTime']!;
+          final endTime = slot['endTime']!;
+          // Calculate duration in minutes
+          final startMinutes = startTime.hour * 60 + startTime.minute;
+          final endMinutes = endTime.hour * 60 + endTime.minute;
+          final durationMinutes = endMinutes - startMinutes;
+          return {
+            'startTime': {'hour': startTime.hour, 'minute': startTime.minute},
+            'durationMinutes': durationMinutes > 0
+                ? durationMinutes
+                : 60, // Default to 60 if invalid
+          };
+        }).toList();
+      } else {
+        // Recurring sessions - flatten the map structure
+        selectedDays = [];
+        timeSlots = [];
+
+        // Sort dates chronologically
+        final sortedDates = _recurringTimeslots.keys.toList()
+          ..sort((a, b) => a.compareTo(b));
+
+        for (final date in sortedDates) {
+          final slots = _recurringTimeslots[date]!;
+          for (final slot in slots) {
+            selectedDays.add(date.toIso8601String().split('T')[0]);
+            final startTime = slot['startTime']!;
+            final endTime = slot['endTime']!;
+            // Calculate duration in minutes
+            final startMinutes = startTime.hour * 60 + startTime.minute;
+            final endMinutes = endTime.hour * 60 + endTime.minute;
+            final durationMinutes = endMinutes - startMinutes;
+            timeSlots.add({
+              'startTime': {'hour': startTime.hour, 'minute': startTime.minute},
+              'durationMinutes': durationMinutes > 0
+                  ? durationMinutes
+                  : 60, // Default to 60 if invalid
+            });
+          }
+        }
+      }
+
+      // Call the session service to create the session
+      await SessionService.createSession(
+        title: _titleController.text.trim(),
+        description: _descriptionController.text.trim(),
+        location: _locationController.text.trim(),
+        capacity: _capacity,
+        timeSlots: timeSlots,
+        selectedDays: selectedDays,
+        isRecurring: _tabController.index == 1,
+        participants: <String>[],
+        priceAmount: double.tryParse(_priceController.text.trim()) ?? 0.0,
+        pricePerPerson: _pricePerPerson,
+      );
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Session Created Successfully!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        Navigator.pop(context);
+      }
+    } catch (e) {
+      if (mounted) _showError('Failed to create: $e');
+    } finally {
+      if (mounted) setState(() => _isCreating = false);
+    }
+  }
+
+  void _showError(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), backgroundColor: Colors.red),
     );
   }
 }

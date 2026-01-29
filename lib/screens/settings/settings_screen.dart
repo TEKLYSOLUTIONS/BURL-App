@@ -2,14 +2,102 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../widgets/notification_button.dart';
 import '../../config/palette.dart';
+import '../../services/profile_service.dart';
 
-class SettingsScreen extends StatelessWidget {
+class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
 
   @override
+  State<SettingsScreen> createState() => _SettingsScreenState();
+}
+
+class _SettingsScreenState extends State<SettingsScreen> {
+  bool _isLoading = true;
+  String? _error;
+  Map<String, dynamic>? _userData;
+  Map<String, dynamic>? _profileData;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadProfile();
+  }
+
+  Future<void> _loadProfile() async {
+    try {
+      setState(() {
+        _isLoading = true;
+        _error = null;
+      });
+
+      final data = await ProfileService.getProfile();
+      
+      setState(() {
+        _userData = data['user'] as Map<String, dynamic>?;
+        _profileData = data['profile'] as Map<String, dynamic>?;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _error = e.toString();
+        _isLoading = false;
+      });
+    }
+  }
+
+  String get displayName {
+    if (_userData != null) {
+      return _userData!['fullName'] as String? ?? 'User';
+    }
+    return 'User';
+  }
+
+  String get displayRole {
+    if (_profileData != null) {
+      // For coach, show coachTitle if available
+      if (_profileData!['coachTitle'] != null) {
+        return _profileData!['coachTitle'] as String;
+      }
+    }
+    if (_userData != null) {
+      final role = _userData!['role'] as String? ?? '';
+      return role.isNotEmpty ? role[0].toUpperCase() + role.substring(1) : '';
+    }
+    return '';
+  }
+
+  String get displayEmail {
+    if (_userData != null) {
+      return _userData!['email'] as String? ?? '';
+    }
+    return '';
+  }
+
+  @override
   Widget build(BuildContext context) {
+    if (_error != null) {
+      return Scaffold(
+        backgroundColor: AppPalette.backgroundLight,
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.error_outline, size: 64, color: Colors.red),
+              const SizedBox(height: 16),
+              Text('Error loading profile: $_error'),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: _loadProfile,
+                child: const Text('Retry'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
     return Scaffold(
       backgroundColor: AppPalette.backgroundLight,
       body: Column(
@@ -22,7 +110,7 @@ class SettingsScreen extends StatelessWidget {
               right: 24,
             ),
             decoration: const BoxDecoration(
-              color: Colors.white, // Header Background
+              color: Colors.white,
               borderRadius: BorderRadius.only(
                 bottomLeft: Radius.circular(30),
                 bottomRight: Radius.circular(30),
@@ -58,7 +146,7 @@ class SettingsScreen extends StatelessWidget {
                 ),
                 Expanded(
                   child: Text(
-                    'Settings',
+                    'Profile',
                     textAlign: TextAlign.center,
                     style: GoogleFonts.outfit(
                       fontSize: 28,
@@ -68,7 +156,6 @@ class SettingsScreen extends StatelessWidget {
                   ),
                 ),
                 const NotificationButton(
-                  hasNotification: true,
                   iconColor: AppPalette.navyPrimary,
                   backgroundColor: AppPalette.backgroundLight,
                 ),
@@ -76,157 +163,225 @@ class SettingsScreen extends StatelessWidget {
             ),
           ),
           Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                children: [
-                  // Profile Summary
-                  Container(
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(20),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.05),
-                          blurRadius: 10,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: Row(
+            child: _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : SingleChildScrollView(
+                    padding: const EdgeInsets.all(24),
+                    child: Column(
                       children: [
-                        const CircleAvatar(
-                          radius: 30,
-                          backgroundColor: AppPalette.navyPrimary,
-                          child: Icon(
-                            Icons.person,
+                        // Profile Summary
+                        Container(
+                          padding: const EdgeInsets.all(20),
+                          decoration: BoxDecoration(
                             color: Colors.white,
-                            size: 30,
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'User Name',
-                              style: GoogleFonts.outfit(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: AppPalette.navyPrimary,
+                            borderRadius: BorderRadius.circular(20),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.05),
+                                blurRadius: 10,
+                                offset: const Offset(0, 4),
                               ),
+                            ],
+                          ),
+                          child: Row(
+                            children: [
+                              CircleAvatar(
+                                radius: 30,
+                                backgroundColor: AppPalette.navyPrimary,
+                                child: Text(
+                                  displayName.isNotEmpty ? displayName[0].toUpperCase() : 'U',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 24,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      displayName,
+                                      style: GoogleFonts.outfit(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.bold,
+                                        color: AppPalette.navyPrimary,
+                                      ),
+                                    ),
+                                    if (displayRole.isNotEmpty)
+                                      Text(
+                                        displayRole,
+                                        style: GoogleFonts.inter(
+                                          color: AppPalette.textSecondaryLight,
+                                          fontSize: 14,
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                              ),
+                              Container(
+                                decoration: BoxDecoration(
+                                  color: Colors.orange.withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: IconButton(
+                                  icon: const Icon(
+                                    Icons.edit_outlined,
+                                    color: Colors.orange,
+                                  ),
+                                  onPressed: () async {
+                                    final role = _userData?['role'] as String?;
+                                    if (role == 'coach') {
+                                      final result = await context.push('/coach/complete-profile', extra: _profileData);
+                                      if (result == true) {
+                                        _loadProfile();
+                                      }
+                                    }
+                                  },
+                                ),
+                              ),
+                            ],
+                          ),
+                        ).animate().fadeIn().slideY(),
+
+                        const SizedBox(height: 32),
+
+                        _buildSectionHeader('ACCOUNT'),
+                        const SizedBox(height: 16),
+
+                        _buildSettingsItem(
+                          icon: Icons.lock_outline,
+                          iconColor: Colors.orange,
+                          iconBg: Colors.orange.withValues(alpha: 0.1),
+                          title: 'Change Password',
+                          onTap: () {},
+                        ),
+                        const SizedBox(height: 12),
+                        _buildSettingsItem(
+                          icon: Icons.star_outline,
+                          iconColor: Colors.orange,
+                          iconBg: Colors.orange.withValues(alpha: 0.1),
+                          title: 'Subscription',
+                          trailing: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 4,
                             ),
-                            Text(
-                              'user@example.com',
+                            decoration: BoxDecoration(
+                              color: Colors.orange.withValues(alpha: 0.2),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Text(
+                              'Pro Coach',
                               style: GoogleFonts.inter(
-                                color: AppPalette.textSecondaryLight,
-                                fontSize: 14,
+                                color: Colors.orange,
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
                               ),
                             ),
-                          ],
-                        ),
-                        const Spacer(),
-                        IconButton(
-                          icon: const Icon(
-                            Icons.edit_outlined,
-                            color: AppPalette.navyPrimary,
                           ),
-                          onPressed: () {
-                            // Navigate to edit profile (assume exists or mock)
-                          },
+                          onTap: () {},
                         ),
-                      ],
-                    ),
-                  ).animate().fadeIn().slideY(),
 
-                  const SizedBox(height: 32),
-
-                  _buildSectionHeader('Account Settings'),
-                  const SizedBox(height: 16),
-
-                  _buildSettingsItem(
-                    icon: Icons.lock_outline,
-                    title: 'Change Password',
-                    onTap: () {},
-                  ),
-                  const SizedBox(height: 12),
-                  _buildSettingsItem(
-                    icon: Icons.notifications_none,
-                    title: 'Notifications',
-                    onTap: () {},
-                  ),
-                  const SizedBox(height: 12),
-                  _buildSettingsItem(
-                    icon: Icons.payment,
-                    title: 'Payment Methods',
-                    onTap: () {},
-                  ),
-
-                  const SizedBox(height: 32),
-                  _buildSectionHeader('Preferences'),
-                  const SizedBox(height: 16),
-                  _buildSettingsItem(
-                    icon: Icons.language,
-                    title: 'Language',
-                    trailing: const Text('English'),
-                    onTap: () {},
-                  ),
-                  const SizedBox(height: 12),
-                  _buildSettingsItem(
-                    icon: Icons.dark_mode_outlined,
-                    title: 'Theme',
-                    trailing: const Text('Light'),
-                    onTap: () {},
-                  ),
+                        const SizedBox(height: 32),
+                        _buildSectionHeader('PREFERENCES'),
+                        const SizedBox(height: 16),
+                        _buildSettingsItem(
+                          icon: Icons.notifications_outlined,
+                          iconColor: Colors.purple,
+                          iconBg: Colors.purple.withValues(alpha: 0.1),
+                          title: 'Push Notifications',
+                          trailing: Switch(
+                            value: _userData?['preferences']?['pushNotifications'] ?? true,
+                            activeTrackColor: Colors.orange,
+                            onChanged: (value) {
+                              // Update preferences
+                            },
+                          ),
+                          onTap: null,
+                        ),
+                        const SizedBox(height: 12),
+                        _buildSettingsItem(
+                          icon: Icons.dark_mode_outlined,
+                          iconColor: Colors.grey.shade700,
+                          iconBg: Colors.grey.shade100,
+                          title: 'Dark Mode',
+                          trailing: Switch(
+                            value: _userData?['preferences']?['darkMode'] ?? false,
+                            activeTrackColor: Colors.orange,
+                            onChanged: (value) {
+                              // Update preferences
+                            },
+                          ),
+                          onTap: null,
+                        ),
+                        const SizedBox(height: 12),
+                        _buildSettingsItem(
+                          icon: Icons.language,
+                          iconColor: Colors.cyan,
+                          iconBg: Colors.cyan.withValues(alpha: 0.1),
+                          title: 'Language',
+                          trailing: const Text('English (US)'),
+                          onTap: () {},
+                        ),
 
                   const SizedBox(height: 32),
                   _buildSectionHeader('Support'),
                   const SizedBox(height: 16),
                   _buildSettingsItem(
                     icon: Icons.help_outline,
+                    iconColor: Colors.orange,
+                    iconBg: Colors.orange.withValues(alpha: 0.1),
                     title: 'Help Center',
                     onTap: () {},
                   ),
                   const SizedBox(height: 12),
                   _buildSettingsItem(
                     icon: Icons.info_outline,
+                    iconColor: Colors.orange,
+                    iconBg: Colors.orange.withValues(alpha: 0.1),
                     title: 'About App',
                     onTap: () {},
                   ),
 
-                  const SizedBox(height: 48),
+                        const SizedBox(height: 48),
 
-                  // Logout
-                  SizedBox(
-                    width: double.infinity,
-                    child: TextButton.icon(
-                      onPressed: () {
-                        context.go('/login');
-                      },
-                      icon: const Icon(Icons.logout, color: Colors.red),
-                      label: Text(
-                        'Log Out',
-                        style: GoogleFonts.outfit(
-                          color: Colors.red,
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      style: TextButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        backgroundColor: Colors.red.withValues(alpha: 0.05),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
+                        // Logout
+                        SizedBox(
+                          width: double.infinity,
+                          child: TextButton.icon(
+                            onPressed: () async {
+                              final prefs = await SharedPreferences.getInstance();
+                              await prefs.remove('token');
+                              if (context.mounted) {
+                                context.go('/login');
+                              }
+                            },
+                            icon: const Icon(Icons.logout, color: Colors.red),
+                            label: Text(
+                              'Log Out',
+                              style: GoogleFonts.outfit(
+                                color: Colors.red,
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            style: TextButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              backgroundColor: Colors.red.withValues(alpha: 0.05),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                          ),
+                        ).animate().fadeIn(delay: 500.ms),
+
+                        const SizedBox(height: 24),
+                      ],
                     ),
-                  ).animate().fadeIn(delay: 500.ms),
-
-                  const SizedBox(height: 24),
-                ],
-              ),
-            ),
+                  ),
           ),
         ],
       ),
@@ -238,10 +393,11 @@ class SettingsScreen extends StatelessWidget {
       alignment: Alignment.centerLeft,
       child: Text(
         title,
-        style: GoogleFonts.outfit(
-          fontSize: 16,
+        style: GoogleFonts.inter(
+          fontSize: 12,
           fontWeight: FontWeight.bold,
           color: AppPalette.textSecondaryLight,
+          letterSpacing: 1.2,
         ),
       ),
     );
@@ -251,7 +407,9 @@ class SettingsScreen extends StatelessWidget {
     required IconData icon,
     required String title,
     Widget? trailing,
-    required VoidCallback onTap,
+    VoidCallback? onTap,
+    Color? iconColor,
+    Color? iconBg,
   }) {
     return Container(
       decoration: BoxDecoration(
@@ -270,22 +428,26 @@ class SettingsScreen extends StatelessWidget {
         leading: Container(
           padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
-            color: AppPalette.navyPrimary.withValues(alpha: 0.05),
+            color: iconBg ?? AppPalette.navyPrimary.withValues(alpha: 0.05),
             shape: BoxShape.circle,
           ),
-          child: Icon(icon, color: AppPalette.navyPrimary, size: 20),
+          child: Icon(icon, color: iconColor ?? AppPalette.navyPrimary, size: 20),
         ),
         title: Text(
           title,
           style: GoogleFonts.inter(
-            fontWeight: FontWeight.w500,
-            color: AppPalette.textPrimaryLight,
+            fontWeight: FontWeight.w600,
+            color: AppPalette.navyPrimary,
             fontSize: 15,
           ),
         ),
-        trailing:
-            trailing ??
-            const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
+        trailing: trailing ??
+            (onTap != null
+                ? const Icon(
+                    Icons.chevron_right,
+                    color: AppPalette.textSecondaryLight,
+                  )
+                : null),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       ),
     ).animate().fadeIn().slideX();

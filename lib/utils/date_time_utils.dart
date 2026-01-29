@@ -36,9 +36,10 @@ class DateTimeUtils {
   }
 
   /// Format time from ISO string to "HH:MM AM/PM"
+  /// Converts from UTC to local time if the ISO string is in UTC
   static String formatTime(String isoDateString) {
     try {
-      final dateTime = DateTime.parse(isoDateString);
+      final dateTime = DateTime.parse(isoDateString).toLocal();
       return DateFormat('h:mm a').format(dateTime).toUpperCase();
     } catch (e) {
       return 'TBD';
@@ -48,7 +49,7 @@ class DateTimeUtils {
   /// Format relative time (e.g., "15 mins ago", "2 hrs ago")
   static String formatRelativeTime(String isoDateString) {
     try {
-      final dateTime = DateTime.parse(isoDateString);
+      final dateTime = DateTime.parse(isoDateString).toLocal();
       final now = DateTime.now();
       final difference = now.difference(dateTime);
 
@@ -74,7 +75,7 @@ class DateTimeUtils {
   /// Format date to "MMM DD" (e.g., "JAN 24")
   static String formatDateShort(String isoDateString) {
     try {
-      final dateTime = DateTime.parse(isoDateString);
+      final dateTime = DateTime.parse(isoDateString).toLocal();
       return DateFormat('MMM dd').format(dateTime).toUpperCase();
     } catch (e) {
       return '';
@@ -84,7 +85,7 @@ class DateTimeUtils {
   /// Format date to full format "MMMM DD, YYYY" (e.g., "January 24, 2026")
   static String formatDateFull(String isoDateString) {
     try {
-      final dateTime = DateTime.parse(isoDateString);
+      final dateTime = DateTime.parse(isoDateString).toLocal();
       return DateFormat('MMMM dd, yyyy').format(dateTime);
     } catch (e) {
       return '';

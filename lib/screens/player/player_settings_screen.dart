@@ -283,7 +283,7 @@ class _PlayerProfileScreenState extends State<PlayerProfileScreen> {
             color: AppPalette.navyPrimary.withValues(alpha: 0.05),
             shape: BoxShape.circle,
           ),
-          child: Icon(icon, color: AppPalette.navyPrimary, size: 20),
+          child: Icon(icon, color: Colors.orange, size: 20),
         ),
         title: Text(
           title,
@@ -295,7 +295,7 @@ class _PlayerProfileScreenState extends State<PlayerProfileScreen> {
         ),
         trailing:
             trailing ??
-            const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
+            const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.orange),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       ),
     ).animate().fadeIn().slideX();
