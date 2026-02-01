@@ -13,9 +13,14 @@ class ApiService {
     };
   }
 
-  static Future<http.Response> get(String endpoint) async {
+  static Future<http.Response> get(
+    String endpoint, {
+    Map<String, dynamic>? queryParameters,
+  }) async {
     final headers = await _getHeaders();
-    final url = Uri.parse('${ApiConfig.baseUrl}/$endpoint');
+    final url = Uri.parse(
+      '${ApiConfig.baseUrl}/$endpoint',
+    ).replace(queryParameters: queryParameters);
     return await http.get(url, headers: headers);
   }
 

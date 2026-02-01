@@ -5,14 +5,18 @@ import 'firebase_options.dart';
 import 'config/theme.dart';
 import 'navigation/app_router.dart';
 
+import 'package:flutter_stripe/flutter_stripe.dart';
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
+
+  // Initialize Stripe
+  Stripe.publishableKey =
+      'pk_test_51SuC7930IZOlKyebl2FVo2GzcjPwoYVcT4rDBh1mXeLlLkj52RXfuVvSwTdUztN4aVgPM2yoXm0DxlxoZIAhzhyN00cgqZiTyU';
+
   // Initialize Firebase
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
-  
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+
   runApp(const ProviderScope(child: CoachingApp()));
 }
 

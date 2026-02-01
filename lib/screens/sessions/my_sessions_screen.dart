@@ -11,7 +11,13 @@ import '../../utils/date_time_utils.dart';
 
 class MySessionsScreen extends StatefulWidget {
   final bool isCoach;
-  const MySessionsScreen({super.key, this.isCoach = true});
+  final String? notificationPath;
+
+  const MySessionsScreen({
+    super.key,
+    this.isCoach = true,
+    this.notificationPath,
+  });
 
   @override
   State<MySessionsScreen> createState() => _MySessionsScreenState();
@@ -30,9 +36,7 @@ class _MySessionsScreenState extends State<MySessionsScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-    if (widget.isCoach) {
-      _fetchSessions();
-    }
+    widget.isCoach ? _fetchSessions() : _fetchSessions();
   }
 
   Future<void> _fetchSessions() async {
@@ -48,15 +52,17 @@ class _MySessionsScreenState extends State<MySessionsScreen>
           SessionService.getCoachSessions(type: 'past', limit: 50),
         ]);
 
-        setState(() {
-          _upcomingSessions = List<Map<String, dynamic>>.from(
-            results[0]['sessions'] ?? [],
-          );
-          _pastSessions = List<Map<String, dynamic>>.from(
-            results[1]['sessions'] ?? [],
-          );
-          _isLoading = false;
-        });
+        if (mounted) {
+          setState(() {
+            _upcomingSessions = List<Map<String, dynamic>>.from(
+              results[0]['sessions'] ?? [],
+            );
+            _pastSessions = List<Map<String, dynamic>>.from(
+              results[1]['sessions'] ?? [],
+            );
+            _isLoading = false;
+          });
+        }
       } else {
         // Player/Guardian: Fetch their bookings
         final results = await Future.wait([
@@ -64,21 +70,23 @@ class _MySessionsScreenState extends State<MySessionsScreen>
           BookingService.getPlayerBookings(type: 'past', limit: 50),
         ]);
 
-        setState(() {
-          _upcomingSessions = List<Map<String, dynamic>>.from(
-            results[0]['bookings'] ?? [],
-          );
-          _pastSessions = List<Map<String, dynamic>>.from(
-            results[1]['bookings'] ?? [],
-          );
-          _isLoading = false;
-        });
+        if (mounted) {
+          setState(() {
+            _upcomingSessions = List<Map<String, dynamic>>.from(
+              results[0]['bookings'] ?? [],
+            );
+            _pastSessions = List<Map<String, dynamic>>.from(
+              results[1]['bookings'] ?? [],
+            );
+            _isLoading = false;
+          });
+        }
       }
     } catch (e) {
-      setState(() {
-        _isLoading = false;
-      });
       if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Failed to load sessions: $e'),
@@ -132,9 +140,10 @@ class _MySessionsScreenState extends State<MySessionsScreen>
                       ? Colors.white.withValues(alpha: 0.1)
                       : Colors.white,
                   onTap: () => context.push(
-                    widget.isCoach
-                        ? '/coach/notifications'
-                        : '/player/notifications',
+                    widget.notificationPath ??
+                        (widget.isCoach
+                            ? '/coach/notifications'
+                            : '/player/notifications'),
                   ),
                 ),
               ],

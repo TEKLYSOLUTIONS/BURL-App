@@ -8,6 +8,7 @@ import '../../services/auth_service.dart';
 
 import '../../utils/date_time_utils.dart';
 import '../../services/dashboard_service.dart';
+import '../../services/guardian_service.dart';
 
 class GuardianHomeScreen extends StatefulWidget {
   const GuardianHomeScreen({super.key});
@@ -33,6 +34,14 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
     super.initState();
     _loadUserData();
     _loadDashboardData();
+    // Listen for updates (e.g., new player added)
+    GuardianService.playerUpdateNotifier.addListener(_loadDashboardData);
+  }
+
+  @override
+  void dispose() {
+    GuardianService.playerUpdateNotifier.removeListener(_loadDashboardData);
+    super.dispose();
   }
 
   Future<void> _loadUserData() async {
@@ -54,7 +63,8 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
         setState(() {
           // Flatten the managed players structure if needed, depends on API
           // API returns: managedPlayers: [{ player: { ... } }]
-          _managedPlayers = data['managedPlayers'] ?? [];
+          // Ensure we handle potential nulls or different structures gracefully
+          _managedPlayers = (data['managedPlayers'] as List? ?? []);
           _upcomingSessions = data['upcomingSessions'] ?? [];
           _stats = data['stats'];
           // _recentActivity = data['recentActivity'] ?? [];
@@ -456,17 +466,17 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
               },
               child: Container(
                 padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 8,
+                  horizontal: 20,
+                  vertical: 12,
                 ),
                 decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(25),
+                  color: isSelected ? AppPalette.navyPrimary : Colors.white,
+                  borderRadius: BorderRadius.circular(30),
                   border: Border.all(
                     color: isSelected
                         ? AppPalette.navyPrimary
-                        : Colors.transparent,
-                    width: isSelected ? 2 : 0,
+                        : Colors.grey[300]!,
+                    width: 1,
                   ),
                   boxShadow: [
                     if (!isSelected)
@@ -480,19 +490,19 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(
+                    Icon(
                       Icons.dashboard_rounded,
                       size: 18,
-                      color: AppPalette.navyPrimary,
+                      color: isSelected ? Colors.white : AppPalette.navyPrimary,
                     ),
                     const SizedBox(width: 8),
                     Text(
                       'Overview',
-                      style: TextStyle(
-                        color: AppPalette.navyPrimary,
-                        fontWeight: isSelected
-                            ? FontWeight.bold
-                            : FontWeight.w500,
+                      style: GoogleFonts.outfit(
+                        color: isSelected
+                            ? Colors.white
+                            : AppPalette.navyPrimary,
+                        fontWeight: FontWeight.bold,
                         fontSize: 14,
                       ),
                     ),
@@ -504,6 +514,8 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
             // Child Tabs
             final player = _managedPlayers[index - 1];
             final playerName = player['player']['fullName'].split(' ')[0];
+            // Ideally use player['player']['profilePhoto'] if available
+            final playerImage = player['player']['profilePhoto'];
 
             return GestureDetector(
               onTap: () {
@@ -512,18 +524,15 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
                 });
               },
               child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 8,
-                ),
+                padding: const EdgeInsets.fromLTRB(6, 6, 20, 6),
                 decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(25),
+                  color: isSelected ? AppPalette.navyPrimary : Colors.white,
+                  borderRadius: BorderRadius.circular(30),
                   border: Border.all(
                     color: isSelected
                         ? AppPalette.navyPrimary
-                        : Colors.transparent,
-                    width: isSelected ? 2 : 0,
+                        : Colors.grey[300]!,
+                    width: 1,
                   ),
                   boxShadow: [
                     if (!isSelected)
@@ -538,25 +547,34 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     CircleAvatar(
-                      radius: 14,
-                      // Placeholder logic for avatar, can use image URL if available
-                      backgroundColor: AppPalette.orangeAccent,
-                      child: Text(
-                        playerName[0],
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: Colors.white,
-                        ),
-                      ),
+                      radius: 18,
+                      backgroundColor: isSelected
+                          ? Colors.white
+                          : AppPalette.orangeAccent,
+                      backgroundImage: playerImage != null
+                          ? NetworkImage(playerImage)
+                          : null,
+                      child: playerImage == null
+                          ? Text(
+                              playerName[0],
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                                color: isSelected
+                                    ? AppPalette.navyPrimary
+                                    : Colors.white,
+                              ),
+                            )
+                          : null,
                     ),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: 10),
                     Text(
                       playerName,
-                      style: TextStyle(
-                        color: AppPalette.navyPrimary,
-                        fontWeight: isSelected
-                            ? FontWeight.bold
-                            : FontWeight.w500,
+                      style: GoogleFonts.outfit(
+                        color: isSelected
+                            ? Colors.white
+                            : AppPalette.navyPrimary,
+                        fontWeight: FontWeight.bold,
                         fontSize: 14,
                       ),
                     ),

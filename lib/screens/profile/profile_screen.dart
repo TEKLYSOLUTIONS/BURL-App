@@ -136,32 +136,46 @@ class ProfileScreen extends StatelessWidget {
                       icon: Icons.bar_chart,
                       label: 'Performance Reports',
                       onTap: () =>
-                          context.push('/player-reports/${playerId ?? '1'}'),
+                          context.push('/coach/reports/${playerId ?? '1'}'),
                     ),
                   _ProfileMenuItem(
                     icon: Icons.history,
                     label: 'Booking History',
-                    onTap: () {},
+                    onTap: () => context.push('/bookings'),
                   ),
-                  if (!isCoachView) ...[
-                    _ProfileMenuItem(
-                      icon: Icons.credit_card,
-                      label: 'Payment Methods',
-                      onTap: () {},
-                    ),
-                    _ProfileMenuItem(
-                      icon: Icons.notifications_outlined,
-                      label: 'Notifications',
-                      onTap: () {},
-                    ),
-                    const SizedBox(height: 24),
-                    _ProfileMenuItem(
-                      icon: Icons.logout,
-                      label: 'Log Out',
-                      color: AppPalette.error,
-                      onTap: () => context.go('/welcome'),
-                    ),
-                  ],
+                  _ProfileMenuItem(
+                    icon: Icons.credit_card,
+                    label: 'Payment Methods',
+                    onTap: () => context.push(
+                      '/payment-methods',
+                    ), // Ensure this route exists or handle it
+                  ),
+                  _ProfileMenuItem(
+                    icon: Icons.notifications_outlined,
+                    label: 'Notifications',
+                    onTap: () => context.push('/notifications'),
+                  ),
+                  const SizedBox(height: 24),
+                  // Toggles
+                  _ProfileToggleItem(
+                    icon: Icons.notifications_active_outlined,
+                    label: 'Push Notifications',
+                    value: true,
+                    onChanged: (val) {},
+                  ),
+                  _ProfileToggleItem(
+                    icon: Icons.dark_mode_outlined,
+                    label: 'Dark Mode',
+                    value: false,
+                    onChanged: (val) {},
+                  ),
+                  const SizedBox(height: 24),
+                  _ProfileMenuItem(
+                    icon: Icons.logout,
+                    label: 'Log Out',
+                    color: AppPalette.error,
+                    onTap: () => context.go('/welcome'),
+                  ),
                 ],
               ),
             ).animate().fadeIn(delay: 300.ms).slideY(begin: 0.1),
@@ -257,6 +271,63 @@ class _ProfileMenuItem extends StatelessWidget {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ProfileToggleItem extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final bool value;
+  final ValueChanged<bool> onChanged;
+
+  const _ProfileToggleItem({
+    required this.icon,
+    required this.label,
+    required this.value,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16.0),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          color: Theme.of(context).cardColor,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.02),
+              blurRadius: 10,
+              offset: const Offset(0, 2),
+            ),
+          ],
+          border: Border.all(color: AppPalette.divider.withValues(alpha: 0.5)),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, color: Theme.of(context).colorScheme.primary),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Text(
+                label,
+                style: GoogleFonts.inter(
+                  fontWeight: FontWeight.w500,
+                  color: Theme.of(context).colorScheme.onSurface,
+                  fontSize: 16,
+                ),
+              ),
+            ),
+            Switch(
+              value: value,
+              onChanged: onChanged,
+              activeTrackColor: AppPalette.orangeAccent,
+            ),
+          ],
         ),
       ),
     );

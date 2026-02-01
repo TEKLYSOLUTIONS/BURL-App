@@ -19,6 +19,7 @@ class _GuardianProfileScreenState extends State<GuardianProfileScreen> {
   bool _darkMode = false;
   String _userName = 'Guardian';
   String _userEmail = '';
+  Map<String, dynamic>? _userProfile; // Store full profile data
 
   @override
   void initState() {
@@ -30,6 +31,7 @@ class _GuardianProfileScreenState extends State<GuardianProfileScreen> {
     try {
       final profile = await ProfileService.getProfile();
       setState(() {
+        _userProfile = profile; // Store complete profile
         _userName = profile['fullName'] ?? 'Guardian';
         _userEmail = profile['email'] ?? '';
 
@@ -165,8 +167,14 @@ class _GuardianProfileScreenState extends State<GuardianProfileScreen> {
                         ),
                         const SizedBox(height: 8),
                         GestureDetector(
-                          onTap: () {
-                            // Edit profile navigation
+                          onTap: () async {
+                            final result = await context.push(
+                              '/edit-profile',
+                              extra: _userProfile, // Pass complete profile data
+                            );
+                            if (result == true) {
+                              _fetchProfile();
+                            }
                           },
                           child: Text(
                             'Edit Profile',
@@ -191,14 +199,12 @@ class _GuardianProfileScreenState extends State<GuardianProfileScreen> {
               _buildSettingsTile(
                 icon: Icons.lock_outline_rounded,
                 title: 'Change Password',
-                onTap: () {},
+                onTap: () => context.push('/change-password'),
               ),
               _buildSettingsTile(
                 icon: Icons.credit_card,
                 title: 'Payment Method',
-                onTap: () {
-                  // Navigate to Payment Methods screen
-                },
+                onTap: () => context.push('/payment-methods'),
               ),
             ]),
             const SizedBox(height: 24),
@@ -252,17 +258,17 @@ class _GuardianProfileScreenState extends State<GuardianProfileScreen> {
               _buildSettingsTile(
                 icon: Icons.help_outline_rounded,
                 title: 'Help Center',
-                onTap: () {},
+                onTap: () => context.push('/help-center'),
               ),
               _buildSettingsTile(
                 icon: Icons.privacy_tip_outlined,
                 title: 'Privacy Policy',
-                onTap: () {},
+                onTap: () => context.push('/privacy-policy'),
               ),
               _buildSettingsTile(
                 icon: Icons.gavel_outlined,
                 title: 'Terms of Service',
-                onTap: () {},
+                onTap: () => context.push('/terms-of-service'),
               ),
             ]),
 

@@ -1,0 +1,104 @@
+import 'dart:convert';
+import 'package:flutter/foundation.dart';
+import '../config/api_config.dart';
+import 'api_service.dart'; // Reuse existing helper if possible, or direct http if needed
+
+class GuardianService {
+  static String get baseUrl => ApiConfig.baseUrl;
+
+  // Notifier to trigger UI updates across screens (e.g., Home Dashboard)
+  static final ValueNotifier<bool> playerUpdateNotifier = ValueNotifier(false);
+
+  // Add a new minor player
+  Future<Map<String, dynamic>> addPlayer({
+    required String fullName,
+    required String age,
+    String role = 'Batsman',
+    String? battingStyle,
+    String? bowlingStyle,
+    String? jerseyNumber,
+    String? teamName,
+    String? profilePhoto,
+  }) async {
+    try {
+      debugPrint('🛡️ Adding player: $fullName, Age: $age');
+
+      final response = await ApiService.post('guardian/players', {
+        'fullName': fullName,
+        'age': age,
+        'role': role,
+        'battingStyle': battingStyle,
+        'bowlingStyle': bowlingStyle,
+        'jerseyNumber': jerseyNumber,
+        'teamName': teamName,
+        'profilePhoto': profilePhoto,
+      });
+
+      if (response.statusCode == 201) {
+        final data = jsonDecode(response.body);
+        debugPrint('✅ Player added successfully: ${data['data']['_id']}');
+        return data['data'];
+      } else {
+        throw Exception('Failed to add player: ${response.body}');
+      }
+    } catch (e) {
+      debugPrint('❌ Error adding player: $e');
+      rethrow;
+    }
+  }
+
+  // Get all players managed by this guardian
+  Future<List<dynamic>> getMyPlayers() async {
+    try {
+      debugPrint('📥 Fetching guardian players...');
+
+      final response = await ApiService.get('guardian/players');
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return data['data'] as List<dynamic>;
+      } else {
+        throw Exception('Failed to fetch players: ${response.statusCode}');
+      }
+    } catch (e) {
+      debugPrint('❌ Error fetching players: $e');
+      rethrow;
+    }
+  }
+
+  // Get single player details
+  Future<Map<String, dynamic>> getPlayerDetails(String playerId) async {
+    try {
+      final response = await ApiService.get('guardian/player/$playerId');
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return data['data'];
+      } else {
+        throw Exception(
+          'Failed to fetch player details: ${response.statusCode}',
+        );
+      }
+    } catch (e) {
+      debugPrint('❌ Error fetching player details: $e');
+      rethrow;
+    }
+  }
+
+  // Get guardian profile
+  Future<Map<String, dynamic>> getProfile() async {
+    try {
+      final response = await ApiService.get('guardian/profile');
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return data['data'];
+      } else {
+        throw Exception('Failed to fetch profile');
+      }
+    } catch (e) {
+      debugPrint('❌ Error fetching profile: $e');
+      rethrow;
+    }
+  }
+}

@@ -1,4 +1,5 @@
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import 'package:http/http.dart' as http;
@@ -6,11 +7,14 @@ import 'package:flutter/foundation.dart';
 import 'dart:convert';
 import 'dart:io';
 
+import '../config/api_config.dart';
+
 class FirebaseAuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final GoogleSignIn _googleSignIn = GoogleSignIn();
-  // Change baseUrl based on platform
-  static const String baseUrl = 'http://localhost:4000/api';
+
+  // Use ApiConfig for consistent URL handling across platforms
+  static String get baseUrl => ApiConfig.baseUrl;
 
   // Get current user
   User? get currentUser => _auth.currentUser;
@@ -32,7 +36,7 @@ class FirebaseAuthService {
   }) async {
     try {
       debugPrint('📝 Creating Firebase account for: $email');
-      
+
       // Create user in Firebase
       final userCredential = await _auth.createUserWithEmailAndPassword(
         email: email,
@@ -45,7 +49,7 @@ class FirebaseAuthService {
       // Send email verification
       await userCredential.user?.sendEmailVerification();
       debugPrint('✉️ Verification email sent to: $email');
-      
+
       // Store user data in Firebase custom claims for first login
       // Note: MongoDB sync will happen on first verified login
       debugPrint('✅ Firebase account created, awaiting email verification');
@@ -64,7 +68,7 @@ class FirebaseAuthService {
   }) async {
     try {
       debugPrint('🔑 SignIn called with role: $role');
-      
+
       final userCredential = await _auth.signInWithEmailAndPassword(
         email: email,
         password: password,
@@ -73,12 +77,14 @@ class FirebaseAuthService {
       // Check if email is verified
       if (!userCredential.user!.emailVerified) {
         await _auth.signOut();
-        throw Exception('Please verify your email before logging in. Check your inbox.');
+        throw Exception(
+          'Please verify your email before logging in. Check your inbox.',
+        );
       }
 
       debugPrint('✅ Email verified, syncing with MongoDB...');
       debugPrint('📋 Passing role to _ensureMongoDBUser: $role');
-      
+
       // Create/sync user in MongoDB on first verified login
       await _ensureMongoDBUser(
         email: email,
@@ -89,6 +95,13 @@ class FirebaseAuthService {
       // Check if profile is complete
       await _checkProfileCompletion();
 
+      // Save token to SharedPreferences for ApiService
+      final token = await userCredential.user?.getIdToken();
+      if (token != null) {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('auth_token', token);
+      }
+
       return userCredential;
     } catch (e) {
       throw _handleAuthException(e);
@@ -96,7 +109,10 @@ class FirebaseAuthService {
   }
 
   // Sign in with Google
-  Future<UserCredential> signInWithGoogle({String? role}) async {
+  Future<UserCredential> signInWithGoogle({
+    String? role,
+    bool loginOnly = false,
+  }) async {
     try {
       // Trigger the Google Sign In flow
       final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
@@ -106,7 +122,8 @@ class FirebaseAuthService {
       }
 
       // Obtain the auth details
-      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+      final GoogleSignInAuthentication googleAuth =
+          await googleUser.authentication;
 
       // Create a new credential
       final credential = GoogleAuthProvider.credential(
@@ -117,6 +134,18 @@ class FirebaseAuthService {
       // Sign in to Firebase
       final userCredential = await _auth.signInWithCredential(credential);
 
+      // Check for existing user restriction
+      if (loginOnly &&
+          (userCredential.additionalUserInfo?.isNewUser ?? false)) {
+        debugPrint('❌ Login only mode: New Google user rejected');
+        // Delete the just created user
+        await userCredential.user?.delete();
+        await _googleSignIn.signOut();
+        throw Exception(
+          'Account does not exist. Please register using the Sign Up page.',
+        );
+      }
+
       // Ensure user exists in MongoDB
       await _ensureMongoDBUser(
         fullName: userCredential.user?.displayName ?? 'Google User',
@@ -126,6 +155,13 @@ class FirebaseAuthService {
 
       // Check if profile is complete
       await _checkProfileCompletion();
+
+      // Save token to SharedPreferences for ApiService
+      final token = await userCredential.user?.getIdToken();
+      if (token != null) {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('auth_token', token);
+      }
 
       return userCredential;
     } catch (e) {
@@ -161,7 +197,8 @@ class FirebaseAuthService {
 
       // Get full name
       String fullName = 'Apple User';
-      if (appleCredential.givenName != null && appleCredential.familyName != null) {
+      if (appleCredential.givenName != null &&
+          appleCredential.familyName != null) {
         fullName = '${appleCredential.givenName} ${appleCredential.familyName}';
       }
 
@@ -175,6 +212,13 @@ class FirebaseAuthService {
       // Check if profile is complete
       await _checkProfileCompletion();
 
+      // Save token to SharedPreferences for ApiService
+      final token = await userCredential.user?.getIdToken();
+      if (token != null) {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('auth_token', token);
+      }
+
       return userCredential;
     } catch (e) {
       throw _handleAuthException(e);
@@ -186,7 +230,9 @@ class FirebaseAuthService {
     try {
       await _auth.currentUser?.sendEmailVerification();
     } catch (e) {
-      throw Exception('Failed to send verification email. Please try again later.');
+      throw Exception(
+        'Failed to send verification email. Please try again later.',
+      );
     }
   }
 
@@ -200,6 +246,9 @@ class FirebaseAuthService {
   Future<void> signOut() async {
     await _googleSignIn.signOut();
     await _auth.signOut();
+
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('auth_token');
   }
 
   // Reset password
@@ -253,6 +302,22 @@ class FirebaseAuthService {
         } else {
           debugPrint('✅ Existing user found in MongoDB');
         }
+
+        // ✅ CRITICAL FIX: Update local storage with ACTUAL role/name from DB
+        if (data['user'] != null) {
+          final dbUser = data['user'];
+          final dbRole = dbUser['role'];
+          final dbName = dbUser['fullName'];
+
+          if (dbRole != null) {
+            final prefs = await SharedPreferences.getInstance();
+            await prefs.setString('user_role', dbRole);
+            if (dbName != null) {
+              await prefs.setString('user_name', dbName);
+            }
+            debugPrint('💾 Updated local role to: $dbRole');
+          }
+        }
       } else {
         debugPrint('⚠️ MongoDB sync warning: ${response.body}');
         // Don't throw - allow login even if MongoDB sync fails
@@ -271,10 +336,8 @@ class FirebaseAuthService {
       if (token == null) return;
 
       final response = await http.get(
-        Uri.parse('$baseUrl/auth/profile'),
-        headers: {
-          'Authorization': 'Bearer $token',
-        },
+        Uri.parse('$baseUrl/users/profile'),
+        headers: {'Authorization': 'Bearer $token'},
       );
 
       if (response.statusCode == 200) {
@@ -282,7 +345,8 @@ class FirebaseAuthService {
         final user = data['user'];
 
         // Check if profile is incomplete
-        final isIncomplete = user['phoneNumber'] == null ||
+        final isIncomplete =
+            user['phoneNumber'] == null ||
             user['phoneNumber'] == '' ||
             (user['role'] == 'coach' &&
                 (user['coachProfile'] == null ||

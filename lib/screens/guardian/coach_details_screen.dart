@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 import '../../config/palette.dart';
+import '../../services/search_service.dart';
 
 class CoachDetailsScreen extends StatefulWidget {
   final String coachId;
@@ -16,11 +17,36 @@ class CoachDetailsScreen extends StatefulWidget {
 class _CoachDetailsScreenState extends State<CoachDetailsScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  final _searchService = SearchService();
+
+  Map<String, dynamic>? _coach;
+  bool _isLoading = true;
+  String? _error;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
+    _fetchDetails();
+  }
+
+  Future<void> _fetchDetails() async {
+    try {
+      final data = await _searchService.getCoachDetails(widget.coachId);
+      if (mounted) {
+        setState(() {
+          _coach = data['data'];
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _error = e.toString();
+          _isLoading = false;
+        });
+      }
+    }
   }
 
   @override
@@ -31,6 +57,47 @@ class _CoachDetailsScreenState extends State<CoachDetailsScreen>
 
   @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const Scaffold(
+        backgroundColor: Color(0xFFF8F9FE),
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (_error != null || _coach == null) {
+      return Scaffold(
+        appBar: AppBar(elevation: 0, backgroundColor: Colors.transparent),
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.error_outline, size: 48, color: Colors.grey),
+              const SizedBox(height: 16),
+              Text('Error: ${_error ?? "Coach not found"}'),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: _fetchDetails,
+                child: const Text('Retry'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    final user = _coach!['userId'];
+    final profile = _coach!;
+    final fullName = user['fullName'] ?? 'Unknown Coach';
+    final profilePhoto =
+        user['profilePhoto'] ?? 'https://i.pravatar.cc/150?u=${widget.coachId}';
+    final specializations =
+        (profile['specializations'] as List?)?.join(', ') ?? 'Coach';
+    final bio = profile['bio'] ?? 'No bio available.';
+    final rating = profile['ratings']?['overall']?.toStringAsFixed(1) ?? '0.0';
+    final reviewCount = profile['ratings']?['count']?.toString() ?? '0';
+    final experience = '${profile['experience'] ?? 0} Yrs';
+    final hourlyRate = profile['pricing']?['hourlyRate']?.toString() ?? 'TBD';
+
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FE), // Light background
       appBar: AppBar(
@@ -48,7 +115,7 @@ class _CoachDetailsScreenState extends State<CoachDetailsScreen>
           ),
         ),
         title: Text(
-          'Sarah Jenkins',
+          fullName,
           style: GoogleFonts.outfit(
             color: Colors.black,
             fontWeight: FontWeight.bold,
@@ -94,10 +161,8 @@ class _CoachDetailsScreenState extends State<CoachDetailsScreen>
                               offset: const Offset(0, 10),
                             ),
                           ],
-                          image: const DecorationImage(
-                            image: NetworkImage(
-                              'https://images.unsplash.com/photo-1544005313-94ddf0286df2?fit=crop&w=200&h=200',
-                            ),
+                          image: DecorationImage(
+                            image: NetworkImage(profilePhoto),
                             fit: BoxFit.cover,
                           ),
                         ),
@@ -129,7 +194,7 @@ class _CoachDetailsScreenState extends State<CoachDetailsScreen>
 
                   // Name & Title
                   Text(
-                    'Sarah Jenkins',
+                    fullName,
                     style: GoogleFonts.outfit(
                       fontSize: 24,
                       fontWeight: FontWeight.bold,
@@ -140,7 +205,7 @@ class _CoachDetailsScreenState extends State<CoachDetailsScreen>
                   const SizedBox(height: 4),
 
                   Text(
-                    'High Performance Tennis Coach',
+                    specializations,
                     style: GoogleFonts.inter(
                       fontSize: 14,
                       color: const Color(0xFF6B4EFF), // Purple nuance
@@ -150,11 +215,11 @@ class _CoachDetailsScreenState extends State<CoachDetailsScreen>
 
                   const SizedBox(height: 12),
 
-                  // Badges
+                  // Badges (Static for now, can be dynamic later)
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      _buildBadge(Icons.verified_user, 'USPTR Pro'),
+                      _buildBadge(Icons.verified_user, 'Verified'),
                       const SizedBox(width: 12),
                       _buildBadge(Icons.school, 'Certified'),
                     ],
@@ -180,11 +245,11 @@ class _CoachDetailsScreenState extends State<CoachDetailsScreen>
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                       children: [
-                        _buildStat('4.9', 'RATING', isStar: true),
+                        _buildStat(rating, 'RATING', isStar: true),
                         _buildDivider(),
-                        _buildStat('8 Yrs', 'EXPERIENCE'),
+                        _buildStat(experience, 'EXPERIENCE'),
                         _buildDivider(),
-                        _buildStat('500+', 'PLAYERS'),
+                        _buildStat('50+', 'PLAYERS'), // Placeholder
                       ],
                     ),
                   ).animate().fadeIn(delay: 300.ms).slideY(begin: 0.2),
@@ -213,7 +278,9 @@ class _CoachDetailsScreenState extends State<CoachDetailsScreen>
                       tabs: const [
                         Tab(text: 'About'),
                         Tab(text: 'Reviews'),
-                        Tab(text: 'Schedule'),
+                        Tab(
+                          text: 'Schedule',
+                        ), // Could integrate calendar preview here
                       ],
                     ),
                   ),
@@ -221,179 +288,74 @@ class _CoachDetailsScreenState extends State<CoachDetailsScreen>
                   // Content
                   Padding(
                     padding: const EdgeInsets.all(24),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Details Section
-                        Text(
-                          'About Me',
-                          style: GoogleFonts.outfit(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: AppPalette.navyPrimary,
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        Text(
-                          'Former D1 athlete specializing in serve mechanics and agility training. I help intermediate players break through plateaus by focusing on the mental game and biomechanics. Whether you\'re prepping for a tournament or just want to beat your weekend rival, we\'ll build a custom plan for you.',
-                          style: GoogleFonts.inter(
-                            fontSize: 14,
-                            color: Colors.grey[600],
-                            height: 1.6,
-                          ),
-                        ),
-
-                        const SizedBox(height: 24),
-
-                        Text(
-                          'Specialties',
-                          style: GoogleFonts.outfit(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: AppPalette.navyPrimary,
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        Wrap(
-                          spacing: 12,
-                          runSpacing: 12,
-                          children: [
-                            _buildSpecialtyChip(
-                              Icons.sports_tennis,
-                              'Technical Analysis',
-                            ),
-                            _buildSpecialtyChip(
-                              Icons.directions_run,
-                              'Agility & Footwork',
-                            ),
-                            _buildSpecialtyChip(
-                              Icons.fitness_center,
-                              'Strength Training',
-                            ),
-                            _buildSpecialtyChip(
-                              Icons.psychology,
-                              'Mental Game',
-                            ),
-                          ],
-                        ),
-
-                        const SizedBox(height: 24),
-
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              'Training Gallery',
-                              style: GoogleFonts.outfit(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: AppPalette.navyPrimary,
-                              ),
-                            ),
-                            Text(
-                              'See All',
-                              style: GoogleFonts.inter(
-                                fontSize: 13,
-                                fontWeight: FontWeight.bold,
-                                color: AppPalette.navyPrimary,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-                        SizedBox(
-                          height: 120,
-                          child: ListView(
-                            scrollDirection: Axis.horizontal,
-                            children: [
-                              _buildGalleryItem(
-                                'https://images.unsplash.com/photo-1599058945522-28d584b6f0ff',
-                              ),
-                              _buildGalleryItem(
-                                'https://i.pravatar.cc/300?img=25', // Working placeholder
-                              ), // Tennis/Sports
-                            ],
-                          ),
-                        ),
-
-                        const SizedBox(height: 24),
-
-                        Text(
-                          'Location',
-                          style: GoogleFonts.outfit(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: AppPalette.navyPrimary,
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        Container(
-                          height: 160,
-                          width: double.infinity,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(20),
-                            image: const DecorationImage(
-                              image: NetworkImage(
-                                'https://images.unsplash.com/photo-1569336415962-a4bd9f69cd83',
-                              ), // Map placeholder
-                              fit: BoxFit.cover,
-                            ),
-                          ),
-                          child: Center(
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 12,
-                              ),
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(16),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withValues(alpha: 0.1),
-                                    blurRadius: 10,
-                                    offset: const Offset(0, 4),
-                                  ),
-                                ],
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  const Icon(
-                                    Icons.location_on,
+                    child: SizedBox(
+                      height:
+                          400, // Fixed height for tab view content inside scroll view
+                      child: TabBarView(
+                        controller: _tabController,
+                        children: [
+                          // ABOUT TAB
+                          SingleChildScrollView(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'About Me',
+                                  style: GoogleFonts.outfit(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
                                     color: AppPalette.navyPrimary,
-                                    size: 20,
                                   ),
-                                  const SizedBox(width: 8),
-                                  Column(
-                                    mainAxisSize: MainAxisSize.min,
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
+                                ),
+                                const SizedBox(height: 12),
+                                Text(
+                                  bio,
+                                  style: GoogleFonts.inter(
+                                    fontSize: 14,
+                                    color: Colors.grey[600],
+                                    height: 1.6,
+                                  ),
+                                ),
+                                const SizedBox(height: 24),
+                                Text(
+                                  'Training Gallery',
+                                  style: GoogleFonts.outfit(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                    color: AppPalette.navyPrimary,
+                                  ),
+                                ),
+                                const SizedBox(height: 12),
+                                SizedBox(
+                                  height: 120,
+                                  child: ListView(
+                                    scrollDirection: Axis.horizontal,
                                     children: [
-                                      Text(
-                                        'Golden Gate Courts',
-                                        style: GoogleFonts.outfit(
-                                          fontWeight: FontWeight.bold,
-                                          color: AppPalette.navyPrimary,
-                                          fontSize: 14,
-                                        ),
+                                      _buildGalleryItem(
+                                        'https://images.unsplash.com/photo-1599058945522-28d584b6f0ff',
                                       ),
-                                      Text(
-                                        '2.4 miles away',
-                                        style: GoogleFonts.inter(
-                                          fontSize: 12,
-                                          color: Colors.grey[600],
-                                        ),
+                                      _buildGalleryItem(
+                                        'https://i.pravatar.cc/300?img=25',
                                       ),
                                     ],
                                   ),
-                                ],
-                              ),
+                                ),
+                                const SizedBox(height: 24),
+                              ],
                             ),
                           ),
-                        ),
-                        const SizedBox(height: 40),
-                      ],
+
+                          // REVIEWS TAB (Placeholder)
+                          Center(
+                            child: Text("Reviews coming soon ($reviewCount)"),
+                          ),
+
+                          // SCHEDULE TAB (Placeholder)
+                          const Center(
+                            child: Text("Schedule preview unavailable"),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ],
@@ -420,7 +382,7 @@ class _CoachDetailsScreenState extends State<CoachDetailsScreen>
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      'TOTAL PRICE',
+                      'HOURLY RATE',
                       style: GoogleFonts.inter(
                         fontSize: 12,
                         fontWeight: FontWeight.bold,
@@ -433,7 +395,7 @@ class _CoachDetailsScreenState extends State<CoachDetailsScreen>
                       textBaseline: TextBaseline.alphabetic,
                       children: [
                         Text(
-                          '\$60',
+                          '\$$hourlyRate',
                           style: GoogleFonts.outfit(
                             fontSize: 28,
                             fontWeight: FontWeight.bold,
@@ -456,10 +418,22 @@ class _CoachDetailsScreenState extends State<CoachDetailsScreen>
                 Expanded(
                   child: ElevatedButton(
                     onPressed: () {
-                      context.push('/booking');
+                      // Navigate to booking screen, passing sessionId if known, or just coach info?
+                      // The current route expects :sessionId.
+                      // We might need a generic booking route or create a session first.
+                      // For now, let's navigate to a generic booking creation flow or show a dialog.
+                      // Simulating navigating to a session selection for this coach
+                      // context.push('/booking/new?coachId=${widget.coachId}');
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text(
+                            'Booking flow for specific coach to be implemented',
+                          ),
+                        ),
+                      );
                     },
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: AppPalette.orangeAccent, // Orange accent
+                      backgroundColor: AppPalette.orangeAccent,
                       padding: const EdgeInsets.symmetric(vertical: 16),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(16),
@@ -474,7 +448,7 @@ class _CoachDetailsScreenState extends State<CoachDetailsScreen>
                           color: Colors.white,
                           size: 20,
                         ),
-                        const SizedBox(width: 8),
+                        const SizedBox(height: 8),
                         Text(
                           'Book Session',
                           style: GoogleFonts.outfit(
@@ -558,50 +532,6 @@ class _CoachDetailsScreenState extends State<CoachDetailsScreen>
 
   Widget _buildDivider() {
     return Container(height: 30, width: 1, color: Colors.grey[200]);
-  }
-
-  Widget _buildSpecialtyChip(IconData icon, String label) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey[200]!),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
-            blurRadius: 5,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            icon,
-            size: 18,
-            // Vary colors based on icon for the 'pop' effect
-            color: icon == Icons.sports_tennis
-                ? Colors.blue
-                : icon == Icons.directions_run
-                ? Colors.orange
-                : icon == Icons.fitness_center
-                ? Colors.amber
-                : Colors.pink,
-          ),
-          const SizedBox(width: 8),
-          Text(
-            label,
-            style: GoogleFonts.inter(
-              fontWeight: FontWeight.w600,
-              color: AppPalette.navyPrimary,
-              fontSize: 13,
-            ),
-          ),
-        ],
-      ),
-    );
   }
 
   Widget _buildGalleryItem(String imageUrl) {

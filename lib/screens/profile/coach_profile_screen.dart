@@ -6,7 +6,7 @@ import '../../config/palette.dart';
 import '../../widgets/notification_button.dart';
 import '../../widgets/headers/coach_app_bar.dart';
 import '../settings/change_password_screen.dart';
-import '../settings/pro_upgrade_screen.dart';
+
 import '../../services/profile_service.dart';
 
 class CoachProfileScreen extends StatefulWidget {
@@ -246,13 +246,7 @@ class _CoachProfileScreenState extends State<CoachProfileScreen> {
                               ),
                             ),
                           ),
-                          onTap: () =>
-                              Navigator.of(context, rootNavigator: true).push(
-                                MaterialPageRoute(
-                                  builder: (context) =>
-                                      const ProUpgradeScreen(),
-                                ),
-                              ),
+                          onTap: () => context.push('/pro-upgrade'),
                         ),
                       ],
                     ),
@@ -348,7 +342,7 @@ class _CoachProfileScreenState extends State<CoachProfileScreen> {
                           iconBgColor: Colors.orange[50]!,
                           iconColor: Colors.orange,
                           title: 'Help Center',
-                          onTap: () {},
+                          onTap: () => context.push('/help-center'),
                         ),
                         const Divider(height: 1, color: Color(0xFFEEEEEE)),
                         _buildListTile(
@@ -356,7 +350,7 @@ class _CoachProfileScreenState extends State<CoachProfileScreen> {
                           iconBgColor: Colors.orange[50]!,
                           iconColor: Colors.orange,
                           title: 'Privacy Policy',
-                          onTap: () {},
+                          onTap: () => context.push('/privacy-policy'),
                         ),
                         const Divider(height: 1, color: Color(0xFFEEEEEE)),
                         _buildListTile(
@@ -364,7 +358,7 @@ class _CoachProfileScreenState extends State<CoachProfileScreen> {
                           iconBgColor: Colors.orange[50]!,
                           iconColor: Colors.orange,
                           title: 'Terms of Service',
-                          onTap: () {},
+                          onTap: () => context.push('/terms'),
                         ),
                       ],
                     ),

@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
+import 'dart:async';
 import '../../config/palette.dart';
+
 import '../../services/profile_service.dart';
+import '../../services/places_service.dart';
 
 class CompleteCoachProfileScreen extends StatefulWidget {
   final Map<String, dynamic>? profileData;
@@ -31,10 +34,11 @@ class _CompleteCoachProfileScreenState
   final TextEditingController _philosophyController = TextEditingController();
   final TextEditingController _playingCareerController =
       TextEditingController();
-  
+
   // Pricing Controllers
   final TextEditingController _hourlyRateController = TextEditingController();
-  final TextEditingController _sessionDurationController = TextEditingController(text: '60');
+  final TextEditingController _sessionDurationController =
+      TextEditingController(text: '60');
 
   // Dropdown/Selection State
   String? _primarySpecialization;
@@ -46,6 +50,13 @@ class _CompleteCoachProfileScreenState
 
   bool _isLoading = false;
   bool _isSaving = false;
+
+  // Autocomplete State
+  List<PlacePrediction> _predictions = [];
+  Timer? _debounce;
+  final LayerLink _layerLink = LayerLink();
+  OverlayEntry? _overlayEntry;
+  final FocusNode _cityFocus = FocusNode();
 
   // Cricket Specialties Options
   final List<String> _specialtyOptions = [
@@ -124,21 +135,25 @@ class _CompleteCoachProfileScreenState
 
       // Pricing
       if (coachProfile['defaultPricing'] != null) {
-        _hourlyRateController.text = 
+        _hourlyRateController.text =
             coachProfile['defaultPricing']['hourlyRate']?.toString() ?? '';
-        _sessionDurationController.text = 
-            coachProfile['defaultPricing']['sessionDuration']?.toString() ?? '60';
+        _sessionDurationController.text =
+            coachProfile['defaultPricing']['sessionDuration']?.toString() ??
+            '60';
       }
 
       _primarySpecialization = coachProfile['primarySpecialization'];
-      _selectedSpecialties =
-          List<String>.from(coachProfile['specialties'] ?? []);
+      _selectedSpecialties = List<String>.from(
+        coachProfile['specialties'] ?? [],
+      );
       _certifications = List<String>.from(coachProfile['certifications'] ?? []);
-      _achievements =
-          List<String>.from(coachProfile['notableAchievements'] ?? []);
+      _achievements = List<String>.from(
+        coachProfile['notableAchievements'] ?? [],
+      );
       _ageGroups = List<String>.from(coachProfile['ageGroupsCoached'] ?? []);
-      _sessionTypes =
-          List<String>.from(coachProfile['sessionTypesOffered'] ?? []);
+      _sessionTypes = List<String>.from(
+        coachProfile['sessionTypesOffered'] ?? [],
+      );
     }
   }
 
@@ -152,9 +167,9 @@ class _CompleteCoachProfileScreenState
     } catch (e) {
       setState(() => _isLoading = false);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error loading profile: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error loading profile: $e')));
       }
     }
   }
@@ -165,6 +180,9 @@ class _CompleteCoachProfileScreenState
     _emailController.dispose();
     _phoneController.dispose();
     _cityController.dispose();
+    _cityFocus.dispose();
+    _debounce?.cancel();
+    _removeOverlay();
     _coachTitleController.dispose();
     _bioController.dispose();
     _experienceController.dispose();
@@ -177,6 +195,10 @@ class _CompleteCoachProfileScreenState
 
   Future<void> _saveChanges() async {
     if (!_formKey.currentState!.validate()) {
+      // Find which tab has errors and switch to it - logic omitted for brevity
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please correct the errors in the form.')),
+      );
       return;
     }
 
@@ -189,7 +211,8 @@ class _CompleteCoachProfileScreenState
         'phone': _phoneController.text.trim(),
         'city': _cityController.text.trim(),
         'hourlyRate': double.tryParse(_hourlyRateController.text.trim()) ?? 0,
-        'sessionDuration': int.tryParse(_sessionDurationController.text.trim()) ?? 60,
+        'sessionDuration':
+            int.tryParse(_sessionDurationController.text.trim()) ?? 60,
         'coachTitle': _coachTitleController.text.trim(),
         'bio': _bioController.text.trim(),
         'experienceYears': int.tryParse(_experienceController.text) ?? 0,
@@ -241,274 +264,310 @@ class _CompleteCoachProfileScreenState
 
     return Scaffold(
       backgroundColor: AppPalette.backgroundLight,
-      appBar: AppBar(
-        backgroundColor: AppPalette.navyPrimary,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () => context.pop(),
-        ),
-        title: Text(
-          'Complete Your Profile',
-          style: GoogleFonts.outfit(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
-          ),
-        ),
-      ),
-      body: Form(
-        key: _formKey,
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Profile Photo Section
-              _buildProfilePhotoSection(),
-              const SizedBox(height: 32),
+      body: Column(
+        children: [
+          _buildHeader(),
+          Expanded(
+            child: Form(
+              key: _formKey,
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Personal Section
+                    _buildProfilePhotoSection(),
+                    const SizedBox(height: 32),
+                    _buildSectionTitle('Basic Information', Icons.person),
+                    const SizedBox(height: 16),
+                    _buildTextField(
+                      controller: _nameController,
+                      label: 'Full Name *',
+                      hint: 'John Doe',
+                      icon: Icons.person_outline,
+                      validator: (value) =>
+                          value?.isEmpty ?? true ? 'Name is required' : null,
+                    ),
+                    const SizedBox(height: 16),
+                    _buildTextField(
+                      controller: _emailController,
+                      label: 'Email *',
+                      hint: 'john@example.com',
+                      icon: Icons.email_outlined,
+                      keyboardType: TextInputType.emailAddress,
+                      validator: (value) =>
+                          value?.isEmpty ?? true ? 'Email is required' : null,
+                    ),
+                    const SizedBox(height: 16),
+                    _buildTextField(
+                      controller: _phoneController,
+                      label: 'Phone Number *',
+                      hint: '+1 234 567 8900',
+                      icon: Icons.phone_outlined,
+                      keyboardType: TextInputType.phone,
+                      validator: (value) =>
+                          value?.isEmpty ?? true ? 'Phone is required' : null,
+                    ),
+                    const SizedBox(height: 16),
+                    CompositedTransformTarget(
+                      link: _layerLink,
+                      child: _buildTextField(
+                        controller: _cityController,
+                        label: 'City/Location',
+                        hint: 'Search for your city...',
+                        icon: Icons.location_on_outlined,
+                        isOptional: true,
+                        focusNode: _cityFocus,
+                        onChanged: _onSearchChanged,
+                      ),
+                    ),
+                    const SizedBox(height: 32),
+                    const Divider(),
+                    const SizedBox(height: 32),
 
-              // Basic Information
-              _buildSectionTitle('Basic Information', Icons.person),
-              const SizedBox(height: 16),
-              _buildTextField(
-                controller: _nameController,
-                label: 'Full Name *',
-                hint: 'John Doe',
-                icon: Icons.person_outline,
-                validator: (value) =>
-                    value?.isEmpty ?? true ? 'Name is required' : null,
-              ),
-              const SizedBox(height: 16),
-              _buildTextField(
-                controller: _emailController,
-                label: 'Email *',
-                hint: 'john@example.com',
-                icon: Icons.email_outlined,
-                keyboardType: TextInputType.emailAddress,
-                validator: (value) =>
-                    value?.isEmpty ?? true ? 'Email is required' : null,
-              ),
-              const SizedBox(height: 16),
-              _buildTextField(
-                controller: _phoneController,
-                label: 'Phone Number *',
-                hint: '+1 234 567 8900',
-                icon: Icons.phone_outlined,
-                keyboardType: TextInputType.phone,
-                validator: (value) =>
-                    value?.isEmpty ?? true ? 'Phone is required' : null,
-              ),
-              const SizedBox(height: 16),
-              _buildTextField(
-                controller: _cityController,
-                label: 'City/Location',
-                hint: 'New York, USA',
-                icon: Icons.location_on_outlined,
-                isOptional: true,
-              ),
-              const SizedBox(height: 32),
-
-              // Pricing for Individual Bookings
-              _buildSectionTitle('Pricing for Individual Bookings', Icons.attach_money),
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  Expanded(
-                    flex: 2,
-                    child: _buildTextField(
-                      controller: _hourlyRateController,
-                      label: 'Hourly Rate',
-                      hint: '60',
-                      icon: Icons.payments_outlined,
-                      keyboardType: TextInputType.number,
+                    // Professional Section
+                    _buildSectionTitle(
+                      'Cricket Coaching Details',
+                      Icons.sports_cricket,
+                    ),
+                    const SizedBox(height: 16),
+                    _buildTextField(
+                      controller: _coachTitleController,
+                      label: 'Coach Title',
+                      hint: 'Head Coach, Batting Coach, etc.',
+                      icon: Icons.badge_outlined,
                       isOptional: true,
                     ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: _buildTextField(
-                      controller: _sessionDurationController,
-                      label: 'Duration (min)',
-                      hint: '60',
-                      icon: Icons.timer_outlined,
+                    const SizedBox(height: 16),
+                    _buildTextField(
+                      controller: _experienceController,
+                      label: 'Years of Experience *',
+                      hint: '5',
+                      icon: Icons.calendar_today,
                       keyboardType: TextInputType.number,
+                      validator: (value) {
+                        if (value?.isEmpty ?? true) {
+                          return 'Experience is required';
+                        }
+                        if (int.tryParse(value!) == null) {
+                          return 'Enter a valid number';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    _buildTextField(
+                      controller: _bioController,
+                      label: 'About Me *',
+                      hint: 'Tell players about your coaching style...',
+                      icon: Icons.description_outlined,
+                      maxLines: 4,
+                      maxLength: 500,
+                      validator: (value) =>
+                          value?.isEmpty ?? true ? 'Bio is required' : null,
+                    ),
+                    const SizedBox(height: 32),
+                    _buildSectionTitle(
+                      'Professional Background',
+                      Icons.military_tech,
+                    ),
+                    const SizedBox(height: 16),
+                    _buildTextField(
+                      controller: _playingCareerController,
+                      label: 'Playing Career Background',
+                      hint: 'Former first-class player, played for...',
+                      icon: Icons.sports,
+                      maxLines: 3,
                       isOptional: true,
                     ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Players will see this rate when booking individual sessions',
-                style: GoogleFonts.inter(
-                  fontSize: 12,
-                  color: AppPalette.textSecondaryLight,
-                ),
-              ),
-              const SizedBox(height: 32),
-
-              // Cricket Coaching Details
-              _buildSectionTitle('Cricket Coaching Details', Icons.sports_cricket),
-              const SizedBox(height: 16),
-              _buildTextField(
-                controller: _coachTitleController,
-                label: 'Coach Title',
-                hint: 'Head Coach, Batting Coach, etc.',
-                icon: Icons.badge_outlined,
-                isOptional: true,
-              ),
-              const SizedBox(height: 16),
-              _buildTextField(
-                controller: _experienceController,
-                label: 'Years of Experience *',
-                hint: '5',
-                icon: Icons.calendar_today,
-                keyboardType: TextInputType.number,
-                validator: (value) {
-                  if (value?.isEmpty ?? true) return 'Experience is required';
-                  if (int.tryParse(value!) == null) return 'Enter a valid number';
-                  return null;
-                },
-              ),
-              const SizedBox(height: 16),
-
-              // Primary Specialization Dropdown
-              _buildDropdownField(
-                label: 'Primary Specialization',
-                value: _primarySpecialization,
-                items: _primarySpecOptions,
-                onChanged: (value) =>
-                    setState(() => _primarySpecialization = value),
-                icon: Icons.star_outline,
-              ),
-              const SizedBox(height: 16),
-
-              // Multiple Specialties
-              _buildMultiSelectChips(
-                label: 'Cricket Specialties',
-                options: _specialtyOptions,
-                selectedOptions: _selectedSpecialties,
-                onChanged: (selected) =>
-                    setState(() => _selectedSpecialties = selected),
-              ),
-              const SizedBox(height: 16),
-
-              // Bio
-              _buildTextField(
-                controller: _bioController,
-                label: 'About Me *',
-                hint: 'Tell players about your coaching style...',
-                icon: Icons.description_outlined,
-                maxLines: 4,
-                maxLength: 500,
-                validator: (value) =>
-                    value?.isEmpty ?? true ? 'Bio is required' : null,
-              ),
-              const SizedBox(height: 32),
-
-              // Professional Background
-              _buildSectionTitle('Professional Background', Icons.military_tech),
-              const SizedBox(height: 16),
-              _buildListField(
-                label: 'Certifications',
-                items: _certifications,
-                onAdd: () => _showAddDialog(
-                  'Add Certification',
-                  'E.g., ICC Level 2, ECB Level 3',
-                  (value) => setState(() => _certifications.add(value)),
-                ),
-                onRemove: (index) =>
-                    setState(() => _certifications.removeAt(index)),
-                hint: 'Add your coaching certifications',
-              ),
-              const SizedBox(height: 16),
-              _buildListField(
-                label: 'Notable Achievements',
-                items: _achievements,
-                onAdd: () => _showAddDialog(
-                  'Add Achievement',
-                  'E.g., Coached U19 State Team',
-                  (value) => setState(() => _achievements.add(value)),
-                ),
-                onRemove: (index) =>
-                    setState(() => _achievements.removeAt(index)),
-                hint: 'Add your coaching achievements',
-              ),
-              const SizedBox(height: 16),
-              _buildTextField(
-                controller: _playingCareerController,
-                label: 'Playing Career Background',
-                hint: 'Former first-class player, played for...',
-                icon: Icons.sports,
-                maxLines: 3,
-                isOptional: true,
-              ),
-              const SizedBox(height: 16),
-              _buildTextField(
-                controller: _philosophyController,
-                label: 'Coaching Philosophy',
-                hint: 'Describe your coaching approach...',
-                icon: Icons.psychology_outlined,
-                maxLines: 3,
-                isOptional: true,
-              ),
-              const SizedBox(height: 32),
-
-              // Training Details
-              _buildSectionTitle('Training Details', Icons.groups),
-              const SizedBox(height: 16),
-              _buildMultiSelectChips(
-                label: 'Age Groups You Coach',
-                options: _ageGroupOptions,
-                selectedOptions: _ageGroups,
-                onChanged: (selected) => setState(() => _ageGroups = selected),
-              ),
-              const SizedBox(height: 16),
-              _buildMultiSelectChips(
-                label: 'Session Types Offered',
-                options: _sessionTypeOptions,
-                selectedOptions: _sessionTypes,
-                onChanged: (selected) =>
-                    setState(() => _sessionTypes = selected),
-              ),
-              const SizedBox(height: 40),
-
-              // Save Button
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: _isSaving ? null : _saveChanges,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.orange,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                    const SizedBox(height: 16),
+                    _buildTextField(
+                      controller: _philosophyController,
+                      label: 'Coaching Philosophy',
+                      hint: 'Describe your coaching approach...',
+                      icon: Icons.psychology_outlined,
+                      maxLines: 3,
+                      isOptional: true,
                     ),
-                  ),
-                  child: _isSaving
-                      ? const SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(
-                            color: Colors.white,
-                            strokeWidth: 2,
-                          ),
-                        )
-                      : Text(
-                          'Save Changes',
-                          style: GoogleFonts.outfit(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
+                    const SizedBox(height: 32),
+                    const Divider(),
+                    const SizedBox(height: 32),
+
+                    // Skills Section
+                    _buildSectionTitle('Specialization & Pricing', Icons.star),
+                    const SizedBox(height: 16),
+                    _buildDropdownField(
+                      label: 'Primary Specialization',
+                      value: _primarySpecialization,
+                      items: _primarySpecOptions,
+                      onChanged: (value) =>
+                          setState(() => _primarySpecialization = value),
+                      icon: Icons.star_outline,
+                    ),
+                    const SizedBox(height: 16),
+                    _buildMultiSelectChips(
+                      label: 'Cricket Specialties',
+                      options: _specialtyOptions,
+                      selectedOptions: _selectedSpecialties,
+                      onChanged: (selected) =>
+                          setState(() => _selectedSpecialties = selected),
+                    ),
+                    const SizedBox(height: 32),
+
+                    _buildSectionTitle('Training Details', Icons.groups),
+                    const SizedBox(height: 16),
+                    _buildMultiSelectChips(
+                      label: 'Age Groups You Coach',
+                      options: _ageGroupOptions,
+                      selectedOptions: _ageGroups,
+                      onChanged: (selected) =>
+                          setState(() => _ageGroups = selected),
+                    ),
+                    const SizedBox(height: 16),
+                    _buildMultiSelectChips(
+                      label: 'Session Types Offered',
+                      options: _sessionTypeOptions,
+                      selectedOptions: _sessionTypes,
+                      onChanged: (selected) =>
+                          setState(() => _sessionTypes = selected),
+                    ),
+
+                    const SizedBox(height: 32),
+                    _buildSectionTitle(
+                      'Pricing & Qualifications',
+                      Icons.attach_money,
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        Expanded(
+                          flex: 1,
+                          child: _buildTextField(
+                            controller: _hourlyRateController,
+                            label: 'Hourly Rate',
+                            hint: '60',
+                            icon: Icons.payments_outlined,
+                            keyboardType: TextInputType.number,
+                            isOptional: true,
                           ),
                         ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: _buildTextField(
+                            controller: _sessionDurationController,
+                            label: 'Duration (min)',
+                            hint: '60',
+                            icon: Icons.timer_outlined,
+                            keyboardType: TextInputType.number,
+                            isOptional: true,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    _buildListField(
+                      label: 'Certifications',
+                      items: _certifications,
+                      onAdd: () => _showAddDialog(
+                        'Add Certification',
+                        'E.g., ICC Level 2, ECB Level 3',
+                        (value) => setState(() => _certifications.add(value)),
+                      ),
+                      onRemove: (index) =>
+                          setState(() => _certifications.removeAt(index)),
+                      hint: 'Add your coaching certifications',
+                    ),
+                    const SizedBox(height: 16),
+                    _buildListField(
+                      label: 'Notable Achievements',
+                      items: _achievements,
+                      onAdd: () => _showAddDialog(
+                        'Add Achievement',
+                        'E.g., Coached U19 State Team',
+                        (value) => setState(() => _achievements.add(value)),
+                      ),
+                      onRemove: (index) =>
+                          setState(() => _achievements.removeAt(index)),
+                      hint: 'Add your coaching achievements',
+                    ),
+
+                    const SizedBox(height: 40),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: _isSaving ? null : _saveChanges,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppPalette.orangeAccent,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: _isSaving
+                            ? const SizedBox(
+                                height: 20,
+                                width: 20,
+                                child: CircularProgressIndicator(
+                                  color: Colors.white,
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : Text(
+                                'Save Complete Profile',
+                                style: GoogleFonts.outfit(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              ),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                  ],
                 ),
               ),
-              const SizedBox(height: 24),
-            ],
+            ),
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHeader() {
+    return Container(
+      padding: EdgeInsets.only(
+        top: MediaQuery.of(context).padding.top + 20,
+        bottom: 24,
+        left: 24,
+        right: 24,
+      ),
+      decoration: const BoxDecoration(
+        color: AppPalette.navyPrimary,
+        borderRadius: BorderRadius.only(
+          bottomLeft: Radius.circular(30),
+          bottomRight: Radius.circular(30),
         ),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          IconButton(
+            onPressed: () => context.pop(),
+            icon: const Icon(Icons.arrow_back, color: Colors.white),
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(),
+          ),
+          Text(
+            'Edit Profile',
+            textAlign: TextAlign.center,
+            style: GoogleFonts.outfit(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
+          ),
+          const SizedBox(width: 24), // Spacer to balance the back button
+        ],
       ),
     );
   }
@@ -533,8 +592,11 @@ class _CompleteCoachProfileScreenState
                     color: Colors.orange,
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(Icons.camera_alt,
-                      size: 20, color: Colors.white),
+                  child: const Icon(
+                    Icons.camera_alt,
+                    size: 20,
+                    color: Colors.white,
+                  ),
                 ),
               ),
             ],
@@ -543,8 +605,7 @@ class _CompleteCoachProfileScreenState
           TextButton(
             onPressed: () {
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                    content: Text('Photo upload coming soon!')),
+                const SnackBar(content: Text('Photo upload coming soon!')),
               );
             },
             child: Text(
@@ -587,6 +648,8 @@ class _CompleteCoachProfileScreenState
     TextInputType? keyboardType,
     String? Function(String?)? validator,
     bool isOptional = false,
+    FocusNode? focusNode,
+    void Function(String)? onChanged,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -622,23 +685,27 @@ class _CompleteCoachProfileScreenState
           maxLength: maxLength,
           keyboardType: keyboardType,
           validator: validator,
+          focusNode: focusNode,
+          onChanged: onChanged,
           decoration: InputDecoration(
             hintText: hint,
             prefixIcon: Icon(icon, color: AppPalette.navyPrimary),
             filled: true,
-            fillColor: Colors.white,
+            fillColor: Colors.grey[100],
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: Colors.grey[300]!),
+              borderSide: BorderSide.none,
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: Colors.grey[300]!),
+              borderSide: BorderSide.none,
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide:
-                  const BorderSide(color: AppPalette.navyPrimary, width: 2),
+              borderSide: const BorderSide(
+                color: AppPalette.navyPrimary,
+                width: 1.5,
+              ),
             ),
           ),
         ),
@@ -668,9 +735,8 @@ class _CompleteCoachProfileScreenState
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 12),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: Colors.grey[100],
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.grey[300]!),
           ),
           child: DropdownButtonHideUnderline(
             child: DropdownButton<String>(
@@ -681,10 +747,7 @@ class _CompleteCoachProfileScreenState
               items: items.map((String item) {
                 return DropdownMenuItem<String>(
                   value: item,
-                  child: Text(
-                    item.toUpperCase(),
-                    style: GoogleFonts.inter(),
-                  ),
+                  child: Text(item.toUpperCase(), style: GoogleFonts.inter()),
                 );
               }).toList(),
               onChanged: onChanged,
@@ -781,7 +844,6 @@ class _CompleteCoachProfileScreenState
             decoration: BoxDecoration(
               color: Colors.grey[100],
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.grey[300]!),
             ),
             child: Center(
               child: Text(
@@ -796,20 +858,20 @@ class _CompleteCoachProfileScreenState
               margin: const EdgeInsets.only(bottom: 8),
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: Colors.grey[100],
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.grey[300]!),
               ),
               child: Row(
                 children: [
                   Expanded(
-                    child: Text(
-                      entry.value,
-                      style: GoogleFonts.inter(),
-                    ),
+                    child: Text(entry.value, style: GoogleFonts.inter()),
                   ),
                   IconButton(
-                    icon: const Icon(Icons.close, size: 20, color: Colors.orange),
+                    icon: const Icon(
+                      Icons.close,
+                      size: 20,
+                      color: Colors.orange,
+                    ),
                     onPressed: () => onRemove(entry.key),
                     color: Colors.red,
                   ),
@@ -821,6 +883,88 @@ class _CompleteCoachProfileScreenState
     );
   }
 
+  void _onSearchChanged(String query) {
+    if (_debounce?.isActive ?? false) _debounce!.cancel();
+    _debounce = Timer(const Duration(milliseconds: 500), () async {
+      if (query.isEmpty) {
+        _removeOverlay();
+        return;
+      }
+
+      final predictions = await PlacesService.getAutocomplete(query);
+      if (mounted) {
+        setState(() {
+          _predictions = predictions;
+        });
+        if (_predictions.isNotEmpty) {
+          _showOverlay();
+        } else {
+          _removeOverlay();
+        }
+      }
+    });
+  }
+
+  void _showOverlay() {
+    _removeOverlay();
+
+    _overlayEntry = OverlayEntry(
+      builder: (context) => Positioned(
+        width: MediaQuery.of(context).size.width - 48, // 24 padding each side
+        child: CompositedTransformFollower(
+          link: _layerLink,
+          showWhenUnlinked: false,
+          offset: const Offset(
+            0,
+            60,
+          ), // Adjust offset based on text field height
+          child: Material(
+            elevation: 4,
+            borderRadius: BorderRadius.circular(12),
+            color: Colors.white,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxHeight: 200),
+              child: ListView.separated(
+                padding: EdgeInsets.zero,
+                shrinkWrap: true,
+                itemCount: _predictions.length,
+                separatorBuilder: (context, index) => const Divider(height: 1),
+                itemBuilder: (context, index) {
+                  final p = _predictions[index];
+                  return ListTile(
+                    dense: true,
+                    title: Text(
+                      p.mainText,
+                      style: GoogleFonts.inter(fontWeight: FontWeight.w600),
+                    ),
+                    subtitle: Text(
+                      p.secondaryText,
+                      style: GoogleFonts.inter(fontSize: 12),
+                    ),
+                    onTap: () => _onPredictionSelected(p),
+                  );
+                },
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    Overlay.of(context).insert(_overlayEntry!);
+  }
+
+  void _removeOverlay() {
+    _overlayEntry?.remove();
+    _overlayEntry = null;
+  }
+
+  void _onPredictionSelected(PlacePrediction prediction) {
+    _removeOverlay();
+    _cityController.text = prediction.description;
+    _cityFocus.unfocus();
+  }
+
   Future<void> _showAddDialog(
     String title,
     String hint,
@@ -830,7 +974,10 @@ class _CompleteCoachProfileScreenState
     await showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text(title, style: GoogleFonts.outfit(fontWeight: FontWeight.bold)),
+        title: Text(
+          title,
+          style: GoogleFonts.outfit(fontWeight: FontWeight.bold),
+        ),
         content: TextField(
           controller: controller,
           decoration: InputDecoration(

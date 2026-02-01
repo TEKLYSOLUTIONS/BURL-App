@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -19,25 +20,19 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
 
   final List<WelcomeSlide> _slides = [
     WelcomeSlide(
-      imageAsset: 'assets/images/welcome_batting_light.png',
+      imageAsset: 'assets/images/welcome_england.png',
       title1: 'Master Your\n',
-      title2: 'Game Skills',
-      description:
-          'Connect with elite coaches to perfect your technique and dominate in any sport.',
+      title2: 'Game',
     ),
     WelcomeSlide(
-      imageAsset: 'assets/images/welcome_bowling_light.png',
+      imageAsset: 'assets/images/welcome_srilanka.png',
       title1: 'Unleash Your\n',
       title2: 'Full Potential',
-      description:
-          'Get personalized training plans and analysis to reach the next level of performance.',
     ),
     WelcomeSlide(
-      imageAsset: 'assets/images/welcome_fielding_light.png',
+      imageAsset: 'assets/images/welcome_nz.png',
       title1: 'Experience the\n',
-      title2: 'Thrill of Victory',
-      description:
-          'Join a community of passionate athletes and track your journey to success.',
+      title2: 'Victory',
     ),
   ];
 
@@ -149,213 +144,202 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
               children: [
                 const Spacer(),
 
-                Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 16.0),
-                  padding: const EdgeInsets.all(24.0),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.95),
+                // Glass Container
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                  child: ClipRRect(
                     borderRadius: const BorderRadius.vertical(
                       top: Radius.circular(32),
                       bottom: Radius.circular(32),
                     ),
-                    border: Border.all(
-                      color: Colors.black.withValues(alpha: 0.05),
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.1),
-                        blurRadius: 20,
-                        offset: const Offset(0, 10),
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    children: [
-                      // Badge
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 8,
-                        ),
+                    child: BackdropFilter(
+                      filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(24.0),
                         decoration: BoxDecoration(
-                          color: Colors.black.withValues(alpha: 0.05),
-                          borderRadius: BorderRadius.circular(20),
+                          color: Colors.white.withValues(alpha: 0.1),
                           border: Border.all(
-                            color: Colors.black.withValues(alpha: 0.05),
+                            color: Colors.white.withValues(alpha: 0.2),
+                          ),
+                          gradient: LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [
+                              Colors.white.withValues(alpha: 0.15),
+                              Colors.white.withValues(alpha: 0.05),
+                            ],
                           ),
                         ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
+                        child: Column(
                           children: [
-                            const Icon(
-                              Icons.circle,
-                              size: 8,
-                              color: AppPalette.orangeAccent,
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              '#1 COACHING APP',
-                              style: GoogleFonts.inter(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.black87,
-                                letterSpacing: 0.5,
+                            // Badge
+                            Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                    vertical: 8,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withValues(alpha: 0.5),
+                                    borderRadius: BorderRadius.circular(20),
+                                    border: Border.all(
+                                      color: Colors.white.withValues(
+                                        alpha: 0.2,
+                                      ),
+                                    ),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const Icon(
+                                        Icons.circle,
+                                        size: 8,
+                                        color: AppPalette.orangeAccent,
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        '#1 COACHING APP',
+                                        style: GoogleFonts.inter(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w600,
+                                          color: Colors.white,
+                                          letterSpacing: 0.5,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                )
+                                .animate()
+                                .fadeIn(delay: 200.ms)
+                                .slideY(begin: 0.2),
+
+                            const SizedBox(height: 24),
+
+                            // Animated Headlines
+                            AnimatedSwitcher(
+                              duration: const Duration(milliseconds: 500),
+                              child: RichText(
+                                key: ValueKey<int>(_currentPage),
+                                textAlign: TextAlign.center,
+                                text: TextSpan(
+                                  style: GoogleFonts.outfit(
+                                    fontSize: 32,
+                                    fontWeight: FontWeight.bold,
+                                    height: 1.1,
+                                    color: Colors.white,
+                                  ),
+                                  children: [
+                                    TextSpan(
+                                      text: _slides[_currentPage].title1,
+                                    ),
+                                    TextSpan(
+                                      text: _slides[_currentPage].title2,
+                                      style: const TextStyle(
+                                        color: AppPalette.orangeAccent,
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
+
+                            const SizedBox(height: 16),
+
+                            // Pagination Dots
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: List.generate(_slides.length, (index) {
+                                final isActive = index == _currentPage;
+                                return AnimatedContainer(
+                                  duration: const Duration(milliseconds: 300),
+                                  margin: const EdgeInsets.symmetric(
+                                    horizontal: 4,
+                                  ),
+                                  height: 6,
+                                  width: isActive ? 24 : 6,
+                                  decoration: BoxDecoration(
+                                    color: isActive
+                                        ? AppPalette.orangeAccent
+                                        : Colors.white.withValues(alpha: 0.2),
+                                    borderRadius: BorderRadius.circular(3),
+                                  ),
+                                );
+                              }),
+                            ),
+
+                            const SizedBox(height: 32),
+
+                            // Get Started Button / Next Button
+                            Container(
+                              decoration: BoxDecoration(
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: AppPalette.orangeAccent.withValues(
+                                      alpha: 0.4,
+                                    ),
+                                    blurRadius: 24,
+                                    offset: const Offset(0, 8),
+                                  ),
+                                ],
+                              ),
+                              child: ElevatedButton(
+                                onPressed: _currentPage == _slides.length - 1
+                                    ? () => context.push('/role-selection')
+                                    : _onNext,
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: AppPalette.orangeAccent,
+                                  foregroundColor: Colors.white,
+                                  elevation: 0,
+                                  // Override theme's infinity width
+                                  minimumSize: const Size(200, 50),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 32,
+                                    vertical: 16,
+                                  ),
+                                  shape: const StadiumBorder(),
+                                ),
+                                child: Text(
+                                  _currentPage == _slides.length - 1
+                                      ? 'Get Started'
+                                      : 'Next',
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ).animate().fadeIn().scale(),
+
+                            const SizedBox(height: 24),
+
+                            // Login Link
+                            GestureDetector(
+                              onTap: () => context.push('/login?role=player'),
+                              child: RichText(
+                                text: TextSpan(
+                                  style: GoogleFonts.inter(
+                                    fontSize: 15,
+                                    color: Colors.white70,
+                                  ),
+                                  children: [
+                                    const TextSpan(
+                                      text: 'Already have an account? ',
+                                    ),
+                                    TextSpan(
+                                      text: 'Log In',
+                                      style: GoogleFonts.inter(
+                                        fontWeight: FontWeight.bold,
+                                        color: AppPalette.orangeAccent,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ).animate().fadeIn(delay: 600.ms),
                           ],
                         ),
-                      ).animate().fadeIn(delay: 200.ms).slideY(begin: 0.2),
-
-                      const SizedBox(height: 24),
-
-                      // Animated Headlines
-                      AnimatedSwitcher(
-                        duration: const Duration(milliseconds: 500),
-                        child: RichText(
-                          key: ValueKey<int>(_currentPage),
-                          textAlign: TextAlign.center,
-                          text: TextSpan(
-                            style: GoogleFonts.outfit(
-                              fontSize: 32,
-                              fontWeight: FontWeight.bold,
-                              height: 1.1,
-                              color: Colors.black,
-                            ),
-                            children: [
-                              TextSpan(text: _slides[_currentPage].title1),
-                              TextSpan(
-                                text: _slides[_currentPage].title2,
-                                style: const TextStyle(
-                                  color: AppPalette.orangeAccent,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
                       ),
-
-                      const SizedBox(height: 16),
-
-                      // Animated Description
-                      AnimatedSwitcher(
-                        duration: const Duration(milliseconds: 500),
-                        child: Text(
-                          _slides[_currentPage].description,
-                          key: ValueKey<int>(_currentPage),
-                          textAlign: TextAlign.center,
-                          style: GoogleFonts.inter(
-                            fontSize: 16,
-                            color: Colors.black54,
-                            height: 1.5,
-                          ),
-                        ),
-                      ),
-
-                      const SizedBox(height: 24),
-
-                      // Pagination Dots
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: List.generate(_slides.length, (index) {
-                          final isActive = index == _currentPage;
-                          return AnimatedContainer(
-                            duration: const Duration(milliseconds: 300),
-                            margin: const EdgeInsets.symmetric(horizontal: 4),
-                            height: 6,
-                            width: isActive ? 24 : 6,
-                            decoration: BoxDecoration(
-                              color: isActive
-                                  ? AppPalette.orangeAccent
-                                  : Colors.black.withValues(alpha: 0.1),
-                              borderRadius: BorderRadius.circular(3),
-                            ),
-                          );
-                        }),
-                      ),
-
-                      const SizedBox(height: 32),
-
-                      // Get Started Button / Next Button
-                      if (_currentPage == _slides.length - 1)
-                        ElevatedButton(
-                          onPressed: () => context.push('/role-selection'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppPalette.orangeAccent,
-                            foregroundColor: Colors.white,
-                            elevation: 0,
-                            minimumSize: const Size(double.infinity, 56),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                          ),
-                          child: const Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Text(
-                                'Get Started',
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              SizedBox(width: 8),
-                              Icon(Icons.arrow_forward_rounded, size: 20),
-                            ],
-                          ),
-                        ).animate().fadeIn().scale()
-                      else
-                        ElevatedButton(
-                          onPressed: _onNext,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppPalette.orangeAccent,
-                            foregroundColor: Colors.white,
-                            elevation: 0,
-                            minimumSize: const Size(double.infinity, 56),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                          ),
-                          child: const Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Text(
-                                'Next',
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              SizedBox(width: 8),
-                              Icon(Icons.arrow_forward_rounded, size: 20),
-                            ],
-                          ),
-                        ),
-
-                      const SizedBox(height: 24),
-
-                      // Login Link
-                      GestureDetector(
-                        onTap: () => context.push('/login?role=player'),
-                        child: RichText(
-                          text: TextSpan(
-                            style: GoogleFonts.inter(
-                              fontSize: 15,
-                              color: Colors.black87,
-                            ),
-                            children: [
-                              const TextSpan(text: 'Already have an account? '),
-                              TextSpan(
-                                text: 'Log In',
-                                style: GoogleFonts.inter(
-                                  fontWeight: FontWeight.bold,
-                                  color: AppPalette.orangeAccent,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ).animate().fadeIn(delay: 600.ms),
-                    ],
+                    ),
                   ),
                 ),
                 const SizedBox(height: 24),
@@ -372,12 +356,9 @@ class WelcomeSlide {
   final String imageAsset;
   final String title1;
   final String title2;
-  final String description;
-
   WelcomeSlide({
     required this.imageAsset,
     required this.title1,
     required this.title2,
-    required this.description,
   });
 }

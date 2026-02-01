@@ -8,7 +8,7 @@ class ApiConfig {
   // 🔧 PHYSICAL DEVICE TESTING
   // Set to true when testing on a physical Android device via USB
   // Set to false when testing on Android Emulator
-  static const bool isPhysicalDevice = false;
+  static const bool isPhysicalDevice = true;
 
   // Development URLs (for emulator/simulator testing)
   static const String _baseUrlEmulator = 'http://10.0.2.2:4000/api';
@@ -21,6 +21,9 @@ class ApiConfig {
   // ✅ Updated with Render.com deployment URL
   static const String _baseUrlProduction =
       'https://cricket-coaching-backend.onrender.com/api';
+
+  static const String googleMapsApiKey =
+      'AIzaSyA49gBcEHS6benjXtwA2rakOLejlmDFd-0';
 
   static String get baseUrl {
     // Use production URL when isProduction is true

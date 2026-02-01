@@ -5,30 +5,61 @@ import '../../config/palette.dart';
 import 'package:intl/intl.dart';
 
 class EditPlayerScreen extends StatefulWidget {
-  const EditPlayerScreen({super.key});
+  final Map<String, dynamic>? playerData;
+
+  const EditPlayerScreen({super.key, this.playerData});
 
   @override
   State<EditPlayerScreen> createState() => _EditPlayerScreenState();
 }
 
 class _EditPlayerScreenState extends State<EditPlayerScreen> {
-  // Pre-filled with mock data
-  final TextEditingController _firstNameController = TextEditingController(
-    text: "Leo",
-  );
-  final TextEditingController _lastNameController = TextEditingController(
-    text: "Messi",
-  );
-  final TextEditingController _jerseyController = TextEditingController(
-    text: "10",
-  );
-  final TextEditingController _teamController = TextEditingController(
-    text: "Inter Miami Jr.",
-  );
+  late TextEditingController _firstNameController;
+  late TextEditingController _lastNameController;
+  late TextEditingController _jerseyController;
+  late TextEditingController _teamController;
 
-  DateTime _selectedDate = DateTime(2015, 6, 24);
-  String _selectedSport = 'Soccer';
+  late DateTime _selectedDate;
+  late String _selectedSport;
   final List<String> _sports = ['Soccer', 'Cricket', 'Basketball', 'Tennis'];
+
+  String _playerName = '';
+  String _playerId = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _initializeWithData();
+  }
+
+  void _initializeWithData() {
+    final data = widget.playerData;
+
+    // Extract name parts
+    final fullName = data?['fullName'] ?? 'Player';
+    final nameParts = fullName.split(' ');
+    final firstName = nameParts.isNotEmpty ? nameParts[0] : '';
+    final lastName = nameParts.length > 1 ? nameParts.sublist(1).join(' ') : '';
+
+    _playerName = fullName;
+    _playerId = data?['_id'] ?? '';
+
+    _firstNameController = TextEditingController(text: firstName);
+    _lastNameController = TextEditingController(text: lastName);
+    _jerseyController = TextEditingController(text: '');
+    _teamController = TextEditingController(text: '');
+
+    // Parse age to approximate birth date
+    final ageString = data?['age'];
+    if (ageString != null) {
+      final age = int.tryParse(ageString.toString()) ?? 10;
+      _selectedDate = DateTime.now().subtract(Duration(days: age * 365));
+    } else {
+      _selectedDate = DateTime(2015, 6, 24);
+    }
+
+    _selectedSport = 'Cricket'; // Default to Cricket for cricket app
+  }
 
   void _presentDatePicker() {
     showDatePicker(
@@ -67,25 +98,6 @@ class _EditPlayerScreenState extends State<EditPlayerScreen> {
           ),
           onPressed: () => context.pop(),
         ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              // Quick save
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Player Updated Successfully!')),
-              );
-              context.pop();
-            },
-            child: Text(
-              'Save',
-              style: GoogleFonts.outfit(
-                color: Colors.orange,
-                fontWeight: FontWeight.bold,
-                fontSize: 16,
-              ),
-            ),
-          ),
-        ],
       ),
 
       body: SingleChildScrollView(
@@ -132,7 +144,7 @@ class _EditPlayerScreenState extends State<EditPlayerScreen> {
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    'Leo Messi',
+                    _playerName,
                     style: GoogleFonts.outfit(
                       fontSize: 22,
                       fontWeight: FontWeight.bold,
@@ -141,7 +153,7 @@ class _EditPlayerScreenState extends State<EditPlayerScreen> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'ID: #839201',
+                    'ID: #${_playerId.substring(0, 6)}',
                     style: GoogleFonts.inter(
                       fontSize: 14,
                       color: Colors.grey[500],

@@ -308,19 +308,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 "Email Address",
                 _emailController,
                 icon: Icons.email_outlined,
+                readOnly: true, // Email cannot be changed
                 keyboardType: TextInputType.emailAddress,
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return 'Email is required';
-                  }
-                  final emailRegex = RegExp(
-                    r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$',
-                  );
-                  if (!emailRegex.hasMatch(value.trim())) {
-                    return 'Enter a valid email';
-                  }
-                  return null;
-                },
+                validator: (value) => null,
               ),
               const SizedBox(height: 16),
               _buildTextField(
@@ -374,6 +364,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     TextEditingController controller, {
     IconData? icon,
     int maxLines = 1,
+    bool readOnly = false,
     TextInputType? keyboardType,
     String? Function(String?)? validator,
   }) {
@@ -405,6 +396,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           child: TextFormField(
             controller: controller,
             maxLines: maxLines,
+            readOnly: readOnly,
             keyboardType: keyboardType,
             validator: validator,
             decoration: InputDecoration(

@@ -21,7 +21,7 @@ import '../screens/sessions/my_sessions_screen.dart';
 
 import '../screens/guardian/my_players_screen.dart';
 import '../screens/profile/coach_profile_screen.dart';
-import '../screens/profile/complete_coach_profile_screen.dart';
+
 import '../screens/sessions/session_details_screen.dart';
 import '../widgets/navigation/guardian_navigation.dart';
 import '../widgets/navigation/coach_navigation.dart';
@@ -43,6 +43,12 @@ import '../screens/player/player_reports_screen.dart';
 import '../screens/player/player_settings_screen.dart';
 import '../screens/notifications/notifications_screen.dart';
 import '../screens/notifications/notification_detail_screen.dart';
+import '../screens/settings/pro_upgrade_screen.dart';
+import '../screens/support/help_center_screen.dart';
+import '../screens/profile/edit_profile_screen.dart';
+import '../screens/profile/change_password_screen.dart';
+import '../screens/profile/payment_methods_screen.dart';
+import '../screens/legal/terms_of_service_screen.dart';
 
 // Placeholder screens for other tabs
 class PlaceholderScreen extends StatelessWidget {
@@ -86,10 +92,7 @@ class AppRouter {
         path: '/forgot-password',
         builder: (context, state) => const ForgotPasswordScreen(),
       ),
-      GoRoute(
-        path: '/terms',
-        builder: (context, state) => const TermsScreen(),
-      ),
+      GoRoute(path: '/terms', builder: (context, state) => const TermsScreen()),
       GoRoute(
         path: '/privacy-policy',
         builder: (context, state) => const PrivacyPolicyScreen(),
@@ -107,14 +110,6 @@ class AppRouter {
         parentNavigatorKey: _rootNavigatorKey,
         builder: (context, state) =>
             SessionDetailsScreen(sessionId: state.pathParameters['id'] ?? ''),
-      ),
-
-      GoRoute(
-        path: '/edit-profile',
-        builder: (context, state) {
-          final profileData = state.extra as Map<String, dynamic>?;
-          return CompleteCoachProfileScreen(profileData: profileData);
-        },
       ),
 
       GoRoute(
@@ -156,7 +151,10 @@ class AppRouter {
 
       GoRoute(
         path: '/guardian/edit-player',
-        builder: (context, state) => const EditPlayerScreen(),
+        builder: (context, state) {
+          final playerData = state.extra as Map<String, dynamic>?;
+          return EditPlayerScreen(playerData: playerData);
+        },
       ),
 
       GoRoute(
@@ -203,6 +201,33 @@ class AppRouter {
             path: '/coach/create-session',
             builder: (context, state) => const CreateSessionScreen(),
           ),
+          GoRoute(
+            path: '/edit-profile',
+            builder: (context, state) {
+              final profileData = state.extra as Map<String, dynamic>?;
+              return EditProfileScreen(profileData: profileData);
+            },
+          ),
+          GoRoute(
+            path: '/pro-upgrade',
+            builder: (context, state) => const ProUpgradeScreen(),
+          ),
+          GoRoute(
+            path: '/help-center',
+            builder: (context, state) => const HelpCenterScreen(),
+          ),
+          GoRoute(
+            path: '/payment-methods',
+            builder: (context, state) => const PaymentMethodsScreen(),
+          ),
+          GoRoute(
+            path: '/change-password',
+            builder: (context, state) => const ChangePasswordScreen(),
+          ),
+          GoRoute(
+            path: '/terms-of-service',
+            builder: (context, state) => const TermsOfServiceScreen(),
+          ),
         ],
       ),
 
@@ -218,7 +243,10 @@ class AppRouter {
           ),
           GoRoute(
             path: '/player/sessions',
-            builder: (context, state) => const MySessionsScreen(isCoach: false),
+            builder: (context, state) => const MySessionsScreen(
+              isCoach: false,
+              notificationPath: '/player/notifications',
+            ),
           ),
           GoRoute(
             path: '/player/search',
@@ -231,6 +259,10 @@ class AppRouter {
           GoRoute(
             path: '/player/my-bookings',
             builder: (context, state) => const MyBookingsScreen(),
+          ),
+          GoRoute(
+            path: '/player/notifications',
+            builder: (context, state) => const NotificationsScreen(),
           ),
         ],
       ),
@@ -273,7 +305,10 @@ class AppRouter {
           ),
           GoRoute(
             path: '/guardian/sessions',
-            builder: (context, state) => const MySessionsScreen(isCoach: false),
+            builder: (context, state) => const MySessionsScreen(
+              isCoach: false,
+              notificationPath: '/guardian/notifications',
+            ),
           ),
           GoRoute(
             path: '/guardian/profile',

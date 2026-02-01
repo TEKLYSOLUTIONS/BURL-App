@@ -3,10 +3,49 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../config/palette.dart';
-import '../../models/user_model.dart';
+import '../../services/guardian_service.dart';
 
-class MyPlayersScreen extends StatelessWidget {
+class MyPlayersScreen extends StatefulWidget {
   const MyPlayersScreen({super.key});
+
+  @override
+  State<MyPlayersScreen> createState() => _MyPlayersScreenState();
+}
+
+class _MyPlayersScreenState extends State<MyPlayersScreen> {
+  final _guardianService = GuardianService();
+  List<dynamic> _players = [];
+  bool _isLoading = true;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchPlayers();
+  }
+
+  Future<void> _fetchPlayers() async {
+    try {
+      setState(() {
+        _isLoading = true;
+        _error = null;
+      });
+      final players = await _guardianService.getMyPlayers();
+      if (mounted) {
+        setState(() {
+          _players = players;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _error = e.toString();
+          _isLoading = false;
+        });
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -37,7 +76,13 @@ class MyPlayersScreen extends StatelessWidget {
           bottom: 90.0,
         ), // Move up to avoid tab bar
         child: FloatingActionButton(
-          onPressed: () => context.push('/guardian/add-player'),
+          onPressed: () async {
+            // Wait for result from AddPlayerScreen
+            final result = await context.push('/guardian/add-player');
+            if (result == true) {
+              _fetchPlayers(); // Refresh list if player added
+            }
+          },
           backgroundColor: Colors.orange,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
@@ -45,45 +90,87 @@ class MyPlayersScreen extends StatelessWidget {
           child: const Icon(Icons.add, color: Colors.white, size: 28),
         ),
       ),
-      body: ListView(
-        // Changed to ListView to easily add "Connect Athlete" at end
-        padding: const EdgeInsets.all(24),
-        children: [
-          ...Player.mockPlayers.asMap().entries.map((entry) {
-            final index = entry.key;
-            final player = entry.value;
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 16.0),
-              child: _PlayerCard(
-                player: player,
-                index: index,
-              ).animate().fadeIn(delay: (index * 100).ms).slideX(),
-            );
-          }),
+      body: _buildBody(),
+    );
+  }
 
-          // Connect Athlete Card
-          _ConnectAthleteCard()
-              .animate()
-              .fadeIn(delay: (Player.mockPlayers.length * 100).ms)
-              .slideX(),
-          const SizedBox(height: 80), // Space for FAB
-        ],
-      ),
+  Widget _buildBody() {
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (_error != null) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text('Error: $_error', style: const TextStyle(color: Colors.red)),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: _fetchPlayers,
+              child: const Text('Retry'),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return ListView(
+      padding: const EdgeInsets.all(24),
+      children: [
+        if (_players.isEmpty)
+          Center(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 40),
+              child: Text(
+                'No players added yet.\nTap + to add your first athlete.',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.inter(
+                  color: AppPalette.textSecondaryLight,
+                  fontSize: 16,
+                ),
+              ),
+            ),
+          ),
+
+        ..._players.asMap().entries.map((entry) {
+          final index = entry.key;
+          final player = entry.value;
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 16.0),
+            child: _PlayerCard(
+              playerData: player,
+              index: index,
+            ).animate().fadeIn(delay: (index * 100).ms).slideX(),
+          );
+        }),
+
+        // Connect Athlete Card (Optional feature)
+        _ConnectAthleteCard()
+            .animate()
+            .fadeIn(delay: (_players.length * 100).ms)
+            .slideX(),
+        const SizedBox(height: 80), // Space for FAB
+      ],
     );
   }
 }
 
 class _PlayerCard extends StatelessWidget {
-  final Player player;
+  final Map<String, dynamic> playerData;
   final int index;
 
-  const _PlayerCard({required this.player, required this.index});
+  const _PlayerCard({required this.playerData, required this.index});
 
   @override
   Widget build(BuildContext context) {
-    // Mock status logic for demo
+    // Determine avatar URL or placeholder
+    final String? avatarUrl = playerData['profilePhoto'];
+    final String fullName = playerData['fullName'] ?? 'Unknown Player';
+    final String role = playerData['role'] ?? 'Athlete';
+
+    // Using mock logic for status just for display
     final bool isGameDay = index == 0;
-    final bool isTrainingComplete = index == 1;
 
     return Container(
       decoration: BoxDecoration(
@@ -102,22 +189,27 @@ class _PlayerCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
         child: InkWell(
           onTap: () {
-            context.push('/guardian/player-details/${index + 1}');
+            context.push('/guardian/player-details/${playerData['_id']}');
           },
           borderRadius: BorderRadius.circular(20),
           child: Padding(
             padding: const EdgeInsets.all(16.0),
             child: Row(
               children: [
-                // Avatar with potentially a status indicator
+                // Avatar
                 Stack(
                   children: [
                     CircleAvatar(
                       radius: 32,
-                      backgroundImage: NetworkImage(player.avatarUrl),
+                      backgroundImage: avatarUrl != null
+                          ? NetworkImage(avatarUrl)
+                          : const AssetImage(
+                                  'assets/images/user_placeholder_soccer.png',
+                                )
+                                as ImageProvider,
                       backgroundColor: AppPalette.navyLight,
                     ),
-                    if (isGameDay)
+                    if (isGameDay) // Mock indicator
                       Positioned(
                         bottom: 0,
                         right: 0,
@@ -141,7 +233,7 @@ class _PlayerCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        player.name,
+                        fullName,
                         style: GoogleFonts.outfit(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
@@ -150,7 +242,7 @@ class _PlayerCard extends StatelessWidget {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        '${player.role} • #${index == 0 ? "10" : "23"}', // Mock jersey detail
+                        role,
                         style: GoogleFonts.inter(
                           fontSize: 14,
                           color: AppPalette.textSecondaryLight,
@@ -158,54 +250,14 @@ class _PlayerCard extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: 6),
-                      // Status Row
-                      if (isGameDay)
-                        Row(
-                          children: [
-                            const Icon(
-                              Icons.access_time_filled,
-                              size: 14,
-                              color: Colors.orange,
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              'GAME TOMORROW 9:00 AM',
-                              style: GoogleFonts.inter(
-                                fontSize: 11,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.orange,
-                              ),
-                            ),
-                          ],
-                        )
-                      else if (isTrainingComplete)
-                        Row(
-                          children: [
-                            const Icon(
-                              Icons.check_circle,
-                              size: 14,
-                              color: Colors.grey,
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              'Training Complete',
-                              style: GoogleFonts.inter(
-                                fontSize: 12,
-                                color: Colors.grey,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ],
-                        )
-                      else
-                        // Fallback or empty status
-                        Text(
-                          'Next Session: Fri 4pm', // Mock
-                          style: GoogleFonts.inter(
-                            fontSize: 12,
-                            color: AppPalette.textDisabled,
-                          ),
+                      // Mock Status Row
+                      Text(
+                        'Age: ${playerData['age'] ?? 'N/A'}',
+                        style: GoogleFonts.inter(
+                          fontSize: 12,
+                          color: AppPalette.textDisabled,
                         ),
+                      ),
                     ],
                   ),
                 ),
