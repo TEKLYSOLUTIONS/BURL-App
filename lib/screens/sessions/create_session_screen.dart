@@ -12,7 +12,9 @@ import '../../widgets/notification_button.dart';
 import 'package:go_router/go_router.dart';
 
 class CreateSessionScreen extends StatefulWidget {
-  const CreateSessionScreen({super.key});
+  final Map<String, dynamic>? sessionToEdit;
+
+  const CreateSessionScreen({super.key, this.sessionToEdit});
 
   @override
   State<CreateSessionScreen> createState() => _CreateSessionScreenState();
@@ -20,6 +22,7 @@ class CreateSessionScreen extends StatefulWidget {
 
 class _CreateSessionScreenState extends State<CreateSessionScreen>
     with SingleTickerProviderStateMixin {
+  // ... (keep existing controllers)
   // Controllers
   final _titleController = TextEditingController();
   final _descriptionController = TextEditingController();
@@ -35,7 +38,7 @@ class _CreateSessionScreenState extends State<CreateSessionScreen>
   final FocusNode _locationFocus = FocusNode();
 
   // Calendar State
-  DateTime _focusedDay = DateTime.now(); // Re-added
+  DateTime _focusedDay = DateTime.now();
 
   // Single Session State
   DateTime _singleDate = DateTime.now();
@@ -50,11 +53,11 @@ class _CreateSessionScreenState extends State<CreateSessionScreen>
   // Recurring (Packet) State
   // Map of dates to their timeslots: {DateTime: [{startTime, endTime}]}
   final Map<DateTime, List<Map<String, TimeOfDay>>> _recurringTimeslots = {};
-  DateTime? _selectedRecurringDate; // Currently selected date for editing timeslots
+  DateTime? _selectedRecurringDate;
 
   // Logistics State
   int _capacity = 18;
-  bool _pricePerPerson = true; // true = per person, false = per session
+  bool _pricePerPerson = true;
   LatLng? _selectedLocation;
   GoogleMapController? _mapController;
   final Set<Marker> _markers = {};
@@ -62,15 +65,108 @@ class _CreateSessionScreenState extends State<CreateSessionScreen>
   // API State
   bool _isCreating = false;
 
+  bool get _isEditing => widget.sessionToEdit != null;
+
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+
+    if (_isEditing) {
+      _initializeEditingState();
+    }
+
     _tabController.addListener(() {
       if (!_tabController.indexIsChanging) {
-        setState(() {}); // Rebuild to toggle UI
+        setState(() {});
       }
     });
+  }
+
+  void _initializeEditingState() {
+    final s = widget.sessionToEdit!;
+    _titleController.text = s['title'] ?? '';
+    _descriptionController.text = s['description'] ?? '';
+    _locationController.text = s['location'] ?? '';
+    _capacity = s['capacity'] ?? 18;
+
+    // Pricing
+    if (s['pricing'] != null) {
+      final amount = s['pricing']['amount'];
+      _priceController.text = amount != null ? amount.toString() : '0';
+      _pricePerPerson = s['pricing']['pricePerPerson'] ?? true;
+    }
+
+    if (s['isRecurring'] == true) {
+      _tabController.index = 1;
+
+      // Populate Recurring Timeslots
+      final timeSlots = s['timeSlots'] as List<dynamic>? ?? [];
+
+      for (final slot in timeSlots) {
+        if (slot['startTime'] == null) continue;
+
+        final startDateTime = DateTime.parse(slot['startTime']).toLocal();
+        final endDateTime = slot['endTime'] != null
+            ? DateTime.parse(slot['endTime']).toLocal()
+            : startDateTime.add(
+                Duration(minutes: slot['durationMinutes'] ?? 60),
+              );
+
+        final dateKey = _normalizeDate(startDateTime);
+
+        if (!_recurringTimeslots.containsKey(dateKey)) {
+          _recurringTimeslots[dateKey] = [];
+        }
+
+        // Prevent duplicate slots in UI
+        final exists = _recurringTimeslots[dateKey]!.any(
+          (existing) =>
+              existing['startTime']!.hour == startDateTime.hour &&
+              existing['startTime']!.minute == startDateTime.minute,
+        );
+
+        if (!exists) {
+          _recurringTimeslots[dateKey]!.add({
+            'startTime': TimeOfDay.fromDateTime(startDateTime),
+            'endTime': TimeOfDay.fromDateTime(endDateTime),
+          });
+        }
+      }
+
+      if (_recurringTimeslots.isNotEmpty) {
+        _selectedRecurringDate = _recurringTimeslots.keys.first;
+        _focusedDay = _selectedRecurringDate!;
+      }
+    } else {
+      _tabController.index = 0;
+
+      // Populate Single Session Data
+      final timeSlots = s['timeSlots'] as List<dynamic>? ?? [];
+      if (timeSlots.isNotEmpty) {
+        final firstSlot = timeSlots.first;
+        if (firstSlot['startTime'] != null) {
+          final startDateTime = DateTime.parse(
+            firstSlot['startTime'],
+          ).toLocal();
+          _singleDate = startDateTime;
+          _focusedDay = startDateTime;
+
+          _singleTimeSlots.clear();
+          for (final slot in timeSlots) {
+            final start = DateTime.parse(slot['startTime']).toLocal();
+            final end = slot['endTime'] != null
+                ? DateTime.parse(slot['endTime']).toLocal()
+                : start.add(Duration(minutes: slot['durationMinutes'] ?? 60));
+
+            _singleTimeSlots.add({
+              'startTime': TimeOfDay.fromDateTime(start),
+              'endTime': TimeOfDay.fromDateTime(end),
+            });
+          }
+        }
+      }
+    }
   }
 
   @override
@@ -184,7 +280,7 @@ class _CreateSessionScreenState extends State<CreateSessionScreen>
               ),
               Expanded(
                 child: Text(
-                  'Create Session',
+                  _isEditing ? 'Edit Session' : 'Create Session',
                   textAlign: TextAlign.center,
                   style: GoogleFonts.outfit(
                     fontSize: 24,
@@ -642,8 +738,10 @@ class _CreateSessionScreenState extends State<CreateSessionScreen>
   // --- Recurring (Packet) UI ---
   Widget _buildRecurringSessionSchedule() {
     // Count total sessions from all dates
-    int totalSessions = _recurringTimeslots.values
-        .fold(0, (sum, slots) => sum + slots.length);
+    int totalSessions = _recurringTimeslots.values.fold(
+      0,
+      (sum, slots) => sum + slots.length,
+    );
 
     // Get current timeslots for selected date
     final currentTimeslots = _selectedRecurringDate != null
@@ -847,7 +945,10 @@ class _CreateSessionScreenState extends State<CreateSessionScreen>
                 ),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 6,
+                ),
                 decoration: BoxDecoration(
                   color: Colors.grey[100],
                   borderRadius: BorderRadius.circular(8),
@@ -899,8 +1000,8 @@ class _CreateSessionScreenState extends State<CreateSessionScreen>
                         );
                         if (picked != null) {
                           setState(() {
-                            _recurringTimeslots[_selectedRecurringDate!]![index]
-                                ['startTime'] = picked;
+                            _recurringTimeslots[_selectedRecurringDate!]![index]['startTime'] =
+                                picked;
                           });
                         }
                       },
@@ -954,8 +1055,8 @@ class _CreateSessionScreenState extends State<CreateSessionScreen>
                         );
                         if (picked != null) {
                           setState(() {
-                            _recurringTimeslots[_selectedRecurringDate!]![index]
-                                ['endTime'] = picked;
+                            _recurringTimeslots[_selectedRecurringDate!]![index]['endTime'] =
+                                picked;
                           });
                         }
                       },
@@ -1033,7 +1134,8 @@ class _CreateSessionScreenState extends State<CreateSessionScreen>
                       ? currentTimeslots.last
                       : null;
                   _recurringTimeslots[_selectedRecurringDate!]!.add({
-                    'startTime': lastSlot?['endTime'] ??
+                    'startTime':
+                        lastSlot?['endTime'] ??
                         const TimeOfDay(hour: 9, minute: 0),
                     'endTime': TimeOfDay(
                       hour: (lastSlot?['endTime']?.hour ?? 9) + 1,
@@ -1193,7 +1295,7 @@ class _CreateSessionScreenState extends State<CreateSessionScreen>
           ),
         ),
         const SizedBox(height: 16),
-        
+
         // Pricing Section
         Container(
           padding: const EdgeInsets.all(16),
@@ -1206,7 +1308,10 @@ class _CreateSessionScreenState extends State<CreateSessionScreen>
             children: [
               Row(
                 children: [
-                  const Icon(Icons.attach_money, color: AppPalette.orangeAccent),
+                  const Icon(
+                    Icons.attach_money,
+                    color: AppPalette.orangeAccent,
+                  ),
                   const SizedBox(width: 12),
                   Text(
                     'Session Fee',
@@ -1504,7 +1609,7 @@ class _CreateSessionScreenState extends State<CreateSessionScreen>
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(
-                    'Create Session',
+                    _isEditing ? 'Save Changes' : 'Create Session',
                     style: GoogleFonts.outfit(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
@@ -1512,8 +1617,8 @@ class _CreateSessionScreenState extends State<CreateSessionScreen>
                     ),
                   ),
                   const SizedBox(width: 8),
-                  const Icon(
-                    Icons.calendar_today,
+                  Icon(
+                    _isEditing ? Icons.save : Icons.calendar_today,
                     color: Colors.white,
                     size: 20,
                   ),
@@ -1581,6 +1686,8 @@ class _CreateSessionScreenState extends State<CreateSessionScreen>
       List<String> selectedDays;
       List<Map<String, dynamic>> timeSlots;
 
+      List<Map<String, dynamic>> explicitTimeSlots = [];
+
       if (_tabController.index == 0) {
         // Single session - convert time slots to backend format
         selectedDays = [_singleDate.toIso8601String().split('T')[0]];
@@ -1599,9 +1706,9 @@ class _CreateSessionScreenState extends State<CreateSessionScreen>
           };
         }).toList();
       } else {
-        // Recurring sessions - flatten the map structure
-        selectedDays = [];
-        timeSlots = [];
+        // Recurring sessions - Use explicitTimeSlots to avoid duplication
+        selectedDays = []; // Not used for custom recurrence in this flow
+        timeSlots = []; // Not used for custom recurrence in this flow
 
         // Sort dates chronologically
         final sortedDates = _recurringTimeslots.keys.toList()
@@ -1610,48 +1717,99 @@ class _CreateSessionScreenState extends State<CreateSessionScreen>
         for (final date in sortedDates) {
           final slots = _recurringTimeslots[date]!;
           for (final slot in slots) {
-            selectedDays.add(date.toIso8601String().split('T')[0]);
             final startTime = slot['startTime']!;
             final endTime = slot['endTime']!;
-            // Calculate duration in minutes
+
+            // Construct full DateTimes
+            final startDateTime = DateTime(
+              date.year,
+              date.month,
+              date.day,
+              startTime.hour,
+              startTime.minute,
+            );
+
+            // Calculate duration
             final startMinutes = startTime.hour * 60 + startTime.minute;
             final endMinutes = endTime.hour * 60 + endTime.minute;
             final durationMinutes = endMinutes - startMinutes;
-            timeSlots.add({
-              'startTime': {'hour': startTime.hour, 'minute': startTime.minute},
-              'durationMinutes': durationMinutes > 0
-                  ? durationMinutes
-                  : 60, // Default to 60 if invalid
+
+            explicitTimeSlots.add({
+              'startTime': startDateTime.toIso8601String(),
+              'durationMinutes': durationMinutes > 0 ? durationMinutes : 60,
             });
+
+            // Also add to selectedDays just for record keeping if needed by other logic,
+            // though backend explicit flow ignores it.
+            final dateStr = date.toIso8601String().split('T')[0];
+            if (!selectedDays.contains(dateStr)) {
+              selectedDays.add(dateStr);
+            }
           }
         }
       }
 
-      // Call the session service to create the session
-      await SessionService.createSession(
-        title: _titleController.text.trim(),
-        description: _descriptionController.text.trim(),
-        location: _locationController.text.trim(),
-        capacity: _capacity,
-        timeSlots: timeSlots,
-        selectedDays: selectedDays,
-        isRecurring: _tabController.index == 1,
-        participants: <String>[],
-        priceAmount: double.tryParse(_priceController.text.trim()) ?? 0.0,
-        pricePerPerson: _pricePerPerson,
-      );
+      if (_isEditing) {
+        // UPDATE Existing Session
+        // We only update metadata fields + Price as per plan.
+        // Time Slots & Dates are not updated in this flow to avoid conflict complexity.
 
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Session Created Successfully!'),
-            backgroundColor: Colors.green,
-          ),
+        final updates = {
+          'title': _titleController.text.trim(),
+          'description': _descriptionController.text.trim(),
+          'location': _locationController.text.trim(),
+          'capacity': _capacity,
+          'pricing': {
+            'amount': double.tryParse(_priceController.text.trim()) ?? 0.0,
+            'currency': 'USD',
+            'pricePerPerson': _pricePerPerson,
+          },
+        };
+
+        await SessionService.updateSession(
+          widget.sessionToEdit!['_id'],
+          updates,
         );
-        Navigator.pop(context);
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Session Updated Successfully!'),
+              backgroundColor: Colors.green,
+            ),
+          );
+          Navigator.pop(context, true); // Return true to trigger refresh
+        }
+      } else {
+        // CREATE New Session
+        await SessionService.createSession(
+          title: _titleController.text.trim(),
+          description: _descriptionController.text.trim(),
+          location: _locationController.text.trim(),
+          capacity: _capacity,
+          timeSlots: timeSlots,
+          explicitTimeSlots: explicitTimeSlots,
+          selectedDays: selectedDays,
+          isRecurring: _tabController.index == 1,
+          participants: <String>[],
+          priceAmount: double.tryParse(_priceController.text.trim()) ?? 0.0,
+          pricePerPerson: _pricePerPerson,
+        );
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Session Created Successfully!'),
+              backgroundColor: Colors.green,
+            ),
+          );
+          Navigator.pop(context, true);
+        }
       }
     } catch (e) {
-      if (mounted) _showError('Failed to create: $e');
+      if (mounted) {
+        _showError('Failed to ${_isEditing ? 'update' : 'create'}: $e');
+      }
     } finally {
       if (mounted) setState(() => _isCreating = false);
     }

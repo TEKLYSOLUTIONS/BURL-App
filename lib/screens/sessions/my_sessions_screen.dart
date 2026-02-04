@@ -381,8 +381,14 @@ class _MySessionsScreenState extends State<MySessionsScreen>
                 ),
                 const SizedBox(height: 16),
                 InkWell(
-                  onTap: () =>
-                      context.push('/session-details/${session['_id']}'),
+                  onTap: () async {
+                    final result = await context.push(
+                      '/session-details/${session['_id']}',
+                    );
+                    if (result == true) {
+                      _fetchSessions();
+                    }
+                  },
                   borderRadius: BorderRadius.circular(8),
                   child: Container(
                     padding: const EdgeInsets.symmetric(
@@ -628,10 +634,15 @@ class _MySessionsScreenState extends State<MySessionsScreen>
                 ),
                 const SizedBox(height: 16),
                 InkWell(
-                  onTap: () {
+                  onTap: () async {
                     final sessionId = session['_id'] as String?;
                     if (sessionId != null && sessionId.isNotEmpty) {
-                      context.push('/session-details/$sessionId');
+                      final result = await context.push(
+                        '/session-details/$sessionId',
+                      );
+                      if (result == true) {
+                        _fetchSessions();
+                      }
                     } else {
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(

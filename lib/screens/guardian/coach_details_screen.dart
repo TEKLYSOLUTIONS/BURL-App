@@ -33,6 +33,7 @@ class _CoachDetailsScreenState extends State<CoachDetailsScreen>
   Future<void> _fetchDetails() async {
     try {
       final data = await _searchService.getCoachDetails(widget.coachId);
+      debugPrint('Fetched Coach Details: $data');
       if (mounted) {
         setState(() {
           _coach = data['data'];
@@ -85,18 +86,33 @@ class _CoachDetailsScreenState extends State<CoachDetailsScreen>
       );
     }
 
-    final user = _coach!['userId'];
     final profile = _coach!;
-    final fullName = user['fullName'] ?? 'Unknown Coach';
+
+    // Safely handle user object/populated field
+    final userObj = profile['userId'];
+    final userMap = userObj is Map<String, dynamic>
+        ? userObj
+        : <String, dynamic>{};
+
+    final fullName = userMap['fullName'] ?? 'Unknown Coach';
     final profilePhoto =
-        user['profilePhoto'] ?? 'https://i.pravatar.cc/150?u=${widget.coachId}';
+        userMap['profilePhoto'] ??
+        'https://i.pravatar.cc/150?u=${widget.coachId}';
     final specializations =
         (profile['specializations'] as List?)?.join(', ') ?? 'Coach';
-    final bio = profile['bio'] ?? 'No bio available.';
-    final rating = profile['ratings']?['overall']?.toStringAsFixed(1) ?? '0.0';
+    final bio = profile['bio'] ?? profile['aboutMe'] ?? 'No bio available.';
+
+    // Handle rating mismatch (backend has 'rating', frontend expected 'ratings.overall')
+    final rawRating = profile['rating'] ?? profile['ratings']?['overall'] ?? 0;
+    final rating = rawRating.toString(); // Simplify display
+
     final reviewCount = profile['ratings']?['count']?.toString() ?? '0';
-    final experience = '${profile['experience'] ?? 0} Yrs';
-    final hourlyRate = profile['pricing']?['hourlyRate']?.toString() ?? 'TBD';
+    final experience =
+        '${profile['experienceYears'] ?? profile['experience'] ?? 0} Yrs';
+    final hourlyRate =
+        profile['defaultPricing']?['hourlyRate']?.toString() ??
+        profile['pricing']?['hourlyRate']?.toString() ??
+        'TBD';
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FE), // Light background

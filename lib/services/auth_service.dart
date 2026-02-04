@@ -75,7 +75,7 @@ class AuthService {
 
   static Future<void> logout() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('auth_token');
+    await prefs.clear(); // Clear all data (token, name, role)
   }
 
   static Future<bool> isLoggedIn() async {
@@ -91,5 +91,33 @@ class AuthService {
   static Future<String?> getUserRole() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getString('user_role');
+  }
+
+  static Future<void> updateStoredUserData(String name, String role) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('user_name', name);
+    await prefs.setString('user_role', role);
+  }
+
+  static Future<bool> changePassword(
+    String currentPassword,
+    String newPassword,
+  ) async {
+    try {
+      final response = await ApiService.post('auth/change-password', {
+        'currentPassword': currentPassword,
+        'newPassword': newPassword,
+      });
+
+      if (response.statusCode == 200) {
+        return true;
+      } else {
+        final data = jsonDecode(response.body);
+        throw Exception(data['message'] ?? 'Failed to change password');
+      }
+    } catch (e) {
+      debugPrint('Change password error: $e');
+      rethrow;
+    }
   }
 }

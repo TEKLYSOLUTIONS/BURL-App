@@ -5,9 +5,11 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
 import '../../widgets/notification_button.dart';
 import '../../widgets/headers/coach_app_bar.dart';
+import '../../widgets/calendar/horizontal_week_calendar.dart'; // Import Calendar
 
 import '../../services/auth_service.dart';
 import '../../services/dashboard_service.dart';
+import '../../services/session_service.dart'; // Import SessionService
 import '../../utils/date_time_utils.dart';
 import '../../utils/activity_utils.dart';
 
@@ -21,6 +23,7 @@ class CoachHomeScreen extends StatefulWidget {
 class _CoachHomeScreenState extends State<CoachHomeScreen> {
   String _userName = 'Coach';
   bool _isLoading = true;
+  DateTime _selectedDate = DateTime.now(); // Track selected date
 
   // Dashboard data
   int _totalSessions = 0;
@@ -34,6 +37,42 @@ class _CoachHomeScreenState extends State<CoachHomeScreen> {
     super.initState();
     _loadUserData();
     _loadDashboardData();
+  }
+
+  // Helper to check if date is today
+  bool _isToday(DateTime date) {
+    final now = DateTime.now();
+    return date.year == now.year &&
+        date.month == now.month &&
+        date.day == now.day;
+  }
+
+  // Helper to format date for display
+  String _formatDate(DateTime date) {
+    return "${date.day}/${date.month}";
+  }
+
+  Future<void> _loadSessionsForDate(DateTime date) async {
+    setState(() => _isLoading = true);
+
+    // If today, re-use dashboard load for full data (stats + activity)
+    // If other date, just fetch sessions
+    try {
+      if (_isToday(date)) {
+        await _loadDashboardData();
+      } else {
+        final response = await SessionService.getCoachSessions(date: date);
+        if (mounted) {
+          setState(() {
+            _upcomingSessions = response['sessions'] as List<dynamic>;
+            _isLoading = false;
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint('Error loading date sessions: $e');
+      if (mounted) setState(() => _isLoading = false);
+    }
   }
 
   Future<void> _loadUserData() async {
@@ -79,230 +118,288 @@ class _CoachHomeScreenState extends State<CoachHomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppPalette.backgroundLight,
-      body: SingleChildScrollView(
-        child: Column(
-          children: [
-            // Dark Header Section
-            CoachAppBar(
+      body: Column(
+        children: [
+          // Fixed Header Section
+          CoachAppBar(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const CircleAvatar(
+                      radius: 20,
+                      backgroundImage: NetworkImage(
+                        'https://i.pravatar.cc/150?img=11',
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          DateTimeUtils.getCurrentDateFormatted(),
+                          style: GoogleFonts.inter(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.white70,
+                            letterSpacing: 1,
+                          ),
+                        ),
+                        Text(
+                          '${DateTimeUtils.getGreeting()}, $_userName',
+                          style: GoogleFonts.outfit(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const Spacer(),
+                    NotificationButton(
+                      onTap: () => context.push('/coach/notifications'),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+
+          // Scrollable Content
+          Expanded(
+            child: SingleChildScrollView(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    children: [
-                      const CircleAvatar(
-                        radius: 20, // Reduced from 24
-                        backgroundImage: NetworkImage(
-                          'https://i.pravatar.cc/150?img=11',
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            DateTimeUtils.getCurrentDateFormatted(),
-                            style: GoogleFonts.inter(
-                              fontSize: 10, // Reduced from 12
-                              fontWeight: FontWeight.w600,
-                              color: Colors.white70,
-                              letterSpacing: 1,
+                  // 📅 Horizontal Calendar
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    child: HorizontalWeekCalendar(
+                      initialDate: _selectedDate,
+                      onDateSelected: (date) {
+                        setState(() {
+                          _selectedDate = date;
+                          _loadSessionsForDate(date);
+                        });
+                      },
+                    ),
+                  ),
+
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                    child: _isLoading
+                        ? const Center(
+                            child: Padding(
+                              padding: EdgeInsets.all(40.0),
+                              child: CircularProgressIndicator(),
                             ),
+                          )
+                        : Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Stats Cards (Only show if viewing "today" or maybe always? Users prefer consistency. Let's keep them)
+                              // Actually, if we filter by date, maybe we just want to show sessions for that date.
+                              // But the request was "integrate a calendar... to check particular day sessions".
+                              // So filtering the "Upcoming Sessions" list is the key.
+
+                              // Let's keep stats at the top for context.
+
+                              // Stats Cards
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: _buildStatCard(
+                                      Icons.timer_outlined,
+                                      _totalSessions.toString(),
+                                      'Sessions',
+                                      Colors.indigo[50]!,
+                                      AppPalette.navyPrimary,
+                                      onTap: () =>
+                                          context.push('/coach/sessions'),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: _buildStatCard(
+                                      Icons.people_outline,
+                                      _totalPlayers.toString(),
+                                      'Players',
+                                      Colors.orange[50]!,
+                                      Colors.orange,
+                                      onTap: () =>
+                                          context.push('/coach/students'),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: _buildStatCard(
+                                      Icons.star_rounded,
+                                      _rating.toStringAsFixed(1),
+                                      'Rating',
+                                      Colors.amber[50]!,
+                                      Colors.amber,
+                                    ),
+                                  ),
+                                ],
+                              ).animate().fadeIn().slideX(),
+
+                              const SizedBox(height: 32),
+
+                              // Sessions List Header
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    _isToday(_selectedDate)
+                                        ? 'Upcoming Sessions'
+                                        : 'Sessions for ${_formatDate(_selectedDate)}',
+                                    style: GoogleFonts.outfit(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                      color: AppPalette.navyPrimary,
+                                    ),
+                                  ),
+                                  if (_isToday(_selectedDate))
+                                    TextButton(
+                                      onPressed: () =>
+                                          context.go('/coach/sessions'),
+                                      child: Text(
+                                        'See all',
+                                        style: GoogleFonts.inter(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w600,
+                                          color: AppPalette.navyPrimary,
+                                        ),
+                                      ),
+                                    ),
+                                ],
+                              ),
+                              const SizedBox(height: 16),
+
+                              // Dynamic upcoming sessions from API
+                              if (_upcomingSessions.isEmpty)
+                                Container(
+                                  padding: const EdgeInsets.all(32),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(16),
+                                    border: Border.all(
+                                      color: Colors.grey.shade100,
+                                    ),
+                                  ),
+                                  child: Center(
+                                    child: Column(
+                                      children: [
+                                        Icon(
+                                          Icons.event_busy,
+                                          size: 48,
+                                          color: Colors.grey[300],
+                                        ),
+                                        const SizedBox(height: 16),
+                                        Text(
+                                          'No sessions scheduled',
+                                          style: GoogleFonts.inter(
+                                            color: Colors.grey,
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                )
+                              else
+                                ..._upcomingSessions.map((session) {
+                                  final timeSlots =
+                                      session['timeSlots'] as List?;
+                                  final startTime =
+                                      timeSlots != null && timeSlots.isNotEmpty
+                                      ? DateTimeUtils.formatTime(
+                                          timeSlots[0]['startTime'],
+                                        )
+                                      : 'TBD';
+
+                                  return Padding(
+                                    padding: const EdgeInsets.only(bottom: 16),
+                                    child: _buildSessionCard(
+                                      context,
+                                      session['_id'] ?? '',
+                                      session['location'] ?? 'TBD',
+                                      session['title'] ?? 'Untitled Session',
+                                      startTime,
+                                      'https://images.unsplash.com/photo-1566241142559-40e1dab266c6?auto=format&fit=crop&q=80&w=300',
+                                    ),
+                                  );
+                                }),
+
+                              const SizedBox(height: 32),
+
+                              // Recent Activity (Only show on Today view to reduce clutter)
+                              if (_isToday(_selectedDate)) ...[
+                                Text(
+                                  'Recent Activity',
+                                  style: GoogleFonts.outfit(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                    color: AppPalette.navyPrimary,
+                                  ),
+                                ),
+                                const SizedBox(height: 16),
+                                if (_recentActivity.isEmpty)
+                                  Container(
+                                    padding: const EdgeInsets.all(32),
+                                    child: Center(
+                                      child: Text(
+                                        'No recent activity',
+                                        style: GoogleFonts.inter(
+                                          color: Colors.grey,
+                                          fontSize: 14,
+                                        ),
+                                      ),
+                                    ),
+                                  )
+                                else
+                                  ..._recentActivity.map((activity) {
+                                    final activityType = activity['type'];
+                                    final icon = ActivityUtils.getActivityIcon(
+                                      activityType,
+                                    );
+                                    final iconColor =
+                                        ActivityUtils.getActivityIconColor(
+                                          activityType,
+                                        );
+                                    final bgColor =
+                                        ActivityUtils.getActivityBgColor(
+                                          activityType,
+                                        );
+                                    final timeAgo =
+                                        DateTimeUtils.formatRelativeTime(
+                                          activity['createdAt'] ??
+                                              DateTime.now().toIso8601String(),
+                                        );
+
+                                    return _buildActivityItem(
+                                      icon,
+                                      bgColor,
+                                      iconColor,
+                                      activity['title'] ?? '',
+                                      activity['description'] ?? '',
+                                      timeAgo,
+                                    );
+                                  }),
+                              ],
+
+                              const SizedBox(height: 80), // Footer spacing
+                            ],
                           ),
-                          Text(
-                            '${DateTimeUtils.getGreeting()}, $_userName',
-                            style: GoogleFonts.outfit(
-                              fontSize: 18, // Reduced from 20
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const Spacer(),
-                      NotificationButton(
-                        onTap: () => context.push('/coach/notifications'),
-                      ),
-                    ],
                   ),
                 ],
               ),
             ),
-
-            // Content Body
-            Padding(
-              padding: const EdgeInsets.all(24.0),
-              child: _isLoading
-                  ? const Center(
-                      child: Padding(
-                        padding: EdgeInsets.all(40.0),
-                        child: CircularProgressIndicator(),
-                      ),
-                    )
-                  : Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Stats Cards
-                        Row(
-                          children: [
-                            Expanded(
-                              child: _buildStatCard(
-                                Icons.timer_outlined,
-                                _totalSessions.toString(),
-                                'Sessions',
-                                Colors.indigo[50]!,
-                                AppPalette.navyPrimary,
-                                onTap: () => context.push('/coach/sessions'),
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: _buildStatCard(
-                                Icons.people_outline,
-                                _totalPlayers.toString(),
-                                'Players',
-                                Colors.orange[50]!,
-                                Colors.orange,
-                                onTap: () => context.push('/coach/students'),
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: _buildStatCard(
-                                Icons.star_rounded,
-                                _rating.toStringAsFixed(1),
-                                'Rating',
-                                Colors.amber[50]!,
-                                Colors.amber,
-                              ),
-                            ),
-                          ],
-                        ).animate().fadeIn().slideX(),
-
-                        const SizedBox(height: 32),
-
-                        // Upcoming Sessions
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              'Upcoming Sessions',
-                              style: GoogleFonts.outfit(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: AppPalette.navyPrimary,
-                              ),
-                            ),
-                            TextButton(
-                              onPressed: () => context.go('/coach/sessions'),
-                              child: Text(
-                                'See all',
-                                style: GoogleFonts.inter(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w600,
-                                  color: AppPalette.navyPrimary,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 16),
-                        // Dynamic upcoming sessions from API
-                        if (_upcomingSessions.isEmpty)
-                          Container(
-                            padding: const EdgeInsets.all(32),
-                            child: Center(
-                              child: Text(
-                                'No upcoming sessions',
-                                style: GoogleFonts.inter(
-                                  color: Colors.grey,
-                                  fontSize: 14,
-                                ),
-                              ),
-                            ),
-                          )
-                        else
-                          ..._upcomingSessions.map((session) {
-                            final timeSlots = session['timeSlots'] as List?;
-                            final startTime =
-                                timeSlots != null && timeSlots.isNotEmpty
-                                ? DateTimeUtils.formatTime(
-                                    timeSlots[0]['startTime'],
-                                  )
-                                : 'TBD';
-
-                            return Padding(
-                              padding: const EdgeInsets.only(bottom: 16),
-                              child: _buildSessionCard(
-                                context,
-                                session['_id'] ?? '',
-                                session['location'] ?? 'TBD',
-                                session['title'] ?? 'Untitled Session',
-                                startTime,
-                                'https://images.unsplash.com/photo-1566241142559-40e1dab266c6?auto=format&fit=crop&q=80&w=300',
-                              ),
-                            );
-                          }),
-
-                        const SizedBox(height: 32),
-
-                        // Recent Activity
-                        Text(
-                          'Recent Activity',
-                          style: GoogleFonts.outfit(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: AppPalette.navyPrimary,
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        // Dynamic recent activity from API
-                        if (_recentActivity.isEmpty)
-                          Container(
-                            padding: const EdgeInsets.all(32),
-                            child: Center(
-                              child: Text(
-                                'No recent activity',
-                                style: GoogleFonts.inter(
-                                  color: Colors.grey,
-                                  fontSize: 14,
-                                ),
-                              ),
-                            ),
-                          )
-                        else
-                          ..._recentActivity.map((activity) {
-                            final activityType = activity['type'];
-                            final icon = ActivityUtils.getActivityIcon(
-                              activityType,
-                            );
-                            final iconColor =
-                                ActivityUtils.getActivityIconColor(
-                                  activityType,
-                                );
-                            final bgColor = ActivityUtils.getActivityBgColor(
-                              activityType,
-                            );
-                            final timeAgo = DateTimeUtils.formatRelativeTime(
-                              activity['createdAt'] ??
-                                  DateTime.now().toIso8601String(),
-                            );
-
-                            return _buildActivityItem(
-                              icon,
-                              bgColor,
-                              iconColor,
-                              activity['title'] ?? '',
-                              activity['description'] ?? '',
-                              timeAgo,
-                            );
-                          }),
-
-                        const SizedBox(height: 80), // Footer spacing
-                      ],
-                    ),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () => context.push('/coach/create-session'),

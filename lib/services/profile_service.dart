@@ -12,7 +12,27 @@ class ProfileService {
       final data = json.decode(response.body);
 
       if (response.statusCode == 200) {
-        return data['user'];
+        final Map<String, dynamic> user = Map<String, dynamic>.from(
+          data['user'],
+        );
+        final Map<String, dynamic>? profile = data['profile'] != null
+            ? Map<String, dynamic>.from(data['profile'])
+            : null;
+
+        // If profile data is separate, merge it into user object
+        // This handles the format returned by getProfile API
+        if (profile != null) {
+          final String role = user['role'] ?? '';
+          if (role == 'coach') {
+            user['coachProfile'] = profile;
+          } else if (role == 'player') {
+            user['playerProfile'] = profile;
+          } else if (role == 'guardian') {
+            user['guardianProfile'] = profile;
+          }
+        }
+
+        return user;
       } else {
         throw Exception(data['message'] ?? 'Failed to fetch profile');
       }

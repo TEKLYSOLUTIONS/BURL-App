@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
 import '../../config/palette.dart';
-import 'package:intl/intl.dart';
+import '../../services/guardian_service.dart';
 
 class EditPlayerScreen extends StatefulWidget {
   final Map<String, dynamic>? playerData;
@@ -15,13 +15,27 @@ class EditPlayerScreen extends StatefulWidget {
 
 class _EditPlayerScreenState extends State<EditPlayerScreen> {
   late TextEditingController _firstNameController;
-  late TextEditingController _lastNameController;
-  late TextEditingController _jerseyController;
-  late TextEditingController _teamController;
+  late TextEditingController _medicalIssuesController;
+  late TextEditingController _ageController;
 
-  late DateTime _selectedDate;
-  late String _selectedSport;
-  final List<String> _sports = ['Soccer', 'Cricket', 'Basketball', 'Tennis'];
+  late String _selectedRole;
+  late String _selectedBattingStyle;
+  late String _selectedBowlingStyle;
+
+  final List<String> _roles = [
+    'Batsman',
+    'Bowler',
+    'All-Rounder',
+    'Wicket-Keeper',
+  ];
+  final List<String> _battingStyles = ['Right-hand bat', 'Left-hand bat'];
+  final List<String> _bowlingStyles = [
+    'Right-arm fast',
+    'Left-arm fast',
+    'Right-arm spin',
+    'Left-arm spin',
+    'N/A',
+  ];
 
   String _playerName = '';
   String _playerId = '';
@@ -37,42 +51,116 @@ class _EditPlayerScreenState extends State<EditPlayerScreen> {
 
     // Extract name parts
     final fullName = data?['fullName'] ?? 'Player';
-    final nameParts = fullName.split(' ');
-    final firstName = nameParts.isNotEmpty ? nameParts[0] : '';
-    final lastName = nameParts.length > 1 ? nameParts.sublist(1).join(' ') : '';
 
     _playerName = fullName;
     _playerId = data?['_id'] ?? '';
 
-    _firstNameController = TextEditingController(text: firstName);
-    _lastNameController = TextEditingController(text: lastName);
-    _jerseyController = TextEditingController(text: '');
-    _teamController = TextEditingController(text: '');
+    _firstNameController = TextEditingController(text: fullName);
+    _medicalIssuesController = TextEditingController(
+      text: data?['medicalIssues'] ?? '',
+    );
+    _ageController = TextEditingController(text: data?['age'] ?? '10');
 
-    // Parse age to approximate birth date
-    final ageString = data?['age'];
-    if (ageString != null) {
-      final age = int.tryParse(ageString.toString()) ?? 10;
-      _selectedDate = DateTime.now().subtract(Duration(days: age * 365));
-    } else {
-      _selectedDate = DateTime(2015, 6, 24);
-    }
-
-    _selectedSport = 'Cricket'; // Default to Cricket for cricket app
+    // Cricket-specific fields
+    _selectedRole = data?['role'] ?? 'Batsman';
+    _selectedBattingStyle = data?['battingStyle'] ?? 'Right-hand bat';
+    _selectedBowlingStyle = data?['bowlingStyle'] ?? 'N/A';
   }
 
-  void _presentDatePicker() {
-    showDatePicker(
+  void _showDeleteConfirmation() {
+    showDialog(
       context: context,
-      initialDate: _selectedDate,
-      firstDate: DateTime(2000),
-      lastDate: DateTime.now(),
-    ).then((pickedDate) {
-      if (pickedDate == null) return;
-      setState(() {
-        _selectedDate = pickedDate;
-      });
-    });
+      builder: (ctx) => AlertDialog(
+        title: Text(
+          'Remove Player',
+          style: GoogleFonts.outfit(fontWeight: FontWeight.bold),
+        ),
+        content: Text(
+          'Are you sure you want to remove this player? This action cannot be undone.',
+          style: GoogleFonts.inter(),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: Text('Cancel', style: GoogleFonts.inter()),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.of(ctx).pop();
+              await _removePlayer();
+            },
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: Text(
+              'Remove',
+              style: GoogleFonts.inter(fontWeight: FontWeight.bold),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _removePlayer() async {
+    try {
+      // Call API to remove player
+      await GuardianService().removePlayer(_playerId);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Player removed successfully!')),
+        );
+        context.pop(true); // Return true to refresh player list
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Failed to remove player: $e')));
+      }
+    }
+  }
+
+  Future<void> _saveChanges() async {
+    try {
+      // Validate inputs
+      if (_firstNameController.text.trim().isEmpty) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Please enter a name')));
+        return;
+      }
+
+      if (_ageController.text.trim().isEmpty) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Please enter an age')));
+        return;
+      }
+
+      // Call API to update player
+      await GuardianService().updatePlayer(
+        _playerId,
+        fullName: _firstNameController.text.trim(),
+        age: _ageController.text.trim(),
+        role: _selectedRole,
+        battingStyle: _selectedBattingStyle,
+        bowlingStyle: _selectedBowlingStyle,
+        medicalIssues: _medicalIssuesController.text.trim(),
+      );
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Player updated successfully!')),
+        );
+        context.pop(true); // Return true to refresh player list
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Failed to save changes: $e')));
+      }
+    }
   }
 
   @override
@@ -166,102 +254,115 @@ class _EditPlayerScreenState extends State<EditPlayerScreen> {
             const SizedBox(height: 32),
 
             // Form Fields
-            Row(
+            _buildTextField("Full Name", _firstNameController),
+            const SizedBox(height: 16),
+
+            _buildTextField("Age", _ageController, isCenter: false),
+            const SizedBox(height: 16),
+
+            // Role Dropdown
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(
-                  child: _buildTextField("First Name", _firstNameController),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: _buildTextField("Last Name", _lastNameController),
+                _buildLabel("Role"),
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.grey[200]!),
+                  ),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<String>(
+                      isExpanded: true,
+                      value: _selectedRole,
+                      items: _roles
+                          .map(
+                            (r) => DropdownMenuItem(value: r, child: Text(r)),
+                          )
+                          .toList(),
+                      onChanged: (val) =>
+                          setState(() => _selectedRole = val ?? _selectedRole),
+                      icon: const Icon(
+                        Icons.keyboard_arrow_down,
+                        color: Colors.orange,
+                      ),
+                    ),
+                  ),
                 ),
               ],
             ),
             const SizedBox(height: 16),
 
-            _buildLabel("Date of Birth"),
-            const SizedBox(height: 8),
-            InkWell(
-              onTap: _presentDatePicker,
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 16,
-                ),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.grey[200]!),
-                ),
-                child: Row(
-                  children: [
-                    Text(
-                      DateFormat('MMMM d, yyyy').format(_selectedDate),
-                      style: GoogleFonts.inter(
-                        color: AppPalette.textPrimaryLight,
-                        fontSize: 16,
+            // Batting Style Dropdown
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildLabel("Batting Style"),
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.grey[200]!),
+                  ),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<String>(
+                      isExpanded: true,
+                      value: _selectedBattingStyle,
+                      items: _battingStyles
+                          .map(
+                            (s) => DropdownMenuItem(value: s, child: Text(s)),
+                          )
+                          .toList(),
+                      onChanged: (val) => setState(
+                        () => _selectedBattingStyle =
+                            val ?? _selectedBattingStyle,
+                      ),
+                      icon: const Icon(
+                        Icons.keyboard_arrow_down,
+                        color: Colors.orange,
                       ),
                     ),
-                    const Spacer(),
-                    const Icon(
-                      Icons.calendar_today_outlined,
-                      color: Colors.orange,
-                      size: 20,
-                    ),
-                  ],
+                  ),
                 ),
-              ),
+              ],
             ),
             const SizedBox(height: 16),
 
-            Row(
+            // Bowling Style Dropdown
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(
-                  flex: 2,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _buildLabel("Primary Sport"),
-                      const SizedBox(height: 8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: Colors.grey[200]!),
-                        ),
-                        child: DropdownButtonHideUnderline(
-                          child: DropdownButton<String>(
-                            isExpanded: true,
-                            value: _selectedSport,
-                            items: _sports
-                                .map(
-                                  (s) => DropdownMenuItem(
-                                    value: s,
-                                    child: Text(s),
-                                  ),
-                                )
-                                .toList(),
-                            onChanged: (val) => setState(
-                              () => _selectedSport = val ?? _selectedSport,
-                            ),
-                            icon: const Icon(
-                              Icons.keyboard_arrow_down,
-                              color: Colors.orange,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
+                _buildLabel("Bowling Style"),
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.grey[200]!),
                   ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  flex: 1,
-                  child: _buildTextField(
-                    "Jersey #",
-                    _jerseyController,
-                    isCenter: true,
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<String>(
+                      isExpanded: true,
+                      value: _selectedBowlingStyle,
+                      items: _bowlingStyles
+                          .map(
+                            (s) => DropdownMenuItem(value: s, child: Text(s)),
+                          )
+                          .toList(),
+                      onChanged: (val) => setState(
+                        () => _selectedBowlingStyle =
+                            val ?? _selectedBowlingStyle,
+                      ),
+                      icon: const Icon(
+                        Icons.keyboard_arrow_down,
+                        color: Colors.orange,
+                      ),
+                    ),
                   ),
                 ),
               ],
@@ -269,21 +370,15 @@ class _EditPlayerScreenState extends State<EditPlayerScreen> {
             const SizedBox(height: 16),
 
             _buildTextField(
-              "Current Team",
-              _teamController,
-              icon: Icons.people_alt_rounded,
+              "Medical Issues/Conditions (Optional)",
+              _medicalIssuesController,
             ),
 
             const SizedBox(height: 32),
             SizedBox(
               width: double.infinity,
               child: ElevatedButton.icon(
-                onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Save Changes Clicked!')),
-                  );
-                  context.pop();
-                },
+                onPressed: _saveChanges,
                 icon: const Icon(Icons.save_outlined, size: 20),
                 label: const Text('Save Changes'),
                 style: ElevatedButton.styleFrom(
@@ -303,9 +398,7 @@ class _EditPlayerScreenState extends State<EditPlayerScreen> {
             const SizedBox(height: 24),
 
             TextButton.icon(
-              onPressed: () {
-                // Destructive action
-              },
+              onPressed: _showDeleteConfirmation,
               icon: const Icon(
                 Icons.delete_outline,
                 size: 20,

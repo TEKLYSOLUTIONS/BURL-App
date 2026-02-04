@@ -3,18 +3,18 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
 import '../../config/palette.dart';
 import '../../services/profile_service.dart';
-import '../../services/auth_service.dart';
 
-class EditProfileScreen extends StatefulWidget {
+class GuardianEditProfileScreen extends StatefulWidget {
   final Map<String, dynamic>? profileData;
 
-  const EditProfileScreen({super.key, this.profileData});
+  const GuardianEditProfileScreen({super.key, this.profileData});
 
   @override
-  State<EditProfileScreen> createState() => _EditProfileScreenState();
+  State<GuardianEditProfileScreen> createState() =>
+      _GuardianEditProfileScreenState();
 }
 
-class _EditProfileScreenState extends State<EditProfileScreen> {
+class _GuardianEditProfileScreenState extends State<GuardianEditProfileScreen> {
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
@@ -105,12 +105,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       }
 
       await ProfileService.updateProfile(updateData);
-
-      // Update local storage so Home Screen reflects changes immediately
-      await AuthService.updateStoredUserData(
-        _nameController.text.trim(),
-        _userRole,
-      );
 
       setState(() {
         _isSaving = false;

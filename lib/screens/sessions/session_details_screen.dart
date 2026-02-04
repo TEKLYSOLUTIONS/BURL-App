@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../config/palette.dart';
 import '../../services/session_service.dart';
 import '../../utils/date_time_utils.dart';
+import 'create_session_screen.dart';
 
 class SessionDetailsScreen extends StatefulWidget {
   final String sessionId;
@@ -231,12 +232,18 @@ class _SessionDetailsScreenState extends State<SessionDetailsScreen> {
           if (isCoach)
             PopupMenuButton<String>(
               icon: const Icon(Icons.more_vert, color: Colors.orange),
-              onSelected: (value) {
+              onSelected: (value) async {
                 if (value == 'edit') {
-                  // Navigate to edit screen (not yet implemented)
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Edit feature coming soon')),
+                  final result = await Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) =>
+                          CreateSessionScreen(sessionToEdit: _session),
+                    ),
                   );
+                  if (result == true) {
+                    _fetchSessionDetails();
+                  }
                 } else if (value == 'delete') {
                   _deleteSession();
                 }
@@ -645,13 +652,18 @@ class _SessionDetailsScreenState extends State<SessionDetailsScreen> {
                       child: ElevatedButton(
                         onPressed: _isDeleting
                             ? null
-                            : () {
-                                // Edit session functionality
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('Edit feature coming soon'),
+                            : () async {
+                                final result = await Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => CreateSessionScreen(
+                                      sessionToEdit: _session,
+                                    ),
                                   ),
                                 );
+                                if (result == true) {
+                                  _fetchSessionDetails();
+                                }
                               },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppPalette.orangeAccent,

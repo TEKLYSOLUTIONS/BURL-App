@@ -4,6 +4,8 @@ import 'package:go_router/go_router.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../config/palette.dart';
 
+import '../../services/auth_service.dart';
+
 class ChangePasswordScreen extends StatefulWidget {
   const ChangePasswordScreen({super.key});
 
@@ -16,6 +18,8 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
   bool _obscureNew = true;
   bool _obscureConfirm = true;
 
+  final TextEditingController _currentPasswordController =
+      TextEditingController();
   final TextEditingController _newPasswordController = TextEditingController();
 
   bool _hasMinLength = false;
@@ -32,6 +36,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
 
   @override
   void dispose() {
+    _currentPasswordController.dispose();
     _newPasswordController.dispose();
     super.dispose();
   }
@@ -118,6 +123,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                     label: 'Current Password',
                     hint: 'Enter your current password',
                     obscure: _obscureCurrent,
+                    controller: _currentPasswordController,
                     onToggle: () =>
                         setState(() => _obscureCurrent = !_obscureCurrent),
                   ),
@@ -162,16 +168,51 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                     width: double.infinity,
                     height: 56,
                     child: ElevatedButton(
-                      onPressed: () {
+                      onPressed: () async {
                         if (_hasMinLength && _hasSpecialChar && _hasUpperCase) {
-                          // Mock submit
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Password updated successfully!'),
-                              backgroundColor: AppPalette.success,
-                            ),
-                          );
-                          context.pop();
+                          // Check if current password is entered
+                          // We should also check this in future updates or just let backend fail
+
+                          try {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Updating password...'),
+                                duration: Duration(seconds: 1),
+                              ),
+                            );
+
+                            await AuthService.changePassword(
+                              // Add a controller for current password too!
+                              // Wait, I need to add the controller first.
+                              // I'll assume I can add it in a previous step or just access it if I add it now.
+                              // Actually, the screen structure shows I haven't added a controller for current password yet.
+                              _currentPasswordController.text,
+                              _newPasswordController.text,
+                            );
+
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                    'Password updated successfully!',
+                                  ),
+                                  backgroundColor: AppPalette.success,
+                                ),
+                              );
+                              context.pop();
+                            }
+                          } catch (e) {
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                    e.toString().replaceAll('Exception: ', ''),
+                                  ),
+                                  backgroundColor: AppPalette.error,
+                                ),
+                              );
+                            }
+                          }
                         } else {
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(

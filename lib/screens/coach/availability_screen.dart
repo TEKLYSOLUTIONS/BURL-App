@@ -20,11 +20,30 @@ class TimeInterval {
   String start;
   String end;
   TimeInterval({required this.start, required this.end});
-  
-  Map<String, dynamic> toJson() => {
-    'start': start,
-    'end': end,
-  };
+
+  Map<String, dynamic> toJson() => {'start': start, 'end': end};
+
+  // Helper to get minutes from "HH:MM AM/PM"
+  int get startMinutes => _toMinutes(start);
+  int get endMinutes => _toMinutes(end);
+
+  static int _toMinutes(String timeStr) {
+    try {
+      // timeStr format: "09:00 AM"
+      final parts = timeStr.split(' ');
+      final timeParts = parts[0].split(':');
+      int hour = int.parse(timeParts[0]);
+      int minute = int.parse(timeParts[1]);
+      final period = parts[1];
+
+      if (period == 'PM' && hour != 12) hour += 12;
+      if (period == 'AM' && hour == 12) hour = 0;
+
+      return hour * 60 + minute;
+    } catch (e) {
+      return 0;
+    }
+  }
 }
 
 class BlockedDate {
@@ -43,7 +62,7 @@ class BlockedDate {
     required this.color,
     required this.icon,
   });
-  
+
   Map<String, dynamic> toJson() => {
     'title': title,
     'startDate': start.toIso8601String(),
@@ -51,14 +70,14 @@ class BlockedDate {
     'icon': _iconToString(icon),
     'color': _colorToString(color),
   };
-  
+
   String _iconToString(IconData icon) {
     if (icon == Icons.flight_takeoff) return 'flight';
     if (icon == Icons.calendar_today) return 'calendar';
     if (icon == Icons.block) return 'block';
     return 'block';
   }
-  
+
   String _colorToString(Color color) {
     if (color == Colors.orange) return 'orange';
     if (color == Colors.blueGrey) return 'blueGrey';
@@ -73,11 +92,19 @@ class _CoachAvailabilityScreenState extends State<CoachAvailabilityScreen> {
 
   // recurring schedule
   final List<String> _weekDays = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
-  final List<String> _fullDayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-  
+  final List<String> _fullDayNames = [
+    'Monday',
+    'Tuesday',
+    'Wednesday',
+    'Thursday',
+    'Friday',
+    'Saturday',
+    'Sunday',
+  ];
+
   // Currently selected day index (0=Monday, 1=Tuesday, etc.)
   int _selectedDayIndex = 0;
-  
+
   // Store time intervals for each day (7 days)
   final Map<int, List<TimeInterval>> _daySchedules = {
     0: [TimeInterval(start: '09:00 AM', end: '05:00 PM')], // Monday
@@ -97,6 +124,27 @@ class _CoachAvailabilityScreenState extends State<CoachAvailabilityScreen> {
   // Dynamic blocked dates list
   List<BlockedDate> _blockedDates = [];
 
+  // Check for overlap between a specific interval and a list of existing intervals
+  // ignoring the interval at 'ignoreIndex' (useful when updating an existing one)
+  bool _hasOverlap(
+    List<TimeInterval> intervals,
+    TimeInterval newInterval, {
+    int? ignoreIndex,
+  }) {
+    for (int i = 0; i < intervals.length; i++) {
+      if (ignoreIndex != null && i == ignoreIndex) continue;
+
+      final existing = intervals[i];
+
+      // Check overlap: StartA < EndB && StartB < EndA
+      if (newInterval.startMinutes < existing.endMinutes &&
+          existing.startMinutes < newInterval.endMinutes) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -108,22 +156,27 @@ class _CoachAvailabilityScreenState extends State<CoachAvailabilityScreen> {
 
     try {
       final data = await CoachService.getCoachAvailability();
-      
+
       // Debug: print the response
       debugPrint('Availability data: $data');
-      
+
       // Parse recurring schedule with null safety
-      if (data.containsKey('recurringSchedule') && data['recurringSchedule'] != null) {
-        final recurringSchedule = data['recurringSchedule'] as Map<String, dynamic>;
-        
+      if (data.containsKey('recurringSchedule') &&
+          data['recurringSchedule'] != null) {
+        final recurringSchedule =
+            data['recurringSchedule'] as Map<String, dynamic>;
+
         // Parse day-specific schedules
-        if (recurringSchedule.containsKey('daySchedules') && recurringSchedule['daySchedules'] is Map) {
-          final daySchedules = recurringSchedule['daySchedules'] as Map<String, dynamic>;
-          
+        if (recurringSchedule.containsKey('daySchedules') &&
+            recurringSchedule['daySchedules'] is Map) {
+          final daySchedules =
+              recurringSchedule['daySchedules'] as Map<String, dynamic>;
+
           // Load schedule for each day
           for (int i = 0; i < 7; i++) {
             final dayKey = i.toString();
-            if (daySchedules.containsKey(dayKey) && daySchedules[dayKey] is List) {
+            if (daySchedules.containsKey(dayKey) &&
+                daySchedules[dayKey] is List) {
               final intervals = daySchedules[dayKey] as List;
               _daySchedules[i] = intervals.map((ti) {
                 if (ti is Map) {
@@ -149,10 +202,12 @@ class _CoachAvailabilityScreenState extends State<CoachAvailabilityScreen> {
               }
               return TimeInterval(start: '09:00 AM', end: '05:00 PM');
             }).toList();
-            
+
             // Apply to Monday-Friday (indices 0-4)
             for (int i = 0; i < 5; i++) {
-              _daySchedules[i] = intervals.map((ti) => TimeInterval(start: ti.start, end: ti.end)).toList();
+              _daySchedules[i] = intervals
+                  .map((ti) => TimeInterval(start: ti.start, end: ti.end))
+                  .toList();
             }
           }
         }
@@ -167,8 +222,13 @@ class _CoachAvailabilityScreenState extends State<CoachAvailabilityScreen> {
               return BlockedDate(
                 id: bd['_id']?.toString(),
                 title: bd['title']?.toString() ?? 'Blocked',
-                start: DateTime.parse(bd['startDate']?.toString() ?? DateTime.now().toIso8601String()),
-                end: DateTime.parse(bd['endDate']?.toString() ?? DateTime.now().toIso8601String()),
+                start: DateTime.parse(
+                  bd['startDate']?.toString() ??
+                      DateTime.now().toIso8601String(),
+                ),
+                end: DateTime.parse(
+                  bd['endDate']?.toString() ?? DateTime.now().toIso8601String(),
+                ),
                 color: _parseColor(bd['color']?.toString()),
                 icon: _parseIcon(bd['icon']?.toString()),
               );
@@ -202,19 +262,27 @@ class _CoachAvailabilityScreenState extends State<CoachAvailabilityScreen> {
 
   Color _parseColor(String? colorStr) {
     switch (colorStr) {
-      case 'orange': return Colors.orange;
-      case 'blueGrey': return Colors.blueGrey;
-      case 'red': return Colors.redAccent;
-      default: return Colors.redAccent;
+      case 'orange':
+        return Colors.orange;
+      case 'blueGrey':
+        return Colors.blueGrey;
+      case 'red':
+        return Colors.redAccent;
+      default:
+        return Colors.redAccent;
     }
   }
 
   IconData _parseIcon(String? iconStr) {
     switch (iconStr) {
-      case 'flight': return Icons.flight_takeoff;
-      case 'calendar': return Icons.calendar_today;
-      case 'block': return Icons.block;
-      default: return Icons.block;
+      case 'flight':
+        return Icons.flight_takeoff;
+      case 'calendar':
+        return Icons.calendar_today;
+      case 'block':
+        return Icons.block;
+      default:
+        return Icons.block;
     }
   }
 
@@ -225,25 +293,29 @@ class _CoachAvailabilityScreenState extends State<CoachAvailabilityScreen> {
       // Convert day schedules to API format
       final daySchedulesData = <String, dynamic>{};
       for (int i = 0; i < 7; i++) {
-        daySchedulesData[i.toString()] = _daySchedules[i]!.map((ti) => ti.toJson()).toList();
+        daySchedulesData[i.toString()] = _daySchedules[i]!
+            .map((ti) => ti.toJson())
+            .toList();
       }
 
       final availabilityData = {
-        'recurringSchedule': {
-          'daySchedules': daySchedulesData,
-        },
-        'blockedDates': _blockedDates.map((bd) => {
-          if (bd.id != null) '_id': bd.id,
-          'title': bd.title,
-          'startDate': bd.start.toIso8601String(),
-          'endDate': bd.end.toIso8601String(),
-          'icon': bd._iconToString(bd.icon),
-          'color': bd._colorToString(bd.color),
-        }).toList(),
+        'recurringSchedule': {'daySchedules': daySchedulesData},
+        'blockedDates': _blockedDates
+            .map(
+              (bd) => {
+                if (bd.id != null) '_id': bd.id,
+                'title': bd.title,
+                'startDate': bd.start.toIso8601String(),
+                'endDate': bd.end.toIso8601String(),
+                'icon': bd._iconToString(bd.icon),
+                'color': bd._colorToString(bd.color),
+              },
+            )
+            .toList(),
       };
 
       debugPrint('Saving availability data: $availabilityData');
-      
+
       await CoachService.updateCoachAvailability(availabilityData);
 
       setState(() => _isSaving = false);
@@ -348,7 +420,8 @@ class _CoachAvailabilityScreenState extends State<CoachAvailabilityScreen> {
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: List.generate(_weekDays.length, (index) {
                             final isSelected = _selectedDayIndex == index;
-                            final hasSchedule = _daySchedules[index]!.isNotEmpty;
+                            final hasSchedule =
+                                _daySchedules[index]!.isNotEmpty;
                             return GestureDetector(
                               onTap: () {
                                 setState(() {
@@ -362,8 +435,10 @@ class _CoachAvailabilityScreenState extends State<CoachAvailabilityScreen> {
                                   color: isSelected
                                       ? AppPalette.orangeAccent
                                       : hasSchedule
-                                          ? AppPalette.orangeAccent.withValues(alpha: 0.2)
-                                          : Colors.grey[100],
+                                      ? AppPalette.orangeAccent.withValues(
+                                          alpha: 0.2,
+                                        )
+                                      : Colors.grey[100],
                                   shape: BoxShape.circle,
                                   boxShadow: isSelected
                                       ? [
@@ -383,8 +458,8 @@ class _CoachAvailabilityScreenState extends State<CoachAvailabilityScreen> {
                                     color: isSelected
                                         ? Colors.white
                                         : hasSchedule
-                                            ? AppPalette.orangeAccent
-                                            : Colors.grey[400],
+                                        ? AppPalette.orangeAccent
+                                        : Colors.grey[400],
                                     fontWeight: FontWeight.bold,
                                     fontSize: 14,
                                   ),
@@ -424,7 +499,9 @@ class _CoachAvailabilityScreenState extends State<CoachAvailabilityScreen> {
                             ),
                           )
                         else
-                          ...List.generate(_daySchedules[_selectedDayIndex]!.length, (index) {
+                          ...List.generate(_daySchedules[_selectedDayIndex]!.length, (
+                            index,
+                          ) {
                             return Padding(
                               padding: const EdgeInsets.only(bottom: 16.0),
                               child: Row(
@@ -452,10 +529,41 @@ class _CoachAvailabilityScreenState extends State<CoachAvailabilityScreen> {
                                                 const SizedBox(height: 8),
                                               ],
                                               _buildTimeDropdown(
-                                                _daySchedules[_selectedDayIndex]![index].start,
+                                                _daySchedules[_selectedDayIndex]![index]
+                                                    .start,
                                                 (val) {
+                                                  // Check Overlap
+                                                  final updatedInterval =
+                                                      TimeInterval(
+                                                        start: val,
+                                                        end:
+                                                            _daySchedules[_selectedDayIndex]![index]
+                                                                .end,
+                                                      );
+
+                                                  if (_hasOverlap(
+                                                    _daySchedules[_selectedDayIndex]!,
+                                                    updatedInterval,
+                                                    ignoreIndex: index,
+                                                  )) {
+                                                    ScaffoldMessenger.of(
+                                                      context,
+                                                    ).showSnackBar(
+                                                      const SnackBar(
+                                                        content: Text(
+                                                          "Time slot overlaps with an existing interval",
+                                                        ),
+                                                        backgroundColor:
+                                                            Colors.red,
+                                                      ),
+                                                    );
+                                                    return; // Do not update
+                                                  }
+
                                                   setState(() {
-                                                    _daySchedules[_selectedDayIndex]![index].start = val;
+                                                    _daySchedules[_selectedDayIndex]![index]
+                                                            .start =
+                                                        val;
                                                     // Validate: Ensure End is after Start
                                                     final startMinutes =
                                                         _minutesFromTime(
@@ -464,7 +572,8 @@ class _CoachAvailabilityScreenState extends State<CoachAvailabilityScreen> {
                                                     final endMinutes =
                                                         _minutesFromTime(
                                                           _parseTime(
-                                                            _daySchedules[_selectedDayIndex]![index].end,
+                                                            _daySchedules[_selectedDayIndex]![index]
+                                                                .end,
                                                           ),
                                                         );
 
@@ -473,126 +582,178 @@ class _CoachAvailabilityScreenState extends State<CoachAvailabilityScreen> {
                                                       // Auto-adjust end time to start + 1 hour
                                                       final newEndMinutes =
                                                           startMinutes + 60;
-                                                      // Handle wrap around (24 hours) - simplified for day schedule
                                                       final adjustedEnd =
                                                           newEndMinutes >= 1440
                                                           ? 1439
                                                           : newEndMinutes;
-                                                      _daySchedules[_selectedDayIndex]![index].end =
-                                                          _formatTime(
-                                                            _timeFromMinutes(
-                                                              adjustedEnd,
+
+                                                      // Re-check overlap for the auto-adjusted end time
+                                                      final adjustedInterval =
+                                                          TimeInterval(
+                                                            start: val,
+                                                            end: _formatTime(
+                                                              _timeFromMinutes(
+                                                                adjustedEnd,
+                                                              ),
                                                             ),
                                                           );
+
+                                                      if (!_hasOverlap(
+                                                        _daySchedules[_selectedDayIndex]!,
+                                                        adjustedInterval,
+                                                        ignoreIndex: index,
+                                                      )) {
+                                                        _daySchedules[_selectedDayIndex]![index]
+                                                                .end =
+                                                            adjustedInterval
+                                                                .end;
+                                                      }
                                                     }
                                                   });
                                                 },
                                               ),
                                             ],
                                           ),
-                                      ),
-                                      const SizedBox(width: 12),
-                                      Padding(
-                                        padding: EdgeInsets.only(
-                                          top: index == 0 ? 24.0 : 0.0,
                                         ),
-                                        child: Text(
-                                          '-',
-                                          style: GoogleFonts.outfit(
-                                            fontSize: 20,
-                                            color: Colors.grey[300],
+                                        const SizedBox(width: 12),
+                                        Padding(
+                                          padding: EdgeInsets.only(
+                                            top: index == 0 ? 24.0 : 0.0,
+                                          ),
+                                          child: Text(
+                                            '-',
+                                            style: GoogleFonts.outfit(
+                                              fontSize: 20,
+                                              color: Colors.grey[300],
+                                            ),
                                           ),
                                         ),
-                                      ),
-                                      const SizedBox(width: 12),
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            if (index == 0) ...[
-                                              Text(
-                                                'END',
-                                                style: GoogleFonts.inter(
-                                                  fontSize: 10,
-                                                  fontWeight: FontWeight.bold,
-                                                  color:
-                                                      AppPalette.orangeAccent,
-                                                  letterSpacing: 1,
+                                        const SizedBox(width: 12),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              if (index == 0) ...[
+                                                Text(
+                                                  'END',
+                                                  style: GoogleFonts.inter(
+                                                    fontSize: 10,
+                                                    fontWeight: FontWeight.bold,
+                                                    color:
+                                                        AppPalette.orangeAccent,
+                                                    letterSpacing: 1,
+                                                  ),
                                                 ),
-                                              ),
-                                              const SizedBox(height: 8),
-                                            ],
-                                            _buildTimeDropdown(
-                                              _daySchedules[_selectedDayIndex]![index].end,
-                                              (val) {
-                                                // Validate: Ensure End is after Start
-                                                final newEndMinutes =
-                                                    _minutesFromTime(
-                                                      _parseTime(val),
-                                                    );
-                                                final startMinutes =
-                                                    _minutesFromTime(
-                                                      _parseTime(
-                                                        _daySchedules[_selectedDayIndex]![index].start,
-                                                      ),
-                                                    );
+                                                const SizedBox(height: 8),
+                                              ],
+                                              _buildTimeDropdown(
+                                                _daySchedules[_selectedDayIndex]![index]
+                                                    .end,
+                                                (val) {
+                                                  // Validate: Ensure End is after Start
+                                                  final newEndMinutes =
+                                                      _minutesFromTime(
+                                                        _parseTime(val),
+                                                      );
+                                                  final startMinutes =
+                                                      _minutesFromTime(
+                                                        _parseTime(
+                                                          _daySchedules[_selectedDayIndex]![index]
+                                                              .start,
+                                                        ),
+                                                      );
 
-                                                if (newEndMinutes <=
-                                                    startMinutes) {
-                                                  // Invalid selection
-                                                  ScaffoldMessenger.of(
-                                                    context,
-                                                  ).showSnackBar(
-                                                    const SnackBar(
-                                                      content: Text(
-                                                        "End time must be after start time",
+                                                  if (newEndMinutes <=
+                                                      startMinutes) {
+                                                    // Invalid selection
+                                                    ScaffoldMessenger.of(
+                                                      context,
+                                                    ).showSnackBar(
+                                                      const SnackBar(
+                                                        content: Text(
+                                                          "End time must be after start time",
+                                                        ),
+                                                        backgroundColor:
+                                                            Colors.red,
                                                       ),
-                                                      backgroundColor:
-                                                          Colors.red,
-                                                    ),
-                                                  );
-                                                } else {
-                                                  setState(() {
-                                                    _daySchedules[_selectedDayIndex]![index].end = val;
-                                                  });
-                                                }
-                                              },
-                                            ),
-                                          ],
+                                                    );
+                                                  } else {
+                                                    final updatedInterval =
+                                                        TimeInterval(
+                                                          start:
+                                                              _daySchedules[_selectedDayIndex]![index]
+                                                                  .start,
+                                                          end: val,
+                                                        );
+
+                                                    if (_hasOverlap(
+                                                      _daySchedules[_selectedDayIndex]!,
+                                                      updatedInterval,
+                                                      ignoreIndex: index,
+                                                    )) {
+                                                      ScaffoldMessenger.of(
+                                                        context,
+                                                      ).showSnackBar(
+                                                        const SnackBar(
+                                                          content: Text(
+                                                            "Time slot overlaps with an existing interval",
+                                                          ),
+                                                          backgroundColor:
+                                                              Colors.red,
+                                                        ),
+                                                      );
+                                                      return;
+                                                    }
+
+                                                    setState(() {
+                                                      _daySchedules[_selectedDayIndex]![index]
+                                                              .end =
+                                                          val;
+                                                    });
+                                                  }
+                                                },
+                                              ),
+                                            ],
+                                          ),
                                         ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                const SizedBox(width: 12),
-                                // Delete Button
-                                Padding(
-                                  padding: const EdgeInsets.only(bottom: 12.0),
-                                  child: InkWell(
-                                    onTap: () {
-                                      if (_daySchedules[_selectedDayIndex]!.length > 1) {
-                                        setState(() {
-                                          _daySchedules[_selectedDayIndex]!.removeAt(index);
-                                        });
-                                      } else {
-                                        // If it's the last interval, remove it to clear the day
-                                        setState(() {
-                                          _daySchedules[_selectedDayIndex] = [];
-                                        });
-                                      }
-                                    },
-                                    child: Icon(
-                                      Icons.delete_outline,
-                                      color: Colors.red[300],
-                                      size: 24,
+                                      ],
                                     ),
                                   ),
-                                ),
-                              ],
-                            ),
-                          );
-                        }),
+                                  const SizedBox(width: 12),
+                                  // Delete Button
+                                  Padding(
+                                    padding: const EdgeInsets.only(
+                                      bottom: 12.0,
+                                    ),
+                                    child: InkWell(
+                                      onTap: () {
+                                        if (_daySchedules[_selectedDayIndex]!
+                                                .length >
+                                            1) {
+                                          setState(() {
+                                            _daySchedules[_selectedDayIndex]!
+                                                .removeAt(index);
+                                          });
+                                        } else {
+                                          // If it's the last interval, remove it to clear the day
+                                          setState(() {
+                                            _daySchedules[_selectedDayIndex] =
+                                                [];
+                                          });
+                                        }
+                                      },
+                                      child: Icon(
+                                        Icons.delete_outline,
+                                        color: Colors.red[300],
+                                        size: 24,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          }),
 
                         const SizedBox(height: 16),
 
@@ -600,12 +761,43 @@ class _CoachAvailabilityScreenState extends State<CoachAvailabilityScreen> {
                         if (_daySchedules[_selectedDayIndex]!.isNotEmpty)
                           InkWell(
                             onTap: () {
+                              final newInterval = TimeInterval(
+                                start: '09:00 AM',
+                                end: '05:00 PM',
+                              );
+
+                              // Simple auto-adjust to find next available slot if default overlaps
+                              if (_hasOverlap(
+                                _daySchedules[_selectedDayIndex]!,
+                                newInterval,
+                              )) {
+                                // Try finding a gap or just warn (simplest is warn and let user adjust)
+                                // But better DX: Default to something safe if possible, or just add and let them fix?
+                                // Sticking to requirement: Validate. so we should probably not add if it strictly overlaps?
+                                // Actually, adding an invalid one that they HAVE to fix is annoying.
+                                // Let's try 5pm-6pm
+                                newInterval.start = '05:00 PM';
+                                newInterval.end = '06:00 PM';
+
+                                if (_hasOverlap(
+                                  _daySchedules[_selectedDayIndex]!,
+                                  newInterval,
+                                )) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text(
+                                        "Cannot add default slot (overlap). Please adjust existing slots.",
+                                      ),
+                                      backgroundColor: Colors.red,
+                                    ),
+                                  );
+                                  return;
+                                }
+                              }
+
                               setState(() {
                                 _daySchedules[_selectedDayIndex]!.add(
-                                  TimeInterval(
-                                    start: '09:00 AM',
-                                    end: '05:00 PM',
-                                  ),
+                                  newInterval,
                                 );
                               });
                             },
@@ -646,7 +838,9 @@ class _CoachAvailabilityScreenState extends State<CoachAvailabilityScreen> {
                             child: Container(
                               padding: const EdgeInsets.symmetric(vertical: 12),
                               decoration: BoxDecoration(
-                                color: AppPalette.orangeAccent.withValues(alpha: 0.1),
+                                color: AppPalette.orangeAccent.withValues(
+                                  alpha: 0.1,
+                                ),
                                 borderRadius: BorderRadius.circular(12),
                                 border: Border.all(
                                   color: AppPalette.orangeAccent,
@@ -676,7 +870,7 @@ class _CoachAvailabilityScreenState extends State<CoachAvailabilityScreen> {
                           ),
 
                         const SizedBox(height: 24),
-                        
+
                         // Copy to All Weekdays Button
                         if (_daySchedules[_selectedDayIndex]!.isNotEmpty)
                           Container(
@@ -685,18 +879,31 @@ class _CoachAvailabilityScreenState extends State<CoachAvailabilityScreen> {
                               onTap: () {
                                 setState(() {
                                   // Copy current day's schedule to Monday-Friday (0-4)
-                                  final currentSchedule = _daySchedules[_selectedDayIndex]!
-                                      .map((ti) => TimeInterval(start: ti.start, end: ti.end))
-                                      .toList();
+                                  final currentSchedule =
+                                      _daySchedules[_selectedDayIndex]!
+                                          .map(
+                                            (ti) => TimeInterval(
+                                              start: ti.start,
+                                              end: ti.end,
+                                            ),
+                                          )
+                                          .toList();
                                   for (int i = 0; i < 5; i++) {
                                     _daySchedules[i] = currentSchedule
-                                        .map((ti) => TimeInterval(start: ti.start, end: ti.end))
+                                        .map(
+                                          (ti) => TimeInterval(
+                                            start: ti.start,
+                                            end: ti.end,
+                                          ),
+                                        )
                                         .toList();
                                   }
                                 });
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   const SnackBar(
-                                    content: Text('Schedule copied to all weekdays (Mon-Fri)'),
+                                    content: Text(
+                                      'Schedule copied to all weekdays (Mon-Fri)',
+                                    ),
                                     backgroundColor: Colors.green,
                                   ),
                                 );
@@ -722,7 +929,7 @@ class _CoachAvailabilityScreenState extends State<CoachAvailabilityScreen> {
                               ),
                             ),
                           ),
-                        
+
                         // Save Button
                         SizedBox(
                           width: double.infinity,
@@ -889,9 +1096,13 @@ class _CoachAvailabilityScreenState extends State<CoachAvailabilityScreen> {
                         blockedDate: blockedDate,
                         onDelete: () async {
                           if (blockedDate.id != null) {
-                            final scaffoldMessenger = ScaffoldMessenger.of(context);
+                            final scaffoldMessenger = ScaffoldMessenger.of(
+                              context,
+                            );
                             try {
-                              await CoachService.removeBlockedDate(blockedDate.id!);
+                              await CoachService.removeBlockedDate(
+                                blockedDate.id!,
+                              );
                               setState(() {
                                 _blockedDates.remove(blockedDate);
                               });
@@ -922,7 +1133,7 @@ class _CoachAvailabilityScreenState extends State<CoachAvailabilityScreen> {
                       ),
                     );
                   }),
-                  
+
                   const SizedBox(height: 100), // Spacing for Floating Tab Bar
                 ],
               ),
@@ -1168,8 +1379,10 @@ class _CoachAvailabilityScreenState extends State<CoachAvailabilityScreen> {
                             if (titleController.text.isNotEmpty) {
                               // Extract these before async operations
                               final navigator = Navigator.of(context);
-                              final scaffoldMessenger = ScaffoldMessenger.of(context);
-                              
+                              final scaffoldMessenger = ScaffoldMessenger.of(
+                                context,
+                              );
+
                               try {
                                 // Save to backend first
                                 final newBlockedDate = BlockedDate(
@@ -1179,11 +1392,12 @@ class _CoachAvailabilityScreenState extends State<CoachAvailabilityScreen> {
                                   color: Colors.redAccent,
                                   icon: Icons.block,
                                 );
-                                
-                                final savedData = await CoachService.addBlockedDate(
-                                  newBlockedDate.toJson(),
-                                );
-                                
+
+                                final savedData =
+                                    await CoachService.addBlockedDate(
+                                      newBlockedDate.toJson(),
+                                    );
+
                                 setState(() {
                                   _blockedDates.add(
                                     BlockedDate(
@@ -1196,9 +1410,9 @@ class _CoachAvailabilityScreenState extends State<CoachAvailabilityScreen> {
                                     ),
                                   );
                                 });
-                                
+
                                 navigator.pop();
-                                
+
                                 if (mounted) {
                                   scaffoldMessenger.showSnackBar(
                                     const SnackBar(

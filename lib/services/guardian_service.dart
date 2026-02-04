@@ -101,4 +101,61 @@ class GuardianService {
       rethrow;
     }
   }
+
+  // Update a player's profile
+  Future<Map<String, dynamic>> updatePlayer(
+    String playerId, {
+    required String fullName,
+    required String age,
+    required String role,
+    required String battingStyle,
+    required String bowlingStyle,
+    required String medicalIssues,
+  }) async {
+    try {
+      debugPrint('🔄 Updating player: $playerId');
+
+      final response = await ApiService.put('guardian/player/$playerId', {
+        'fullName': fullName,
+        'age': age,
+        'role': role,
+        'battingStyle': battingStyle,
+        'bowlingStyle': bowlingStyle,
+        'medicalIssues': medicalIssues,
+      });
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        debugPrint('✅ Player updated successfully');
+        // Trigger update notifier
+        playerUpdateNotifier.value = !playerUpdateNotifier.value;
+        return data['data'];
+      } else {
+        throw Exception('Failed to update player: ${response.statusCode}');
+      }
+    } catch (e) {
+      debugPrint('❌ Error updating player: $e');
+      rethrow;
+    }
+  }
+
+  // Remove a player
+  Future<void> removePlayer(String playerId) async {
+    try {
+      debugPrint('🗑️ Removing player: $playerId');
+
+      final response = await ApiService.delete('guardian/player/$playerId');
+
+      if (response.statusCode == 200) {
+        debugPrint('✅ Player removed successfully');
+        // Trigger update notifier
+        playerUpdateNotifier.value = !playerUpdateNotifier.value;
+      } else {
+        throw Exception('Failed to remove player: ${response.statusCode}');
+      }
+    } catch (e) {
+      debugPrint('❌ Error removing player: $e');
+      rethrow;
+    }
+  }
 }

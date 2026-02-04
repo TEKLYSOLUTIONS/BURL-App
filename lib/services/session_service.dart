@@ -28,6 +28,8 @@ class SessionService {
     required List<Map<String, dynamic>> timeSlots,
     required List<String> selectedDays,
     required bool isRecurring,
+    List<Map<String, dynamic>> explicitTimeSlots =
+        const [], // New optional param
     List<String> participants = const [],
     double priceAmount = 0.0,
     bool pricePerPerson = true,
@@ -39,6 +41,7 @@ class SessionService {
         'location': location,
         'capacity': capacity,
         'timeSlots': timeSlots,
+        'explicitTimeSlots': explicitTimeSlots, // Pass to backend
         'selectedDays': selectedDays,
         'isRecurring': isRecurring,
         'participants': participants,
@@ -78,6 +81,7 @@ class SessionService {
     int limit = 20,
     int page = 1,
     String? status,
+    DateTime? date,
   }) async {
     try {
       final queryParams = <String, String>{
@@ -88,6 +92,11 @@ class SessionService {
 
       if (status != null && status.isNotEmpty) {
         queryParams['status'] = status;
+      }
+
+      if (date != null) {
+        queryParams['date'] =
+            "${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}";
       }
 
       final queryString = queryParams.entries
@@ -101,9 +110,7 @@ class SessionService {
       if (responseData['status'] == 'success') {
         // Backend returns data as array directly, not nested in 'sessions' property
         final sessions = responseData['data'] as List<dynamic>;
-        debugPrint(
-          'Fetched ${sessions.length} sessions (type: $type)',
-        );
+        debugPrint('Fetched ${sessions.length} sessions (type: $type)');
         // Return in the format expected by the calling code
         return {
           'sessions': sessions,
@@ -147,10 +154,7 @@ class SessionService {
     Map<String, dynamic> updates,
   ) async {
     try {
-      final httpResponse = await ApiService.put(
-        'sessions/$sessionId',
-        updates,
-      );
+      final httpResponse = await ApiService.put('sessions/$sessionId', updates);
       final responseData =
           json.decode(httpResponse.body) as Map<String, dynamic>;
 
@@ -172,6 +176,13 @@ class SessionService {
   static Future<bool> deleteSession(String sessionId) async {
     try {
       final httpResponse = await ApiService.delete('sessions/$sessionId');
+
+      // 204 No Content indicates success
+      if (httpResponse.statusCode == 204) {
+        debugPrint('Session deleted successfully: $sessionId');
+        return true;
+      }
+
       final responseData =
           json.decode(httpResponse.body) as Map<String, dynamic>;
 

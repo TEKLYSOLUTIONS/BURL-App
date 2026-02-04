@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
+
 import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
 import 'dart:async';
 import '../../config/palette.dart';
-
 import '../../services/profile_service.dart';
+import '../../services/auth_service.dart';
 import '../../services/places_service.dart';
 
 class CompleteCoachProfileScreen extends StatefulWidget {
@@ -124,6 +125,7 @@ class _CompleteCoachProfileScreenState
     // Coach profile data
     if (data['coachProfile'] != null) {
       final coachProfile = data['coachProfile'];
+
       _cityController.text = coachProfile['city'] ?? '';
       _coachTitleController.text = coachProfile['coachTitle'] ?? '';
       _bioController.text = coachProfile['aboutMe'] ?? '';
@@ -143,17 +145,37 @@ class _CompleteCoachProfileScreenState
       }
 
       _primarySpecialization = coachProfile['primarySpecialization'];
-      _selectedSpecialties = List<String>.from(
-        coachProfile['specialties'] ?? [],
-      );
-      _certifications = List<String>.from(coachProfile['certifications'] ?? []);
-      _achievements = List<String>.from(
-        coachProfile['notableAchievements'] ?? [],
-      );
-      _ageGroups = List<String>.from(coachProfile['ageGroupsCoached'] ?? []);
-      _sessionTypes = List<String>.from(
-        coachProfile['sessionTypesOffered'] ?? [],
-      );
+
+      // Safely convert arrays to List<String>
+      _selectedSpecialties =
+          (coachProfile['specialties'] as List<dynamic>?)
+              ?.map((e) => e.toString())
+              .toList() ??
+          [];
+
+      _certifications =
+          (coachProfile['certifications'] as List<dynamic>?)
+              ?.map((e) => e.toString())
+              .toList() ??
+          [];
+
+      _achievements =
+          (coachProfile['notableAchievements'] as List<dynamic>?)
+              ?.map((e) => e.toString())
+              .toList() ??
+          [];
+
+      _ageGroups =
+          (coachProfile['ageGroupsCoached'] as List<dynamic>?)
+              ?.map((e) => e.toString())
+              .toList() ??
+          [];
+
+      _sessionTypes =
+          (coachProfile['sessionTypesOffered'] as List<dynamic>?)
+              ?.map((e) => e.toString())
+              .toList() ??
+          [];
     }
   }
 
@@ -226,7 +248,12 @@ class _CompleteCoachProfileScreenState
         'sessionTypesOffered': _sessionTypes,
       };
 
-      await ProfileService.updateProfile(updateData);
+      final updatedUser = await ProfileService.updateProfile(updateData);
+
+      await AuthService.updateStoredUserData(
+        updatedUser['fullName'] ?? _nameController.text,
+        updatedUser['role'] ?? 'coach',
+      );
 
       setState(() => _isSaving = false);
 

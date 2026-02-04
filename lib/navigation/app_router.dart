@@ -32,6 +32,7 @@ import '../screens/guardian/home_screen.dart';
 import '../screens/guardian/add_player_screen.dart';
 import '../screens/guardian/player_details_screen.dart';
 import '../screens/guardian/edit_player_screen.dart';
+import '../screens/guardian/guardian_edit_profile_screen.dart';
 import '../screens/guardian/guardian_profile_screen.dart'; // New Import
 import '../screens/guardian/coach_details_screen.dart'; // New Import
 import '../screens/coach/students_screen.dart';
@@ -46,6 +47,7 @@ import '../screens/notifications/notification_detail_screen.dart';
 import '../screens/settings/pro_upgrade_screen.dart';
 import '../screens/support/help_center_screen.dart';
 import '../screens/profile/edit_profile_screen.dart';
+import '../screens/profile/complete_coach_profile_screen.dart';
 import '../screens/profile/change_password_screen.dart';
 import '../screens/profile/payment_methods_screen.dart';
 import '../screens/legal/terms_of_service_screen.dart';
@@ -205,6 +207,21 @@ class AppRouter {
             path: '/edit-profile',
             builder: (context, state) {
               final profileData = state.extra as Map<String, dynamic>?;
+
+              // Use role-specific edit profile screens
+              if (profileData != null) {
+                final role = profileData['role'];
+
+                if (role == 'coach') {
+                  // Detailed coach edit profile
+                  return CompleteCoachProfileScreen(profileData: profileData);
+                } else if (role == 'guardian') {
+                  // Simplified guardian edit profile
+                  return GuardianEditProfileScreen(profileData: profileData);
+                }
+              }
+
+              // Default for player and others
               return EditProfileScreen(profileData: profileData);
             },
           ),
