@@ -4,6 +4,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 import 'config/theme.dart';
 import 'navigation/app_router.dart';
+import 'providers/theme_provider.dart';
 
 import 'package:flutter_stripe/flutter_stripe.dart';
 
@@ -20,17 +21,19 @@ void main() async {
   runApp(const ProviderScope(child: CoachingApp()));
 }
 
-class CoachingApp extends StatelessWidget {
+class CoachingApp extends ConsumerWidget {
   const CoachingApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final themeMode = ref.watch(themeProvider);
+
     return MaterialApp.router(
       title: 'Coach Connect',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
-      themeMode: ThemeMode.light, // Force light theme (Pearl White)
+      themeMode: themeMode,
       routerConfig: AppRouter.router,
     );
   }

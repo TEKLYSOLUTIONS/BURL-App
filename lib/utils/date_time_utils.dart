@@ -168,4 +168,9 @@ class DateTimeUtils {
   static String formatDateShortFromDateTime(DateTime dateTime) {
     return DateFormat('MMM dd').format(dateTime).toUpperCase();
   }
+
+  /// Format DateTime object to standard date (e.g., "MMM dd, yyyy")
+  static String formatDate(DateTime dateTime) {
+    return DateFormat('MMM dd, yyyy').format(dateTime);
+  }
 }

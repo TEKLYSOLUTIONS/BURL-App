@@ -786,11 +786,12 @@ class _UpNextCard extends StatelessWidget {
 
     String childName = 'Child';
     if (session['assignedPlayers'] != null &&
-        (session['assignedPlayers'] as List).isNotEmpty) {
-      childName =
-          (session['assignedPlayers'][0]['player']['fullName'] as String).split(
-            ' ',
-          )[0];
+        (session['assignedPlayers'] as List).isNotEmpty &&
+        session['assignedPlayers'][0]['player'] != null) {
+      final playerObj = session['assignedPlayers'][0]['player'];
+      if (playerObj is Map && playerObj['fullName'] != null) {
+        childName = (playerObj['fullName'] as String).split(' ')[0];
+      }
     }
 
     return Container(

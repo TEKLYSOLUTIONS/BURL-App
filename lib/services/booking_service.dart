@@ -35,6 +35,43 @@ class BookingService {
     }
   }
 
+  static Future<Map<String, dynamic>> createPrivateBooking({
+    required String coachId,
+    required DateTime startTime,
+    int durationMinutes = 60,
+    required String paymentMethod,
+    String? promoCode,
+    List<String>? playerIds,
+  }) async {
+    try {
+      print(
+        'DEBUG: BookingService.createPrivateBooking called with coachId: $coachId',
+      );
+      final response = await ApiService.post('bookings/private', {
+        'coachId': coachId,
+        'startTime': startTime.toIso8601String(),
+        'durationMinutes': durationMinutes,
+        'paymentMethod': paymentMethod,
+        if (promoCode != null && promoCode.isNotEmpty) 'promoCode': promoCode,
+        if (playerIds != null && playerIds.isNotEmpty) 'playerIds': playerIds,
+      });
+
+      final data = json.decode(response.body);
+
+      if (response.statusCode == 201) {
+        return data['bookings'] != null &&
+                data['bookings'] is List &&
+                (data['bookings'] as List).isNotEmpty
+            ? data['bookings'][0] // Return first booking for compatibility, or change return type?
+            : data['booking'] ?? {}; // Fallback
+      } else {
+        throw Exception(data['message'] ?? 'Failed to create private booking');
+      }
+    } catch (e) {
+      throw Exception('Error creating private booking: $e');
+    }
+  }
+
   /// Get player's bookings
   ///
   /// [type] - 'upcoming', 'past', or 'all'

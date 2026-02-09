@@ -3,6 +3,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
 import '../../config/palette.dart';
 
+import '../../services/booking_service.dart';
+
 class ConfirmBookingScreenSimple extends StatefulWidget {
   final Map<String, dynamic> bookingDetails;
 
@@ -19,7 +21,8 @@ class _ConfirmBookingScreenSimpleState
   String? _appliedPromoCode;
   double _discountAmount = 0.0;
   String? _promoError;
-  int _selectedPaymentMethod = 0; // 0: Card, 1: Apple Pay
+  int _selectedPaymentMethod = 0; // 0: Card, 1: Apple Pay, 2: Test Booking
+  bool _isProcessing = false;
 
   final double _sessionFee = 60.00;
   final double _serviceFee = 2.50;
@@ -521,6 +524,13 @@ class _ConfirmBookingScreenSimpleState
                     icon: Icons.apple,
                     title: 'Apple Pay',
                   ),
+                  const SizedBox(height: 12),
+                  _buildPaymentOption(
+                    index: 2,
+                    icon: Icons.bug_report,
+                    title: 'Test Booking',
+                    subtitle: 'For testing purposes only',
+                  ),
 
                   const SizedBox(height: 40),
                 ],
@@ -566,12 +576,63 @@ class _ConfirmBookingScreenSimpleState
                   width: double.infinity,
                   height: 56,
                   child: ElevatedButton(
-                    onPressed: () {
-                      context.push(
-                        '/booking-success',
-                        extra: widget.bookingDetails,
-                      );
-                    },
+                    onPressed: _isProcessing
+                        ? null
+                        : () async {
+                            setState(() {
+                              _isProcessing = true;
+                            });
+
+                            try {
+                              // Map payment method index to string
+                              String paymentMethodStr = 'card';
+                              if (_selectedPaymentMethod == 1) {
+                                paymentMethodStr = 'apple_pay';
+                              } else if (_selectedPaymentMethod == 2) {
+                                paymentMethodStr = 'test';
+                              }
+
+                              final sessionId =
+                                  widget.bookingDetails['sessionId'];
+                              final occurrenceDate =
+                                  widget.bookingDetails['occurrenceDate'];
+                              final promoCode = _appliedPromoCode;
+
+                              if (sessionId == null || occurrenceDate == null) {
+                                throw Exception('Missing booking details');
+                              }
+
+                              // Call API
+                              await BookingService.createBooking(
+                                sessionId: sessionId,
+                                occurrenceDate: occurrenceDate,
+                                paymentMethod: paymentMethodStr,
+                                promoCode: promoCode,
+                              );
+
+                              if (context.mounted) {
+                                context.push(
+                                  '/booking-success',
+                                  extra: widget.bookingDetails,
+                                );
+                              }
+                            } catch (e) {
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text('Booking failed: $e'),
+                                    backgroundColor: AppPalette.error,
+                                  ),
+                                );
+                              }
+                            } finally {
+                              if (mounted) {
+                                setState(() {
+                                  _isProcessing = false;
+                                });
+                              }
+                            }
+                          },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppPalette.orangeAccent,
                       foregroundColor: Colors.white,
@@ -580,25 +641,34 @@ class _ConfirmBookingScreenSimpleState
                         borderRadius: BorderRadius.circular(16),
                       ),
                     ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          'Pay Total',
-                          style: GoogleFonts.outfit(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
+                    child: _isProcessing
+                        ? const SizedBox(
+                            width: 24,
+                            height: 24,
+                            child: CircularProgressIndicator(
+                              color: Colors.white,
+                              strokeWidth: 2,
+                            ),
+                          )
+                        : Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                'Pay Total',
+                                style: GoogleFonts.outfit(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              Text(
+                                '\$${_totalAmount.toStringAsFixed(2)}',
+                                style: GoogleFonts.outfit(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
                           ),
-                        ),
-                        Text(
-                          '\$${_totalAmount.toStringAsFixed(2)}',
-                          style: GoogleFonts.outfit(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
                   ),
                 ),
               ],

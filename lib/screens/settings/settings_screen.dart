@@ -3,18 +3,20 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../widgets/notification_button.dart';
 import '../../config/palette.dart';
 import '../../services/profile_service.dart';
+import '../../providers/theme_provider.dart';
 
-class SettingsScreen extends StatefulWidget {
+class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
 
   @override
-  State<SettingsScreen> createState() => _SettingsScreenState();
+  ConsumerState<SettingsScreen> createState() => _SettingsScreenState();
 }
 
-class _SettingsScreenState extends State<SettingsScreen> {
+class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   bool _isLoading = true;
   String? _error;
   Map<String, dynamic>? _userData;
@@ -34,7 +36,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       });
 
       final data = await ProfileService.getProfile();
-      
+
       setState(() {
         _userData = data['user'] as Map<String, dynamic>?;
         _profileData = data['profile'] as Map<String, dynamic>?;
@@ -80,7 +82,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Widget build(BuildContext context) {
     if (_error != null) {
       return Scaffold(
-        backgroundColor: AppPalette.backgroundLight,
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         body: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -99,7 +101,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       );
     }
     return Scaffold(
-      backgroundColor: AppPalette.backgroundLight,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: Column(
         children: [
           Container(
@@ -109,17 +111,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
               left: 24,
               right: 24,
             ),
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.only(
+            decoration: BoxDecoration(
+              color: Theme.of(context).cardColor,
+              borderRadius: const BorderRadius.only(
                 bottomLeft: Radius.circular(30),
                 bottomRight: Radius.circular(30),
               ),
               boxShadow: [
                 BoxShadow(
-                  color: Color(0x08000000),
+                  color: Colors.black.withValues(alpha: 0.05),
                   blurRadius: 20,
-                  offset: Offset(0, 10),
+                  offset: const Offset(0, 10),
                 ),
               ],
             ),
@@ -155,9 +157,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                   ),
                 ),
-                const NotificationButton(
-                  iconColor: AppPalette.navyPrimary,
-                  backgroundColor: AppPalette.backgroundLight,
+                NotificationButton(
+                  iconColor:
+                      Theme.of(context).iconTheme.color ??
+                      AppPalette.navyPrimary,
+                  backgroundColor: Theme.of(context).scaffoldBackgroundColor,
                 ),
               ],
             ),
@@ -173,7 +177,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         Container(
                           padding: const EdgeInsets.all(20),
                           decoration: BoxDecoration(
-                            color: Colors.white,
+                            color: Theme.of(context).cardColor,
                             borderRadius: BorderRadius.circular(20),
                             boxShadow: [
                               BoxShadow(
@@ -189,7 +193,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 radius: 30,
                                 backgroundColor: AppPalette.navyPrimary,
                                 child: Text(
-                                  displayName.isNotEmpty ? displayName[0].toUpperCase() : 'U',
+                                  displayName.isNotEmpty
+                                      ? displayName[0].toUpperCase()
+                                      : 'U',
                                   style: const TextStyle(
                                     color: Colors.white,
                                     fontSize: 24,
@@ -234,7 +240,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   onPressed: () async {
                                     final role = _userData?['role'] as String?;
                                     if (role == 'coach') {
-                                      final result = await context.push('/coach/complete-profile', extra: _profileData);
+                                      final result = await context.push(
+                                        '/coach/complete-profile',
+                                        extra: _profileData,
+                                      );
                                       if (result == true) {
                                         _loadProfile();
                                       }
@@ -294,7 +303,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           iconBg: Colors.purple.withValues(alpha: 0.1),
                           title: 'Push Notifications',
                           trailing: Switch(
-                            value: _userData?['preferences']?['pushNotifications'] ?? true,
+                            value:
+                                _userData?['preferences']?['pushNotifications'] ??
+                                true,
                             activeTrackColor: Colors.orange,
                             onChanged: (value) {
                               // Update preferences
@@ -309,10 +320,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           iconBg: Colors.grey.shade100,
                           title: 'Dark Mode',
                           trailing: Switch(
-                            value: _userData?['preferences']?['darkMode'] ?? false,
+                            value: ref.watch(themeProvider) == ThemeMode.dark,
                             activeTrackColor: Colors.orange,
                             onChanged: (value) {
-                              // Update preferences
+                              ref
+                                  .read(themeProvider.notifier)
+                                  .toggleTheme(value);
                             },
                           ),
                           onTap: null,
@@ -327,24 +340,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           onTap: () {},
                         ),
 
-                  const SizedBox(height: 32),
-                  _buildSectionHeader('Support'),
-                  const SizedBox(height: 16),
-                  _buildSettingsItem(
-                    icon: Icons.help_outline,
-                    iconColor: Colors.orange,
-                    iconBg: Colors.orange.withValues(alpha: 0.1),
-                    title: 'Help Center',
-                    onTap: () {},
-                  ),
-                  const SizedBox(height: 12),
-                  _buildSettingsItem(
-                    icon: Icons.info_outline,
-                    iconColor: Colors.orange,
-                    iconBg: Colors.orange.withValues(alpha: 0.1),
-                    title: 'About App',
-                    onTap: () {},
-                  ),
+                        const SizedBox(height: 32),
+                        _buildSectionHeader('Support'),
+                        const SizedBox(height: 16),
+                        _buildSettingsItem(
+                          icon: Icons.help_outline,
+                          iconColor: Colors.orange,
+                          iconBg: Colors.orange.withValues(alpha: 0.1),
+                          title: 'Help Center',
+                          onTap: () {},
+                        ),
+                        const SizedBox(height: 12),
+                        _buildSettingsItem(
+                          icon: Icons.info_outline,
+                          iconColor: Colors.orange,
+                          iconBg: Colors.orange.withValues(alpha: 0.1),
+                          title: 'About App',
+                          onTap: () {},
+                        ),
 
                         const SizedBox(height: 48),
 
@@ -353,7 +366,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           width: double.infinity,
                           child: TextButton.icon(
                             onPressed: () async {
-                              final prefs = await SharedPreferences.getInstance();
+                              final prefs =
+                                  await SharedPreferences.getInstance();
                               await prefs.remove('token');
                               if (context.mounted) {
                                 context.go('/login');
@@ -370,7 +384,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             ),
                             style: TextButton.styleFrom(
                               padding: const EdgeInsets.symmetric(vertical: 16),
-                              backgroundColor: Colors.red.withValues(alpha: 0.05),
+                              backgroundColor: Colors.red.withValues(
+                                alpha: 0.05,
+                              ),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(12),
                               ),
@@ -396,7 +412,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
         style: GoogleFonts.inter(
           fontSize: 12,
           fontWeight: FontWeight.bold,
-          color: AppPalette.textSecondaryLight,
+          color:
+              Theme.of(context).textTheme.bodyMedium?.color ??
+              AppPalette.textSecondaryLight,
           letterSpacing: 1.2,
         ),
       ),
@@ -413,7 +431,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
@@ -431,7 +449,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
             color: iconBg ?? AppPalette.navyPrimary.withValues(alpha: 0.05),
             shape: BoxShape.circle,
           ),
-          child: Icon(icon, color: iconColor ?? AppPalette.navyPrimary, size: 20),
+          child: Icon(
+            icon,
+            color: iconColor ?? AppPalette.navyPrimary,
+            size: 20,
+          ),
         ),
         title: Text(
           title,
@@ -441,7 +463,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
             fontSize: 15,
           ),
         ),
-        trailing: trailing ??
+        trailing:
+            trailing ??
             (onTap != null
                 ? const Icon(
                     Icons.chevron_right,

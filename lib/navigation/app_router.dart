@@ -13,6 +13,8 @@ import '../screens/coach/home_screen.dart';
 import '../screens/search/search_screen.dart';
 import '../screens/player/home_screen.dart';
 import '../screens/booking/booking_screen.dart';
+import '../screens/booking/coach_booking_screen.dart'; // New Import
+import '../screens/booking/confirm_private_booking_screen.dart'; // New Import
 
 import '../screens/booking/confirm_booking_screen_simple.dart';
 import '../screens/booking/booking_success_screen.dart';
@@ -120,6 +122,35 @@ class AppRouter {
         builder: (context, state) {
           final sessionId = state.pathParameters['sessionId']!;
           return BookingScreen(sessionId: sessionId);
+        },
+      ),
+
+      GoRoute(
+        path: '/coach/:id/book',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) {
+          final coachId = state.pathParameters['id']!;
+          final extra = state.extra as Map<String, dynamic>? ?? {};
+          return CoachBookingScreen(
+            coachId: coachId,
+            coachName: extra['coachName'] ?? 'Coach',
+            hourlyRate: extra['hourlyRate'] ?? 60.0,
+          );
+        },
+      ),
+
+      GoRoute(
+        path: '/booking/confirm-private',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) {
+          final extra = state.extra as Map<String, dynamic>? ?? {};
+          return ConfirmPrivateBookingScreen(
+            coachId: extra['coachId'],
+            coachName: extra['coachName'],
+            startTime: extra['startTime'],
+            durationMinutes: extra['durationMinutes'],
+            price: extra['price'],
+          );
         },
       ),
 

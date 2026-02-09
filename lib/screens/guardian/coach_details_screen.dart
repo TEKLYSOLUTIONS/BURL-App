@@ -4,6 +4,8 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 import '../../config/palette.dart';
 import '../../services/search_service.dart';
+import '../../services/review_service.dart';
+import '../../utils/date_time_utils.dart';
 
 class CoachDetailsScreen extends StatefulWidget {
   final String coachId;
@@ -23,11 +25,15 @@ class _CoachDetailsScreenState extends State<CoachDetailsScreen>
   bool _isLoading = true;
   String? _error;
 
+  List<dynamic> _reviews = [];
+  bool _isLoadingReviews = true;
+
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
     _fetchDetails();
+    _fetchReviews();
   }
 
   Future<void> _fetchDetails() async {
@@ -39,12 +45,64 @@ class _CoachDetailsScreenState extends State<CoachDetailsScreen>
           _coach = data['data'];
           _isLoading = false;
         });
+        _fetchSessions(); // Fetch sessions after getting coach details
       }
     } catch (e) {
       if (mounted) {
         setState(() {
           _error = e.toString();
           _isLoading = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _fetchReviews() async {
+    try {
+      final data = await ReviewService.getCoachReviews(widget.coachId);
+      if (mounted) {
+        setState(() {
+          _reviews = data['data'] ?? [];
+          _isLoadingReviews = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error fetching reviews: $e');
+      if (mounted) {
+        setState(() {
+          _isLoadingReviews = false;
+        });
+      }
+    }
+  }
+
+  List<dynamic> _sessions = [];
+  bool _isLoadingSessions = true;
+
+  Future<void> _fetchSessions() async {
+    if (_coach == null) return;
+
+    try {
+      final userObj = _coach!['userId'];
+      final userId = userObj is Map ? userObj['_id'] : userObj;
+
+      if (userId == null) {
+        setState(() => _isLoadingSessions = false);
+        return;
+      }
+
+      final data = await _searchService.searchSessions(coachId: userId);
+      if (mounted) {
+        setState(() {
+          _sessions = data['data'] ?? [];
+          _isLoadingSessions = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error fetching sessions: $e');
+      if (mounted) {
+        setState(() {
+          _isLoadingSessions = false;
         });
       }
     }
@@ -101,12 +159,21 @@ class _CoachDetailsScreenState extends State<CoachDetailsScreen>
     final specializations =
         (profile['specializations'] as List?)?.join(', ') ?? 'Coach';
     final bio = profile['bio'] ?? profile['aboutMe'] ?? 'No bio available.';
+    final coachingPhilosophy = profile['coachingPhilosophy'] as String?;
+    final notableAchievements =
+        (profile['notableAchievements'] as List?)?.cast<String>() ?? [];
+    final city = profile['city'] as String?;
+    final ageGroups =
+        (profile['ageGroupsCoached'] as List?)?.cast<String>() ?? [];
+    final sessionTypes =
+        (profile['sessionTypesOffered'] as List?)?.cast<String>() ?? [];
+    final certifications =
+        (profile['certifications'] as List?)?.cast<String>() ?? [];
 
     // Handle rating mismatch (backend has 'rating', frontend expected 'ratings.overall')
     final rawRating = profile['rating'] ?? profile['ratings']?['overall'] ?? 0;
     final rating = rawRating.toString(); // Simplify display
 
-    final reviewCount = profile['ratings']?['count']?.toString() ?? '0';
     final experience =
         '${profile['experienceYears'] ?? profile['experience'] ?? 0} Yrs';
     final hourlyRate =
@@ -333,6 +400,90 @@ class _CoachDetailsScreenState extends State<CoachDetailsScreen>
                                   ),
                                 ),
                                 const SizedBox(height: 24),
+
+                                if (city != null) ...[
+                                  _buildSectionTitle('Location'),
+                                  const SizedBox(height: 8),
+                                  Row(
+                                    children: [
+                                      const Icon(
+                                        Icons.location_on,
+                                        size: 16,
+                                        color: Colors.grey,
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        city,
+                                        style: GoogleFonts.inter(
+                                          fontSize: 14,
+                                          color: Colors.grey[700],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 24),
+                                ],
+
+                                if (coachingPhilosophy != null &&
+                                    coachingPhilosophy.isNotEmpty) ...[
+                                  _buildSectionTitle('Coaching Philosophy'),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    coachingPhilosophy,
+                                    style: GoogleFonts.inter(
+                                      fontSize: 14,
+                                      color: Colors.grey[600],
+                                      height: 1.6,
+                                      fontStyle: FontStyle.italic,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 24),
+                                ],
+
+                                if (notableAchievements.isNotEmpty) ...[
+                                  _buildSectionTitle('Notable Achievements'),
+                                  const SizedBox(height: 12),
+                                  ...notableAchievements.map(
+                                    (e) => _buildBulletPoint(e),
+                                  ),
+                                  const SizedBox(height: 24),
+                                ],
+
+                                if (certifications.isNotEmpty) ...[
+                                  _buildSectionTitle('Certifications'),
+                                  const SizedBox(height: 12),
+                                  ...certifications.map(
+                                    (e) => _buildBulletPoint(e),
+                                  ),
+                                  const SizedBox(height: 24),
+                                ],
+
+                                if (ageGroups.isNotEmpty) ...[
+                                  _buildSectionTitle('Age Groups Coached'),
+                                  const SizedBox(height: 12),
+                                  Wrap(
+                                    spacing: 8,
+                                    runSpacing: 8,
+                                    children: ageGroups
+                                        .map((e) => _buildChip(e))
+                                        .toList(),
+                                  ),
+                                  const SizedBox(height: 24),
+                                ],
+
+                                if (sessionTypes.isNotEmpty) ...[
+                                  _buildSectionTitle('Session Types'),
+                                  const SizedBox(height: 12),
+                                  Wrap(
+                                    spacing: 8,
+                                    runSpacing: 8,
+                                    children: sessionTypes
+                                        .map((e) => _buildChip(e))
+                                        .toList(),
+                                  ),
+                                  const SizedBox(height: 24),
+                                ],
+
                                 Text(
                                   'Training Gallery',
                                   style: GoogleFonts.outfit(
@@ -361,15 +512,268 @@ class _CoachDetailsScreenState extends State<CoachDetailsScreen>
                             ),
                           ),
 
-                          // REVIEWS TAB (Placeholder)
-                          Center(
-                            child: Text("Reviews coming soon ($reviewCount)"),
-                          ),
+                          // REVIEWS TAB
+                          _isLoadingReviews
+                              ? const Center(child: CircularProgressIndicator())
+                              : _reviews.isEmpty
+                              ? Center(
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      const Icon(
+                                        Icons.rate_review_outlined,
+                                        size: 48,
+                                        color: Colors.grey,
+                                      ),
+                                      const SizedBox(height: 16),
+                                      Text(
+                                        "No reviews yet",
+                                        style: GoogleFonts.inter(
+                                          color: Colors.grey[600],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                )
+                              : ListView.separated(
+                                  padding: EdgeInsets.zero,
+                                  itemCount: _reviews.length,
+                                  separatorBuilder: (context, index) =>
+                                      const SizedBox(height: 16),
+                                  itemBuilder: (context, index) {
+                                    final review = _reviews[index];
+                                    final player = review['player'] ?? {};
+                                    final playerName =
+                                        player['fullName'] ?? 'Anonymous';
+                                    final playerImage =
+                                        player['profilePhoto'] ??
+                                        'https://i.pravatar.cc/150';
+                                    final rating = (review['rating'] as num)
+                                        .toDouble();
+                                    final comment = review['comment'] ?? '';
+                                    final date = DateTime.parse(
+                                      review['createdAt'],
+                                    ).toLocal();
+
+                                    return Container(
+                                      padding: const EdgeInsets.all(16),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white,
+                                        borderRadius: BorderRadius.circular(16),
+                                        border: Border.all(
+                                          color: Colors.grey[200]!,
+                                        ),
+                                      ),
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Row(
+                                            children: [
+                                              CircleAvatar(
+                                                radius: 20,
+                                                backgroundImage: NetworkImage(
+                                                  playerImage,
+                                                ),
+                                              ),
+                                              const SizedBox(width: 12),
+                                              Expanded(
+                                                child: Column(
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment.start,
+                                                  children: [
+                                                    Text(
+                                                      playerName,
+                                                      style: GoogleFonts.outfit(
+                                                        fontWeight:
+                                                            FontWeight.bold,
+                                                        color: AppPalette
+                                                            .navyPrimary,
+                                                      ),
+                                                    ),
+                                                    Text(
+                                                      DateTimeUtils.formatDate(
+                                                        date,
+                                                      ),
+                                                      style: GoogleFonts.inter(
+                                                        fontSize: 12,
+                                                        color: Colors.grey,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                              Container(
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                      horizontal: 8,
+                                                      vertical: 4,
+                                                    ),
+                                                decoration: BoxDecoration(
+                                                  color: Colors.amber
+                                                      .withValues(alpha: 0.1),
+                                                  borderRadius:
+                                                      BorderRadius.circular(12),
+                                                ),
+                                                child: Row(
+                                                  children: [
+                                                    const Icon(
+                                                      Icons.star,
+                                                      size: 14,
+                                                      color: Colors.amber,
+                                                    ),
+                                                    const SizedBox(width: 4),
+                                                    Text(
+                                                      rating.toString(),
+                                                      style: GoogleFonts.outfit(
+                                                        fontWeight:
+                                                            FontWeight.bold,
+                                                        fontSize: 12,
+                                                        color:
+                                                            Colors.amber[800],
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                          if (comment.isNotEmpty) ...[
+                                            const SizedBox(height: 12),
+                                            Text(
+                                              comment,
+                                              style: GoogleFonts.inter(
+                                                color: Colors.grey[700],
+                                                height: 1.5,
+                                                fontSize: 14,
+                                              ),
+                                            ),
+                                          ],
+                                        ],
+                                      ),
+                                    );
+                                  },
+                                ),
 
                           // SCHEDULE TAB (Placeholder)
-                          const Center(
-                            child: Text("Schedule preview unavailable"),
-                          ),
+                          // SCHEDULE TAB
+                          _isLoadingSessions
+                              ? const Center(child: CircularProgressIndicator())
+                              : _sessions.isEmpty
+                              ? Center(
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      const Icon(
+                                        Icons.calendar_today_outlined,
+                                        size: 48,
+                                        color: Colors.grey,
+                                      ),
+                                      const SizedBox(height: 16),
+                                      Text(
+                                        "No upcoming sessions",
+                                        style: GoogleFonts.inter(
+                                          color: Colors.grey[600],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                )
+                              : ListView.separated(
+                                  padding: EdgeInsets.zero,
+                                  itemCount: _sessions.length,
+                                  separatorBuilder: (context, index) =>
+                                      const SizedBox(height: 16),
+                                  itemBuilder: (context, index) {
+                                    final session = _sessions[index];
+                                    final title = session['title'] ?? 'Session';
+                                    final timeSlots =
+                                        session['timeSlots'] as List?;
+                                    final firstSlot =
+                                        timeSlots?.isNotEmpty == true
+                                        ? timeSlots!.first
+                                        : null;
+                                    final startTime = firstSlot != null
+                                        ? DateTime.parse(
+                                            firstSlot['startTime'],
+                                          ).toLocal()
+                                        : null;
+                                    final price =
+                                        session['pricing']?['amount'] ?? 0;
+
+                                    return InkWell(
+                                      onTap: () {
+                                        context.push(
+                                          '/session-details/${session['_id']}',
+                                        );
+                                      },
+                                      borderRadius: BorderRadius.circular(16),
+                                      child: Container(
+                                        padding: const EdgeInsets.all(16),
+                                        decoration: BoxDecoration(
+                                          color: Colors.white,
+                                          borderRadius: BorderRadius.circular(
+                                            16,
+                                          ),
+                                          border: Border.all(
+                                            color: Colors.grey[200]!,
+                                          ),
+                                        ),
+                                        child: Row(
+                                          children: [
+                                            Container(
+                                              padding: const EdgeInsets.all(12),
+                                              decoration: BoxDecoration(
+                                                color: AppPalette.navyPrimary
+                                                    .withValues(alpha: 0.1),
+                                                shape: BoxShape.circle,
+                                              ),
+                                              child: Icon(
+                                                Icons.sports_cricket,
+                                                color: AppPalette.navyPrimary,
+                                              ),
+                                            ),
+                                            const SizedBox(width: 16),
+                                            Expanded(
+                                              child: Column(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
+                                                children: [
+                                                  Text(
+                                                    title,
+                                                    style: GoogleFonts.outfit(
+                                                      fontWeight:
+                                                          FontWeight.w600,
+                                                      fontSize: 16,
+                                                      color: AppPalette
+                                                          .navyPrimary,
+                                                    ),
+                                                  ),
+                                                  if (startTime != null)
+                                                    Text(
+                                                      '${DateTimeUtils.formatDate(startTime)} • ${DateTimeUtils.formatTimeFromDateTime(startTime)}',
+                                                      style: GoogleFonts.inter(
+                                                        color: Colors.grey[600],
+                                                        fontSize: 14,
+                                                      ),
+                                                    ),
+                                                ],
+                                              ),
+                                            ),
+                                            Text(
+                                              '\$$price',
+                                              style: GoogleFonts.outfit(
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 16,
+                                                color: AppPalette.orangeAccent,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                ),
                         ],
                       ),
                     ),
@@ -434,18 +838,16 @@ class _CoachDetailsScreenState extends State<CoachDetailsScreen>
                 Expanded(
                   child: ElevatedButton(
                     onPressed: () {
-                      // Navigate to booking screen, passing sessionId if known, or just coach info?
-                      // The current route expects :sessionId.
-                      // We might need a generic booking route or create a session first.
-                      // For now, let's navigate to a generic booking creation flow or show a dialog.
-                      // Simulating navigating to a session selection for this coach
-                      // context.push('/booking/new?coachId=${widget.coachId}');
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text(
-                            'Booking flow for specific coach to be implemented',
-                          ),
-                        ),
+                      // Navigate to Book Session Screen
+                      // Parse hourly rate safely
+                      double rate = 60.0;
+                      if (hourlyRate != 'TBD') {
+                        rate = double.tryParse(hourlyRate.toString()) ?? 60.0;
+                      }
+
+                      context.push(
+                        '/coach/${widget.coachId}/book',
+                        extra: {'coachName': fullName, 'hourlyRate': rate},
                       );
                     },
                     style: ElevatedButton.styleFrom(
@@ -559,6 +961,57 @@ class _CoachDetailsScreenState extends State<CoachDetailsScreen>
         image: DecorationImage(
           image: NetworkImage(imageUrl),
           fit: BoxFit.cover,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSectionTitle(String title) {
+    return Text(
+      title,
+      style: GoogleFonts.outfit(
+        fontSize: 16,
+        fontWeight: FontWeight.bold,
+        color: AppPalette.navyPrimary,
+      ),
+    );
+  }
+
+  Widget _buildBulletPoint(String text) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8.0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.check_circle, size: 16, color: Colors.green),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              text,
+              style: GoogleFonts.inter(fontSize: 14, color: Colors.grey[700]),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildChip(String label) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: AppPalette.navyPrimary.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: AppPalette.navyPrimary.withValues(alpha: 0.1),
+        ),
+      ),
+      child: Text(
+        label,
+        style: GoogleFonts.inter(
+          fontSize: 12,
+          fontWeight: FontWeight.w500,
+          color: AppPalette.navyPrimary,
         ),
       ),
     );

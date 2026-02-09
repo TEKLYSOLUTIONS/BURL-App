@@ -3,7 +3,7 @@ import 'dart:io';
 class ApiConfig {
   // Environment Configuration
   // Set to true when building for production (deployed backend)
-  static const bool isProduction = false; // 🔧 DEVELOPMENT MODE
+  static const bool isProduction = false; // ❌ DEVELOPMENT MODE
 
   // 🔧 PHYSICAL DEVICE TESTING
   // Set to true when testing on a physical Android device via USB
@@ -20,7 +20,7 @@ class ApiConfig {
   // Production URL (for deployed backend)
   // ✅ Updated with Render.com deployment URL
   static const String _baseUrlProduction =
-      'https://cricket-coaching-backend.onrender.com/api';
+      'https://us-central1-burl-ad60f.cloudfunctions.net/api';
 
   static const String googleMapsApiKey =
       'AIzaSyA49gBcEHS6benjXtwA2rakOLejlmDFd-0';

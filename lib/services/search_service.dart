@@ -53,6 +53,7 @@ class SearchService {
     String? location,
     DateTime? startDate,
     DateTime? endDate,
+    String? coachId, // Added coachId
     int page = 1,
     int limit = 10,
   }) async {
@@ -74,6 +75,9 @@ class SearchService {
       }
       if (endDate != null) {
         queryParams['endDate'] = endDate.toIso8601String();
+      }
+      if (coachId != null && coachId.isNotEmpty) {
+        queryParams['coachId'] = coachId;
       }
 
       final response = await ApiService.get(
@@ -125,6 +129,34 @@ class SearchService {
         return json.decode(response.body);
       } else {
         throw Exception('Failed to load coach details: ${response.body}');
+      }
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  // Get coach availability
+  Future<List<dynamic>> getCoachAvailability({
+    required String coachId,
+    required DateTime startDate,
+    required DateTime endDate,
+  }) async {
+    try {
+      final queryParams = {
+        'startDate': startDate.toIso8601String(),
+        'endDate': endDate.toIso8601String(),
+      };
+
+      final response = await ApiService.get(
+        'search/coaches/$coachId/availability',
+        queryParameters: queryParams,
+      );
+
+      if (response.statusCode == 200) {
+        final body = json.decode(response.body);
+        return body['data'] ?? [];
+      } else {
+        throw Exception('Failed to load availability: ${response.body}');
       }
     } catch (e) {
       rethrow;
