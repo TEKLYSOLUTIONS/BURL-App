@@ -4,14 +4,16 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../../widgets/notification_button.dart';
 import '../../widgets/headers/coach_app_bar.dart';
-import '../../config/palette.dart';
+
 import '../../services/earnings_service.dart';
+import '../../config/palette.dart';
 
 class FullEarningsHistoryScreen extends StatefulWidget {
   const FullEarningsHistoryScreen({super.key});
 
   @override
-  State<FullEarningsHistoryScreen> createState() => _FullEarningsHistoryScreenState();
+  State<FullEarningsHistoryScreen> createState() =>
+      _FullEarningsHistoryScreenState();
 }
 
 class _FullEarningsHistoryScreenState extends State<FullEarningsHistoryScreen> {
@@ -29,7 +31,9 @@ class _FullEarningsHistoryScreenState extends State<FullEarningsHistoryScreen> {
   }
 
   Future<void> _loadEarningsHistory({bool loadMore = false}) async {
-    if (loadMore && (_pagination['pages'] != null && _currentPage >= _pagination['pages'])) {
+    if (loadMore &&
+        (_pagination['pages'] != null &&
+            _currentPage >= _pagination['pages'])) {
       return;
     }
 
@@ -51,7 +55,9 @@ class _FullEarningsHistoryScreenState extends State<FullEarningsHistoryScreen> {
 
       setState(() {
         if (loadMore) {
-          _earnings.addAll(List<Map<String, dynamic>>.from(data['earnings'] ?? []));
+          _earnings.addAll(
+            List<Map<String, dynamic>>.from(data['earnings'] ?? []),
+          );
           _currentPage++;
         } else {
           _earnings = List<Map<String, dynamic>>.from(data['earnings'] ?? []);
@@ -70,7 +76,7 @@ class _FullEarningsHistoryScreenState extends State<FullEarningsHistoryScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Failed to load earnings history: $e'),
-            backgroundColor: Colors.red,
+            backgroundColor: Theme.of(context).colorScheme.error,
           ),
         );
       }
@@ -89,11 +95,11 @@ class _FullEarningsHistoryScreenState extends State<FullEarningsHistoryScreen> {
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
+            color: Theme.of(context).shadowColor.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),
@@ -104,12 +110,14 @@ class _FullEarningsHistoryScreenState extends State<FullEarningsHistoryScreen> {
           CircleAvatar(
             radius: 24,
             backgroundImage: NetworkImage(avatarUrl),
-            backgroundColor: AppPalette.navyPrimary.withValues(alpha: 0.1),
+            backgroundColor: Theme.of(
+              context,
+            ).colorScheme.surfaceContainerHighest,
             child: avatarUrl.isEmpty
                 ? Text(
                     name.isNotEmpty ? name[0].toUpperCase() : '?',
                     style: GoogleFonts.outfit(
-                      color: AppPalette.navyPrimary,
+                      color: Theme.of(context).colorScheme.onSurface,
                       fontWeight: FontWeight.bold,
                     ),
                   )
@@ -125,7 +133,7 @@ class _FullEarningsHistoryScreenState extends State<FullEarningsHistoryScreen> {
                   style: GoogleFonts.outfit(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
-                    color: AppPalette.navyPrimary,
+                    color: Theme.of(context).colorScheme.onSurface,
                   ),
                 ),
                 const SizedBox(height: 2),
@@ -133,23 +141,32 @@ class _FullEarningsHistoryScreenState extends State<FullEarningsHistoryScreen> {
                   detail,
                   style: GoogleFonts.inter(
                     fontSize: 14,
-                    color: AppPalette.textSecondaryLight,
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.onSurface.withValues(alpha: 0.6),
                   ),
                 ),
                 const SizedBox(height: 4),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: isCompleted
-                        ? AppPalette.success.withValues(alpha: 0.1)
-                        : Colors.orange.withValues(alpha: 0.1),
+                        ? AppPalette.successGreen.withValues(alpha: 0.1)
+                        : Theme.of(
+                            context,
+                          ).colorScheme.secondary.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
                     statusText,
                     style: GoogleFonts.inter(
                       fontSize: 12,
-                      color: isCompleted ? AppPalette.success : Colors.orange,
+                      color: isCompleted
+                          ? AppPalette.successGreen
+                          : Theme.of(context).colorScheme.secondary,
                       fontWeight: FontWeight.w500,
                     ),
                   ),
@@ -162,7 +179,7 @@ class _FullEarningsHistoryScreenState extends State<FullEarningsHistoryScreen> {
             style: GoogleFonts.outfit(
               fontSize: 16,
               fontWeight: FontWeight.bold,
-              color: AppPalette.success,
+              color: Theme.of(context).colorScheme.primary,
             ),
           ),
         ],
@@ -174,7 +191,7 @@ class _FullEarningsHistoryScreenState extends State<FullEarningsHistoryScreen> {
   Widget build(BuildContext context) {
     if (_isLoading) {
       return Scaffold(
-        backgroundColor: AppPalette.backgroundLight,
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         body: Column(
           children: [
             CoachAppBar(
@@ -182,7 +199,10 @@ class _FullEarningsHistoryScreenState extends State<FullEarningsHistoryScreen> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   IconButton(
-                    icon: const Icon(Icons.arrow_back, color: Colors.white),
+                    icon: Icon(
+                      Icons.arrow_back,
+                      color: Theme.of(context).colorScheme.onPrimary,
+                    ),
                     onPressed: () => context.pop(),
                   ),
                   Expanded(
@@ -192,7 +212,7 @@ class _FullEarningsHistoryScreenState extends State<FullEarningsHistoryScreen> {
                       style: GoogleFonts.outfit(
                         fontSize: 24,
                         fontWeight: FontWeight.bold,
-                        color: Colors.white,
+                        color: Theme.of(context).colorScheme.onPrimary,
                       ),
                     ),
                   ),
@@ -202,18 +222,14 @@ class _FullEarningsHistoryScreenState extends State<FullEarningsHistoryScreen> {
                 ],
               ),
             ),
-            const Expanded(
-              child: Center(
-                child: CircularProgressIndicator(),
-              ),
-            ),
+            const Expanded(child: Center(child: CircularProgressIndicator())),
           ],
         ),
       );
     }
 
     return Scaffold(
-      backgroundColor: AppPalette.backgroundLight,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: Column(
         children: [
           CoachAppBar(
@@ -221,7 +237,10 @@ class _FullEarningsHistoryScreenState extends State<FullEarningsHistoryScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 IconButton(
-                  icon: const Icon(Icons.arrow_back, color: Colors.white),
+                  icon: Icon(
+                    Icons.arrow_back,
+                    color: Theme.of(context).colorScheme.onPrimary,
+                  ),
                   onPressed: () => context.pop(),
                 ),
                 Expanded(
@@ -231,7 +250,7 @@ class _FullEarningsHistoryScreenState extends State<FullEarningsHistoryScreen> {
                     style: GoogleFonts.outfit(
                       fontSize: 24,
                       fontWeight: FontWeight.bold,
-                      color: Colors.white,
+                      color: Theme.of(context).colorScheme.onPrimary,
                     ),
                   ),
                 ),
@@ -254,7 +273,7 @@ class _FullEarningsHistoryScreenState extends State<FullEarningsHistoryScreen> {
                       style: GoogleFonts.outfit(
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
-                        color: AppPalette.navyPrimary,
+                        color: Theme.of(context).colorScheme.onSurface,
                         height: 1.2,
                       ),
                     ),
@@ -267,7 +286,7 @@ class _FullEarningsHistoryScreenState extends State<FullEarningsHistoryScreen> {
                           child: Text(
                             'No earnings history',
                             style: GoogleFonts.inter(
-                              color: Colors.grey,
+                              color: Theme.of(context).disabledColor,
                               fontSize: 14,
                             ),
                           ),
@@ -276,18 +295,30 @@ class _FullEarningsHistoryScreenState extends State<FullEarningsHistoryScreen> {
                     if (_earnings.isNotEmpty)
                       ..._earnings.map((earning) {
                         final player = earning['player'] ?? {};
-                        final playerName = '${player['firstName'] ?? ''} ${player['lastName'] ?? ''}'.trim();
-                        final amount = ((earning['netAmount'] ?? earning['amount']) ?? 0).toDouble();
-                        final sessionDate = DateTime.tryParse(earning['sessionDate'] ?? '');
+                        final playerName = player['fullName'] ?? '';
+                        final amount =
+                            ((earning['netAmount'] ?? earning['amount']) ?? 0)
+                                .toDouble();
+                        final sessionDate = DateTime.tryParse(
+                          earning['sessionDate'] ?? '',
+                        );
                         final status = earning['status'] ?? 'confirmed';
 
                         return _buildActivityItem(
-                          name: playerName.isEmpty ? 'Unknown Player' : playerName,
-                          detail: '${earning['sessionTitle'] ?? 'Session'} • ${sessionDate != null ? DateFormat('MMM d, yyyy').format(sessionDate) : 'Unknown date'}',
+                          name: playerName.isEmpty
+                              ? 'Unknown Player'
+                              : playerName,
+                          detail:
+                              '${earning['sessionTitle'] ?? 'Session'} • ${sessionDate != null ? DateFormat('MMM d, yyyy').format(sessionDate) : 'Unknown date'}',
                           amount: '+${EarningsService.formatCurrency(amount)}',
-                          isCompleted: status == 'confirmed' || status == 'paid',
-                          statusText: status == 'pending' ? 'Pending' : 'Completed',
-                          avatarUrl: player['avatar'] ?? 'https://ui-avatars.com/api/?name=${Uri.encodeComponent(playerName)}&background=EBF4FF&color=7F9CF5',
+                          isCompleted:
+                              status == 'confirmed' || status == 'paid',
+                          statusText: status == 'pending'
+                              ? 'Pending'
+                              : 'Completed',
+                          avatarUrl:
+                              player['avatar'] ??
+                              'https://ui-avatars.com/api/?name=${Uri.encodeComponent(playerName)}&background=EBF4FF&color=7F9CF5',
                         );
                       }),
 
@@ -297,18 +328,25 @@ class _FullEarningsHistoryScreenState extends State<FullEarningsHistoryScreen> {
                         child: Center(child: CircularProgressIndicator()),
                       ),
 
-                    if (_pagination['pages'] != null && _currentPage < _pagination['pages'])
+                    if (_pagination['pages'] != null &&
+                        _currentPage < _pagination['pages'])
                       Padding(
                         padding: const EdgeInsets.symmetric(vertical: 16.0),
                         child: Center(
                           child: ElevatedButton(
-                            onPressed: () => _loadEarningsHistory(loadMore: true),
+                            onPressed: () =>
+                                _loadEarningsHistory(loadMore: true),
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: AppPalette.orangeAccent,
+                              backgroundColor: Theme.of(
+                                context,
+                              ).colorScheme.secondary,
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(16),
                               ),
-                              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 32,
+                                vertical: 12,
+                              ),
                             ),
                             child: Text(
                               'Load More',

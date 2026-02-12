@@ -6,8 +6,9 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../../widgets/notification_button.dart';
 import '../../widgets/headers/coach_app_bar.dart';
-import '../../config/palette.dart';
+
 import '../../services/earnings_service.dart';
+import '../../config/palette.dart';
 
 class EarningHistoryScreen extends StatefulWidget {
   const EarningHistoryScreen({super.key});
@@ -38,13 +39,19 @@ class _EarningHistoryScreenState extends State<EarningHistoryScreen> {
       // Load all earnings data in parallel
       final results = await Future.wait([
         EarningsService.getEarningsSummary(),
-        EarningsService.getEarningsByPeriod(type: _selectedPeriod.toLowerCase()),
+        EarningsService.getEarningsByPeriod(
+          type: _selectedPeriod.toLowerCase(),
+        ),
       ]);
 
       setState(() {
         _summaryData = results[0];
-        _periodData = List<Map<String, dynamic>>.from(results[1]['earnings'] ?? []);
-        _recentActivity = List<Map<String, dynamic>>.from(_summaryData['recentActivity'] ?? []);
+        _periodData = List<Map<String, dynamic>>.from(
+          results[1]['earnings'] ?? [],
+        );
+        _recentActivity = List<Map<String, dynamic>>.from(
+          _summaryData['recentActivity'] ?? [],
+        );
         _isLoading = false;
       });
     } catch (e) {
@@ -56,7 +63,7 @@ class _EarningHistoryScreenState extends State<EarningHistoryScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Failed to load earnings data: $e'),
-            backgroundColor: Colors.red,
+            backgroundColor: Theme.of(context).colorScheme.error,
           ),
         );
       }
@@ -101,12 +108,12 @@ class _EarningHistoryScreenState extends State<EarningHistoryScreen> {
 
     try {
       final result = await EarningsService.requestCashOut(amount: totalBalance);
-      
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(result['message'] ?? 'Cash out request submitted'),
-            backgroundColor: AppPalette.success,
+            backgroundColor: AppPalette.successGreen,
             duration: const Duration(seconds: 4),
           ),
         );
@@ -116,7 +123,7 @@ class _EarningHistoryScreenState extends State<EarningHistoryScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Failed to process cash out: $e'),
-            backgroundColor: Colors.red,
+            backgroundColor: Theme.of(context).colorScheme.error,
           ),
         );
       }
@@ -127,7 +134,7 @@ class _EarningHistoryScreenState extends State<EarningHistoryScreen> {
   Widget build(BuildContext context) {
     if (_isLoading) {
       return Scaffold(
-        backgroundColor: AppPalette.backgroundLight,
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         body: Column(
           children: [
             CoachAppBar(
@@ -142,7 +149,7 @@ class _EarningHistoryScreenState extends State<EarningHistoryScreen> {
                       style: GoogleFonts.outfit(
                         fontSize: 24,
                         fontWeight: FontWeight.bold,
-                        color: Colors.white,
+                        color: Theme.of(context).colorScheme.onPrimary,
                       ),
                     ),
                   ),
@@ -152,23 +159,22 @@ class _EarningHistoryScreenState extends State<EarningHistoryScreen> {
                 ],
               ),
             ),
-            const Expanded(
-              child: Center(
-                child: CircularProgressIndicator(),
-              ),
-            ),
+            const Expanded(child: Center(child: CircularProgressIndicator())),
           ],
         ),
       );
     }
 
     final totalBalance = (_summaryData['totalBalance'] ?? 0).toDouble();
-    final percentageChange = (_summaryData['trend']?['percentageChange'] ?? 0).toDouble();
-    final changeAmount = (_summaryData['trend']?['changeAmount'] ?? 0).toDouble();
-    final currentMonthTotal = (_summaryData['currentMonth']?['total'] ?? 0).toDouble();
+    final percentageChange = (_summaryData['trend']?['percentageChange'] ?? 0)
+        .toDouble();
+    final changeAmount = (_summaryData['trend']?['changeAmount'] ?? 0)
+        .toDouble();
+    final currentMonthTotal = (_summaryData['currentMonth']?['total'] ?? 0)
+        .toDouble();
 
     return Scaffold(
-      backgroundColor: AppPalette.backgroundLight,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: Column(
         children: [
           CoachAppBar(
@@ -183,7 +189,7 @@ class _EarningHistoryScreenState extends State<EarningHistoryScreen> {
                     style: GoogleFonts.outfit(
                       fontSize: 24,
                       fontWeight: FontWeight.bold,
-                      color: Colors.white,
+                      color: Theme.of(context).colorScheme.onPrimary,
                     ),
                   ),
                 ),
@@ -205,11 +211,13 @@ class _EarningHistoryScreenState extends State<EarningHistoryScreen> {
                     Container(
                       padding: const EdgeInsets.all(24),
                       decoration: BoxDecoration(
-                        color: AppPalette.navyPrimary,
+                        color: Theme.of(context).colorScheme.primary,
                         borderRadius: BorderRadius.circular(32),
                         boxShadow: [
                           BoxShadow(
-                            color: AppPalette.navyPrimary.withValues(alpha: 0.3),
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.primary.withValues(alpha: 0.3),
                             blurRadius: 20,
                             offset: const Offset(0, 10),
                           ),
@@ -224,7 +232,8 @@ class _EarningHistoryScreenState extends State<EarningHistoryScreen> {
                               Text(
                                 'TOTAL BALANCE',
                                 style: GoogleFonts.inter(
-                                  color: Colors.white.withValues(alpha: 0.7),
+                                  color: Theme.of(context).colorScheme.onPrimary
+                                      .withValues(alpha: 0.7),
                                   fontSize: 12,
                                   fontWeight: FontWeight.w600,
                                   letterSpacing: 1.0,
@@ -247,13 +256,17 @@ class _EarningHistoryScreenState extends State<EarningHistoryScreen> {
                                             ? Icons.trending_up
                                             : Icons.trending_down,
                                         color: percentageChange >= 0
-                                            ? AppPalette.success
-                                            : Colors.red,
+                                            ? AppPalette.successGreen
+                                            : Theme.of(
+                                                context,
+                                              ).colorScheme.error,
                                         size: 14,
                                       ),
                                       const SizedBox(width: 4),
                                       Text(
-                                        EarningsService.formatPercentageChange(percentageChange),
+                                        EarningsService.formatPercentageChange(
+                                          percentageChange,
+                                        ),
                                         style: GoogleFonts.outfit(
                                           color: Colors.white,
                                           fontSize: 12,
@@ -288,11 +301,15 @@ class _EarningHistoryScreenState extends State<EarningHistoryScreen> {
                             child: ElevatedButton(
                               onPressed: _handleCashOut,
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: AppPalette.orangeAccent,
+                                backgroundColor: Theme.of(
+                                  context,
+                                ).colorScheme.secondary,
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(16),
                                 ),
-                                padding: const EdgeInsets.symmetric(vertical: 16),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 16,
+                                ),
                               ),
                               child: Row(
                                 mainAxisAlignment: MainAxisAlignment.center,
@@ -319,189 +336,209 @@ class _EarningHistoryScreenState extends State<EarningHistoryScreen> {
                       ),
                     ).animate().fadeIn().slideY(begin: 0.1),
 
-                  const SizedBox(height: 24),
+                    const SizedBox(height: 24),
 
-                  // Period Selector
-                  Container(
-                    padding: const EdgeInsets.all(4),
-                    decoration: BoxDecoration(
-                      color: Colors.grey[200],
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Row(
-                      children: [
-                        Expanded(child: _buildPeriodTab('Weekly')),
-                        Expanded(child: _buildPeriodTab('Monthly')),
-                        Expanded(child: _buildPeriodTab('Yearly')),
-                      ],
-                    ),
-                  ),
-
-                  const SizedBox(height: 32),
-
-                  // Income Trend
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                    // Period Selector
+                    Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.surfaceContainerHighest,
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Row(
                         children: [
-                          Text(
-                            'Income Trend',
-                            style: GoogleFonts.inter(
-                              color: AppPalette.textSecondaryLight,
-                              fontSize: 14,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            EarningsService.formatCurrency(currentMonthTotal),
-                            style: GoogleFonts.outfit(
-                              color: AppPalette.navyPrimary,
-                              fontSize: 24,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
+                          Expanded(child: _buildPeriodTab('Weekly')),
+                          Expanded(child: _buildPeriodTab('Monthly')),
+                          Expanded(child: _buildPeriodTab('Yearly')),
                         ],
                       ),
-                      if (changeAmount != 0)
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 8,
-                          ),
-                          decoration: BoxDecoration(
-                            color: changeAmount >= 0
-                                ? AppPalette.success.withValues(alpha: 0.1)
-                                : Colors.red.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Text(
-                            '${changeAmount >= 0 ? '+ ' : ''}${EarningsService.formatCurrency(changeAmount)} vs last month',
-                            style: GoogleFonts.outfit(
-                              color: changeAmount >= 0
-                                  ? AppPalette.success
-                                  : Colors.red,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 12,
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
-                  const SizedBox(height: 24),
+                    ),
 
-                  // Bar Chart
-                  SizedBox(
-                    height: 180,
-                    child: _periodData.isEmpty
-                        ? Center(
-                            child: Text(
-                              'No earnings data for this period',
+                    const SizedBox(height: 32),
+
+                    // Income Trend
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Income Trend',
                               style: GoogleFonts.inter(
-                                color: Colors.grey,
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSurface.withValues(alpha: 0.6),
                                 fontSize: 14,
                               ),
                             ),
-                          )
-                        : BarChart(
-                            BarChartData(
-                              gridData: const FlGridData(show: false),
-                              titlesData: FlTitlesData(
-                                bottomTitles: AxisTitles(
-                                  sideTitles: SideTitles(
-                                    showTitles: true,
-                                    getTitlesWidget: (value, meta) {
-                                      return _getBottomTitles(value, meta);
-                                    },
-                                  ),
-                                ),
-                                leftTitles: const AxisTitles(
-                                  sideTitles: SideTitles(showTitles: false),
-                                ),
-                                topTitles: const AxisTitles(
-                                  sideTitles: SideTitles(showTitles: false),
-                                ),
-                                rightTitles: const AxisTitles(
-                                  sideTitles: SideTitles(showTitles: false),
-                                ),
+                            const SizedBox(height: 4),
+                            Text(
+                              EarningsService.formatCurrency(currentMonthTotal),
+                              style: GoogleFonts.outfit(
+                                color: Theme.of(context).colorScheme.onSurface,
+                                fontSize: 24,
+                                fontWeight: FontWeight.bold,
                               ),
-                              borderData: FlBorderData(show: false),
-                              barGroups: _getBarGroups(),
+                            ),
+                          ],
+                        ),
+                        if (changeAmount != 0)
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 8,
+                            ),
+                            decoration: BoxDecoration(
+                              color: changeAmount >= 0
+                                  ? AppPalette.successGreen.withValues(
+                                      alpha: 0.1,
+                                    )
+                                  : Theme.of(
+                                      context,
+                                    ).colorScheme.error.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              '${changeAmount >= 0 ? '+ ' : ''}${EarningsService.formatCurrency(changeAmount)} vs last month',
+                              style: GoogleFonts.outfit(
+                                color: changeAmount >= 0
+                                    ? AppPalette.successGreen
+                                    : Theme.of(context).colorScheme.error,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 12,
+                              ),
                             ),
                           ),
-                  ).animate().fadeIn(delay: 200.ms),
-
-                  const SizedBox(height: 32),
-
-                  // Recent Activity
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'Recent Activity',
-                        style: GoogleFonts.outfit(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: AppPalette.navyPrimary,
-                          height: 1.2,
-                        ),
-                      ),
-                      TextButton(
-                        onPressed: () {
-                          context.push('/coach/earnings/history');
-                        },
-                        child: Text(
-                          'See All',
-                          style: GoogleFonts.inter(
-                            color: AppPalette.orangeAccent,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-
-                  if (_recentActivity.isEmpty)
-                    Center(
-                      child: Padding(
-                        padding: const EdgeInsets.all(32.0),
-                        child: Text(
-                          'No recent activity',
-                          style: GoogleFonts.inter(
-                            color: Colors.grey,
-                            fontSize: 14,
-                          ),
-                        ),
-                      ),
+                      ],
                     ),
-                  if (_recentActivity.isNotEmpty)
-                    ..._recentActivity.map((activity) {
-                      final player = activity['player'] ?? {};
-                      final playerName = '${player['firstName'] ?? ''} ${player['lastName'] ?? ''}'.trim();
-                      final amount = ((activity['netAmount'] ?? activity['amount']) ?? 0).toDouble();
-                      final sessionDate = DateTime.tryParse(activity['sessionDate'] ?? '');
-                      final status = activity['status'] ?? 'confirmed';
+                    const SizedBox(height: 24),
 
-                      return _buildActivityItem(
-                        name: playerName.isEmpty ? 'Unknown Player' : playerName,
-                        detail: '${activity['sessionTitle'] ?? 'Session'} • ${sessionDate != null ? DateFormat('MMM d').format(sessionDate) : 'Unknown date'}',
-                        amount: '+${EarningsService.formatCurrency(amount)}',
-                        isCompleted: status == 'confirmed' || status == 'paid',
-                        statusText: status == 'pending' ? 'Pending' : 'Completed',
-                        avatarUrl: player['avatar'] ?? 'https://ui-avatars.com/api/?name=${Uri.encodeComponent(playerName)}&background=EBF4FF&color=7F9CF5',
-                      );
-                    }),
+                    // Bar Chart
+                    SizedBox(
+                      height: 180,
+                      child: _periodData.isEmpty
+                          ? Center(
+                              child: Text(
+                                'No earnings data for this period',
+                                style: GoogleFonts.inter(
+                                  color: Theme.of(context).disabledColor,
+                                  fontSize: 14,
+                                ),
+                              ),
+                            )
+                          : BarChart(
+                              BarChartData(
+                                gridData: const FlGridData(show: false),
+                                titlesData: FlTitlesData(
+                                  bottomTitles: AxisTitles(
+                                    sideTitles: SideTitles(
+                                      showTitles: true,
+                                      getTitlesWidget: (value, meta) {
+                                        return _getBottomTitles(value, meta);
+                                      },
+                                    ),
+                                  ),
+                                  leftTitles: const AxisTitles(
+                                    sideTitles: SideTitles(showTitles: false),
+                                  ),
+                                  topTitles: const AxisTitles(
+                                    sideTitles: SideTitles(showTitles: false),
+                                  ),
+                                  rightTitles: const AxisTitles(
+                                    sideTitles: SideTitles(showTitles: false),
+                                  ),
+                                ),
+                                borderData: FlBorderData(show: false),
+                                barGroups: _getBarGroups(),
+                              ),
+                            ),
+                    ).animate().fadeIn(delay: 200.ms),
 
-                  const SizedBox(height: 80),
-                ],
+                    const SizedBox(height: 32),
+
+                    // Recent Activity
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Recent Activity',
+                          style: GoogleFonts.outfit(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: Theme.of(context).colorScheme.onSurface,
+                            height: 1.2,
+                          ),
+                        ),
+                        TextButton(
+                          onPressed: () {
+                            context.push('/coach/earnings/history');
+                          },
+                          child: Text(
+                            'See All',
+                            style: GoogleFonts.inter(
+                              color: Theme.of(context).colorScheme.secondary,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+
+                    if (_recentActivity.isEmpty)
+                      Center(
+                        child: Padding(
+                          padding: const EdgeInsets.all(32.0),
+                          child: Text(
+                            'No recent activity',
+                            style: GoogleFonts.inter(
+                              color: Theme.of(context).disabledColor,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ),
+                      ),
+                    if (_recentActivity.isNotEmpty)
+                      ..._recentActivity.map((activity) {
+                        final player = activity['player'] ?? {};
+                        final playerName = player['fullName'] ?? '';
+                        final amount =
+                            ((activity['netAmount'] ?? activity['amount']) ?? 0)
+                                .toDouble();
+                        final sessionDate = DateTime.tryParse(
+                          activity['sessionDate'] ?? '',
+                        );
+                        final status = activity['status'] ?? 'confirmed';
+
+                        return _buildActivityItem(
+                          name: playerName.isEmpty
+                              ? 'Unknown Player'
+                              : playerName,
+                          detail:
+                              '${activity['sessionTitle'] ?? 'Session'} • ${sessionDate != null ? DateFormat('MMM d').format(sessionDate) : 'Unknown date'}',
+                          amount: '+${EarningsService.formatCurrency(amount)}',
+                          isCompleted:
+                              status == 'confirmed' || status == 'paid',
+                          statusText: status == 'pending'
+                              ? 'Pending'
+                              : 'Completed',
+                          avatarUrl:
+                              player['avatar'] ??
+                              'https://ui-avatars.com/api/?name=${Uri.encodeComponent(playerName)}&background=EBF4FF&color=7F9CF5',
+                        );
+                      }),
+
+                    const SizedBox(height: 80),
+                  ],
+                ),
               ),
             ),
           ),
-        ),
-      ],
-    )
+        ],
+      ),
     );
   }
 
@@ -516,12 +553,14 @@ class _EarningHistoryScreenState extends State<EarningHistoryScreen> {
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 12),
         decoration: BoxDecoration(
-          color: isSelected ? Colors.white : Colors.transparent,
+          color: isSelected ? Theme.of(context).cardColor : Colors.transparent,
           borderRadius: BorderRadius.circular(12),
           boxShadow: isSelected
               ? [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.05),
+                    color: Theme.of(
+                      context,
+                    ).shadowColor.withValues(alpha: 0.05),
                     blurRadius: 4,
                     offset: const Offset(0, 2),
                   ),
@@ -533,7 +572,11 @@ class _EarningHistoryScreenState extends State<EarningHistoryScreen> {
           textAlign: TextAlign.center,
           style: GoogleFonts.inter(
             fontWeight: FontWeight.w600,
-            color: isSelected ? AppPalette.navyPrimary : Colors.grey[600],
+            color: isSelected
+                ? Theme.of(context).colorScheme.primary
+                : Theme.of(
+                    context,
+                  ).colorScheme.onSurface.withValues(alpha: 0.6),
           ),
         ),
       ),
@@ -542,7 +585,7 @@ class _EarningHistoryScreenState extends State<EarningHistoryScreen> {
 
   Widget _getBottomTitles(double value, TitleMeta meta) {
     if (_periodData.isEmpty) return const SizedBox();
-    
+
     int index = value.toInt();
     if (index < 0 || index >= _periodData.length) return const SizedBox();
 
@@ -551,7 +594,7 @@ class _EarningHistoryScreenState extends State<EarningHistoryScreen> {
 
     // Get the label from the API data
     final periodId = _periodData[index]['_id']?.toString() ?? '';
-    
+
     switch (_selectedPeriod) {
       case 'Weekly':
         text = 'W${index + 1}';
@@ -563,7 +606,21 @@ class _EarningHistoryScreenState extends State<EarningHistoryScreen> {
             final parts = periodId.split('-');
             if (parts.length >= 2) {
               final month = int.tryParse(parts[1]) ?? 1;
-              final monthNames = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+              final monthNames = [
+                '',
+                'Jan',
+                'Feb',
+                'Mar',
+                'Apr',
+                'May',
+                'Jun',
+                'Jul',
+                'Aug',
+                'Sep',
+                'Oct',
+                'Nov',
+                'Dec',
+              ];
               text = monthNames[month];
             }
           } catch (e) {
@@ -575,7 +632,9 @@ class _EarningHistoryScreenState extends State<EarningHistoryScreen> {
         break;
       case 'Yearly':
         // periodId is year number
-        text = periodId.isEmpty ? '${DateTime.now().year - (_periodData.length - 1 - index)}' : periodId;
+        text = periodId.isEmpty
+            ? '${DateTime.now().year - (_periodData.length - 1 - index)}'
+            : periodId;
         break;
     }
 
@@ -589,13 +648,15 @@ class _EarningHistoryScreenState extends State<EarningHistoryScreen> {
     }
 
     // Get values from API data and convert to double
-    final values = _periodData.map((e) => ((e['total'] ?? 0).toDouble()) / 100).toList();
-    
+    final values = _periodData
+        .map((e) => ((e['total'] ?? 0).toDouble()) / 100)
+        .toList();
+
     return List.generate(values.length, (index) {
       // Highlight the last bar
       final color = index == values.length - 1
-          ? AppPalette.orangeAccent
-          : AppPalette.navyPrimary;
+          ? Theme.of(context).colorScheme.primary
+          : Theme.of(context).colorScheme.secondary;
       return _buildBarGroup(index, values[index], color);
     });
   }
@@ -606,7 +667,9 @@ class _EarningHistoryScreenState extends State<EarningHistoryScreen> {
       child: Text(
         text,
         style: GoogleFonts.inter(
-          color: isBold ? AppPalette.navyPrimary : Colors.grey[400],
+          color: isBold
+              ? Theme.of(context).colorScheme.primary
+              : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.4),
           fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
           fontSize: 12,
         ),
@@ -629,7 +692,7 @@ class _EarningHistoryScreenState extends State<EarningHistoryScreen> {
           backDrawRodData: BackgroundBarChartRodData(
             show: true,
             toY: 20, // Max height
-            color: Colors.grey[200],
+            color: Theme.of(context).disabledColor.withValues(alpha: 0.2),
           ),
         ),
       ],
@@ -648,16 +711,20 @@ class _EarningHistoryScreenState extends State<EarningHistoryScreen> {
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.grey[100]!),
+        border: Border.all(
+          color: Theme.of(context).dividerColor.withValues(alpha: 0.5),
+        ),
       ),
       child: Row(
         children: [
           CircleAvatar(
             radius: 24,
             backgroundImage: NetworkImage(avatarUrl),
-            backgroundColor: Colors.grey[200],
+            backgroundColor: Theme.of(
+              context,
+            ).colorScheme.surfaceContainerHighest,
           ),
           const SizedBox(width: 16),
           Expanded(
@@ -669,14 +736,16 @@ class _EarningHistoryScreenState extends State<EarningHistoryScreen> {
                   style: GoogleFonts.outfit(
                     fontWeight: FontWeight.bold,
                     fontSize: 16,
-                    color: AppPalette.navyPrimary,
+                    color: Theme.of(context).colorScheme.onSurface,
                     height: 1.1,
                   ),
                 ),
                 Text(
                   detail,
                   style: GoogleFonts.inter(
-                    color: AppPalette.textSecondaryLight,
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.onSurface.withValues(alpha: 0.6),
                     fontSize: 12,
                     height: 1.4,
                   ),
@@ -693,8 +762,8 @@ class _EarningHistoryScreenState extends State<EarningHistoryScreen> {
                   fontWeight: FontWeight.bold,
                   fontSize: 16,
                   color: isCompleted
-                      ? AppPalette.navyPrimary
-                      : Colors.grey[400],
+                      ? Theme.of(context).colorScheme.primary
+                      : Theme.of(context).disabledColor,
                 ),
               ),
               const SizedBox(height: 4),
@@ -702,8 +771,10 @@ class _EarningHistoryScreenState extends State<EarningHistoryScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                 decoration: BoxDecoration(
                   color: isCompleted
-                      ? AppPalette.success.withValues(alpha: 0.1)
-                      : AppPalette.orangeAccent.withValues(alpha: 0.1),
+                      ? AppPalette.successGreen.withValues(alpha: 0.1)
+                      : Theme.of(
+                          context,
+                        ).colorScheme.secondary.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: Text(
@@ -712,8 +783,8 @@ class _EarningHistoryScreenState extends State<EarningHistoryScreen> {
                     fontSize: 10,
                     fontWeight: FontWeight.bold,
                     color: isCompleted
-                        ? AppPalette.success
-                        : AppPalette.orangeAccent,
+                        ? AppPalette.successGreen
+                        : Theme.of(context).colorScheme.secondary,
                   ),
                 ),
               ),
