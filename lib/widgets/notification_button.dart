@@ -57,13 +57,17 @@ class _NotificationButtonState extends State<NotificationButton> {
   @override
   Widget build(BuildContext context) {
     final hasNotification = _unreadCount > 0;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Container(
       width: 40,
       height: 40,
       decoration: BoxDecoration(
-        color: widget.backgroundColor ??
-            Colors.white.withValues(alpha: 0.1),
+        color:
+            widget.backgroundColor ??
+            (isDark
+                ? Colors.white.withValues(alpha: 0.1)
+                : Colors.black.withValues(alpha: 0.05)),
         shape: BoxShape.circle,
       ),
       child: Material(
@@ -84,7 +88,9 @@ class _NotificationButtonState extends State<NotificationButton> {
                 hasNotification
                     ? Icons.notifications
                     : Icons.notifications_none,
-                color: widget.iconColor ?? Colors.white,
+                color:
+                    widget.iconColor ??
+                    (isDark ? Colors.white : Theme.of(context).iconTheme.color),
                 size: 20,
               ),
               if (hasNotification && widget.showCount)

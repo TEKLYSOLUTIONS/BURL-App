@@ -122,7 +122,7 @@ class _SearchScreenState extends State<SearchScreen> {
                     style: GoogleFonts.outfit(
                       fontSize: 32,
                       fontWeight: FontWeight.bold,
-                      color: AppPalette.navyPrimary,
+                      color: Theme.of(context).colorScheme.onSurface,
                     ),
                   ).animate().fadeIn().slideX(begin: -0.1),
 
@@ -131,9 +131,9 @@ class _SearchScreenState extends State<SearchScreen> {
                   // Search Bar
                   Container(
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: Theme.of(context).cardColor,
                       borderRadius: BorderRadius.circular(30),
-                      border: Border.all(color: Colors.grey[300]!),
+                      border: Border.all(color: Theme.of(context).dividerColor),
                       boxShadow: [
                         BoxShadow(
                           color: Colors.black.withValues(alpha: 0.05),
@@ -145,6 +145,9 @@ class _SearchScreenState extends State<SearchScreen> {
                     child: TextField(
                       controller: _searchController,
                       autofocus: false,
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.onSurface,
+                      ),
                       onSubmitted: _performSearch,
                       onChanged: (value) {
                         // Debounce search
@@ -154,16 +157,18 @@ class _SearchScreenState extends State<SearchScreen> {
                       },
                       decoration: InputDecoration(
                         hintText: 'Search for coaches, sessions...',
-                        hintStyle: GoogleFonts.inter(color: Colors.grey[500]),
+                        hintStyle: GoogleFonts.inter(
+                          color: Theme.of(context).hintColor,
+                        ),
                         prefixIcon: const Icon(
                           Icons.search,
-                          color: Colors.orange,
+                          color: AppPalette.orangeAccent,
                         ),
                         suffixIcon: _searchController.text.isNotEmpty
                             ? IconButton(
-                                icon: const Icon(
+                                icon: Icon(
                                   Icons.clear,
-                                  color: Colors.grey,
+                                  color: Theme.of(context).iconTheme.color,
                                 ),
                                 onPressed: () {
                                   _searchController.clear();
@@ -195,14 +200,14 @@ class _SearchScreenState extends State<SearchScreen> {
                           Icon(
                             Icons.error_outline,
                             size: 64,
-                            color: Colors.grey[400],
+                            color: Theme.of(context).colorScheme.error,
                           ),
                           const SizedBox(height: 16),
                           Text(
                             'Failed to load results',
                             style: GoogleFonts.inter(
                               fontSize: 16,
-                              color: Colors.grey[600],
+                              color: Theme.of(context).colorScheme.onSurface,
                             ),
                           ),
                           const SizedBox(height: 8),
@@ -233,7 +238,7 @@ class _SearchScreenState extends State<SearchScreen> {
                               style: GoogleFonts.outfit(
                                 fontSize: 18,
                                 fontWeight: FontWeight.w600,
-                                color: AppPalette.navyPrimary,
+                                color: Theme.of(context).colorScheme.onSurface,
                               ),
                             ).animate().fadeIn(delay: 300.ms),
                             const SizedBox(height: 16),
@@ -282,7 +287,7 @@ class _SearchScreenState extends State<SearchScreen> {
                               style: GoogleFonts.outfit(
                                 fontSize: 18,
                                 fontWeight: FontWeight.w600,
-                                color: AppPalette.navyPrimary,
+                                color: Theme.of(context).colorScheme.onSurface,
                               ),
                             ).animate().fadeIn(delay: 500.ms),
                             const SizedBox(height: 16),
@@ -327,7 +332,10 @@ class _SearchScreenState extends State<SearchScreen> {
                                     Icon(
                                       Icons.search_off,
                                       size: 64,
-                                      color: Colors.grey[300],
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .onSurfaceVariant
+                                          .withValues(alpha: 0.5),
                                     ),
                                     const SizedBox(height: 16),
                                     Text(
@@ -337,7 +345,9 @@ class _SearchScreenState extends State<SearchScreen> {
                                       style: GoogleFonts.outfit(
                                         fontSize: 18,
                                         fontWeight: FontWeight.w600,
-                                        color: Colors.grey[600],
+                                        color: Theme.of(
+                                          context,
+                                        ).colorScheme.onSurfaceVariant,
                                       ),
                                     ),
                                     const SizedBox(height: 8),
@@ -347,7 +357,9 @@ class _SearchScreenState extends State<SearchScreen> {
                                           : 'Check back later',
                                       style: GoogleFonts.inter(
                                         fontSize: 14,
-                                        color: Colors.grey[500],
+                                        color: Theme.of(
+                                          context,
+                                        ).colorScheme.onSurfaceVariant,
                                       ),
                                     ),
                                   ],
@@ -412,16 +424,18 @@ class _CoachCard extends StatelessWidget {
         width: 140,
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: Theme.of(context).cardColor,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.grey[200]!),
+          border: Border.all(color: Theme.of(context).dividerColor),
         ),
         child: Column(
           children: [
             CircleAvatar(
               radius: 30,
               backgroundImage: NetworkImage(imageUrl),
-              backgroundColor: AppPalette.navyPrimary.withValues(alpha: 0.1),
+              backgroundColor: Theme.of(
+                context,
+              ).primaryColor.withValues(alpha: 0.1),
             ),
             const SizedBox(height: 12),
             Text(
@@ -429,14 +443,17 @@ class _CoachCard extends StatelessWidget {
               style: GoogleFonts.outfit(
                 fontWeight: FontWeight.bold,
                 fontSize: 14,
-                color: AppPalette.navyPrimary,
+                color: Theme.of(context).colorScheme.onSurface,
               ),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
             Text(
               role,
-              style: GoogleFonts.inter(fontSize: 11, color: Colors.grey[600]),
+              style: GoogleFonts.inter(
+                fontSize: 11,
+                color: Theme.of(context).textTheme.bodySmall?.color,
+              ),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
@@ -444,7 +461,9 @@ class _CoachCard extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
               decoration: BoxDecoration(
-                color: Colors.orange[50],
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? Colors.orange.withValues(alpha: 0.1)
+                    : Colors.orange[50],
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Row(
@@ -491,19 +510,19 @@ class _SearchResultItem extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: Theme.of(context).cardColor,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppPalette.divider),
+          border: Border.all(color: Theme.of(context).dividerColor),
         ),
         child: Row(
           children: [
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: AppPalette.navyPrimary.withValues(alpha: 0.1),
+                color: Theme.of(context).primaryColor.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
-              child: Icon(icon, color: AppPalette.navyPrimary),
+              child: Icon(icon, color: Theme.of(context).primaryColor),
             ),
             const SizedBox(width: 16),
             Expanded(
@@ -515,13 +534,13 @@ class _SearchResultItem extends StatelessWidget {
                     style: GoogleFonts.outfit(
                       fontWeight: FontWeight.w600,
                       fontSize: 16,
-                      color: AppPalette.navyPrimary,
+                      color: Theme.of(context).colorScheme.onSurface,
                     ),
                   ),
                   Text(
                     subtitle,
                     style: GoogleFonts.inter(
-                      color: Colors.grey[600],
+                      color: Theme.of(context).textTheme.bodyMedium?.color,
                       fontSize: 14,
                     ),
                   ),

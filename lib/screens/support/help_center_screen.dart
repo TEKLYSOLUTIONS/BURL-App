@@ -10,7 +10,7 @@ class HelpCenterScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: Column(
         children: [
           Container(
@@ -20,9 +20,9 @@ class HelpCenterScreen extends StatelessWidget {
               left: 24,
               right: 24,
             ),
-            decoration: const BoxDecoration(
-              color: AppPalette.navyPrimary,
-              borderRadius: BorderRadius.only(
+            decoration: BoxDecoration(
+              color: Theme.of(context).cardColor,
+              borderRadius: const BorderRadius.only(
                 bottomLeft: Radius.circular(30),
                 bottomRight: Radius.circular(30),
               ),
@@ -32,7 +32,10 @@ class HelpCenterScreen extends StatelessWidget {
               children: [
                 IconButton(
                   onPressed: () => context.pop(),
-                  icon: const Icon(Icons.arrow_back, color: Colors.white),
+                  icon: Icon(
+                    Icons.arrow_back,
+                    color: Theme.of(context).iconTheme.color,
+                  ),
                   padding: EdgeInsets.zero,
                   constraints: const BoxConstraints(),
                 ),
@@ -42,7 +45,7 @@ class HelpCenterScreen extends StatelessWidget {
                   style: GoogleFonts.outfit(
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
-                    color: Colors.white,
+                    color: Theme.of(context).colorScheme.onSurface,
                   ),
                 ),
                 const SizedBox(width: 24), // Spacer
@@ -61,7 +64,7 @@ class HelpCenterScreen extends StatelessWidget {
                     style: GoogleFonts.outfit(
                       fontSize: 24,
                       fontWeight: FontWeight.bold,
-                      color: AppPalette.navyPrimary,
+                      color: Theme.of(context).colorScheme.onSurface,
                     ),
                   ),
                   const SizedBox(height: 8),
@@ -69,7 +72,7 @@ class HelpCenterScreen extends StatelessWidget {
                     'Search for help or browse frequently asked questions.',
                     style: GoogleFonts.inter(
                       fontSize: 14,
-                      color: Colors.grey[600],
+                      color: Theme.of(context).textTheme.bodyMedium?.color,
                     ),
                   ),
                   const SizedBox(height: 24),
@@ -78,7 +81,9 @@ class HelpCenterScreen extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     decoration: BoxDecoration(
-                      color: Colors.grey[100],
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.surfaceContainerHighest,
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: TextField(
@@ -103,39 +108,51 @@ class HelpCenterScreen extends StatelessWidget {
                   const SizedBox(height: 16),
 
                   _buildFAQItem(
+                    context,
                     'How do I book a coach?',
                     'You can browse coaches from the home screen, select a coach to view their profile, and choose an available slot from their calendar.',
                   ),
                   _buildFAQItem(
+                    context,
                     'How are payments processed?',
                     'We use secure payment processing. You can pay via credit/debit card. Payments are held securely until the session is completed.',
                   ),
                   _buildFAQItem(
+                    context,
                     'Can I cancel a session?',
                     'Yes, you can cancel up to 24 hours before the session starts for a full refund. Late cancellations may be subject to a fee.',
                   ),
                   _buildFAQItem(
+                    context,
                     'How do I verify my profile?',
                     'Coaches need to submit their certifications and ID. Our team reviews these documents within 48 hours.',
                   ),
 
                   const SizedBox(height: 32),
 
+                  // Still need help section
                   Container(
                     padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
-                      color: AppPalette.navyPrimary.withValues(alpha: 0.05),
+                      color: Theme.of(context).cardColor,
                       borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: AppPalette.navyPrimary.withValues(alpha: 0.1),
-                      ),
+                      border: Border.all(color: Theme.of(context).dividerColor),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Theme.of(
+                            context,
+                          ).shadowColor.withValues(alpha: 0.05),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
                     ),
                     child: Column(
                       children: [
-                        const Icon(
+                        Icon(
                           Icons.headset_mic_outlined,
                           size: 40,
-                          color: AppPalette.navyPrimary,
+                          color: Theme.of(context).colorScheme.primary,
                         ),
                         const SizedBox(height: 16),
                         Text(
@@ -143,14 +160,18 @@ class HelpCenterScreen extends StatelessWidget {
                           style: GoogleFonts.outfit(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
-                            color: AppPalette.navyPrimary,
+                            color: Theme.of(context).colorScheme.onSurface,
                           ),
                         ),
                         const SizedBox(height: 8),
                         Text(
                           'Our support team is available 24/7.',
                           textAlign: TextAlign.center,
-                          style: GoogleFonts.inter(color: Colors.grey[600]),
+                          style: GoogleFonts.inter(
+                            color: Theme.of(
+                              context,
+                            ).textTheme.bodyMedium?.color,
+                          ),
                         ),
                         const SizedBox(height: 20),
                         SizedBox(
@@ -178,7 +199,9 @@ class HelpCenterScreen extends StatelessWidget {
                               }
                             },
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: AppPalette.navyPrimary,
+                              backgroundColor: Theme.of(
+                                context,
+                              ).colorScheme.primary,
                               padding: const EdgeInsets.symmetric(vertical: 14),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(12),
@@ -205,16 +228,16 @@ class HelpCenterScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildFAQItem(String question, String answer) {
+  Widget _buildFAQItem(BuildContext context, String question, String answer) {
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey[200]!),
+        border: Border.all(color: Theme.of(context).dividerColor),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
+            color: Theme.of(context).shadowColor.withValues(alpha: 0.03),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -227,7 +250,7 @@ class HelpCenterScreen extends StatelessWidget {
             question,
             style: GoogleFonts.inter(
               fontWeight: FontWeight.w600,
-              color: AppPalette.navyPrimary,
+              color: Theme.of(context).colorScheme.onSurface,
             ),
           ),
           children: [
@@ -237,7 +260,7 @@ class HelpCenterScreen extends StatelessWidget {
                 answer,
                 style: GoogleFonts.inter(
                   fontSize: 14,
-                  color: Colors.grey[600],
+                  color: Theme.of(context).textTheme.bodyMedium?.color,
                   height: 1.5,
                 ),
               ),

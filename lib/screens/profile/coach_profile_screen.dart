@@ -9,22 +9,24 @@ import '../settings/change_password_screen.dart';
 
 import '../../services/profile_service.dart';
 
-class CoachProfileScreen extends StatefulWidget {
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../providers/theme_provider.dart';
+
+class CoachProfileScreen extends ConsumerStatefulWidget {
   final String coachId; // Keep for compatibility if needed
 
   const CoachProfileScreen({super.key, required this.coachId});
 
   @override
-  State<CoachProfileScreen> createState() => _CoachProfileScreenState();
+  ConsumerState<CoachProfileScreen> createState() => _CoachProfileScreenState();
 }
 
-class _CoachProfileScreenState extends State<CoachProfileScreen> {
+class _CoachProfileScreenState extends ConsumerState<CoachProfileScreen> {
   bool _isLoading = true;
   Map<String, dynamic>? _profileData;
   String _userName = 'Coach';
   String _userEmail = '';
   bool _pushNotifications = true;
-  bool _darkMode = false;
   String _language = 'English (US)';
 
   @override
@@ -44,8 +46,6 @@ class _CoachProfileScreenState extends State<CoachProfileScreen> {
         // Get preferences if they exist
         final prefs = profile['preferences'] as Map<String, dynamic>?;
         if (prefs != null) {
-          _pushNotifications = prefs['pushNotifications'] ?? true;
-          _darkMode = prefs['darkMode'] ?? false;
           _language = prefs['language'] == 'en-US'
               ? 'English (US)'
               : prefs['language'] ?? 'English (US)';
@@ -75,7 +75,7 @@ class _CoachProfileScreenState extends State<CoachProfileScreen> {
     }
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
 
       body: SingleChildScrollView(
         // Move padding to inside Column for content only
@@ -112,9 +112,15 @@ class _CoachProfileScreenState extends State<CoachProfileScreen> {
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: ref.watch(themeProvider) == ThemeMode.dark
+                          ? AppPalette.surfaceGlassDark
+                          : Colors.white,
                       borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: Colors.grey[200]!),
+                      border: Border.all(
+                        color: ref.watch(themeProvider) == ThemeMode.dark
+                            ? Colors.white.withValues(alpha: 0.1)
+                            : Colors.grey[200]!,
+                      ),
                       boxShadow: [
                         BoxShadow(
                           color: Colors.black.withValues(alpha: 0.05),
@@ -161,7 +167,10 @@ class _CoachProfileScreenState extends State<CoachProfileScreen> {
                                 style: GoogleFonts.outfit(
                                   fontSize: 18,
                                   fontWeight: FontWeight.bold,
-                                  color: AppPalette.navyPrimary,
+                                  color:
+                                      ref.watch(themeProvider) == ThemeMode.dark
+                                      ? Colors.white
+                                      : AppPalette.navyPrimary,
                                 ),
                               ),
                               const SizedBox(height: 4),
@@ -282,19 +291,35 @@ class _CoachProfileScreenState extends State<CoachProfileScreen> {
                         ),
                         const Divider(height: 1, color: Color(0xFFEEEEEE)),
                         _buildListTile(
-                          icon: Icons.dark_mode_outlined,
+                          icon: Icons.palette_outlined,
                           iconBgColor: Colors.grey[100]!,
                           iconColor: Colors.grey[700]!,
-                          title: 'Dark Mode',
-                          trailing: Switch(
-                            value: _darkMode,
-                            onChanged: (val) {
-                              setState(() => _darkMode = val);
-                            },
-                            activeTrackColor: Colors.grey[300],
-                            activeThumbColor: Colors.white,
+                          title: 'Appearance',
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Consumer(
+                                builder: (context, ref, child) {
+                                  final isDark =
+                                      ref.watch(themeProvider) ==
+                                      ThemeMode.dark;
+                                  return Text(
+                                    isDark ? 'Dark Mode' : 'Light Mode',
+                                    style: GoogleFonts.inter(
+                                      color: AppPalette.textSecondaryLight,
+                                      fontSize: 13,
+                                    ),
+                                  );
+                                },
+                              ),
+                              const SizedBox(width: 8),
+                              const Icon(
+                                Icons.chevron_right,
+                                color: Colors.grey,
+                              ),
+                            ],
                           ),
-                          onTap: () {},
+                          onTap: () => _showThemeBottomSheet(context, ref),
                         ),
                         const Divider(height: 1, color: Color(0xFFEEEEEE)),
                         _buildListTile(
@@ -458,7 +483,9 @@ class _CoachProfileScreenState extends State<CoachProfileScreen> {
                   style: GoogleFonts.outfit(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
-                    color: AppPalette.navyPrimary,
+                    color: ref.watch(themeProvider) == ThemeMode.dark
+                        ? Colors.white
+                        : AppPalette.navyPrimary,
                   ),
                 ),
               ),
@@ -472,6 +499,119 @@ class _CoachProfileScreenState extends State<CoachProfileScreen> {
                 const Icon(Icons.chevron_right, color: Colors.grey),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  void _showThemeBottomSheet(BuildContext context, WidgetRef ref) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) {
+        final isDark = ref.watch(themeProvider) == ThemeMode.dark;
+        return Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Select Appearance',
+                style: GoogleFonts.outfit(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Theme.of(context).colorScheme.onSurface,
+                ),
+              ),
+              const SizedBox(height: 24),
+              _buildThemeOption(
+                context,
+                ref,
+                title: 'Light Mode',
+                icon: Icons.light_mode_outlined,
+                isSelected: !isDark,
+                onTap: () {
+                  ref.read(themeProvider.notifier).toggleTheme(false);
+                  Navigator.pop(context);
+                },
+              ),
+              const SizedBox(height: 12),
+              _buildThemeOption(
+                context,
+                ref,
+                title: 'Dark Mode',
+                icon: Icons.dark_mode_outlined,
+                isSelected: isDark,
+                onTap: () {
+                  ref.read(themeProvider.notifier).toggleTheme(true);
+                  Navigator.pop(context);
+                },
+              ),
+              const SizedBox(height: 24),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildThemeOption(
+    BuildContext context,
+    WidgetRef ref, {
+    required String title,
+    required IconData icon,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? Colors.orange.withValues(alpha: 0.1)
+              : Theme.of(context).cardColor,
+          borderRadius: BorderRadius.circular(16),
+          border: isSelected
+              ? Border.all(color: Colors.orange, width: 2)
+              : Border.all(color: AppPalette.divider.withValues(alpha: 0.5)),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: isSelected
+                    ? Colors.orange
+                    : Colors.grey.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                icon,
+                color: isSelected ? Colors.white : Colors.grey,
+                size: 20,
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Text(
+                title,
+                style: GoogleFonts.inter(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: isSelected
+                      ? Colors.orange
+                      : Theme.of(context).colorScheme.onSurface,
+                ),
+              ),
+            ),
+            if (isSelected)
+              const Icon(Icons.check_circle, color: Colors.orange),
+          ],
         ),
       ),
     );

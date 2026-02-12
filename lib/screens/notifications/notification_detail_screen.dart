@@ -26,8 +26,10 @@ class NotificationDetailScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F7FA),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: Column(
         children: [
           // Header
@@ -38,9 +40,13 @@ class NotificationDetailScreen extends StatelessWidget {
               24,
               30,
             ),
-            decoration: const BoxDecoration(
-              color: AppPalette.navyPrimary,
-              borderRadius: BorderRadius.vertical(bottom: Radius.circular(30)),
+            decoration: BoxDecoration(
+              color: isDark
+                  ? AppPalette.surfaceGlassDark
+                  : AppPalette.navyPrimary,
+              borderRadius: const BorderRadius.vertical(
+                bottom: Radius.circular(30),
+              ),
             ),
             child: Stack(
               alignment: Alignment.center,
@@ -86,7 +92,7 @@ class NotificationDetailScreen extends StatelessWidget {
                     padding: const EdgeInsets.all(24),
                     width: double.infinity,
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: Theme.of(context).cardColor,
                       borderRadius: BorderRadius.circular(24),
                       boxShadow: [
                         BoxShadow(
@@ -111,12 +117,20 @@ class NotificationDetailScreen extends StatelessWidget {
                               Container(
                                 padding: const EdgeInsets.all(12),
                                 decoration: BoxDecoration(
-                                  color: iconBg ?? Colors.grey[100],
+                                  color:
+                                      iconBg ??
+                                      Theme.of(
+                                        context,
+                                      ).colorScheme.surfaceContainerHighest,
                                   borderRadius: BorderRadius.circular(16),
                                 ),
                                 child: Icon(
                                   iconData ?? Icons.notifications,
-                                  color: iconColor ?? Colors.grey,
+                                  color:
+                                      iconColor ??
+                                      Theme.of(
+                                        context,
+                                      ).colorScheme.onSurfaceVariant,
                                   size: 24,
                                 ),
                               ),
@@ -129,7 +143,9 @@ class NotificationDetailScreen extends StatelessWidget {
                                     'Notification', // Or Category
                                     style: GoogleFonts.inter(
                                       fontSize: 12,
-                                      color: Colors.grey[500],
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.onSurfaceVariant,
                                       fontWeight: FontWeight.w600,
                                       letterSpacing: 1,
                                     ),
@@ -139,7 +155,9 @@ class NotificationDetailScreen extends StatelessWidget {
                                     time,
                                     style: GoogleFonts.inter(
                                       fontSize: 14,
-                                      color: AppPalette.navyPrimary,
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.primary,
                                       fontWeight: FontWeight.bold,
                                     ),
                                   ),
@@ -158,7 +176,7 @@ class NotificationDetailScreen extends StatelessWidget {
                           style: GoogleFonts.outfit(
                             fontSize: 20,
                             fontWeight: FontWeight.bold,
-                            color: AppPalette.navyPrimary,
+                            color: Theme.of(context).colorScheme.onSurface,
                             height: 1.3,
                           ),
                         ),
@@ -169,7 +187,9 @@ class NotificationDetailScreen extends StatelessWidget {
                           description,
                           style: GoogleFonts.inter(
                             fontSize: 16,
-                            color: Colors.grey[700],
+                            color: Theme.of(
+                              context,
+                            ).textTheme.bodyMedium?.color,
                             height: 1.6,
                           ),
                         ),

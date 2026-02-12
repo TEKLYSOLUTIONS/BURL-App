@@ -86,12 +86,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   Future<void> _handleGoogleSignIn() async {
     setState(() => _isLoading = true);
-    
+
     try {
       await _authService.signInWithGoogle(role: widget.role ?? 'player');
-      
+
       if (!mounted) return;
-      
+
       // Navigate based on role
       if (widget.role == 'coach') {
         context.go('/coach/home');
@@ -112,12 +112,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   Future<void> _handleAppleSignIn() async {
     setState(() => _isLoading = true);
-    
+
     try {
       await _authService.signInWithApple(role: widget.role ?? 'player');
-      
+
       if (!mounted) return;
-      
+
       // Navigate based on role
       if (widget.role == 'coach') {
         context.go('/coach/home');
@@ -141,9 +141,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       context: context,
       barrierDismissible: false,
       builder: (context) => Dialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(24),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         child: Padding(
           padding: const EdgeInsets.all(32.0),
           child: Column(
@@ -232,9 +230,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         content: Text(message),
         backgroundColor: isError ? Colors.red : AppPalette.successGreen,
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       ),
     );
   }
@@ -242,7 +238,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 24.0),
@@ -252,9 +248,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
               const SizedBox(height: 16),
               // Back Button
               IconButton(
-                icon: const Icon(
+                icon: Icon(
                   Icons.arrow_back_ios_new_rounded,
-                  color: AppPalette.navyPrimary,
+                  color: Theme.of(context).iconTheme.color,
                 ),
                 padding: EdgeInsets.zero,
                 alignment: Alignment.centerLeft,
@@ -275,7 +271,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 style: GoogleFonts.outfit(
                   fontSize: 32,
                   fontWeight: FontWeight.bold,
-                  color: AppPalette.navyPrimary,
+                  color: Theme.of(context).colorScheme.onSurface,
                   height: 1.2,
                 ),
               ).animate().fadeIn().slideY(begin: -0.2),
@@ -286,7 +282,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 'Sign up to connect with top coaches and\nstart your training journey today.',
                 style: GoogleFonts.inter(
                   fontSize: 14,
-                  color: AppPalette.textSecondaryLight,
+                  color: Theme.of(context).textTheme.bodyMedium?.color,
                   height: 1.5,
                 ),
               ).animate().fadeIn(delay: 100.ms),
@@ -389,6 +385,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           child: Checkbox(
                             value: _agreedToTerms,
                             activeColor: AppPalette.orangeAccent,
+                            side: BorderSide(
+                              color: Theme.of(context).unselectedWidgetColor,
+                            ),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(4),
                             ),
@@ -448,18 +447,24 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     // Social Login Divider
                     Row(
                       children: [
-                        Expanded(child: Divider(color: Colors.grey[300])),
+                        Expanded(
+                          child: Divider(color: Theme.of(context).dividerColor),
+                        ),
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 16),
                           child: Text(
                             'Or register with',
                             style: GoogleFonts.inter(
-                              color: AppPalette.textSecondaryLight,
+                              color: Theme.of(
+                                context,
+                              ).textTheme.bodyMedium?.color,
                               fontSize: 14,
                             ),
                           ),
                         ),
-                        Expanded(child: Divider(color: Colors.grey[300])),
+                        Expanded(
+                          child: Divider(color: Theme.of(context).dividerColor),
+                        ),
                       ],
                     ).animate().fadeIn(delay: 800.ms),
 
@@ -503,7 +508,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           text: TextSpan(
                             style: GoogleFonts.inter(
                               fontSize: 15,
-                              color: AppPalette.textSecondaryLight,
+                              color: Theme.of(
+                                context,
+                              ).textTheme.bodyMedium?.color,
                             ),
                             children: [
                               const TextSpan(text: 'Already a member? '),
@@ -537,7 +544,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         text: TextSpan(
           style: GoogleFonts.inter(
             fontSize: 14,
-            color: AppPalette.textSecondaryLight,
+            color: Theme.of(context).textTheme.bodyMedium?.color,
             height: 1.5,
           ),
           children: [
@@ -546,7 +553,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               text: 'Terms of Service',
               style: GoogleFonts.inter(
                 fontWeight: FontWeight.bold,
-                color: AppPalette.navyPrimary,
+                color: Theme.of(context).colorScheme.primary,
                 decoration: TextDecoration.underline,
               ),
               recognizer: TapGestureRecognizer()
@@ -559,7 +566,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               text: 'Privacy Policy',
               style: GoogleFonts.inter(
                 fontWeight: FontWeight.bold,
-                color: AppPalette.navyPrimary,
+                color: Theme.of(context).colorScheme.primary,
                 decoration: TextDecoration.underline,
               ),
               recognizer: TapGestureRecognizer()
@@ -599,6 +606,8 @@ class _CustomTextField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -607,14 +616,19 @@ class _CustomTextField extends StatelessWidget {
           style: GoogleFonts.outfit(
             fontSize: 14,
             fontWeight: FontWeight.w600,
-            color: AppPalette.navyPrimary,
+            color: Theme.of(context).colorScheme.onSurface,
           ),
         ),
         const SizedBox(height: 8),
         Container(
           decoration: BoxDecoration(
-            color: Colors.grey[100],
+            color: isDark
+                ? AppPalette.surfaceGlassDark
+                : Colors.grey[100], // Glass in dark, grey in light
             borderRadius: BorderRadius.circular(12),
+            border: isDark
+                ? Border.all(color: Colors.white.withValues(alpha: 0.1))
+                : null,
           ),
           child: TextFormField(
             controller: controller,
@@ -623,26 +637,30 @@ class _CustomTextField extends StatelessWidget {
             validator: validator,
             style: GoogleFonts.inter(
               fontSize: 15,
-              color: AppPalette.navyPrimary,
+              color: Theme.of(context).colorScheme.onSurface,
             ),
             decoration: InputDecoration(
               hintText: hint,
-              hintStyle: GoogleFonts.inter(color: Colors.grey[400]),
-              prefixIcon: Icon(icon, color: Colors.grey[400], size: 20),
+              hintStyle: GoogleFonts.inter(color: Theme.of(context).hintColor),
+              prefixIcon: Icon(
+                icon,
+                color: Theme.of(context).iconTheme.color,
+                size: 20,
+              ),
               suffixIcon: isPassword
                   ? IconButton(
                       icon: Icon(
                         isVisible
                             ? Ionicons.eye_off_outline
                             : Ionicons.eye_outline,
-                        color: Colors.grey[400],
+                        color: Theme.of(context).iconTheme.color,
                         size: 20,
                       ),
                       onPressed: onVisibilityChanged,
                     )
                   : null,
               filled: true,
-              fillColor: Colors.transparent,
+              fillColor: Colors.transparent, // Handled by Container
               border: InputBorder.none,
               enabledBorder: InputBorder.none,
               focusedBorder: InputBorder.none,
@@ -680,9 +698,11 @@ class _SocialButton extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 12),
         decoration: BoxDecoration(
-          border: Border.all(color: Colors.grey[200]!),
+          border: Border.all(
+            color: Theme.of(context).dividerColor.withValues(alpha: 0.5),
+          ),
           borderRadius: BorderRadius.circular(12),
-          color: Colors.white,
+          color: Theme.of(context).cardColor,
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -694,7 +714,7 @@ class _SocialButton extends StatelessWidget {
               style: GoogleFonts.inter(
                 fontSize: 15,
                 fontWeight: FontWeight.w600,
-                color: AppPalette.navyPrimary,
+                color: Theme.of(context).colorScheme.onSurface,
               ),
             ),
           ],

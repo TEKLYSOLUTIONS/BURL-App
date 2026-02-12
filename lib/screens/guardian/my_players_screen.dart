@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import '../../config/palette.dart';
+
 import '../../services/guardian_service.dart';
 
 class MyPlayersScreen extends StatefulWidget {
@@ -50,13 +50,15 @@ class _MyPlayersScreenState extends State<MyPlayersScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F7FA), // Light grey background
+      backgroundColor: Theme.of(
+        context,
+      ).scaffoldBackgroundColor, // Light grey background
       appBar: AppBar(
         title: Text(
           'My Players',
           style: GoogleFonts.outfit(
             fontWeight: FontWeight.bold,
-            color: AppPalette.navyPrimary,
+            color: Theme.of(context).colorScheme.onSurface,
             fontSize: 24,
           ),
         ),
@@ -64,9 +66,9 @@ class _MyPlayersScreenState extends State<MyPlayersScreen> {
         elevation: 0,
         centerTitle: true,
         leading: IconButton(
-          icon: const Icon(
+          icon: Icon(
             Icons.arrow_back_ios_new_rounded,
-            color: AppPalette.navyPrimary,
+            color: Theme.of(context).colorScheme.onSurface,
           ),
           onPressed: () => context.go('/guardian/home'),
         ),
@@ -126,7 +128,9 @@ class _MyPlayersScreenState extends State<MyPlayersScreen> {
                 'No players added yet.\nTap + to add your first athlete.',
                 textAlign: TextAlign.center,
                 style: GoogleFonts.inter(
-                  color: AppPalette.textSecondaryLight,
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.onSurface.withValues(alpha: 0.7),
                   fontSize: 16,
                 ),
               ),
@@ -174,11 +178,11 @@ class _PlayerCard extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
+            color: Theme.of(context).shadowColor.withValues(alpha: 0.04),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -207,7 +211,9 @@ class _PlayerCard extends StatelessWidget {
                                   'assets/images/user_placeholder_soccer.png',
                                 )
                                 as ImageProvider,
-                      backgroundColor: AppPalette.navyLight,
+                      backgroundColor: Theme.of(
+                        context,
+                      ).colorScheme.surfaceContainerHighest,
                     ),
                     if (isGameDay) // Mock indicator
                       Positioned(
@@ -237,7 +243,7 @@ class _PlayerCard extends StatelessWidget {
                         style: GoogleFonts.outfit(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
-                          color: AppPalette.navyPrimary,
+                          color: Theme.of(context).colorScheme.onSurface,
                         ),
                       ),
                       const SizedBox(height: 4),
@@ -245,7 +251,9 @@ class _PlayerCard extends StatelessWidget {
                         role,
                         style: GoogleFonts.inter(
                           fontSize: 14,
-                          color: AppPalette.textSecondaryLight,
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.onSurface.withValues(alpha: 0.7),
                           fontWeight: FontWeight.w500,
                         ),
                       ),
@@ -255,7 +263,7 @@ class _PlayerCard extends StatelessWidget {
                         'Age: ${playerData['age'] ?? 'N/A'}',
                         style: GoogleFonts.inter(
                           fontSize: 12,
-                          color: AppPalette.textDisabled,
+                          color: Theme.of(context).disabledColor,
                         ),
                       ),
                     ],
@@ -266,7 +274,9 @@ class _PlayerCard extends StatelessWidget {
                 Icon(
                   Icons.arrow_forward_ios_rounded,
                   size: 16,
-                  color: Colors.grey[400],
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.onSurface.withValues(alpha: 0.3),
                 ),
               ],
             ),
@@ -282,11 +292,11 @@ class _ConnectAthleteCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
+            color: Theme.of(context).shadowColor.withValues(alpha: 0.04),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -312,12 +322,16 @@ class _ConnectAthleteCard extends StatelessWidget {
                   width: 50,
                   height: 50,
                   decoration: BoxDecoration(
-                    color: Colors.grey[100],
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.surfaceContainerHighest,
                     shape: BoxShape.circle,
                   ),
                   child: Icon(
                     Icons.person_add_alt_1,
-                    color: Colors.grey[400],
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.onSurface.withValues(alpha: 0.3),
                     size: 24,
                   ),
                 ),
@@ -333,8 +347,9 @@ class _ConnectAthleteCard extends StatelessWidget {
                         style: GoogleFonts.outfit(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
-                          color:
-                              Colors.grey[700], // Slightly lighter than primary
+                          color: Theme.of(context)
+                              .colorScheme
+                              .onSurface, // Slightly lighter than primary
                         ),
                       ),
                       const SizedBox(height: 4),
@@ -342,7 +357,9 @@ class _ConnectAthleteCard extends StatelessWidget {
                         'Enter team code',
                         style: GoogleFonts.inter(
                           fontSize: 14,
-                          color: AppPalette.textSecondaryLight,
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.onSurface.withValues(alpha: 0.7),
                         ),
                       ),
                     ],
@@ -350,7 +367,11 @@ class _ConnectAthleteCard extends StatelessWidget {
                 ),
 
                 // Plus Icon
-                Icon(Icons.add_circle, size: 28, color: Colors.grey[300]),
+                Icon(
+                  Icons.add_circle,
+                  size: 28,
+                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                ),
               ],
             ),
           ),

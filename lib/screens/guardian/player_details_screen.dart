@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import '../../config/palette.dart';
+
 import '../../services/guardian_service.dart';
 
 class PlayerDetailsScreen extends StatefulWidget {
@@ -52,19 +52,19 @@ class _PlayerDetailsScreenState extends State<PlayerDetailsScreen> {
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return const Scaffold(
-        backgroundColor: AppPalette.backgroundLight,
-        body: Center(child: CircularProgressIndicator()),
+      return Scaffold(
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+        body: const Center(child: CircularProgressIndicator()),
       );
     }
 
     if (_error != null || _playerData == null) {
       return Scaffold(
-        backgroundColor: AppPalette.backgroundLight,
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         appBar: AppBar(
           backgroundColor: Colors.transparent,
           elevation: 0,
-          leading: const BackButton(color: Colors.black),
+          leading: BackButton(color: Theme.of(context).colorScheme.onSurface),
         ),
         body: Center(child: Text('Error: ${_error ?? "Player not found"}')),
       );
@@ -77,12 +77,12 @@ class _PlayerDetailsScreenState extends State<PlayerDetailsScreen> {
     final String? profilePhoto = player['profilePhoto'];
 
     return Scaffold(
-      backgroundColor: AppPalette.backgroundLight,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         title: Text(
           fullName,
           style: GoogleFonts.outfit(
-            color: AppPalette.navyPrimary,
+            color: Theme.of(context).colorScheme.onSurface,
             fontWeight: FontWeight.bold,
           ),
         ),
@@ -90,18 +90,18 @@ class _PlayerDetailsScreenState extends State<PlayerDetailsScreen> {
         elevation: 0,
         centerTitle: true,
         leading: IconButton(
-          icon: const Icon(
+          icon: Icon(
             Icons.arrow_back_ios_new_rounded,
-            color: Colors.black,
+            color: Theme.of(context).colorScheme.onSurface,
           ),
           onPressed: () => context.pop(),
         ),
         actions: [
           if (!widget.isCoachView)
             IconButton(
-              icon: const Icon(
+              icon: Icon(
                 Icons.edit_outlined,
-                color: AppPalette.navyPrimary,
+                color: Theme.of(context).colorScheme.onSurface,
               ),
               onPressed: () async {
                 await context.push('/guardian/edit-player', extra: _playerData);
@@ -118,11 +118,13 @@ class _PlayerDetailsScreenState extends State<PlayerDetailsScreen> {
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: Theme.of(context).cardColor,
                 borderRadius: BorderRadius.circular(20),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.05),
+                    color: Theme.of(
+                      context,
+                    ).shadowColor.withValues(alpha: 0.05),
                     blurRadius: 10,
                     offset: const Offset(0, 4),
                   ),
@@ -146,13 +148,15 @@ class _PlayerDetailsScreenState extends State<PlayerDetailsScreen> {
                           style: GoogleFonts.outfit(
                             fontSize: 20,
                             fontWeight: FontWeight.bold,
-                            color: AppPalette.textPrimaryLight,
+                            color: Theme.of(context).colorScheme.onSurface,
                           ),
                         ),
                         Text(
                           'Age: $age • $role',
                           style: GoogleFonts.inter(
-                            color: AppPalette.textSecondaryLight,
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.onSurface.withValues(alpha: 0.7),
                             fontSize: 14,
                           ),
                         ),
@@ -216,7 +220,7 @@ class _PlayerDetailsScreenState extends State<PlayerDetailsScreen> {
         style: GoogleFonts.outfit(
           fontSize: 18,
           fontWeight: FontWeight.bold,
-          color: AppPalette.navyPrimary,
+          color: Theme.of(context).colorScheme.onSurface,
         ),
       ),
     );
@@ -227,15 +231,17 @@ class _PlayerDetailsScreenState extends State<PlayerDetailsScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: Colors.grey[100],
+        color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: Colors.grey[300]!),
+        border: Border.all(
+          color: Theme.of(context).dividerColor.withValues(alpha: 0.5),
+        ),
       ),
       child: Text(
         text,
         style: GoogleFonts.inter(
           fontSize: 10,
-          color: Colors.grey[700],
+          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
           fontWeight: FontWeight.w600,
         ),
       ),
@@ -251,7 +257,7 @@ class _PlayerDetailsScreenState extends State<PlayerDetailsScreen> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
@@ -271,14 +277,16 @@ class _PlayerDetailsScreenState extends State<PlayerDetailsScreen> {
             style: GoogleFonts.outfit(
               fontSize: 24,
               fontWeight: FontWeight.bold,
-              color: AppPalette.textPrimaryLight,
+              color: Theme.of(context).colorScheme.onSurface,
             ),
           ),
           Text(
             label,
             style: GoogleFonts.inter(
               fontSize: 12,
-              color: AppPalette.textSecondaryLight,
+              color: Theme.of(
+                context,
+              ).colorScheme.onSurface.withValues(alpha: 0.7),
             ),
           ),
         ],

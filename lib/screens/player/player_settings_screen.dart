@@ -3,17 +3,20 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../config/palette.dart';
 import '../../services/profile_service.dart';
+import '../../providers/theme_provider.dart';
 
-class PlayerProfileScreen extends StatefulWidget {
+class PlayerProfileScreen extends ConsumerStatefulWidget {
   const PlayerProfileScreen({super.key});
 
   @override
-  State<PlayerProfileScreen> createState() => _PlayerProfileScreenState();
+  ConsumerState<PlayerProfileScreen> createState() =>
+      _PlayerProfileScreenState();
 }
 
-class _PlayerProfileScreenState extends State<PlayerProfileScreen> {
+class _PlayerProfileScreenState extends ConsumerState<PlayerProfileScreen> {
   bool _isLoading = true;
   String _userName = 'Player';
   String _userEmail = '';
@@ -43,13 +46,13 @@ class _PlayerProfileScreenState extends State<PlayerProfileScreen> {
   Widget build(BuildContext context) {
     if (_isLoading) {
       return Scaffold(
-        backgroundColor: AppPalette.backgroundLight,
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         body: const Center(child: CircularProgressIndicator()),
       );
     }
 
     return Scaffold(
-      backgroundColor: AppPalette.backgroundLight,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: Column(
         children: [
           // Light Header (Matching Sessions Screen)
@@ -74,7 +77,7 @@ class _PlayerProfileScreenState extends State<PlayerProfileScreen> {
                     style: GoogleFonts.outfit(
                       fontSize: 24, // Matching Sessions screen font size
                       fontWeight: FontWeight.bold,
-                      color: AppPalette.navyPrimary,
+                      color: Theme.of(context).colorScheme.onSurface,
                     ),
                   ),
                 ),
@@ -92,11 +95,13 @@ class _PlayerProfileScreenState extends State<PlayerProfileScreen> {
                   Container(
                     padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: Theme.of(context).cardColor,
                       borderRadius: BorderRadius.circular(20),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.05),
+                          color: Theme.of(
+                            context,
+                          ).shadowColor.withValues(alpha: 0.05),
                           blurRadius: 10,
                           offset: const Offset(0, 4),
                         ),
@@ -104,12 +109,14 @@ class _PlayerProfileScreenState extends State<PlayerProfileScreen> {
                     ),
                     child: Row(
                       children: [
-                        const CircleAvatar(
+                        CircleAvatar(
                           radius: 30,
                           backgroundImage: NetworkImage(
                             'https://i.pravatar.cc/150?img=11',
                           ),
-                          backgroundColor: AppPalette.offWhite,
+                          backgroundColor: Theme.of(
+                            context,
+                          ).colorScheme.surfaceContainerHighest,
                         ),
                         const SizedBox(width: 16),
                         Column(
@@ -120,7 +127,7 @@ class _PlayerProfileScreenState extends State<PlayerProfileScreen> {
                               style: GoogleFonts.outfit(
                                 fontSize: 18,
                                 fontWeight: FontWeight.bold,
-                                color: AppPalette.navyPrimary,
+                                color: Theme.of(context).colorScheme.onSurface,
                               ),
                             ),
                             Text(
@@ -128,7 +135,9 @@ class _PlayerProfileScreenState extends State<PlayerProfileScreen> {
                                   ? _userEmail
                                   : 'player@example.com',
                               style: GoogleFonts.inter(
-                                color: AppPalette.textSecondaryLight,
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSurface.withValues(alpha: 0.7),
                                 fontSize: 14,
                               ),
                             ),
@@ -136,9 +145,9 @@ class _PlayerProfileScreenState extends State<PlayerProfileScreen> {
                         ),
                         const Spacer(),
                         IconButton(
-                          icon: const Icon(
+                          icon: Icon(
                             Icons.edit_outlined,
-                            color: AppPalette.navyPrimary,
+                            color: Theme.of(context).colorScheme.onSurface,
                           ),
                           onPressed: () {
                             context.push('/edit-profile');
@@ -150,59 +159,95 @@ class _PlayerProfileScreenState extends State<PlayerProfileScreen> {
 
                   const SizedBox(height: 32),
 
-                  _buildSectionHeader('Account Settings'),
-                  const SizedBox(height: 16),
-
-                  _buildSettingsItem(
-                    icon: Icons.lock_outline,
-                    title: 'Change Password',
-                    onTap: () {},
-                  ),
-                  const SizedBox(height: 12),
-                  _buildSettingsItem(
-                    icon: Icons.notifications_none,
-                    title: 'Notifications',
-                    onTap: () {
-                      context.push('/player/notifications');
-                    },
-                  ),
-                  const SizedBox(height: 12),
-                  _buildSettingsItem(
-                    icon: Icons.payment,
-                    title: 'Payment Methods',
-                    onTap: () {},
-                  ),
-
                   const SizedBox(height: 32),
-                  _buildSectionHeader('Preferences'),
-                  const SizedBox(height: 16),
-                  _buildSettingsItem(
-                    icon: Icons.language,
-                    title: 'Language',
-                    trailing: const Text('English'),
-                    onTap: () {},
-                  ),
-                  const SizedBox(height: 12),
-                  _buildSettingsItem(
-                    icon: Icons.dark_mode_outlined,
-                    title: 'Theme',
-                    trailing: const Text('Light'),
-                    onTap: () {},
+
+                  _buildSectionContainer(
+                    title: 'Account Settings',
+                    children: [
+                      _buildSettingsTile(
+                        icon: Icons.lock_outline,
+                        title: 'Change Password',
+                        onTap: () {},
+                      ),
+                      const SizedBox(height: 12),
+                      _buildSettingsTile(
+                        icon: Icons.notifications_none,
+                        title: 'Notifications',
+                        onTap: () {
+                          context.push('/player/notifications');
+                        },
+                      ),
+                      const SizedBox(height: 12),
+                      _buildSettingsTile(
+                        icon: Icons.payment,
+                        title: 'Payment Methods',
+                        onTap: () {},
+                      ),
+                    ],
                   ),
 
-                  const SizedBox(height: 32),
-                  _buildSectionHeader('Support'),
-                  const SizedBox(height: 16),
-                  _buildSettingsItem(
-                    icon: Icons.help_outline,
-                    title: 'Help Center',
-                    onTap: () {},
+                  const SizedBox(height: 24),
+                  _buildSectionContainer(
+                    title: 'Preferences',
+                    children: [
+                      _buildSettingsTile(
+                        icon: Icons.language,
+                        title: 'Language',
+                        trailing: const Text('English'),
+                        onTap: () {},
+                      ),
+                      const SizedBox(height: 12),
+                      _buildSettingsTile(
+                        icon: Icons.palette_outlined,
+                        title: 'Appearance',
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Consumer(
+                              builder: (context, ref, child) {
+                                final isDark =
+                                    ref.watch(themeProvider) == ThemeMode.dark;
+                                return Text(
+                                  isDark ? 'Dark Mode' : 'Light Mode',
+                                  style: GoogleFonts.inter(
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onSurface
+                                        .withValues(alpha: 0.7),
+                                    fontSize: 14,
+                                  ),
+                                );
+                              },
+                            ),
+                            const SizedBox(width: 8),
+                            const Icon(
+                              Icons.arrow_forward_ios,
+                              size: 16,
+                              color: Colors.orange,
+                            ),
+                          ],
+                        ),
+                        onTap: () => _showThemeBottomSheet(context, ref),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 12),
-                  _buildSettingsItem(
-                    icon: Icons.info_outline,
-                    title: 'About App',
-                    onTap: () {},
+
+                  const SizedBox(height: 24),
+                  _buildSectionContainer(
+                    title: 'Support',
+                    children: [
+                      _buildSettingsTile(
+                        icon: Icons.help_outline,
+                        title: 'Help Center',
+                        onTap: () {},
+                      ),
+                      const SizedBox(height: 12),
+                      _buildSettingsTile(
+                        icon: Icons.info_outline,
+                        title: 'About App',
+                        onTap: () {},
+                      ),
+                    ],
                   ),
 
                   const SizedBox(height: 48),
@@ -225,7 +270,9 @@ class _PlayerProfileScreenState extends State<PlayerProfileScreen> {
                       ),
                       style: TextButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 16),
-                        backgroundColor: Colors.red.withValues(alpha: 0.05),
+                        backgroundColor: Theme.of(
+                          context,
+                        ).colorScheme.error.withValues(alpha: 0.1),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
@@ -243,61 +290,190 @@ class _PlayerProfileScreenState extends State<PlayerProfileScreen> {
     );
   }
 
-  Widget _buildSectionHeader(String title) {
-    return Align(
-      alignment: Alignment.centerLeft,
-      child: Text(
-        title,
-        style: GoogleFonts.outfit(
-          fontSize: 16,
-          fontWeight: FontWeight.bold,
-          color: AppPalette.textSecondaryLight,
-        ),
+  Widget _buildSectionContainer({
+    required String title,
+    required List<Widget> children,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardColor,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Theme.of(context).shadowColor.withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
-    );
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: GoogleFonts.outfit(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: AppPalette.textSecondaryLight,
+            ),
+          ),
+          const SizedBox(height: 16),
+          ...children,
+        ],
+      ),
+    ).animate().fadeIn().slideY(begin: 0.1);
   }
 
-  Widget _buildSettingsItem({
+  Widget _buildSettingsTile({
     required IconData icon,
     required String title,
     Widget? trailing,
     required VoidCallback onTap,
   }) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
-            blurRadius: 5,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: ListTile(
-        onTap: onTap,
-        leading: Container(
-          padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(
-            color: AppPalette.navyPrimary.withValues(alpha: 0.05),
-            shape: BoxShape.circle,
-          ),
-          child: Icon(icon, color: Colors.orange, size: 20),
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      onTap: onTap,
+      leading: Container(
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.05),
+          shape: BoxShape.circle,
         ),
-        title: Text(
-          title,
-          style: GoogleFonts.inter(
-            fontWeight: FontWeight.w500,
-            color: AppPalette.textPrimaryLight,
-            fontSize: 15,
-          ),
-        ),
-        trailing:
-            trailing ??
-            const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.orange),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        child: Icon(icon, color: Colors.orange, size: 20),
       ),
-    ).animate().fadeIn().slideX();
+      title: Text(
+        title,
+        style: GoogleFonts.inter(
+          fontWeight: FontWeight.w500,
+          color: ref.watch(themeProvider) == ThemeMode.dark
+              ? Colors.white
+              : AppPalette.textPrimaryLight,
+          fontSize: 15,
+        ),
+      ),
+      trailing:
+          trailing ??
+          const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.orange),
+    );
+  }
+
+  void _showThemeBottomSheet(BuildContext context, WidgetRef ref) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Theme.of(context).cardColor,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) {
+        final isDark = ref.watch(themeProvider) == ThemeMode.dark;
+        return Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Select Appearance',
+                style: GoogleFonts.outfit(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Theme.of(context).colorScheme.onSurface,
+                ),
+              ),
+              const SizedBox(height: 24),
+              _buildThemeOption(
+                context,
+                ref,
+                title: 'Light Mode',
+                icon: Icons.light_mode_outlined,
+                isSelected: !isDark,
+                onTap: () {
+                  ref.read(themeProvider.notifier).toggleTheme(false);
+                  Navigator.pop(context);
+                },
+              ),
+              const SizedBox(height: 12),
+              _buildThemeOption(
+                context,
+                ref,
+                title: 'Dark Mode',
+                icon: Icons.dark_mode_outlined,
+                isSelected: isDark,
+                onTap: () {
+                  ref.read(themeProvider.notifier).toggleTheme(true);
+                  Navigator.pop(context);
+                },
+              ),
+              const SizedBox(height: 24),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildThemeOption(
+    BuildContext context,
+    WidgetRef ref, {
+    required String title,
+    required IconData icon,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? AppPalette.orangeAccent.withValues(alpha: 0.1)
+              : Theme.of(context).cardColor,
+          borderRadius: BorderRadius.circular(16),
+          border: isSelected
+              ? Border.all(color: Colors.orange, width: 2)
+              : Border.all(color: Colors.grey.shade200),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: isSelected
+                    ? AppPalette.orangeAccent
+                    : Theme.of(
+                        context,
+                      ).colorScheme.onSurface.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                icon,
+                color: isSelected
+                    ? Colors.white
+                    : Theme.of(
+                        context,
+                      ).colorScheme.onSurface.withValues(alpha: 0.5),
+                size: 20,
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Text(
+                title,
+                style: GoogleFonts.inter(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: isSelected
+                      ? AppPalette.orangeAccent
+                      : Theme.of(context).colorScheme.onSurface,
+                ),
+              ),
+            ),
+            if (isSelected)
+              const Icon(Icons.check_circle, color: AppPalette.orangeAccent),
+          ],
+        ),
+      ),
+    );
   }
 }

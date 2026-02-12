@@ -114,21 +114,21 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppPalette.backgroundLight,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         title: Text(
           'My Bookings',
           style: GoogleFonts.outfit(
             fontWeight: FontWeight.bold,
-            color: AppPalette.navyPrimary,
+            color: Theme.of(context).colorScheme.onSurface,
           ),
         ),
-        backgroundColor: Colors.white,
+        backgroundColor: Theme.of(context).cardColor,
         elevation: 0,
         bottom: TabBar(
           controller: _tabController,
           labelColor: AppPalette.orangeAccent,
-          unselectedLabelColor: AppPalette.textSecondaryLight,
+          unselectedLabelColor: Theme.of(context).textTheme.bodyMedium?.color,
           indicatorColor: AppPalette.orangeAccent,
           labelStyle: GoogleFonts.inter(
             fontWeight: FontWeight.bold,
@@ -168,7 +168,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
             Icon(
               isUpcoming ? Icons.event_available : Icons.history,
               size: 64,
-              color: Colors.grey[300],
+              color: Colors.grey[300], // Keep as is for empty state icon
             ),
             const SizedBox(height: 16),
             Text(
@@ -176,7 +176,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
               style: GoogleFonts.outfit(
                 fontSize: 18,
                 fontWeight: FontWeight.w600,
-                color: AppPalette.textSecondaryLight,
+                color: Theme.of(context).textTheme.bodyMedium?.color,
               ),
             ),
             const SizedBox(height: 8),
@@ -186,7 +186,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
                   : 'Your booking history will appear here',
               style: GoogleFonts.inter(
                 fontSize: 14,
-                color: AppPalette.textSecondaryLight,
+                color: Theme.of(context).textTheme.bodyMedium?.color,
               ),
             ),
           ],
@@ -222,7 +222,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
@@ -231,6 +231,9 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
             offset: const Offset(0, 4),
           ),
         ],
+        border: Border.all(
+          color: Theme.of(context).dividerColor.withValues(alpha: 0.1),
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -270,7 +273,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
             style: GoogleFonts.outfit(
               fontSize: 18,
               fontWeight: FontWeight.bold,
-              color: AppPalette.navyPrimary,
+              color: Theme.of(context).colorScheme.onSurface,
             ),
           ),
           const SizedBox(height: 4),
@@ -278,7 +281,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
             'with Coach $coachName',
             style: GoogleFonts.inter(
               fontSize: 14,
-              color: AppPalette.textSecondaryLight,
+              color: Theme.of(context).textTheme.bodyMedium?.color,
             ),
           ),
           const SizedBox(height: 16),
@@ -295,7 +298,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
                 style: GoogleFonts.inter(
                   fontSize: 14,
                   fontWeight: FontWeight.w500,
-                  color: AppPalette.navyPrimary,
+                  color: Theme.of(context).colorScheme.onSurface,
                 ),
               ),
             ],
@@ -314,7 +317,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
                   location,
                   style: GoogleFonts.inter(
                     fontSize: 14,
-                    color: AppPalette.textSecondaryLight,
+                    color: Theme.of(context).textTheme.bodyMedium?.color,
                   ),
                 ),
               ),
@@ -328,7 +331,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
                 'Total Paid',
                 style: GoogleFonts.inter(
                   fontSize: 12,
-                  color: AppPalette.textSecondaryLight,
+                  color: Theme.of(context).textTheme.bodyMedium?.color,
                 ),
               ),
               Text(
@@ -336,7 +339,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
                 style: GoogleFonts.outfit(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
-                  color: AppPalette.navyPrimary,
+                  color: Theme.of(context).colorScheme.onSurface,
                 ),
               ),
             ],

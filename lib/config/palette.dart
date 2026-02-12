@@ -18,6 +18,10 @@ class AppPalette {
   static const Color backgroundDark = Color(0xFF0B1E33);
   static const Color surfaceDark = Color(0xFF0F2A44);
   static const Color elevatedDark = Color(0xFF163B5C);
+  static Color surfaceGlassDark = Colors.white.withValues(
+    alpha: 0.12,
+  ); // White with ~12% opacity
+  static const Color surfaceGlassLight = Colors.white;
 
   // Material Design 3 Roles
   static const Color primary = navyPrimary;

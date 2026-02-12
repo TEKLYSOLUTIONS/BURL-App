@@ -164,29 +164,29 @@ class AppTheme {
     );
   }
 
-  // Dark Theme (Navy BG, White Cards)
+  // Dark Theme (Navy BG, Dark Cards)
   static ThemeData get darkTheme {
     return ThemeData(
       useMaterial3: true,
       brightness: Brightness.dark,
       colorScheme: const ColorScheme(
         brightness: Brightness.dark,
-        primary: AppPalette.navyPrimary,
+        primary: AppPalette.orangeAccent,
         onPrimary: AppPalette.white,
-        secondary: AppPalette.orangeAccent,
+        secondary: AppPalette.navyLight,
         onSecondary: AppPalette.white,
-        error: AppPalette.error,
+        error: AppPalette.errorRed,
         onError: AppPalette.white,
-        surface: AppPalette.white, // White Cards
-        onSurface: AppPalette.navyPrimary, // Navy Text on Cards
-        outline: AppPalette.divider,
+        surface: AppPalette.surfaceDark, // Dark Cards
+        onSurface: AppPalette.white, // White Text on Dark Cards
+        outline: AppPalette.outline,
       ),
-      scaffoldBackgroundColor: AppPalette.navyPrimary,
+      scaffoldBackgroundColor: AppPalette.backgroundDark,
 
       // Typography (Dark Mode)
       textTheme: TextTheme(
         displayLarge: GoogleFonts.plusJakartaSans(
-          color: AppPalette.white, // onBackground
+          color: AppPalette.white,
           fontSize: 32,
           fontWeight: FontWeight.bold,
         ),
@@ -201,27 +201,32 @@ class AppTheme {
           fontWeight: FontWeight.w600,
         ),
         headlineMedium: GoogleFonts.plusJakartaSans(
-          color: AppPalette.white, // Section headers on BG
+          color: AppPalette.white,
           fontSize: 20,
           fontWeight: FontWeight.w600,
         ),
         titleLarge: GoogleFonts.plusJakartaSans(
-          color: AppPalette.navyPrimary, // Title inside White Cards
+          color: AppPalette.white,
           fontSize: 18,
           fontWeight: FontWeight.w600,
         ),
         titleMedium: GoogleFonts.plusJakartaSans(
-          color: AppPalette.navyPrimary, // Subtitle inside cards
+          color: AppPalette.white,
           fontSize: 16,
           fontWeight: FontWeight.w500,
         ),
         bodyLarge: GoogleFonts.plusJakartaSans(
-          color: AppPalette.white, // Body on BG
+          color: AppPalette.white,
           fontSize: 16,
         ),
         bodyMedium: GoogleFonts.plusJakartaSans(
-          color: AppPalette.white, // Body on BG
+          color: AppPalette.textSecondaryDark,
           fontSize: 14,
+        ),
+        labelLarge: GoogleFonts.plusJakartaSans(
+          color: AppPalette.white,
+          fontSize: 14,
+          fontWeight: FontWeight.w600,
         ),
       ),
 
@@ -238,23 +243,28 @@ class AppTheme {
             fontSize: 16,
             fontWeight: FontWeight.w600,
           ),
+          elevation: 0,
         ),
       ),
 
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
-          foregroundColor: AppPalette.orangeAccent,
-          side: const BorderSide(color: AppPalette.orangeAccent),
+          foregroundColor: AppPalette.white,
+          side: const BorderSide(color: AppPalette.white),
           minimumSize: const Size(double.infinity, 56),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
+          ),
+          textStyle: GoogleFonts.plusJakartaSans(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
           ),
         ),
       ),
 
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: AppPalette.white,
+        fillColor: AppPalette.navyLight,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide.none,
@@ -277,17 +287,20 @@ class AppTheme {
       ),
 
       cardTheme: CardThemeData(
-        color: AppPalette.white, // White Cards in Dark Mode
+        color: AppPalette.surfaceGlassDark, // Glass Cards in Dark Mode
         elevation: 0,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
-          side: BorderSide.none,
+          side: BorderSide(
+            color: AppPalette.white.withValues(alpha: 0.1),
+            width: 1,
+          ),
         ),
         margin: EdgeInsets.zero,
       ),
 
       appBarTheme: AppBarTheme(
-        backgroundColor: AppPalette.navyPrimary,
+        backgroundColor: AppPalette.backgroundDark,
         elevation: 0,
         centerTitle: true,
         iconTheme: const IconThemeData(color: AppPalette.white),
@@ -299,7 +312,7 @@ class AppTheme {
       ),
 
       bottomNavigationBarTheme: const BottomNavigationBarThemeData(
-        backgroundColor: AppPalette.navyPrimary,
+        backgroundColor: AppPalette.surfaceDark,
         selectedItemColor: AppPalette.orangeAccent,
         unselectedItemColor: AppPalette.textDisabled,
         type: BottomNavigationBarType.fixed,

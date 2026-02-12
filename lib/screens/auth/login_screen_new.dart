@@ -171,7 +171,9 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<void> _handleGoogleSignIn() async {
     setState(() => _isLoading = true);
     try {
-      final userCredential = await _authService.signInWithGoogle(role: widget.role);
+      final userCredential = await _authService.signInWithGoogle(
+        role: widget.role,
+      );
       final token = await userCredential.user?.getIdToken();
       if (token != null) {
         await _saveUserDataAndNavigate(token);
@@ -188,7 +190,9 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<void> _handleAppleSignIn() async {
     setState(() => _isLoading = true);
     try {
-      final userCredential = await _authService.signInWithApple(role: widget.role);
+      final userCredential = await _authService.signInWithApple(
+        role: widget.role,
+      );
       final token = await userCredential.user?.getIdToken();
       if (token != null) {
         await _saveUserDataAndNavigate(token);
@@ -220,7 +224,7 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppPalette.offWhite,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
@@ -238,7 +242,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     style: TextStyle(
                       fontSize: 32,
                       fontWeight: FontWeight.bold,
-                      color: AppPalette.navyPrimary,
+                      color: Theme.of(context).colorScheme.onSurface,
                     ),
                   ),
                   const SizedBox(height: 8),
@@ -246,7 +250,9 @@ class _LoginScreenState extends State<LoginScreen> {
                     'Log in to continue your cricket journey',
                     style: TextStyle(
                       fontSize: 16,
-                      color: AppPalette.textSecondaryLight,
+                      color:
+                          Theme.of(context).textTheme.bodyMedium?.color ??
+                          AppPalette.textSecondaryLight,
                     ),
                   ),
                 ],
@@ -304,7 +310,9 @@ class _LoginScreenState extends State<LoginScreen> {
                         'Remember me',
                         style: TextStyle(
                           fontSize: 14,
-                          color: AppPalette.textSecondaryLight,
+                          color:
+                              Theme.of(context).textTheme.bodyMedium?.color ??
+                              AppPalette.textSecondaryLight,
                         ),
                       ),
                     ],
@@ -336,7 +344,9 @@ class _LoginScreenState extends State<LoginScreen> {
                     child: Text(
                       'OR',
                       style: TextStyle(
-                        color: AppPalette.textSecondaryLight,
+                        color:
+                            Theme.of(context).textTheme.bodyMedium?.color ??
+                            AppPalette.textSecondaryLight,
                         fontSize: 14,
                         fontWeight: FontWeight.w500,
                       ),
@@ -374,7 +384,9 @@ class _LoginScreenState extends State<LoginScreen> {
                   Text(
                     "Don't have an account? ",
                     style: TextStyle(
-                      color: AppPalette.textSecondaryLight,
+                      color:
+                          Theme.of(context).textTheme.bodyMedium?.color ??
+                          AppPalette.textSecondaryLight,
                       fontSize: 14,
                     ),
                   ),

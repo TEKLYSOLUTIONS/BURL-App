@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../config/palette.dart';
 
 class CustomTextField extends StatefulWidget {
   final String label;
@@ -44,8 +43,8 @@ class _CustomTextFieldState extends State<CustomTextField> {
         Text(
           widget.label,
           style: Theme.of(context).textTheme.labelLarge?.copyWith(
-            color: AppPalette.textDark,
             fontWeight: FontWeight.w600,
+            color: Theme.of(context).colorScheme.onSurface,
           ),
         ),
         const SizedBox(height: 8),
@@ -57,11 +56,26 @@ class _CustomTextFieldState extends State<CustomTextField> {
           readOnly: widget.readOnly,
           onTap: widget.onTap,
           maxLines: widget.isPassword ? 1 : widget.maxLines,
-          style: const TextStyle(fontWeight: FontWeight.w500),
+          style: TextStyle(
+            fontWeight: FontWeight.w500,
+            color: Theme.of(context).colorScheme.onSurface,
+          ),
           decoration: InputDecoration(
             hintText: widget.hint,
+            filled: true,
+            fillColor:
+                Theme.of(context).inputDecorationTheme.fillColor ??
+                Theme.of(context).cardColor,
+            hintStyle: TextStyle(color: Theme.of(context).hintColor),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide.none,
+            ),
             prefixIcon: widget.prefixIcon != null
-                ? Icon(widget.prefixIcon, color: AppPalette.textMedium)
+                ? Icon(
+                    widget.prefixIcon,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  )
                 : null,
             suffixIcon: widget.isPassword
                 ? IconButton(
@@ -69,7 +83,7 @@ class _CustomTextFieldState extends State<CustomTextField> {
                       _obscureText
                           ? Icons.visibility_outlined
                           : Icons.visibility_off_outlined,
-                      color: AppPalette.textMedium,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
                     onPressed: () {
                       setState(() {

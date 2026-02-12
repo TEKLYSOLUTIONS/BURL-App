@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../config/palette.dart';
+
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
@@ -106,14 +106,16 @@ class _MySessionsScreenState extends State<MySessionsScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F7FA), // Light grey background
+      backgroundColor: Theme.of(
+        context,
+      ).scaffoldBackgroundColor, // Light grey background
       body: Column(
         children: [
           // Standardized Light Header
           // Conditional Header: Dark for Coach, Light for others
           CoachAppBar(
             backgroundColor: widget.isCoach
-                ? AppPalette.navyPrimary
+                ? Theme.of(context).colorScheme.primary
                 : Colors.transparent,
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -128,17 +130,17 @@ class _MySessionsScreenState extends State<MySessionsScreen>
                       fontWeight: FontWeight.bold,
                       color: widget.isCoach
                           ? Colors.white
-                          : AppPalette.navyPrimary,
+                          : Theme.of(context).colorScheme.primary,
                     ),
                   ),
                 ),
                 NotificationButton(
                   iconColor: widget.isCoach
                       ? Colors.white
-                      : AppPalette.navyPrimary,
+                      : Theme.of(context).colorScheme.primary,
                   backgroundColor: widget.isCoach
                       ? Colors.white.withValues(alpha: 0.1)
-                      : Colors.white,
+                      : Theme.of(context).cardColor,
                   onTap: () => context.push(
                     widget.notificationPath ??
                         (widget.isCoach
@@ -155,11 +157,11 @@ class _MySessionsScreenState extends State<MySessionsScreen>
             margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
             padding: const EdgeInsets.all(4),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: Theme.of(context).cardColor,
               borderRadius: BorderRadius.circular(12),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.05),
+                  color: Theme.of(context).shadowColor.withValues(alpha: 0.05),
                   blurRadius: 4,
                   offset: const Offset(0, 2),
                 ),
@@ -168,11 +170,13 @@ class _MySessionsScreenState extends State<MySessionsScreen>
             child: TabBar(
               controller: _tabController,
               indicator: BoxDecoration(
-                color: AppPalette.navyPrimary,
+                color: Theme.of(context).colorScheme.primary,
                 borderRadius: BorderRadius.circular(10),
               ),
               labelColor: Colors.white,
-              unselectedLabelColor: AppPalette.textSecondaryLight,
+              unselectedLabelColor: Theme.of(
+                context,
+              ).colorScheme.onSurface.withValues(alpha: 0.6),
               labelStyle: GoogleFonts.inter(fontWeight: FontWeight.w600),
               dividerColor: Colors.transparent,
               indicatorSize: TabBarIndicatorSize.tab,
@@ -198,7 +202,7 @@ class _MySessionsScreenState extends State<MySessionsScreen>
       floatingActionButton: widget.isCoach
           ? FloatingActionButton(
               onPressed: () => context.push('/coach/create-session'),
-              backgroundColor: Colors.orange,
+              backgroundColor: Theme.of(context).colorScheme.secondary,
               child: const Icon(Icons.add, color: Colors.white),
             )
           : null,
@@ -208,9 +212,11 @@ class _MySessionsScreenState extends State<MySessionsScreen>
   Widget _buildSessionList({required bool isUpcoming}) {
     // Show loading state
     if (_isLoading) {
-      return const Center(
+      return Center(
         child: CircularProgressIndicator(
-          valueColor: AlwaysStoppedAnimation<Color>(AppPalette.navyPrimary),
+          valueColor: AlwaysStoppedAnimation<Color>(
+            Theme.of(context).colorScheme.primary,
+          ),
         ),
       );
     }
@@ -242,14 +248,16 @@ class _MySessionsScreenState extends State<MySessionsScreen>
             Icon(
               Icons.event_busy,
               size: 64,
-              color: AppPalette.textDisabled.withValues(alpha: 0.5),
+              color: Theme.of(context).disabledColor.withValues(alpha: 0.5),
             ),
             const SizedBox(height: 16),
             Text(
               isUpcoming ? 'No upcoming sessions' : 'No past sessions',
               style: GoogleFonts.inter(
                 fontSize: 16,
-                color: AppPalette.textSecondaryLight,
+                color: Theme.of(
+                  context,
+                ).colorScheme.onSurface.withValues(alpha: 0.6),
               ),
             ),
             if (isUpcoming && widget.isCoach) ...[
@@ -293,15 +301,24 @@ class _MySessionsScreenState extends State<MySessionsScreen>
     final startTime = DateTime.parse(timeSlot['startTime'] as String).toLocal();
     final duration = timeSlot['durationMinutes'] as int;
 
+    // Theme-aware colors
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final locationTagColor = isDark
+        ? Theme.of(context).colorScheme.primaryContainer
+        : const Color(0xFFE3F2FD);
+    final locationTextColor = isDark
+        ? Theme.of(context).colorScheme.onPrimaryContainer
+        : const Color(0xFF1565C0);
+
     return Container(
       margin: const EdgeInsets.only(bottom: 20),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
+            color: Theme.of(context).shadowColor.withValues(alpha: 0.04),
             blurRadius: 16,
             offset: const Offset(0, 4),
           ),
@@ -320,14 +337,14 @@ class _MySessionsScreenState extends State<MySessionsScreen>
                     vertical: 6,
                   ),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFE3F2FD),
+                    color: locationTagColor,
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
                     session['location'] as String,
                     style: GoogleFonts.inter(
                       fontWeight: FontWeight.w600,
-                      color: const Color(0xFF1565C0),
+                      color: locationTextColor,
                       fontSize: 12,
                     ),
                   ),
@@ -338,7 +355,7 @@ class _MySessionsScreenState extends State<MySessionsScreen>
                   style: GoogleFonts.outfit(
                     fontWeight: FontWeight.bold,
                     fontSize: 18,
-                    color: AppPalette.navyPrimary,
+                    color: Theme.of(context).colorScheme.onSurface,
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -347,14 +364,16 @@ class _MySessionsScreenState extends State<MySessionsScreen>
                     Icon(
                       Icons.access_time_filled,
                       size: 16,
-                      color: Colors.grey[400],
+                      color: Theme.of(context).disabledColor,
                     ),
                     const SizedBox(width: 6),
                     Text(
                       '${DateTimeUtils.formatTimeFromDateTime(startTime)} • ${DateTimeUtils.formatDuration(duration)}',
                       style: GoogleFonts.inter(
                         fontSize: 14,
-                        color: Colors.grey[500],
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.onSurface.withValues(alpha: 0.6),
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -366,14 +385,16 @@ class _MySessionsScreenState extends State<MySessionsScreen>
                     Icon(
                       Icons.calendar_today,
                       size: 16,
-                      color: Colors.grey[400],
+                      color: Theme.of(context).disabledColor,
                     ),
                     const SizedBox(width: 6),
                     Text(
                       DateTimeUtils.formatSessionDate(startTime),
                       style: GoogleFonts.inter(
                         fontSize: 13,
-                        color: Colors.grey[600],
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.onSurface.withValues(alpha: 0.7),
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -396,7 +417,9 @@ class _MySessionsScreenState extends State<MySessionsScreen>
                       vertical: 10,
                     ),
                     decoration: BoxDecoration(
-                      color: Colors.grey[100],
+                      color: Theme.of(
+                        context,
+                      ).dividerColor.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Row(
@@ -407,14 +430,14 @@ class _MySessionsScreenState extends State<MySessionsScreen>
                           style: GoogleFonts.inter(
                             fontSize: 13,
                             fontWeight: FontWeight.w600,
-                            color: AppPalette.navyPrimary,
+                            color: Theme.of(context).colorScheme.primary,
                           ),
                         ),
                         const SizedBox(width: 6),
-                        const Icon(
+                        Icon(
                           Icons.arrow_forward_rounded,
                           size: 16,
-                          color: AppPalette.navyPrimary,
+                          color: Theme.of(context).colorScheme.primary,
                         ),
                       ],
                     ),
@@ -429,11 +452,11 @@ class _MySessionsScreenState extends State<MySessionsScreen>
             child: Container(
               width: 110,
               height: 110,
-              color: Colors.grey[200],
-              child: const Icon(
+              color: Theme.of(context).colorScheme.surfaceContainerHighest,
+              child: Icon(
                 Icons.sports_cricket,
                 size: 40,
-                color: AppPalette.navyPrimary,
+                color: Theme.of(context).colorScheme.primary,
               ),
             ),
           ),
@@ -454,43 +477,54 @@ class _MySessionsScreenState extends State<MySessionsScreen>
     String displayStatus;
     Color statusColor;
     Color statusTextColor;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     switch (bookingStatus.toLowerCase()) {
       case 'confirmed':
         displayStatus = 'Confirmed';
-        statusColor = Colors.green[50]!;
-        statusTextColor = Colors.green[700]!;
+        statusColor = isDark
+            ? Colors.green.withValues(alpha: 0.2)
+            : Colors.green[50]!;
+        statusTextColor = isDark ? Colors.greenAccent : Colors.green[700]!;
         break;
       case 'pending':
         displayStatus = 'Pending';
-        statusColor = Colors.orange[50]!;
-        statusTextColor = Colors.orange[700]!;
+        statusColor = isDark
+            ? Colors.orange.withValues(alpha: 0.2)
+            : Colors.orange[50]!;
+        statusTextColor = isDark ? Colors.orangeAccent : Colors.orange[700]!;
         break;
       case 'cancelled':
         displayStatus = 'Cancelled';
-        statusColor = Colors.red[50]!;
-        statusTextColor = Colors.red[700]!;
+        statusColor = isDark
+            ? Colors.red.withValues(alpha: 0.2)
+            : Colors.red[50]!;
+        statusTextColor = isDark ? Colors.redAccent : Colors.red[700]!;
         break;
       case 'completed':
         displayStatus = 'Completed';
-        statusColor = Colors.blue[50]!;
-        statusTextColor = Colors.blue[700]!;
+        statusColor = isDark
+            ? Colors.blue.withValues(alpha: 0.2)
+            : Colors.blue[50]!;
+        statusTextColor = isDark ? Colors.blueAccent : Colors.blue[700]!;
         break;
       default:
         displayStatus = 'Scheduled';
-        statusColor = Colors.grey[50]!;
-        statusTextColor = Colors.grey[700]!;
+        statusColor = isDark
+            ? Colors.grey.withValues(alpha: 0.2)
+            : Colors.grey[50]!;
+        statusTextColor = isDark ? Colors.grey[400]! : Colors.grey[700]!;
     }
 
     return Container(
       margin: const EdgeInsets.only(bottom: 20),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
+            color: Theme.of(context).shadowColor.withValues(alpha: 0.04),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -552,7 +586,7 @@ class _MySessionsScreenState extends State<MySessionsScreen>
                   style: GoogleFonts.outfit(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
-                    color: AppPalette.navyPrimary,
+                    color: Theme.of(context).colorScheme.onSurface,
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -561,14 +595,16 @@ class _MySessionsScreenState extends State<MySessionsScreen>
                     Icon(
                       Icons.calendar_today_outlined,
                       size: 14,
-                      color: Colors.grey[500],
+                      color: Theme.of(context).disabledColor,
                     ),
                     const SizedBox(width: 6),
                     Text(
                       DateTimeUtils.formatSessionDate(occurrenceDate),
                       style: GoogleFonts.inter(
                         fontSize: 13,
-                        color: Colors.grey[600],
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.onSurface.withValues(alpha: 0.6),
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -580,7 +616,7 @@ class _MySessionsScreenState extends State<MySessionsScreen>
                     Icon(
                       Icons.person_outline,
                       size: 14,
-                      color: Colors.grey[500],
+                      color: Theme.of(context).disabledColor,
                     ),
                     const SizedBox(width: 6),
                     Text(
@@ -589,7 +625,9 @@ class _MySessionsScreenState extends State<MySessionsScreen>
                           'Unknown Coach',
                       style: GoogleFonts.inter(
                         fontSize: 13,
-                        color: Colors.grey[600],
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.onSurface.withValues(alpha: 0.6),
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -601,7 +639,7 @@ class _MySessionsScreenState extends State<MySessionsScreen>
                     Icon(
                       Icons.location_on_outlined,
                       size: 14,
-                      color: Colors.grey[500],
+                      color: Theme.of(context).disabledColor,
                     ),
                     const SizedBox(width: 6),
                     Expanded(
@@ -609,7 +647,9 @@ class _MySessionsScreenState extends State<MySessionsScreen>
                         session['location'] as String? ?? 'Location TBD',
                         style: GoogleFonts.inter(
                           fontSize: 13,
-                          color: Colors.grey[600],
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.onSurface.withValues(alpha: 0.6),
                           fontWeight: FontWeight.w500,
                         ),
                         overflow: TextOverflow.ellipsis,
@@ -620,13 +660,17 @@ class _MySessionsScreenState extends State<MySessionsScreen>
                 const SizedBox(height: 6),
                 Row(
                   children: [
-                    Icon(Icons.person, size: 14, color: AppPalette.navyPrimary),
+                    Icon(
+                      Icons.person,
+                      size: 14,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
                     const SizedBox(width: 6),
                     Text(
                       'For: ${(booking['player'] as Map<String, dynamic>?)?['fullName'] as String? ?? 'Unknown Player'}',
                       style: GoogleFonts.inter(
                         fontSize: 13,
-                        color: AppPalette.navyPrimary,
+                        color: Theme.of(context).colorScheme.primary,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -658,7 +702,9 @@ class _MySessionsScreenState extends State<MySessionsScreen>
                       vertical: 10,
                     ),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFF5F7FA),
+                      color: Theme.of(
+                        context,
+                      ).dividerColor.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Row(
@@ -669,14 +715,14 @@ class _MySessionsScreenState extends State<MySessionsScreen>
                           style: GoogleFonts.inter(
                             fontSize: 13,
                             fontWeight: FontWeight.w600,
-                            color: AppPalette.navyPrimary,
+                            color: Theme.of(context).colorScheme.primary,
                           ),
                         ),
                         const SizedBox(width: 8),
                         Icon(
                           Icons.arrow_forward_ios,
                           size: 12,
-                          color: AppPalette.navyPrimary,
+                          color: Theme.of(context).colorScheme.primary,
                         ),
                       ],
                     ),

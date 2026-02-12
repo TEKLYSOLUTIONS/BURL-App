@@ -134,21 +134,24 @@ class _AddPlayerScreenState extends State<AddPlayerScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F7FA),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         title: Text(
           'Add New Athlete',
           style: GoogleFonts.outfit(
-            color: AppPalette.navyPrimary,
+            color: Theme.of(context).colorScheme.onSurface,
             fontWeight: FontWeight.bold,
             fontSize: 20,
           ),
         ),
-        backgroundColor: const Color(0xFFF5F7FA),
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         elevation: 0,
         centerTitle: true,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
+          icon: Icon(
+            Icons.arrow_back,
+            color: Theme.of(context).colorScheme.onSurface,
+          ),
           onPressed: () => context.pop(),
         ),
         actions: [
@@ -163,7 +166,7 @@ class _AddPlayerScreenState extends State<AddPlayerScreen> {
                 : Text(
                     'Save',
                     style: GoogleFonts.outfit(
-                      color: Colors.orange,
+                      color: AppPalette.orangeAccent,
                       fontWeight: FontWeight.bold,
                       fontSize: 16,
                     ),
@@ -186,14 +189,19 @@ class _AddPlayerScreenState extends State<AddPlayerScreen> {
                       width: 100,
                       height: 100,
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: Theme.of(context).cardColor,
                         shape: BoxShape.circle,
-                        border: Border.all(color: Colors.grey[200]!, width: 2),
+                        border: Border.all(
+                          color: Theme.of(context).dividerColor,
+                          width: 2,
+                        ),
                       ),
                       child: Icon(
                         Icons.person,
                         size: 50,
-                        color: Colors.grey[300],
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.onSurface.withValues(alpha: 0.3),
                       ),
                     ),
                     Positioned(
@@ -202,7 +210,7 @@ class _AddPlayerScreenState extends State<AddPlayerScreen> {
                       child: Container(
                         padding: const EdgeInsets.all(8),
                         decoration: const BoxDecoration(
-                          color: Colors.orange,
+                          color: AppPalette.orangeAccent,
                           shape: BoxShape.circle,
                         ),
                         child: const Icon(
@@ -274,7 +282,7 @@ class _AddPlayerScreenState extends State<AddPlayerScreen> {
                 decoration: InputDecoration(
                   hintText: "Allergies, conditions...",
                   filled: true,
-                  fillColor: Colors.white,
+                  fillColor: Theme.of(context).cardColor,
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
@@ -300,7 +308,7 @@ class _AddPlayerScreenState extends State<AddPlayerScreen> {
                       : const Icon(Icons.person_add),
                   label: Text(_isLoading ? "Adding..." : "Add Player"),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.orange,
+                    backgroundColor: AppPalette.orangeAccent,
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(
@@ -326,7 +334,7 @@ class _AddPlayerScreenState extends State<AddPlayerScreen> {
       text,
       style: GoogleFonts.inter(
         fontWeight: FontWeight.w600,
-        color: AppPalette.navyPrimary,
+        color: Theme.of(context).colorScheme.onSurface,
         fontSize: 14,
       ),
     );
@@ -352,27 +360,33 @@ class _AddPlayerScreenState extends State<AddPlayerScreen> {
           validator: validator,
           decoration: InputDecoration(
             hintText: hint,
-            hintStyle: GoogleFonts.inter(color: Colors.grey[400]),
+            hintStyle: GoogleFonts.inter(
+              color: Theme.of(
+                context,
+              ).colorScheme.onSurface.withValues(alpha: 0.3),
+            ),
             filled: true,
-            fillColor: Colors.white,
+            fillColor: Theme.of(context).cardColor,
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: Colors.grey[200]!),
+              borderSide: BorderSide(color: Theme.of(context).dividerColor),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: Colors.grey[200]!),
+              borderSide: BorderSide(color: Theme.of(context).dividerColor),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: Colors.orange),
+              borderSide: const BorderSide(color: AppPalette.orangeAccent),
             ),
             contentPadding: const EdgeInsets.symmetric(
               horizontal: 16,
               vertical: 16,
             ),
           ),
-          style: GoogleFonts.inter(color: AppPalette.textPrimaryLight),
+          style: GoogleFonts.inter(
+            color: Theme.of(context).colorScheme.onSurface,
+          ),
         ),
       ],
     );
@@ -386,9 +400,9 @@ class _AddPlayerScreenState extends State<AddPlayerScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey[200]!),
+        border: Border.all(color: Theme.of(context).dividerColor),
       ),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<String>(
@@ -398,7 +412,10 @@ class _AddPlayerScreenState extends State<AddPlayerScreen> {
               .map((s) => DropdownMenuItem(value: s, child: Text(s)))
               .toList(),
           onChanged: onChanged,
-          icon: const Icon(Icons.keyboard_arrow_down, color: Colors.orange),
+          icon: const Icon(
+            Icons.keyboard_arrow_down,
+            color: AppPalette.orangeAccent,
+          ),
         ),
       ),
     );

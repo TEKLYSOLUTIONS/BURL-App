@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_fonts/google_fonts.dart';
+
 import '../../config/palette.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -66,36 +66,36 @@ class _SplashScreenState extends State<SplashScreen>
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                // Apex Coaching Logo
+                // Burl Logo
                 Image.asset(
-                  'assets/images/apex_logo.png',
+                  'assets/images/logo_burl.png',
                   width: 350,
-                  height: 150,
+                  height: 350,
                   fit: BoxFit.contain,
                 ),
-                const SizedBox(height: 40),
 
-                // Tagline
-                Text(
-                  'Master Your Game',
-                  style: GoogleFonts.outfit(
-                    color: AppPalette.textSecondaryLight,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w500,
-                    letterSpacing: 1.5,
-                  ),
-                ),
+                // const SizedBox(height: 40),
 
+                // // Tagline
+                // Text(
+                //   'Master Your Game',
+                //   style: GoogleFonts.outfit(
+                //     color: AppPalette.textSecondaryLight,
+                //     fontSize: 16,
+                //     fontWeight: FontWeight.w500,
+                //     letterSpacing: 1.5,
+                //   ),
+                // ),
                 const SizedBox(height: 60),
 
                 // Loading Indicator
-                const SizedBox(
+                SizedBox(
                   width: 40,
                   height: 40,
                   child: CircularProgressIndicator(
                     strokeWidth: 3,
                     valueColor: AlwaysStoppedAnimation<Color>(
-                      AppPalette.orangeAccent,
+                      Theme.of(context).colorScheme.primary,
                     ),
                   ),
                 ),

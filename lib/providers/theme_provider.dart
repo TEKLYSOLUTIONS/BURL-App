@@ -18,11 +18,24 @@ class ThemeNotifier extends StateNotifier<ThemeMode> {
     final prefs = await SharedPreferences.getInstance();
     final isDarkMode = prefs.getBool(_themePrefsKey) ?? false;
     state = isDarkMode ? ThemeMode.dark : ThemeMode.light;
+    debugPrint('Theme loaded: $state');
   }
 
-  Future<void> toggleTheme(bool isDark) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_themePrefsKey, isDark);
+  void toggleTheme(bool isDark) {
+    // Optimistic update
     state = isDark ? ThemeMode.dark : ThemeMode.light;
+    debugPrint('Optimistic Theme Toggle: $state');
+    _saveTheme(isDark);
+  }
+
+  Future<void> _saveTheme(bool isDark) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(_themePrefsKey, isDark);
+      debugPrint('Theme saved to storage: $isDark');
+    } catch (e) {
+      debugPrint('Error saving theme: $e');
+      // Revert on error if needed, but for now keep UI responsive
+    }
   }
 }

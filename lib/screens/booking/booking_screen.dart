@@ -110,15 +110,15 @@ class _BookingScreenState extends State<BookingScreen> {
           'Book Session',
           style: GoogleFonts.outfit(
             fontWeight: FontWeight.bold,
-            color: AppPalette.navyPrimary,
+            color: Theme.of(context).colorScheme.onSurface,
           ),
         ),
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(
+          icon: Icon(
             Icons.arrow_back_ios_new,
-            color: AppPalette.navyPrimary,
+            color: Theme.of(context).iconTheme.color,
           ),
           onPressed: () => context.pop(),
         ),
@@ -132,7 +132,7 @@ class _BookingScreenState extends State<BookingScreen> {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: Theme.of(context).cardColor,
                 borderRadius: BorderRadius.circular(20),
                 boxShadow: [
                   BoxShadow(
@@ -141,6 +141,9 @@ class _BookingScreenState extends State<BookingScreen> {
                     offset: const Offset(0, 4),
                   ),
                 ],
+                border: Border.all(
+                  color: Theme.of(context).dividerColor.withValues(alpha: 0.1),
+                ),
               ),
               child: Row(
                 children: [
@@ -172,7 +175,7 @@ class _BookingScreenState extends State<BookingScreen> {
                           style: GoogleFonts.outfit(
                             fontWeight: FontWeight.bold,
                             fontSize: 18,
-                            color: AppPalette.textPrimaryLight,
+                            color: Theme.of(context).colorScheme.onSurface,
                           ),
                         ),
                         const SizedBox(height: 4),
@@ -180,7 +183,9 @@ class _BookingScreenState extends State<BookingScreen> {
                           'with Coach $coachName',
                           style: GoogleFonts.inter(
                             fontSize: 14,
-                            color: AppPalette.textSecondaryLight,
+                            color: Theme.of(
+                              context,
+                            ).textTheme.bodyMedium?.color,
                           ),
                         ),
                         const SizedBox(height: 8),
@@ -197,7 +202,7 @@ class _BookingScreenState extends State<BookingScreen> {
                               style: GoogleFonts.inter(
                                 fontSize: 12,
                                 fontWeight: FontWeight.w600,
-                                color: AppPalette.textPrimaryLight,
+                                color: Theme.of(context).colorScheme.onSurface,
                               ),
                             ),
                           ],
@@ -216,7 +221,7 @@ class _BookingScreenState extends State<BookingScreen> {
               style: GoogleFonts.outfit(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
-                color: AppPalette.navyPrimary,
+                color: Theme.of(context).colorScheme.onSurface,
               ),
             ),
             const SizedBox(height: 16),
@@ -224,13 +229,18 @@ class _BookingScreenState extends State<BookingScreen> {
                 ? Container(
                     padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: Theme.of(context).cardColor,
                       borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: Theme.of(
+                          context,
+                        ).dividerColor.withValues(alpha: 0.1),
+                      ),
                     ),
                     child: Text(
                       'No upcoming sessions available',
                       style: GoogleFonts.inter(
-                        color: AppPalette.textSecondaryLight,
+                        color: Theme.of(context).textTheme.bodyMedium?.color,
                       ),
                     ),
                   )
@@ -252,12 +262,12 @@ class _BookingScreenState extends State<BookingScreen> {
                             decoration: BoxDecoration(
                               color: isSelected
                                   ? AppPalette.navyPrimary
-                                  : Colors.white,
+                                  : Theme.of(context).cardColor,
                               borderRadius: BorderRadius.circular(16),
                               border: Border.all(
                                 color: isSelected
                                     ? AppPalette.navyPrimary
-                                    : AppPalette.divider,
+                                    : Theme.of(context).dividerColor,
                               ),
                             ),
                             child: Column(
@@ -268,7 +278,9 @@ class _BookingScreenState extends State<BookingScreen> {
                                   style: GoogleFonts.inter(
                                     color: isSelected
                                         ? Colors.white70
-                                        : AppPalette.textSecondaryLight,
+                                        : Theme.of(
+                                            context,
+                                          ).textTheme.bodyMedium?.color,
                                     fontSize: 12,
                                   ),
                                 ),
@@ -278,7 +290,9 @@ class _BookingScreenState extends State<BookingScreen> {
                                   style: GoogleFonts.outfit(
                                     color: isSelected
                                         ? Colors.white
-                                        : AppPalette.textPrimaryLight,
+                                        : Theme.of(
+                                            context,
+                                          ).colorScheme.onSurface,
                                     fontWeight: FontWeight.bold,
                                     fontSize: 20,
                                   ),
@@ -298,7 +312,7 @@ class _BookingScreenState extends State<BookingScreen> {
               style: GoogleFonts.outfit(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
-                color: AppPalette.navyPrimary,
+                color: Theme.of(context).colorScheme.onSurface,
               ),
             ),
             const SizedBox(height: 16),
@@ -319,12 +333,12 @@ class _BookingScreenState extends State<BookingScreen> {
                           decoration: BoxDecoration(
                             color: _selectedTimeIndex == 0
                                 ? AppPalette.orangeAccent
-                                : Colors.white,
+                                : Theme.of(context).cardColor,
                             borderRadius: BorderRadius.circular(30),
                             border: Border.all(
                               color: _selectedTimeIndex == 0
                                   ? AppPalette.orangeAccent
-                                  : AppPalette.divider,
+                                  : Theme.of(context).dividerColor,
                             ),
                           ),
                           child: Text(
@@ -336,7 +350,7 @@ class _BookingScreenState extends State<BookingScreen> {
                             style: GoogleFonts.inter(
                               color: _selectedTimeIndex == 0
                                   ? Colors.white
-                                  : AppPalette.textPrimaryLight,
+                                  : Theme.of(context).colorScheme.onSurface,
                               fontWeight: FontWeight.w600,
                             ),
                           ),

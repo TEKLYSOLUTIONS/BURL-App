@@ -18,7 +18,7 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F7FA),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
@@ -32,14 +32,14 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
                   IconButton(
                     onPressed: () => context.pop(),
                     icon: const Icon(Icons.arrow_back_ios_new, size: 20),
-                    color: AppPalette.navyPrimary,
+                    color: Theme.of(context).colorScheme.onSurface,
                   ),
                   Text(
                     'Upgrade Your Plan',
                     style: GoogleFonts.outfit(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
-                      color: AppPalette.navyPrimary,
+                      color: Theme.of(context).colorScheme.onSurface,
                     ),
                   ),
                   const SizedBox(width: 40), // Balance back button
@@ -53,7 +53,7 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
                 style: GoogleFonts.outfit(
                   fontSize: 28,
                   fontWeight: FontWeight.bold,
-                  color: AppPalette.navyPrimary,
+                  color: Theme.of(context).colorScheme.onSurface,
                 ),
               ).animate().fadeIn().slideY(begin: 0.1),
 
@@ -64,7 +64,9 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
                 textAlign: TextAlign.center,
                 style: GoogleFonts.inter(
                   fontSize: 16,
-                  color: AppPalette.textSecondaryLight,
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.onSurface.withValues(alpha: 0.6),
                 ),
               ).animate().fadeIn().slideY(begin: 0.1, delay: 100.ms),
 
@@ -74,9 +76,13 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
               Container(
                 padding: const EdgeInsets.all(4),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: Theme.of(context).cardColor,
                   borderRadius: BorderRadius.circular(30),
-                  border: Border.all(color: Colors.grey[200]!),
+                  border: Border.all(
+                    color: Theme.of(
+                      context,
+                    ).dividerColor.withValues(alpha: 0.5),
+                  ),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
@@ -140,14 +146,20 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
         duration: 200.ms,
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
         decoration: BoxDecoration(
-          color: isSelected ? AppPalette.navyPrimary : Colors.transparent,
+          color: isSelected
+              ? Theme.of(context).colorScheme.primary
+              : Colors.transparent,
           borderRadius: BorderRadius.circular(25),
         ),
         child: Text(
           text,
           style: GoogleFonts.inter(
             fontWeight: FontWeight.w600,
-            color: isSelected ? Colors.white : AppPalette.textSecondaryLight,
+            color: isSelected
+                ? Theme.of(context).colorScheme.onPrimary
+                : Theme.of(
+                    context,
+                  ).colorScheme.onSurface.withValues(alpha: 0.6),
           ),
         ),
       ),
@@ -168,23 +180,29 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
           width: double.infinity,
           padding: const EdgeInsets.all(24),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: Theme.of(context).cardColor,
             borderRadius: BorderRadius.circular(24),
             border: Border.all(
-              color: isPro ? AppPalette.orangeAccent : Colors.grey[200]!,
+              color: isPro
+                  ? Theme.of(context).colorScheme.secondary
+                  : Theme.of(context).dividerColor.withValues(alpha: 0.5),
               width: isPro ? 2 : 1,
             ),
             boxShadow: isPro
                 ? [
                     BoxShadow(
-                      color: AppPalette.orangeAccent.withValues(alpha: 0.2),
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.secondary.withValues(alpha: 0.2),
                       blurRadius: 24,
                       offset: const Offset(0, 8),
                     ),
                   ]
                 : [
                     BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.05),
+                      color: Theme.of(
+                        context,
+                      ).shadowColor.withValues(alpha: 0.05),
                       blurRadius: 12,
                       offset: const Offset(0, 4),
                     ),
@@ -199,14 +217,16 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
                 style: GoogleFonts.outfit(
                   fontSize: 24,
                   fontWeight: FontWeight.bold,
-                  color: AppPalette.navyPrimary,
+                  color: Theme.of(context).colorScheme.onSurface,
                 ),
               ),
               const SizedBox(height: 8),
               Text(
                 description,
                 style: GoogleFonts.inter(
-                  color: AppPalette.textSecondaryLight,
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.onSurface.withValues(alpha: 0.6),
                   fontSize: 14,
                 ),
               ),
@@ -220,21 +240,23 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
                     style: GoogleFonts.outfit(
                       fontSize: 48,
                       fontWeight: FontWeight.bold,
-                      color: AppPalette.navyPrimary,
+                      color: Theme.of(context).colorScheme.onSurface,
                     ),
                   ),
                   Text(
                     isAnnual ? '/year' : '/month',
                     style: GoogleFonts.inter(
                       fontSize: 16,
-                      color: AppPalette.textSecondaryLight,
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.onSurface.withValues(alpha: 0.6),
                       fontWeight: FontWeight.w500,
                     ),
                   ),
                 ],
               ),
               const SizedBox(height: 24),
-              Divider(color: Colors.grey[100]),
+              Divider(color: Theme.of(context).dividerColor),
               const SizedBox(height: 24),
               ...features.map((feature) => _buildFeatureItem(feature, isPro)),
               const SizedBox(height: 32),
@@ -244,11 +266,11 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
                   onPressed: () {},
                   style: ElevatedButton.styleFrom(
                     backgroundColor: isPro
-                        ? AppPalette.orangeAccent
-                        : Colors.grey[100],
+                        ? Theme.of(context).colorScheme.secondary
+                        : Theme.of(context).dividerColor.withValues(alpha: 0.2),
                     foregroundColor: isPro
                         ? Colors.white
-                        : AppPalette.navyPrimary,
+                        : Theme.of(context).colorScheme.onSurface,
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     elevation: isPro ? 4 : 0,
                     shape: RoundedRectangleBorder(
@@ -278,11 +300,13 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
                     vertical: 6,
                   ),
                   decoration: BoxDecoration(
-                    color: AppPalette.orangeAccent,
+                    color: Theme.of(context).colorScheme.secondary,
                     borderRadius: BorderRadius.circular(20),
                     boxShadow: [
                       BoxShadow(
-                        color: AppPalette.orangeAccent.withValues(alpha: 0.3),
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.secondary.withValues(alpha: 0.3),
                         blurRadius: 8,
                         offset: const Offset(0, 4),
                       ),
@@ -316,20 +340,24 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
           Container(
             padding: const EdgeInsets.all(4),
             decoration: BoxDecoration(
-              color: isHighlighed ? const Color(0xFFE0F2F1) : Colors.grey[100],
+              color: isHighlighed
+                  ? AppPalette.successGreen.withValues(alpha: 0.1)
+                  : Theme.of(context).dividerColor.withValues(alpha: 0.2),
               shape: BoxShape.circle,
             ),
             child: Icon(
               Icons.check,
               size: 14,
-              color: isHighlighed ? Colors.teal : Colors.grey[600],
+              color: isHighlighed
+                  ? AppPalette.successGreen
+                  : Theme.of(context).disabledColor,
             ),
           ),
           const SizedBox(width: 12),
           Text(
             text,
             style: GoogleFonts.inter(
-              color: AppPalette.navyPrimary,
+              color: Theme.of(context).colorScheme.onSurface,
               fontWeight: FontWeight.w500,
               fontSize: 14,
             ),

@@ -152,15 +152,15 @@ class _ConfirmBookingScreenState extends State<ConfirmBookingScreen> {
           'Confirm Booking',
           style: GoogleFonts.outfit(
             fontWeight: FontWeight.bold,
-            color: AppPalette.navyPrimary,
+            color: Theme.of(context).colorScheme.onSurface,
           ),
         ),
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(
+          icon: Icon(
             Icons.arrow_back_ios_new,
-            color: AppPalette.navyPrimary,
+            color: Theme.of(context).iconTheme.color,
           ),
           onPressed: () => context.pop(),
         ),
@@ -224,7 +224,7 @@ class _ConfirmBookingScreenState extends State<ConfirmBookingScreen> {
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
                         letterSpacing: 1.0,
-                        color: AppPalette.navyPrimary,
+                        color: Theme.of(context).colorScheme.onSurface,
                       ),
                     ),
                     const SizedBox(height: 12),
@@ -234,7 +234,7 @@ class _ConfirmBookingScreenState extends State<ConfirmBookingScreen> {
                       width: double.infinity,
                       padding: const EdgeInsets.all(20),
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: Theme.of(context).cardColor,
                         borderRadius: BorderRadius.circular(20),
                         boxShadow: [
                           BoxShadow(
@@ -254,7 +254,9 @@ class _ConfirmBookingScreenState extends State<ConfirmBookingScreen> {
                                 backgroundImage: NetworkImage(coachImage),
                                 onBackgroundImageError:
                                     (exception, stackTrace) {}, // Prevent crash
-                                backgroundColor: Colors.grey[200],
+                                backgroundColor: Theme.of(
+                                  context,
+                                ).colorScheme.surfaceContainerHighest,
                               ),
                               const SizedBox(width: 16),
                               Expanded(
@@ -266,14 +268,18 @@ class _ConfirmBookingScreenState extends State<ConfirmBookingScreen> {
                                       style: GoogleFonts.outfit(
                                         fontWeight: FontWeight.bold,
                                         fontSize: 18,
-                                        color: AppPalette.navyPrimary,
+                                        color: Theme.of(
+                                          context,
+                                        ).colorScheme.onSurface,
                                       ),
                                     ),
                                     Text(
                                       'Tennis Coaching • Private Session',
                                       style: GoogleFonts.inter(
                                         fontSize: 13,
-                                        color: AppPalette.textSecondaryLight,
+                                        color: Theme.of(
+                                          context,
+                                        ).textTheme.bodyMedium?.color,
                                       ),
                                     ),
                                     const SizedBox(height: 4),
@@ -303,7 +309,7 @@ class _ConfirmBookingScreenState extends State<ConfirmBookingScreen> {
                           Padding(
                             padding: const EdgeInsets.symmetric(vertical: 20),
                             child: Divider(
-                              color: AppPalette.divider,
+                              color: Theme.of(context).dividerColor,
                               height: 1,
                             ),
                           ),
@@ -335,7 +341,9 @@ class _ConfirmBookingScreenState extends State<ConfirmBookingScreen> {
                                       style: GoogleFonts.inter(
                                         fontSize: 11,
                                         fontWeight: FontWeight.w600,
-                                        color: AppPalette.textSecondaryLight,
+                                        color: Theme.of(
+                                          context,
+                                        ).textTheme.bodyMedium?.color,
                                       ),
                                     ),
                                     const SizedBox(height: 4),
@@ -344,7 +352,9 @@ class _ConfirmBookingScreenState extends State<ConfirmBookingScreen> {
                                       style: GoogleFonts.outfit(
                                         fontSize: 16,
                                         fontWeight: FontWeight.w600,
-                                        color: AppPalette.navyPrimary,
+                                        color: Theme.of(
+                                          context,
+                                        ).colorScheme.onSurface,
                                       ),
                                     ),
                                   ],
@@ -381,7 +391,9 @@ class _ConfirmBookingScreenState extends State<ConfirmBookingScreen> {
                                       style: GoogleFonts.inter(
                                         fontSize: 11,
                                         fontWeight: FontWeight.w600,
-                                        color: AppPalette.textSecondaryLight,
+                                        color: Theme.of(
+                                          context,
+                                        ).textTheme.bodyMedium?.color,
                                       ),
                                     ),
                                     const SizedBox(height: 4),
@@ -390,7 +402,9 @@ class _ConfirmBookingScreenState extends State<ConfirmBookingScreen> {
                                       style: GoogleFonts.outfit(
                                         fontSize: 16,
                                         fontWeight: FontWeight.w600,
-                                        color: AppPalette.navyPrimary,
+                                        color: Theme.of(
+                                          context,
+                                        ).colorScheme.onSurface,
                                       ),
                                     ),
                                   ],
@@ -411,7 +425,7 @@ class _ConfirmBookingScreenState extends State<ConfirmBookingScreen> {
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
                         letterSpacing: 1.0,
-                        color: AppPalette.navyPrimary,
+                        color: Theme.of(context).colorScheme.onSurface,
                       ),
                     ),
                     const SizedBox(height: 12),
@@ -420,7 +434,7 @@ class _ConfirmBookingScreenState extends State<ConfirmBookingScreen> {
                       width: double.infinity,
                       padding: const EdgeInsets.all(20),
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: Theme.of(context).cardColor,
                         borderRadius: BorderRadius.circular(20),
                         boxShadow: [
                           BoxShadow(
@@ -474,7 +488,7 @@ class _ConfirmBookingScreenState extends State<ConfirmBookingScreen> {
                           Padding(
                             padding: const EdgeInsets.symmetric(vertical: 16),
                             child: Divider(
-                              color: AppPalette.divider,
+                              color: Theme.of(context).dividerColor,
                               height: 1,
                             ),
                           ),
@@ -486,7 +500,9 @@ class _ConfirmBookingScreenState extends State<ConfirmBookingScreen> {
                                 style: GoogleFonts.outfit(
                                   fontSize: 18,
                                   fontWeight: FontWeight.bold,
-                                  color: AppPalette.navyPrimary,
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onSurface,
                                 ),
                               ),
                               Text(
@@ -494,7 +510,9 @@ class _ConfirmBookingScreenState extends State<ConfirmBookingScreen> {
                                 style: GoogleFonts.outfit(
                                   fontSize: 24,
                                   fontWeight: FontWeight.bold,
-                                  color: AppPalette.navyPrimary,
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onSurface,
                                 ),
                               ),
                             ],
@@ -513,7 +531,7 @@ class _ConfirmBookingScreenState extends State<ConfirmBookingScreen> {
                           vertical: 12,
                         ),
                         decoration: BoxDecoration(
-                          color: Colors.white,
+                          color: Theme.of(context).cardColor,
                           borderRadius: BorderRadius.circular(16),
                           border: Border.all(
                             color: Colors.green.withValues(alpha: 0.3),
@@ -563,7 +581,7 @@ class _ConfirmBookingScreenState extends State<ConfirmBookingScreen> {
                         width: double.infinity,
                         padding: const EdgeInsets.all(8),
                         decoration: BoxDecoration(
-                          color: Colors.white,
+                          color: Theme.of(context).cardColor,
                           borderRadius: BorderRadius.circular(16),
                           boxShadow: [
                             BoxShadow(
@@ -585,7 +603,9 @@ class _ConfirmBookingScreenState extends State<ConfirmBookingScreen> {
                               child: TextField(
                                 controller: _promoController,
                                 style: GoogleFonts.inter(
-                                  color: AppPalette.navyPrimary,
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onSurface,
                                 ),
                                 decoration: InputDecoration(
                                   hintText: 'ENTER PROMO CODE',
@@ -684,7 +704,7 @@ class _ConfirmBookingScreenState extends State<ConfirmBookingScreen> {
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
                         letterSpacing: 1.0,
-                        color: AppPalette.navyPrimary,
+                        color: Theme.of(context).colorScheme.onSurface,
                       ),
                     ),
                     const SizedBox(height: 12),
@@ -701,16 +721,18 @@ class _ConfirmBookingScreenState extends State<ConfirmBookingScreen> {
                           vertical: 4,
                         ),
                         decoration: BoxDecoration(
-                          color: Colors.white,
+                          color: Theme.of(context).cardColor,
                           borderRadius: BorderRadius.circular(4),
-                          border: Border.all(color: Colors.grey[300]!),
+                          border: Border.all(
+                            color: Theme.of(context).dividerColor,
+                          ),
                         ),
                         child: Text(
                           'VISA',
                           style: GoogleFonts.inter(
                             fontWeight: FontWeight.bold,
                             fontSize: 10,
-                            color: AppPalette.navyPrimary,
+                            color: Theme.of(context).colorScheme.onSurface,
                           ),
                         ),
                       ),
@@ -743,13 +765,13 @@ class _ConfirmBookingScreenState extends State<ConfirmBookingScreen> {
                       padding: const EdgeInsets.symmetric(vertical: 16),
                       decoration: BoxDecoration(
                         border: Border.all(
-                          color: AppPalette.divider,
+                          color: Theme.of(context).dividerColor,
                           style: BorderStyle.solid,
                         ),
                         borderRadius: BorderRadius.circular(16),
                         // Dotted border effect is usually done with custom painter,
                         // using standard border for simplicity but focusing on clean UI
-                        color: AppPalette.backgroundLight,
+                        color: Theme.of(context).scaffoldBackgroundColor,
                       ),
                       child: Center(
                         child: Row(
@@ -764,7 +786,11 @@ class _ConfirmBookingScreenState extends State<ConfirmBookingScreen> {
                             Text(
                               'Add Payment Method',
                               style: GoogleFonts.inter(
-                                color: AppPalette.textSecondaryLight,
+                                color:
+                                    Theme.of(context).brightness ==
+                                        Brightness.dark
+                                    ? AppPalette.textSecondaryDark
+                                    : AppPalette.textSecondaryLight,
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
@@ -783,7 +809,7 @@ class _ConfirmBookingScreenState extends State<ConfirmBookingScreen> {
             Container(
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: Theme.of(context).cardColor,
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black.withValues(alpha: 0.05),
@@ -800,14 +826,14 @@ class _ConfirmBookingScreenState extends State<ConfirmBookingScreen> {
                       Icon(
                         Icons.lock,
                         size: 14,
-                        color: AppPalette.textSecondaryLight,
+                        color: Theme.of(context).textTheme.bodyMedium?.color,
                       ),
                       const SizedBox(width: 6),
                       Text(
                         'Payments are secure and encrypted',
                         style: GoogleFonts.inter(
                           fontSize: 12,
-                          color: AppPalette.textSecondaryLight,
+                          color: Theme.of(context).textTheme.bodyMedium?.color,
                         ),
                       ),
                     ],
@@ -819,7 +845,7 @@ class _ConfirmBookingScreenState extends State<ConfirmBookingScreen> {
                     child: ElevatedButton(
                       onPressed: _isProcessingPayment ? null : _processPayment,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: AppPalette.orangeAccent,
+                        backgroundColor: AppPalette.navyPrimary,
                         foregroundColor: Colors.white,
                         elevation: 4,
                         shape: RoundedRectangleBorder(
@@ -834,6 +860,7 @@ class _ConfirmBookingScreenState extends State<ConfirmBookingScreen> {
                             style: GoogleFonts.outfit(
                               fontSize: 18,
                               fontWeight: FontWeight.bold,
+                              color: Colors.white,
                             ),
                           ),
                           Text(
@@ -841,6 +868,7 @@ class _ConfirmBookingScreenState extends State<ConfirmBookingScreen> {
                             style: GoogleFonts.outfit(
                               fontSize: 20,
                               fontWeight: FontWeight.bold,
+                              color: Colors.white,
                             ),
                           ),
                         ],
@@ -864,7 +892,7 @@ class _ConfirmBookingScreenState extends State<ConfirmBookingScreen> {
           label,
           style: GoogleFonts.inter(
             fontSize: 15,
-            color: AppPalette.textSecondaryLight,
+            color: Theme.of(context).textTheme.bodyMedium?.color,
           ),
         ),
         Text(
@@ -872,7 +900,7 @@ class _ConfirmBookingScreenState extends State<ConfirmBookingScreen> {
           style: GoogleFonts.inter(
             fontSize: 15,
             fontWeight: FontWeight.w600,
-            color: AppPalette.navyPrimary,
+            color: Theme.of(context).colorScheme.onSurface,
           ),
         ),
       ],
@@ -897,10 +925,12 @@ class _ConfirmBookingScreenState extends State<ConfirmBookingScreen> {
         decoration: BoxDecoration(
           color: isSelected
               ? AppPalette.orangeAccent.withValues(alpha: 0.05)
-              : Colors.white,
+              : Theme.of(context).cardColor,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: isSelected ? AppPalette.orangeAccent : AppPalette.divider,
+            color: isSelected
+                ? AppPalette.orangeAccent
+                : Theme.of(context).dividerColor,
             width: isSelected ? 2 : 1,
           ),
         ),
@@ -912,10 +942,13 @@ class _ConfirmBookingScreenState extends State<ConfirmBookingScreen> {
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: Colors.grey[100],
+                  color: Theme.of(context).scaffoldBackgroundColor,
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: Icon(icon, color: AppPalette.navyPrimary),
+                child: Icon(
+                  icon,
+                  color: Theme.of(context).colorScheme.onSurface,
+                ),
               ),
             const SizedBox(width: 16),
             Expanded(
@@ -926,7 +959,7 @@ class _ConfirmBookingScreenState extends State<ConfirmBookingScreen> {
                     title,
                     style: GoogleFonts.inter(
                       fontWeight: FontWeight.w600,
-                      color: AppPalette.navyPrimary,
+                      color: Theme.of(context).colorScheme.onSurface,
                       fontSize: 15,
                     ),
                   ),
@@ -934,7 +967,7 @@ class _ConfirmBookingScreenState extends State<ConfirmBookingScreen> {
                     Text(
                       subtitle,
                       style: GoogleFonts.inter(
-                        color: AppPalette.textSecondaryLight,
+                        color: Theme.of(context).textTheme.bodyMedium?.color,
                         fontSize: 13,
                       ),
                     ),
@@ -949,7 +982,7 @@ class _ConfirmBookingScreenState extends State<ConfirmBookingScreen> {
                 border: Border.all(
                   color: isSelected
                       ? AppPalette.orangeAccent
-                      : AppPalette.textDisabled,
+                      : Theme.of(context).disabledColor,
                   width: isSelected ? 6 : 2,
                 ),
               ),

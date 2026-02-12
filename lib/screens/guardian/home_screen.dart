@@ -85,8 +85,7 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
 
     // index 1 corresponds to _managedPlayers[0], index 2 to [1], etc.
     if (_selectedTabIndex - 1 < _managedPlayers.length) {
-      final selectedPlayerId =
-          _managedPlayers[_selectedTabIndex - 1]['player']['_id'];
+      final selectedPlayerId = _managedPlayers[_selectedTabIndex - 1]['_id'];
 
       return _upcomingSessions.where((session) {
         final assigned = session['assignedPlayers'] as List?;
@@ -100,7 +99,9 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F7FA), // Light grey background
+      backgroundColor: Theme.of(
+        context,
+      ).scaffoldBackgroundColor, // Light grey background
       body: SafeArea(
         child: _isLoading
             ? const Center(child: CircularProgressIndicator())
@@ -200,8 +201,9 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
     String childName = 'Child';
     if (_selectedTabIndex > 0 &&
         _selectedTabIndex - 1 < _managedPlayers.length) {
-      childName = _managedPlayers[_selectedTabIndex - 1]['player']['fullName']
-          .split(' ')[0];
+      childName = _managedPlayers[_selectedTabIndex - 1]['fullName'].split(
+        ' ',
+      )[0];
     }
 
     final sessions = _getFilteredSessions();
@@ -252,11 +254,11 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
+            color: Theme.of(context).shadowColor.withValues(alpha: 0.04),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -286,7 +288,7 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
                   style: GoogleFonts.outfit(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
-                    color: AppPalette.navyPrimary,
+                    color: Theme.of(context).colorScheme.onSurface,
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -296,7 +298,9 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
                       : 'No Coach',
                   style: GoogleFonts.inter(
                     fontSize: 13,
-                    color: Colors.grey[600],
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.onSurface.withValues(alpha: 0.6),
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -304,7 +308,9 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
                   startTime,
                   style: GoogleFonts.inter(
                     fontSize: 12,
-                    color: Colors.grey[500],
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.onSurface.withValues(alpha: 0.5),
                   ),
                 ),
               ],
@@ -338,11 +344,11 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
           child: Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: Theme.of(context).cardColor,
               borderRadius: BorderRadius.circular(16),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.04),
+                  color: Theme.of(context).shadowColor.withValues(alpha: 0.04),
                   blurRadius: 10,
                   offset: const Offset(0, 4),
                 ),
@@ -375,14 +381,16 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
                   style: GoogleFonts.outfit(
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
-                    color: AppPalette.navyPrimary,
+                    color: Theme.of(context).colorScheme.onSurface,
                   ),
                 ),
                 Text(
                   'Players Managed',
                   style: GoogleFonts.inter(
                     fontSize: 12,
-                    color: AppPalette.textSecondaryLight,
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.onSurface.withValues(alpha: 0.7),
                   ),
                 ),
               ],
@@ -395,11 +403,11 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
           child: Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: Theme.of(context).cardColor,
               borderRadius: BorderRadius.circular(16),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.04),
+                  color: Theme.of(context).shadowColor.withValues(alpha: 0.04),
                   blurRadius: 10,
                   offset: const Offset(0, 4),
                 ),
@@ -428,14 +436,16 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
                   style: GoogleFonts.outfit(
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
-                    color: AppPalette.navyPrimary,
+                    color: Theme.of(context).colorScheme.onSurface,
                   ),
                 ),
                 Text(
                   'Sessions Planned',
                   style: GoogleFonts.inter(
                     fontSize: 12,
-                    color: AppPalette.textSecondaryLight,
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.onSurface.withValues(alpha: 0.7),
                   ),
                 ),
               ],
@@ -470,18 +480,22 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
                   vertical: 12,
                 ),
                 decoration: BoxDecoration(
-                  color: isSelected ? AppPalette.navyPrimary : Colors.white,
+                  color: isSelected
+                      ? Theme.of(context).colorScheme.primary
+                      : Theme.of(context).cardColor,
                   borderRadius: BorderRadius.circular(30),
                   border: Border.all(
                     color: isSelected
-                        ? AppPalette.navyPrimary
-                        : Colors.grey[300]!,
+                        ? Theme.of(context).colorScheme.primary
+                        : Theme.of(context).dividerColor.withValues(alpha: 0.5),
                     width: 1,
                   ),
                   boxShadow: [
                     if (!isSelected)
                       BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.05),
+                        color: Theme.of(
+                          context,
+                        ).shadowColor.withValues(alpha: 0.05),
                         blurRadius: 4,
                         offset: const Offset(0, 2),
                       ),
@@ -493,15 +507,17 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
                     Icon(
                       Icons.dashboard_rounded,
                       size: 18,
-                      color: isSelected ? Colors.white : AppPalette.navyPrimary,
+                      color: isSelected
+                          ? Theme.of(context).colorScheme.onPrimary
+                          : Theme.of(context).colorScheme.primary,
                     ),
                     const SizedBox(width: 8),
                     Text(
                       'Overview',
                       style: GoogleFonts.outfit(
                         color: isSelected
-                            ? Colors.white
-                            : AppPalette.navyPrimary,
+                            ? Theme.of(context).colorScheme.onPrimary
+                            : Theme.of(context).colorScheme.primary,
                         fontWeight: FontWeight.bold,
                         fontSize: 14,
                       ),
@@ -513,9 +529,9 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
           } else {
             // Child Tabs
             final player = _managedPlayers[index - 1];
-            final playerName = player['player']['fullName'].split(' ')[0];
-            // Ideally use player['player']['profilePhoto'] if available
-            final playerImage = player['player']['profilePhoto'];
+            final playerName = player['fullName'].split(' ')[0];
+            // Ideally use player['profilePhoto'] if available
+            final playerImage = player['profilePhoto'];
 
             return GestureDetector(
               onTap: () {
@@ -526,18 +542,22 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
               child: Container(
                 padding: const EdgeInsets.fromLTRB(6, 6, 20, 6),
                 decoration: BoxDecoration(
-                  color: isSelected ? AppPalette.navyPrimary : Colors.white,
+                  color: isSelected
+                      ? Theme.of(context).colorScheme.primary
+                      : Theme.of(context).cardColor,
                   borderRadius: BorderRadius.circular(30),
                   border: Border.all(
                     color: isSelected
-                        ? AppPalette.navyPrimary
-                        : Colors.grey[300]!,
+                        ? Theme.of(context).colorScheme.primary
+                        : Theme.of(context).dividerColor.withValues(alpha: 0.5),
                     width: 1,
                   ),
                   boxShadow: [
                     if (!isSelected)
                       BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.05),
+                        color: Theme.of(
+                          context,
+                        ).shadowColor.withValues(alpha: 0.05),
                         blurRadius: 4,
                         offset: const Offset(0, 2),
                       ),
@@ -561,7 +581,7 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
                                 fontSize: 14,
                                 fontWeight: FontWeight.bold,
                                 color: isSelected
-                                    ? AppPalette.navyPrimary
+                                    ? Theme.of(context).colorScheme.primary
                                     : Colors.white,
                               ),
                             )
@@ -572,8 +592,8 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
                       playerName,
                       style: GoogleFonts.outfit(
                         color: isSelected
-                            ? Colors.white
-                            : AppPalette.navyPrimary,
+                            ? Theme.of(context).colorScheme.onPrimary
+                            : Theme.of(context).colorScheme.primary,
                         fontWeight: FontWeight.bold,
                         fontSize: 14,
                       ),
@@ -618,11 +638,11 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
+            color: Theme.of(context).shadowColor.withValues(alpha: 0.04),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -659,7 +679,9 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
                     style: TextStyle(
                       color: isSelected
                           ? Colors.white
-                          : AppPalette.textSecondaryLight,
+                          : Theme.of(
+                              context,
+                            ).colorScheme.onSurface.withValues(alpha: 0.7),
                       fontSize: 11,
                       fontWeight: FontWeight.w600,
                     ),
@@ -668,7 +690,9 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
                   Text(
                     '$date',
                     style: TextStyle(
-                      color: isSelected ? Colors.white : AppPalette.navyPrimary,
+                      color: isSelected
+                          ? Colors.white
+                          : Theme.of(context).colorScheme.primary,
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
                     ),
@@ -684,7 +708,7 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
                           : (date == DateTime.now().day
                                 ? AppPalette
                                       .orangeAccent // Highlight today
-                                : Colors.grey[300]),
+                                : Theme.of(context).dividerColor),
                       shape: BoxShape.circle,
                     ),
                   ),
@@ -740,8 +764,8 @@ class _ProfileHeader extends StatelessWidget {
         ),
         NotificationButton(
           onTap: () => context.push('/guardian/notifications'),
-          iconColor: AppPalette.navyPrimary,
-          backgroundColor: const Color(0xFFF1F5F9),
+          iconColor: Theme.of(context).colorScheme.onSurface,
+          backgroundColor: Theme.of(context).cardColor,
         ),
       ],
     );

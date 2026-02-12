@@ -273,7 +273,7 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 24.0),
@@ -285,9 +285,9 @@ class _LoginScreenState extends State<LoginScreen> {
               Align(
                 alignment: Alignment.centerLeft,
                 child: IconButton(
-                  icon: const Icon(
+                  icon: Icon(
                     Icons.arrow_back_ios_new_rounded,
-                    color: AppPalette.navyPrimary,
+                    color: Theme.of(context).colorScheme.onSurface,
                   ),
                   padding: EdgeInsets.zero,
                   onPressed: () {
@@ -307,7 +307,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 width: 80,
                 height: 80,
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: Theme.of(context).cardColor,
                   borderRadius: BorderRadius.circular(20),
                   boxShadow: [
                     BoxShadow(
@@ -316,11 +316,18 @@ class _LoginScreenState extends State<LoginScreen> {
                       offset: const Offset(0, 5),
                     ),
                   ],
+                  border: Border.all(
+                    color: Theme.of(
+                      context,
+                    ).dividerColor.withValues(alpha: 0.1),
+                  ),
                 ),
-                child: const Icon(
-                  Ionicons.flag_outline,
-                  size: 40,
-                  color: AppPalette.orangeAccent,
+                child: Padding(
+                  padding: const EdgeInsets.all(12.0),
+                  child: Image.asset(
+                    'assets/images/burl_icon.png',
+                    fit: BoxFit.contain,
+                  ),
                 ),
               ).animate().scale(delay: 100.ms),
 
@@ -332,7 +339,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 style: GoogleFonts.outfit(
                   fontSize: 30,
                   fontWeight: FontWeight.bold,
-                  color: AppPalette.navyPrimary,
+                  color: Theme.of(context).colorScheme.onSurface,
                 ),
               ).animate().fadeIn(delay: 200.ms),
 
@@ -343,7 +350,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 textAlign: TextAlign.center,
                 style: GoogleFonts.inter(
                   fontSize: 14,
-                  color: AppPalette.textSecondaryLight,
+                  color: Theme.of(context).textTheme.bodyMedium?.color,
                   height: 1.5,
                 ),
               ).animate().fadeIn(delay: 300.ms),
@@ -387,6 +394,9 @@ class _LoginScreenState extends State<LoginScreen> {
                         child: Checkbox(
                           value: _rememberMe,
                           activeColor: AppPalette.orangeAccent,
+                          side: BorderSide(
+                            color: Theme.of(context).unselectedWidgetColor,
+                          ),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(4),
                           ),
@@ -398,7 +408,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       Text(
                         'Remember me',
                         style: GoogleFonts.inter(
-                          color: AppPalette.textSecondaryLight,
+                          color: Theme.of(context).textTheme.bodyMedium?.color,
                           fontSize: 13,
                         ),
                       ),
@@ -470,20 +480,24 @@ class _LoginScreenState extends State<LoginScreen> {
               // Social Login Divider
               Row(
                 children: [
-                  Expanded(child: Divider(color: Colors.grey[300])),
+                  Expanded(
+                    child: Divider(color: Theme.of(context).dividerColor),
+                  ),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     child: Text(
                       'OR CONTINUE WITH',
                       style: GoogleFonts.inter(
-                        color: AppPalette.textSecondaryLight,
+                        color: Theme.of(context).textTheme.bodyMedium?.color,
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
                         letterSpacing: 0.5,
                       ),
                     ),
                   ),
-                  Expanded(child: Divider(color: Colors.grey[300])),
+                  Expanded(
+                    child: Divider(color: Theme.of(context).dividerColor),
+                  ),
                 ],
               ).animate().fadeIn(delay: 800.ms),
 
@@ -524,7 +538,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     text: TextSpan(
                       style: GoogleFonts.inter(
                         fontSize: 15,
-                        color: AppPalette.textSecondaryLight,
+                        color: Theme.of(context).textTheme.bodyMedium?.color,
                       ),
                       children: [
                         const TextSpan(text: "Don't have an account? "),
@@ -573,6 +587,10 @@ class _CustomTextField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Determine if dark mode is active to clear the fill color for glass effect
+    // OR use the theme's input Decoration
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -581,14 +599,19 @@ class _CustomTextField extends StatelessWidget {
           style: GoogleFonts.outfit(
             fontSize: 14,
             fontWeight: FontWeight.w600,
-            color: AppPalette.navyPrimary,
+            color: Theme.of(context).colorScheme.onSurface,
           ),
         ),
         const SizedBox(height: 8),
         Container(
           decoration: BoxDecoration(
-            color: Colors.grey[100],
+            color: isDark
+                ? AppPalette.surfaceGlassDark
+                : Colors.grey[100], // Glass in dark, grey in light
             borderRadius: BorderRadius.circular(12),
+            border: isDark
+                ? Border.all(color: Colors.white.withValues(alpha: 0.1))
+                : null,
           ),
           child: TextFormField(
             controller: controller,
@@ -596,26 +619,30 @@ class _CustomTextField extends StatelessWidget {
             keyboardType: keyboardType,
             style: GoogleFonts.inter(
               fontSize: 15,
-              color: AppPalette.navyPrimary,
+              color: Theme.of(context).colorScheme.onSurface,
             ),
             decoration: InputDecoration(
               hintText: hint,
-              hintStyle: GoogleFonts.inter(color: Colors.grey[400]),
-              prefixIcon: Icon(icon, color: Colors.grey[400], size: 20),
+              hintStyle: GoogleFonts.inter(color: Theme.of(context).hintColor),
+              prefixIcon: Icon(
+                icon,
+                color: Theme.of(context).iconTheme.color,
+                size: 20,
+              ),
               suffixIcon: isPassword
                   ? IconButton(
                       icon: Icon(
                         isVisible
                             ? Ionicons.eye_off_outline
                             : Ionicons.eye_outline,
-                        color: Colors.grey[400],
+                        color: Theme.of(context).iconTheme.color,
                         size: 20,
                       ),
                       onPressed: onVisibilityChanged,
                     )
                   : null,
               filled: true,
-              fillColor: Colors.transparent,
+              fillColor: Colors.transparent, // Handled by Container
               border: InputBorder.none,
               enabledBorder: InputBorder.none,
               focusedBorder: InputBorder.none,
@@ -653,9 +680,11 @@ class _SocialButton extends StatelessWidget {
         height: 56, // Match main button height
         alignment: Alignment.center,
         decoration: BoxDecoration(
-          border: Border.all(color: Colors.grey[200]!),
+          border: Border.all(
+            color: Theme.of(context).dividerColor.withValues(alpha: 0.5),
+          ),
           borderRadius: BorderRadius.circular(12),
-          color: Colors.white,
+          color: Theme.of(context).cardColor,
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -668,6 +697,7 @@ class _SocialButton extends StatelessWidget {
                 style: GoogleFonts.inter(
                   fontWeight: FontWeight.bold,
                   fontSize: 16,
+                  color: Theme.of(context).colorScheme.onSurface,
                 ),
               ),
             ],

@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../config/palette.dart';
-
 class SessionReportScreen extends StatefulWidget {
   const SessionReportScreen({super.key});
 
@@ -26,19 +24,21 @@ class _SessionReportScreenState extends State<SessionReportScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor:
-          AppPalette.backgroundLight, // Slightly off-white background
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: Theme.of(context).cardColor,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.close, color: Colors.black),
+          icon: Icon(
+            Icons.close,
+            color: Theme.of(context).colorScheme.onSurface,
+          ),
           onPressed: () => context.pop(),
         ),
         title: Text(
           'New Session Report',
           style: GoogleFonts.outfit(
-            color: AppPalette.navyPrimary,
+            color: Theme.of(context).colorScheme.onSurface,
             fontWeight: FontWeight.bold,
             fontSize: 20,
           ),
@@ -50,7 +50,7 @@ class _SessionReportScreenState extends State<SessionReportScreen> {
             child: Text(
               'Drafts',
               style: GoogleFonts.inter(
-                color: AppPalette.orangeAccent,
+                color: Theme.of(context).colorScheme.secondary,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -86,13 +86,16 @@ class _SessionReportScreenState extends State<SessionReportScreen> {
                                 style: GoogleFonts.outfit(
                                   fontWeight: FontWeight.bold,
                                   fontSize: 16,
-                                  color: AppPalette.navyPrimary,
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onSurface,
                                 ),
                               ),
                               Text(
                                 'Forward • #10',
                                 style: GoogleFonts.inter(
-                                  color: AppPalette.textSecondaryLight,
+                                  color: Theme.of(context).colorScheme.onSurface
+                                      .withValues(alpha: 0.6),
                                   fontSize: 12,
                                 ),
                               ),
@@ -112,14 +115,14 @@ class _SessionReportScreenState extends State<SessionReportScreen> {
                         Container(
                           padding: const EdgeInsets.all(10),
                           decoration: BoxDecoration(
-                            color: AppPalette.orangeAccent.withValues(
-                              alpha: 0.1,
-                            ),
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.secondary.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(10),
                           ),
-                          child: const Icon(
+                          child: Icon(
                             Icons.calendar_today_rounded,
-                            color: AppPalette.orangeAccent,
+                            color: Theme.of(context).colorScheme.secondary,
                             size: 20,
                           ),
                         ),
@@ -133,13 +136,16 @@ class _SessionReportScreenState extends State<SessionReportScreen> {
                                 style: GoogleFonts.outfit(
                                   fontWeight: FontWeight.bold,
                                   fontSize: 16,
-                                  color: AppPalette.navyPrimary,
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onSurface,
                                 ),
                               ),
                               Text(
                                 'Tuesday • 10:00 AM - 11:30 AM',
                                 style: GoogleFonts.inter(
-                                  color: AppPalette.textSecondaryLight,
+                                  color: Theme.of(context).colorScheme.onSurface
+                                      .withValues(alpha: 0.6),
                                   fontSize: 12,
                                 ),
                               ),
@@ -159,7 +165,7 @@ class _SessionReportScreenState extends State<SessionReportScreen> {
                         style: GoogleFonts.outfit(
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
-                          color: AppPalette.navyPrimary,
+                          color: Theme.of(context).colorScheme.onSurface,
                         ),
                       ),
                       Container(
@@ -168,14 +174,16 @@ class _SessionReportScreenState extends State<SessionReportScreen> {
                           vertical: 6,
                         ),
                         decoration: BoxDecoration(
-                          color: AppPalette.orangeAccent.withValues(alpha: 0.1),
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.secondary.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: Text(
                           'Score: 8.5',
                           style: GoogleFonts.outfit(
                             fontWeight: FontWeight.bold,
-                            color: AppPalette.orangeAccent,
+                            color: Theme.of(context).colorScheme.secondary,
                           ),
                         ),
                       ),
@@ -186,7 +194,7 @@ class _SessionReportScreenState extends State<SessionReportScreen> {
                   Container(
                     padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: Theme.of(context).cardColor,
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Column(
@@ -221,7 +229,7 @@ class _SessionReportScreenState extends State<SessionReportScreen> {
                         style: GoogleFonts.outfit(
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
-                          color: AppPalette.navyPrimary,
+                          color: Theme.of(context).colorScheme.onSurface,
                         ),
                       ),
                       Container(
@@ -230,22 +238,24 @@ class _SessionReportScreenState extends State<SessionReportScreen> {
                           vertical: 6,
                         ),
                         decoration: BoxDecoration(
-                          color: AppPalette.orangeAccent.withValues(alpha: 0.1),
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.secondary.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: Row(
                           children: [
-                            const Icon(
+                            Icon(
                               Icons.mic,
                               size: 16,
-                              color: AppPalette.orangeAccent,
+                              color: Theme.of(context).colorScheme.secondary,
                             ),
                             const SizedBox(width: 4),
                             Text(
                               'Dictate',
                               style: GoogleFonts.outfit(
                                 fontWeight: FontWeight.bold,
-                                color: AppPalette.orangeAccent,
+                                color: Theme.of(context).colorScheme.secondary,
                                 fontSize: 12,
                               ),
                             ),
@@ -259,9 +269,13 @@ class _SessionReportScreenState extends State<SessionReportScreen> {
                     height: 150,
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: Theme.of(context).cardColor,
                       borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: Colors.grey[200]!),
+                      border: Border.all(
+                        color: Theme.of(
+                          context,
+                        ).dividerColor.withValues(alpha: 0.5),
+                      ),
                     ),
                     child: Column(
                       children: [
@@ -269,11 +283,16 @@ class _SessionReportScreenState extends State<SessionReportScreen> {
                           child: TextField(
                             controller: _notesController,
                             maxLines: null,
+                            style: TextStyle(
+                              color: Theme.of(context).colorScheme.onSurface,
+                            ),
                             decoration: InputDecoration(
                               hintText:
                                   'Describe key takeaways, areas for improvement, and positive highlights from the session...',
                               hintStyle: GoogleFonts.inter(
-                                color: Colors.grey[400],
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSurface.withValues(alpha: 0.4),
                               ),
                               border: InputBorder.none,
                             ),
@@ -284,7 +303,7 @@ class _SessionReportScreenState extends State<SessionReportScreen> {
                           child: Text(
                             'Auto-saved',
                             style: GoogleFonts.inter(
-                              color: Colors.grey[400],
+                              color: Theme.of(context).disabledColor,
                               fontSize: 10,
                             ),
                           ),
@@ -328,7 +347,7 @@ class _SessionReportScreenState extends State<SessionReportScreen> {
                   context.pop();
                 },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AppPalette.orangeAccent,
+                  backgroundColor: Theme.of(context).colorScheme.secondary,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(16),
                   ),
@@ -342,13 +361,13 @@ class _SessionReportScreenState extends State<SessionReportScreen> {
                       style: GoogleFonts.outfit(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
-                        color: Colors.white,
+                        color: Theme.of(context).colorScheme.onSecondary,
                       ),
                     ),
                     const SizedBox(width: 8),
-                    const Icon(
+                    Icon(
                       Icons.send_rounded,
-                      color: Colors.white,
+                      color: Theme.of(context).colorScheme.onSecondary,
                       size: 20,
                     ),
                   ],
@@ -367,7 +386,7 @@ class _SessionReportScreenState extends State<SessionReportScreen> {
       style: GoogleFonts.inter(
         fontSize: 12,
         fontWeight: FontWeight.bold,
-        color: const Color(0xFF94A3B8), // Slate grey
+        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
         letterSpacing: 1.0,
       ),
     );
@@ -377,14 +396,21 @@ class _SessionReportScreenState extends State<SessionReportScreen> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.grey[200]!),
+        border: Border.all(
+          color: Theme.of(context).dividerColor.withValues(alpha: 0.5),
+        ),
       ),
       child: Row(
         children: [
           Expanded(child: child),
-          Icon(Icons.keyboard_arrow_down_rounded, color: Colors.grey[400]),
+          Icon(
+            Icons.keyboard_arrow_down_rounded,
+            color: Theme.of(
+              context,
+            ).colorScheme.onSurface.withValues(alpha: 0.4),
+          ),
         ],
       ),
     );
@@ -405,7 +431,7 @@ class _SessionReportScreenState extends State<SessionReportScreen> {
               label,
               style: GoogleFonts.inter(
                 fontWeight: FontWeight.w600,
-                color: AppPalette.navyPrimary,
+                color: Theme.of(context).colorScheme.onSurface,
                 fontSize: 14,
               ),
             ),
@@ -421,8 +447,8 @@ class _SessionReportScreenState extends State<SessionReportScreen> {
                           ? Icons.star_rounded
                           : Icons.star_border_rounded,
                       color: index < score
-                          ? AppPalette.orangeAccent
-                          : Colors.grey[300],
+                          ? Theme.of(context).colorScheme.secondary
+                          : Theme.of(context).disabledColor,
                       size: 28,
                     ),
                   ),
@@ -435,7 +461,9 @@ class _SessionReportScreenState extends State<SessionReportScreen> {
           '${score.toInt()}/5',
           style: GoogleFonts.outfit(
             fontWeight: FontWeight.bold,
-            color: score > 0 ? AppPalette.orangeAccent : Colors.grey[300],
+            color: score > 0
+                ? Theme.of(context).colorScheme.secondary
+                : Theme.of(context).disabledColor,
             fontSize: 14,
           ),
         ),
@@ -448,22 +476,25 @@ class _SessionReportScreenState extends State<SessionReportScreen> {
       width: 80,
       height: 80,
       decoration: BoxDecoration(
-        color: AppPalette.orangeAccent.withValues(alpha: 0.1),
+        color: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: AppPalette.orangeAccent,
+          color: Theme.of(context).colorScheme.secondary,
           style: BorderStyle.solid,
         ), // Dotted border would require a custom painter, solid is fine for MVP
       ),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Icon(Icons.add_a_photo_rounded, color: AppPalette.orangeAccent),
+          Icon(
+            Icons.add_a_photo_rounded,
+            color: Theme.of(context).colorScheme.secondary,
+          ),
           const SizedBox(height: 4),
           Text(
             'Add',
             style: GoogleFonts.inter(
-              color: AppPalette.orangeAccent,
+              color: Theme.of(context).colorScheme.secondary,
               fontSize: 10,
               fontWeight: FontWeight.bold,
             ),
@@ -491,13 +522,13 @@ class _SessionReportScreenState extends State<SessionReportScreen> {
         if (isVideo)
           Container(
             padding: const EdgeInsets.all(8),
-            decoration: const BoxDecoration(
-              color: Colors.white,
+            decoration: BoxDecoration(
+              color: Theme.of(context).cardColor,
               shape: BoxShape.circle,
             ),
-            child: const Icon(
+            child: Icon(
               Icons.play_arrow_rounded,
-              color: AppPalette.navyPrimary,
+              color: Theme.of(context).colorScheme.primary,
               size: 20,
             ),
           ),

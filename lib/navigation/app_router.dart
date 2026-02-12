@@ -14,6 +14,7 @@ import '../screens/search/search_screen.dart';
 import '../screens/player/home_screen.dart';
 import '../screens/booking/booking_screen.dart';
 import '../screens/booking/coach_booking_screen.dart'; // New Import
+import '../screens/booking/coach_bookings_screen.dart'; // New Import
 import '../screens/booking/confirm_private_booking_screen.dart'; // New Import
 
 import '../screens/booking/confirm_booking_screen_simple.dart';
@@ -233,6 +234,10 @@ class AppRouter {
           GoRoute(
             path: '/coach/create-session',
             builder: (context, state) => const CreateSessionScreen(),
+          ),
+          GoRoute(
+            path: '/coach/bookings',
+            builder: (context, state) => const CoachBookingsScreen(),
           ),
           GoRoute(
             path: '/edit-profile',

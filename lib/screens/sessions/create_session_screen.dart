@@ -1,10 +1,10 @@
-import 'dart:async'; // Add this for Timer
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:table_calendar/table_calendar.dart';
-import '../../config/palette.dart';
+
 import '../../widgets/app_time_picker.dart';
 import '../../services/places_service.dart';
 import '../../services/session_service.dart';
@@ -22,38 +22,26 @@ class CreateSessionScreen extends StatefulWidget {
 
 class _CreateSessionScreenState extends State<CreateSessionScreen>
     with SingleTickerProviderStateMixin {
-  // ... (keep existing controllers)
   // Controllers
   final _titleController = TextEditingController();
   final _descriptionController = TextEditingController();
   final _locationController = TextEditingController();
   final _priceController = TextEditingController();
-  late TabController _tabController;
 
-  // Autocomplete State
-  List<PlacePrediction> _predictions = [];
+  // Overlay & Search
+  final _layerLink = LayerLink();
+  final _locationFocus = FocusNode();
   Timer? _debounce;
-  final LayerLink _layerLink = LayerLink(); // For Overlay
+  List<PlacePrediction> _predictions = [];
   OverlayEntry? _overlayEntry;
-  final FocusNode _locationFocus = FocusNode();
 
-  // Calendar State
+  // State
+  // Selection
+  final Set<DateTime> _selectedDates = {};
   DateTime _focusedDay = DateTime.now();
 
-  // Single Session State
-  DateTime _singleDate = DateTime.now();
-  // List of time slots for single session: [{startTime, endTime}]
-  final List<Map<String, TimeOfDay>> _singleTimeSlots = [
-    {
-      'startTime': const TimeOfDay(hour: 9, minute: 0),
-      'endTime': const TimeOfDay(hour: 10, minute: 30),
-    },
-  ];
-
-  // Recurring (Packet) State
-  // Map of dates to their timeslots: {DateTime: [{startTime, endTime}]}
-  final Map<DateTime, List<Map<String, TimeOfDay>>> _recurringTimeslots = {};
-  DateTime? _selectedRecurringDate;
+  // Schedule Source of Truth: Date -> List of Slots
+  final Map<DateTime, List<Map<String, TimeOfDay>>> _sessionSchedule = {};
 
   // Logistics State
   int _capacity = 18;
@@ -70,17 +58,23 @@ class _CreateSessionScreenState extends State<CreateSessionScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    // Default selection: Today
+    final now = DateTime.now();
+    final today = _normalizeDate(now);
+    _selectedDates.add(today);
+    _focusedDay = today;
+
+    // Default slot for today
+    _sessionSchedule[today] = [
+      {
+        'startTime': const TimeOfDay(hour: 9, minute: 0),
+        'endTime': const TimeOfDay(hour: 10, minute: 30),
+      },
+    ];
 
     if (_isEditing) {
       _initializeEditingState();
     }
-
-    _tabController.addListener(() {
-      if (!_tabController.indexIsChanging) {
-        setState(() {});
-      }
-    });
   }
 
   void _initializeEditingState() {
@@ -97,75 +91,47 @@ class _CreateSessionScreenState extends State<CreateSessionScreen>
       _pricePerPerson = s['pricing']['pricePerPerson'] ?? true;
     }
 
-    if (s['isRecurring'] == true) {
-      _tabController.index = 1;
+    // Populate Schedule
+    final timeSlots = s['timeSlots'] as List<dynamic>? ?? [];
 
-      // Populate Recurring Timeslots
-      final timeSlots = s['timeSlots'] as List<dynamic>? ?? [];
+    // Clear defaults
+    _selectedDates.clear();
+    _sessionSchedule.clear();
 
-      for (final slot in timeSlots) {
-        if (slot['startTime'] == null) continue;
+    if (timeSlots.isEmpty) return;
 
-        final startDateTime = DateTime.parse(slot['startTime']).toLocal();
-        final endDateTime = slot['endTime'] != null
-            ? DateTime.parse(slot['endTime']).toLocal()
-            : startDateTime.add(
-                Duration(minutes: slot['durationMinutes'] ?? 60),
-              );
+    for (final slot in timeSlots) {
+      if (slot['startTime'] == null) continue;
 
-        final dateKey = _normalizeDate(startDateTime);
+      final startDateTime = DateTime.parse(slot['startTime']).toLocal();
+      final endDateTime = slot['endTime'] != null
+          ? DateTime.parse(slot['endTime']).toLocal()
+          : startDateTime.add(Duration(minutes: slot['durationMinutes'] ?? 60));
 
-        if (!_recurringTimeslots.containsKey(dateKey)) {
-          _recurringTimeslots[dateKey] = [];
-        }
+      final dateKey = _normalizeDate(startDateTime);
+      _selectedDates.add(dateKey); // Select the date
 
-        // Prevent duplicate slots in UI
-        final exists = _recurringTimeslots[dateKey]!.any(
-          (existing) =>
-              existing['startTime']!.hour == startDateTime.hour &&
-              existing['startTime']!.minute == startDateTime.minute,
-        );
-
-        if (!exists) {
-          _recurringTimeslots[dateKey]!.add({
-            'startTime': TimeOfDay.fromDateTime(startDateTime),
-            'endTime': TimeOfDay.fromDateTime(endDateTime),
-          });
-        }
+      if (!_sessionSchedule.containsKey(dateKey)) {
+        _sessionSchedule[dateKey] = [];
       }
 
-      if (_recurringTimeslots.isNotEmpty) {
-        _selectedRecurringDate = _recurringTimeslots.keys.first;
-        _focusedDay = _selectedRecurringDate!;
+      // Add slot if not duplicate
+      final exists = _sessionSchedule[dateKey]!.any(
+        (existing) =>
+            existing['startTime']!.hour == startDateTime.hour &&
+            existing['startTime']!.minute == startDateTime.minute,
+      );
+
+      if (!exists) {
+        _sessionSchedule[dateKey]!.add({
+          'startTime': TimeOfDay.fromDateTime(startDateTime),
+          'endTime': TimeOfDay.fromDateTime(endDateTime),
+        });
       }
-    } else {
-      _tabController.index = 0;
+    }
 
-      // Populate Single Session Data
-      final timeSlots = s['timeSlots'] as List<dynamic>? ?? [];
-      if (timeSlots.isNotEmpty) {
-        final firstSlot = timeSlots.first;
-        if (firstSlot['startTime'] != null) {
-          final startDateTime = DateTime.parse(
-            firstSlot['startTime'],
-          ).toLocal();
-          _singleDate = startDateTime;
-          _focusedDay = startDateTime;
-
-          _singleTimeSlots.clear();
-          for (final slot in timeSlots) {
-            final start = DateTime.parse(slot['startTime']).toLocal();
-            final end = slot['endTime'] != null
-                ? DateTime.parse(slot['endTime']).toLocal()
-                : start.add(Duration(minutes: slot['durationMinutes'] ?? 60));
-
-            _singleTimeSlots.add({
-              'startTime': TimeOfDay.fromDateTime(start),
-              'endTime': TimeOfDay.fromDateTime(end),
-            });
-          }
-        }
-      }
+    if (_selectedDates.isNotEmpty) {
+      _focusedDay = _selectedDates.first;
     }
   }
 
@@ -175,37 +141,35 @@ class _CreateSessionScreenState extends State<CreateSessionScreen>
     _descriptionController.dispose();
     _locationController.dispose();
     _priceController.dispose();
-    _tabController.dispose();
+    _locationFocus.dispose();
+    _debounce?.cancel();
     super.dispose();
   }
 
-  // Normalize date to remove time component for map key
   DateTime _normalizeDate(DateTime date) {
     return DateTime(date.year, date.month, date.day);
   }
 
-  // Handler for Calendar selection
   void _onDaySelected(DateTime selectedDay, DateTime focusedDay) {
     setState(() {
       _focusedDay = focusedDay;
-    });
+      final normalized = _normalizeDate(selectedDay);
 
-    if (_tabController.index == 1) {
-      // Recurring tab - select this date to show/edit timeslots
-      setState(() {
-        _selectedRecurringDate = _normalizeDate(selectedDay);
-        // Initialize with empty list if no timeslots exist
-        if (!_recurringTimeslots.containsKey(_selectedRecurringDate)) {
-          _recurringTimeslots[_selectedRecurringDate!] = [];
+      if (_selectedDates.contains(normalized)) {
+        _selectedDates.remove(normalized);
+      } else {
+        _selectedDates.add(normalized);
+        if (!_sessionSchedule.containsKey(normalized)) {
+          _sessionSchedule[normalized] = [];
         }
-      });
-    }
+      }
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F7FA),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: Column(
         children: [
           _buildHeader(),
@@ -231,11 +195,8 @@ class _CreateSessionScreenState extends State<CreateSessionScreen>
                   ),
                   const SizedBox(height: 32),
 
-                  // Schedule Section (Conditional)
-                  if (_tabController.index == 0)
-                    _buildSingleSessionSchedule()
-                  else
-                    _buildRecurringSessionSchedule(),
+                  // Unified Schedule Section
+                  _buildUnifiedSchedule(),
 
                   const SizedBox(height: 32),
 
@@ -260,9 +221,9 @@ class _CreateSessionScreenState extends State<CreateSessionScreen>
         left: 24,
         right: 24,
       ),
-      decoration: const BoxDecoration(
-        color: AppPalette.navyPrimary,
-        borderRadius: BorderRadius.only(
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.primary,
+        borderRadius: const BorderRadius.only(
           bottomLeft: Radius.circular(30),
           bottomRight: Radius.circular(30),
         ),
@@ -296,31 +257,6 @@ class _CreateSessionScreenState extends State<CreateSessionScreen>
               ),
             ],
           ),
-          const SizedBox(height: 24),
-          // Custom Tab Bar
-          Container(
-            padding: const EdgeInsets.all(4),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: TabBar(
-              controller: _tabController,
-              indicator: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              labelColor: AppPalette.navyPrimary,
-              unselectedLabelColor: Colors.white,
-              labelStyle: GoogleFonts.inter(fontWeight: FontWeight.w600),
-              dividerColor: Colors.transparent,
-              indicatorSize: TabBarIndicatorSize.tab,
-              tabs: const [
-                Tab(text: 'Single'),
-                Tab(text: 'Recurring'),
-              ],
-            ),
-          ),
         ],
       ),
     );
@@ -335,7 +271,7 @@ class _CreateSessionScreenState extends State<CreateSessionScreen>
           style: GoogleFonts.outfit(
             fontSize: 18,
             fontWeight: FontWeight.bold,
-            color: AppPalette.navyPrimary,
+            color: Theme.of(context).colorScheme.onSurface,
           ),
         ),
         if (action != null) action,
@@ -357,19 +293,26 @@ class _CreateSessionScreenState extends State<CreateSessionScreen>
           style: GoogleFonts.inter(
             fontSize: 12,
             fontWeight: FontWeight.w600,
-            color: AppPalette.navyPrimary,
+            color: Theme.of(context).colorScheme.onSurface,
           ),
         ),
         const SizedBox(height: 8),
         TextField(
           controller: controller,
           maxLines: maxLines,
-          style: GoogleFonts.inter(fontSize: 14),
+          style: GoogleFonts.inter(
+            fontSize: 14,
+            color: Theme.of(context).colorScheme.onSurface,
+          ),
           decoration: InputDecoration(
             hintText: hint,
-            hintStyle: GoogleFonts.inter(color: Colors.grey[400]),
+            hintStyle: GoogleFonts.inter(
+              color: Theme.of(
+                context,
+              ).colorScheme.onSurface.withValues(alpha: 0.4),
+            ),
             filled: true,
-            fillColor: Colors.white,
+            fillColor: Theme.of(context).cardColor,
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
               borderSide: BorderSide.none,
@@ -381,30 +324,39 @@ class _CreateSessionScreenState extends State<CreateSessionScreen>
     );
   }
 
-  // --- Single Session UI ---
-  Widget _buildSingleSessionSchedule() {
+  Widget _buildUnifiedSchedule() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Date & Time',
+          'Dates & Time',
           style: GoogleFonts.outfit(
             fontSize: 18,
             fontWeight: FontWeight.bold,
-            color: AppPalette.navyPrimary,
+            color: Theme.of(context).colorScheme.onSurface,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'Select multiple dates to create recurring sessions.',
+          style: GoogleFonts.inter(
+            fontSize: 13,
+            color: Theme.of(
+              context,
+            ).colorScheme.onSurface.withValues(alpha: 0.6),
           ),
         ),
         const SizedBox(height: 16),
 
-        // Calendar Container
+        // Multi-Select Calendar
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: Theme.of(context).cardColor,
             borderRadius: BorderRadius.circular(20),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.03),
+                color: Theme.of(context).shadowColor.withValues(alpha: 0.05),
                 blurRadius: 10,
                 offset: const Offset(0, 4),
               ),
@@ -413,13 +365,10 @@ class _CreateSessionScreenState extends State<CreateSessionScreen>
           child: TableCalendar(
             firstDay: DateTime.now(),
             lastDay: DateTime.now().add(const Duration(days: 365)),
-            focusedDay: _singleDate,
-            selectedDayPredicate: (day) => isSameDay(_singleDate, day),
-            onDaySelected: (selectedDay, focusedDay) {
-              setState(() {
-                _singleDate = selectedDay;
-              });
-            },
+            focusedDay: _focusedDay,
+            selectedDayPredicate: (day) =>
+                _selectedDates.contains(_normalizeDate(day)),
+            onDaySelected: _onDaySelected,
             calendarFormat: CalendarFormat.month,
             headerStyle: HeaderStyle(
               titleCentered: true,
@@ -427,123 +376,246 @@ class _CreateSessionScreenState extends State<CreateSessionScreen>
               titleTextStyle: GoogleFonts.outfit(
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
-                color: AppPalette.navyPrimary,
+                color: Theme.of(context).colorScheme.onSurface,
               ),
-              leftChevronIcon: Container(
-                padding: const EdgeInsets.all(4),
-                decoration: BoxDecoration(
-                  color: Colors.grey[100],
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  Icons.chevron_left,
-                  size: 20,
-                  color: Colors.grey,
-                ),
+              leftChevronIcon: Icon(
+                Icons.chevron_left,
+                size: 20,
+                color: Theme.of(
+                  context,
+                ).colorScheme.onSurface.withValues(alpha: 0.6),
               ),
-              rightChevronIcon: Container(
-                padding: const EdgeInsets.all(4),
-                decoration: BoxDecoration(
-                  color: Colors.grey[100],
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  Icons.chevron_right,
-                  size: 20,
-                  color: Colors.grey,
-                ),
+              rightChevronIcon: Icon(
+                Icons.chevron_right,
+                size: 20,
+                color: Theme.of(
+                  context,
+                ).colorScheme.onSurface.withValues(alpha: 0.6),
               ),
             ),
             daysOfWeekStyle: DaysOfWeekStyle(
               weekdayStyle: GoogleFonts.inter(
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
-                color: Colors.grey[400],
+                color: Theme.of(
+                  context,
+                ).colorScheme.onSurface.withValues(alpha: 0.4),
               ),
               weekendStyle: GoogleFonts.inter(
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
-                color: Colors.grey[400],
+                color: Theme.of(
+                  context,
+                ).colorScheme.onSurface.withValues(alpha: 0.4),
               ),
+            ),
+            calendarBuilders: CalendarBuilders(
+              markerBuilder: (context, date, events) {
+                final normalized = _normalizeDate(date);
+                if (_sessionSchedule.containsKey(normalized) &&
+                    _sessionSchedule[normalized]!.isNotEmpty) {
+                  return Positioned(
+                    bottom: 1,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Theme.of(context).colorScheme.secondary,
+                      ),
+                      width: 6.0,
+                      height: 6.0,
+                    ),
+                  );
+                }
+                return null;
+              },
             ),
             calendarStyle: CalendarStyle(
               outsideDaysVisible: false,
               defaultTextStyle: GoogleFonts.inter(
                 fontWeight: FontWeight.w500,
-                color: AppPalette.navyPrimary,
+                color: Theme.of(context).colorScheme.onSurface,
               ),
               weekendTextStyle: GoogleFonts.inter(
                 fontWeight: FontWeight.w500,
-                color: AppPalette.navyPrimary,
+                color: Theme.of(context).colorScheme.onSurface,
               ),
-              selectedDecoration: const BoxDecoration(
-                color: AppPalette.orangeAccent,
+              selectedDecoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.secondary,
                 shape: BoxShape.circle,
               ),
               todayDecoration: BoxDecoration(
                 color: Colors.transparent,
                 shape: BoxShape.circle,
-                border: Border.all(color: AppPalette.orangeAccent, width: 1),
+                border: Border.all(
+                  color: Theme.of(context).colorScheme.secondary,
+                  width: 1,
+                ),
               ),
               todayTextStyle: GoogleFonts.inter(
                 fontWeight: FontWeight.w500,
-                color: AppPalette.orangeAccent,
+                color: Theme.of(context).colorScheme.secondary,
               ),
-              disabledTextStyle: GoogleFonts.inter(color: Colors.grey[300]),
+              disabledTextStyle: GoogleFonts.inter(
+                color: Theme.of(context).disabledColor,
+              ),
             ),
           ),
         ),
 
         const SizedBox(height: 24),
 
-        // Time Slots Section
-        Text(
-          'Time Slots',
-          style: GoogleFonts.outfit(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-            color: AppPalette.navyPrimary,
+        // Time Slots Manager
+        _buildTimeSlotManager(),
+      ],
+    );
+  }
+
+  Widget _buildTimeSlotManager() {
+    if (_selectedDates.isEmpty) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: Theme.of(context).cardColor,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: Theme.of(context).dividerColor.withValues(alpha: 0.5),
           ),
+        ),
+        child: Column(
+          children: [
+            Icon(
+              Icons.calendar_today,
+              size: 40,
+              color: Theme.of(context).disabledColor,
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'No dates selected',
+              style: GoogleFonts.inter(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: Theme.of(
+                  context,
+                ).colorScheme.onSurface.withValues(alpha: 0.4),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // Determine slots to show
+    final Set<String> uniqueSlotKeys = {};
+    final Map<String, Map<String, TimeOfDay>> keyToSlot = {};
+    final Map<String, int> slotCounts = {};
+
+    for (final date in _selectedDates) {
+      final slots = _sessionSchedule[date] ?? [];
+      for (final slot in slots) {
+        final key =
+            '${slot['startTime']!.format(context)}-${slot['endTime']!.format(context)}';
+        if (!uniqueSlotKeys.contains(key)) {
+          uniqueSlotKeys.add(key);
+          keyToSlot[key] = slot;
+        }
+        slotCounts[key] = (slotCounts[key] ?? 0) + 1;
+      }
+    }
+
+    final sortedKeys = uniqueSlotKeys.toList()
+      ..sort((a, b) {
+        final tA = keyToSlot[a]!['startTime']!;
+        final tB = keyToSlot[b]!['startTime']!;
+        if (tA.hour != tB.hour) return tA.hour.compareTo(tB.hour);
+        return tA.minute.compareTo(tB.minute);
+      });
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Text(
+              'Time Slots',
+              style: GoogleFonts.outfit(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: Theme.of(context).colorScheme.onSurface,
+              ),
+            ),
+            const SizedBox(width: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: Theme.of(
+                  context,
+                ).colorScheme.secondary.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                '${_selectedDates.length} Days Selected',
+                style: GoogleFonts.inter(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: Theme.of(context).colorScheme.secondary,
+                ),
+              ),
+            ),
+          ],
         ),
         const SizedBox(height: 12),
 
-        // Time Slots List
-        ..._singleTimeSlots.asMap().entries.map((entry) {
-          final index = entry.key;
-          final slot = entry.value;
-          return _buildTimeSlotRow(index, slot);
+        // Existing Slots
+        ...sortedKeys.map((key) {
+          final slot = keyToSlot[key]!;
+          final count = slotCounts[key] ?? 0;
+          final isAll = count == _selectedDates.length;
+
+          return _buildUnifiedTimeSlotRow(slot, isAll, count);
         }),
 
         const SizedBox(height: 12),
 
-        // Add Time Slot Button
+        // Add Button
         InkWell(
           onTap: () {
+            // Add default slot to ALL selected dates
             setState(() {
-              // Add a new time slot starting after the last one
-              final lastSlot = _singleTimeSlots.last;
-              final lastEndTime = lastSlot['endTime']!;
-              final newStartHour = lastEndTime.hour + 1;
-              _singleTimeSlots.add({
-                'startTime': TimeOfDay(
-                  hour: newStartHour > 23 ? 9 : newStartHour,
-                  minute: 0,
-                ),
-                'endTime': TimeOfDay(
-                  hour: newStartHour > 22 ? 10 : newStartHour + 1,
-                  minute: 30,
-                ),
-              });
+              for (final date in _selectedDates) {
+                if (!_sessionSchedule.containsKey(date)) {
+                  _sessionSchedule[date] = [];
+                }
+
+                final list = _sessionSchedule[date]!;
+                var startHour = 9;
+                if (list.isNotEmpty) {
+                  startHour = list.last['endTime']!.hour;
+                }
+
+                // Avoid duplicates
+                final exists = list.any(
+                  (s) => s['startTime']!.hour == startHour,
+                );
+                if (!exists) {
+                  list.add({
+                    'startTime': TimeOfDay(hour: startHour, minute: 0),
+                    'endTime': TimeOfDay(hour: startHour + 1, minute: 30),
+                  });
+                }
+              }
             });
           },
           child: Container(
             width: double.infinity,
             padding: const EdgeInsets.symmetric(vertical: 14),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: Theme.of(context).cardColor,
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
-                color: AppPalette.orangeAccent.withValues(alpha: 0.5),
+                color: Theme.of(
+                  context,
+                ).colorScheme.secondary.withValues(alpha: 0.5),
                 width: 1.5,
                 style: BorderStyle.solid,
               ),
@@ -554,22 +626,24 @@ class _CreateSessionScreenState extends State<CreateSessionScreen>
                 Container(
                   padding: const EdgeInsets.all(4),
                   decoration: BoxDecoration(
-                    color: AppPalette.orangeAccent.withValues(alpha: 0.1),
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.secondary.withValues(alpha: 0.1),
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(
+                  child: Icon(
                     Icons.add,
                     size: 16,
-                    color: AppPalette.orangeAccent,
+                    color: Theme.of(context).colorScheme.secondary,
                   ),
                 ),
                 const SizedBox(width: 8),
                 Text(
-                  'Add Time Slot',
+                  'Add Time Slot to All Selected',
                   style: GoogleFonts.inter(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
-                    color: AppPalette.orangeAccent,
+                    color: Theme.of(context).colorScheme.secondary,
                   ),
                 ),
               ],
@@ -580,610 +654,236 @@ class _CreateSessionScreenState extends State<CreateSessionScreen>
     );
   }
 
-  // Build individual time slot row with start and end time
-  Widget _buildTimeSlotRow(int index, Map<String, TimeOfDay> slot) {
+  Widget _buildUnifiedTimeSlotRow(
+    Map<String, TimeOfDay> slot,
+    bool isAll,
+    int count,
+  ) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       child: Row(
         children: [
-          // Start Time
           Expanded(
-            child: InkWell(
-              onTap: () async {
-                final picked = await AppTimePicker.show(
-                  context,
-                  initialTime: slot['startTime']!,
-                );
-                if (picked != null) {
-                  setState(() {
-                    _singleTimeSlots[index]['startTime'] = picked;
-                  });
-                }
-              },
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 12,
-                ),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.grey[200]!),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      _formatTimeOfDay(slot['startTime']!),
-                      style: GoogleFonts.inter(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: AppPalette.navyPrimary,
-                      ),
-                    ),
-                    Row(
-                      children: [
-                        const Icon(
-                          Icons.access_time,
-                          size: 16,
-                          color: Colors.grey,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          'START',
-                          style: GoogleFonts.inter(
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.grey[400],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(width: 12),
-          // End Time
-          Expanded(
-            child: InkWell(
-              onTap: () async {
-                final picked = await AppTimePicker.show(
-                  context,
-                  initialTime: slot['endTime']!,
-                );
-                if (picked != null) {
-                  setState(() {
-                    _singleTimeSlots[index]['endTime'] = picked;
-                  });
-                }
-              },
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 12,
-                ),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.grey[200]!),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      _formatTimeOfDay(slot['endTime']!),
-                      style: GoogleFonts.inter(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: AppPalette.navyPrimary,
-                      ),
-                    ),
-                    Row(
-                      children: [
-                        const Icon(
-                          Icons.access_time,
-                          size: 16,
-                          color: Colors.grey,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          'END',
-                          style: GoogleFonts.inter(
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.grey[400],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-          // Remove button (only if more than one slot)
-          if (_singleTimeSlots.length > 1) ...[
-            const SizedBox(width: 8),
-            InkWell(
-              onTap: () {
-                setState(() {
-                  _singleTimeSlots.removeAt(index);
-                });
-              },
-              child: Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.red[50],
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(Icons.remove, size: 16, color: Colors.red[400]),
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
-  // Helper to format TimeOfDay to AM/PM string
-  String _formatTimeOfDay(TimeOfDay time) {
-    final hour = time.hourOfPeriod == 0 ? 12 : time.hourOfPeriod;
-    final minute = time.minute.toString().padLeft(2, '0');
-    final period = time.period == DayPeriod.am ? 'AM' : 'PM';
-    return '$hour:$minute $period';
-  }
-
-  // --- Recurring (Packet) UI ---
-  Widget _buildRecurringSessionSchedule() {
-    // Count total sessions from all dates
-    int totalSessions = _recurringTimeslots.values.fold(
-      0,
-      (sum, slots) => sum + slots.length,
-    );
-
-    // Get current timeslots for selected date
-    final currentTimeslots = _selectedRecurringDate != null
-        ? (_recurringTimeslots[_selectedRecurringDate!] ?? [])
-        : <Map<String, TimeOfDay>>[];
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              'Recurring Sessions',
-              style: GoogleFonts.outfit(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: AppPalette.navyPrimary,
-              ),
-            ),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
               decoration: BoxDecoration(
-                color: AppPalette.orangeAccent.withValues(alpha: 0.1),
+                color: Theme.of(context).cardColor,
                 borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: isAll
+                      ? Theme.of(context).dividerColor.withValues(alpha: 0.5)
+                      : Colors.orange.withValues(
+                          alpha: 0.3,
+                        ), // Keep orange warning? or use secondary?
+                ),
               ),
               child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Icon(
-                    Icons.event_available,
-                    size: 14,
-                    color: AppPalette.orangeAccent,
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    '$totalSessions Timeslots',
-                    style: GoogleFonts.inter(
-                      fontWeight: FontWeight.bold,
-                      color: AppPalette.orangeAccent,
-                      fontSize: 12,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      // Start Time
+                      InkWell(
+                        onTap: () async {
+                          final newStart = await AppTimePicker.show(
+                            context,
+                            initialTime: slot['startTime']!,
+                          );
+                          if (newStart == null) return;
 
-        // Instructions
-        Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: Colors.blue[50],
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.blue[100]!),
-          ),
-          child: Row(
-            children: [
-              Icon(Icons.info_outline, size: 18, color: Colors.blue[700]),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  'Select a date to add timeslots. Highlighted dates have sessions.',
-                  style: GoogleFonts.inter(
-                    fontSize: 12,
-                    color: Colors.blue[900],
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 16),
+                          setState(() {
+                            for (final date in _selectedDates) {
+                              final list = _sessionSchedule[date];
+                              if (list == null) continue;
 
-        // Calendar Integration
-        Container(
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(20),
-          ),
-          padding: const EdgeInsets.fromLTRB(8, 0, 8, 12),
-          child: TableCalendar(
-            firstDay: DateTime.now(),
-            lastDay: DateTime.now().add(const Duration(days: 365)),
-            focusedDay: _focusedDay,
-            selectedDayPredicate: (day) =>
-                _selectedRecurringDate != null &&
-                isSameDay(day, _selectedRecurringDate!),
-            onDaySelected: _onDaySelected,
-            calendarFormat: CalendarFormat.month,
-            headerStyle: HeaderStyle(
-              titleCentered: true,
-              formatButtonVisible: false,
-              titleTextStyle: GoogleFonts.outfit(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: AppPalette.navyPrimary,
-              ),
-              leftChevronIcon: const Icon(Icons.chevron_left, size: 20),
-              rightChevronIcon: const Icon(Icons.chevron_right, size: 20),
-            ),
-            calendarStyle: CalendarStyle(
-              todayDecoration: BoxDecoration(
-                color: Colors.orange[100],
-                shape: BoxShape.circle,
-              ),
-              todayTextStyle: const TextStyle(color: Colors.orange),
-              selectedDecoration: const BoxDecoration(
-                color: AppPalette.orangeAccent,
-                shape: BoxShape.circle,
-              ),
-              defaultTextStyle: GoogleFonts.inter(fontSize: 12),
-              weekendTextStyle: GoogleFonts.inter(fontSize: 12),
-              outsideDaysVisible: false,
-            ),
-            daysOfWeekStyle: DaysOfWeekStyle(
-              weekdayStyle: GoogleFonts.inter(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: Colors.grey[400],
-              ),
-              weekendStyle: GoogleFonts.inter(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: Colors.grey[400],
-              ),
-            ),
-            calendarBuilders: CalendarBuilders(
-              defaultBuilder: (context, day, focusedDay) {
-                final normalizedDay = _normalizeDate(day);
-                final timeslotCount =
-                    _recurringTimeslots[normalizedDay]?.length ?? 0;
-                // Only show colored marker if the date has actual timeslots
-                if (timeslotCount > 0 &&
-                    !isSameDay(day, _selectedRecurringDate)) {
-                  return Container(
-                    margin: const EdgeInsets.all(4),
-                    decoration: BoxDecoration(
-                      color: AppPalette.orangeAccent.withValues(alpha: 0.1),
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: AppPalette.orangeAccent,
-                        width: 2,
-                      ),
-                    ),
-                    child: Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            '${day.day}',
-                            style: GoogleFonts.inter(
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                              color: AppPalette.navyPrimary,
+                              for (final s in list) {
+                                if (s['startTime']!.hour ==
+                                        slot['startTime']!.hour &&
+                                    s['startTime']!.minute ==
+                                        slot['startTime']!.minute) {
+                                  s['startTime'] = newStart;
+                                  final startMin =
+                                      slot['startTime']!.hour * 60 +
+                                      slot['startTime']!.minute;
+                                  final endMin =
+                                      slot['endTime']!.hour * 60 +
+                                      slot['endTime']!.minute;
+                                  final duration = endMin - startMin;
+
+                                  final newStartMin =
+                                      newStart.hour * 60 + newStart.minute;
+                                  final newEndMin = newStartMin + duration;
+
+                                  s['endTime'] = TimeOfDay(
+                                    hour: (newEndMin ~/ 60) % 24,
+                                    minute: newEndMin % 60,
+                                  );
+                                }
+                              }
+                            }
+                          });
+                        },
+                        child: Row(
+                          children: [
+                            Text(
+                              _formatTimeOfDay(slot['startTime']!),
+                              style: GoogleFonts.inter(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                                color: Theme.of(context).colorScheme.onSurface,
+                                decoration: TextDecoration.underline,
+                                decorationStyle: TextDecorationStyle.dotted,
+                              ),
                             ),
+                            const SizedBox(width: 4),
+                            Icon(
+                              Icons.edit,
+                              size: 14,
+                              color: Theme.of(context).colorScheme.secondary,
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                        child: Text(
+                          '-',
+                          style: GoogleFonts.inter(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: Theme.of(context).disabledColor,
                           ),
-                          Container(
-                            margin: const EdgeInsets.only(top: 2),
+                        ),
+                      ),
+
+                      // End Time
+                      InkWell(
+                        onTap: () async {
+                          final newEnd = await AppTimePicker.show(
+                            context,
+                            initialTime: slot['endTime']!,
+                          );
+                          if (newEnd == null) return;
+
+                          // Validate validation: End time must be after start time
+                          final startMin =
+                              slot['startTime']!.hour * 60 +
+                              slot['startTime']!.minute;
+                          final endMin = newEnd.hour * 60 + newEnd.minute;
+
+                          if (endMin <= startMin) {
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                    'End time must be after start time',
+                                  ),
+                                  backgroundColor: Colors.red,
+                                ),
+                              );
+                            }
+                            return;
+                          }
+
+                          setState(() {
+                            for (final date in _selectedDates) {
+                              final list = _sessionSchedule[date];
+                              if (list == null) continue;
+
+                              for (final s in list) {
+                                if (s['startTime']!.hour ==
+                                        slot['startTime']!.hour &&
+                                    s['startTime']!.minute ==
+                                        slot['startTime']!.minute) {
+                                  s['endTime'] = newEnd;
+                                }
+                              }
+                            }
+                          });
+                        },
+                        child: Row(
+                          children: [
+                            Text(
+                              _formatTimeOfDay(slot['endTime']!),
+                              style: GoogleFonts.inter(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                                color: Theme.of(context).colorScheme.onSurface,
+                                decoration: TextDecoration.underline,
+                                decorationStyle: TextDecorationStyle.dotted,
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            Icon(
+                              Icons.edit,
+                              size: 14,
+                              color: Theme.of(context).colorScheme.secondary,
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      if (!isAll)
+                        Padding(
+                          padding: const EdgeInsets.only(left: 8.0),
+                          child: Container(
                             padding: const EdgeInsets.symmetric(
-                              horizontal: 4,
-                              vertical: 1,
+                              horizontal: 6,
+                              vertical: 2,
                             ),
                             decoration: BoxDecoration(
-                              color: AppPalette.orangeAccent,
-                              borderRadius: BorderRadius.circular(8),
+                              color: Colors.orange[50],
+                              borderRadius: BorderRadius.circular(4),
                             ),
                             child: Text(
-                              '$timeslotCount',
+                              '$count/${_selectedDates.length}',
                               style: GoogleFonts.inter(
-                                fontSize: 8,
+                                fontSize: 10,
+                                color: Colors.orange,
                                 fontWeight: FontWeight.bold,
-                                color: Colors.white,
                               ),
                             ),
                           ),
-                        ],
-                      ),
-                    ),
-                  );
-                }
-                return null;
-              },
-            ),
-          ),
-        ),
-        const SizedBox(height: 24),
-
-        // Show timeslots section for selected date
-        if (_selectedRecurringDate != null) ...[
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Time Slots',
-                style: GoogleFonts.outfit(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: AppPalette.navyPrimary,
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 6,
-                ),
-                decoration: BoxDecoration(
-                  color: Colors.grey[100],
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.calendar_today,
-                      size: 12,
-                      color: AppPalette.orangeAccent,
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      DateFormat('MMM d').format(_selectedRecurringDate!),
-                      style: GoogleFonts.inter(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: AppPalette.navyPrimary,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-
-          // Time slots list
-          ...currentTimeslots.asMap().entries.map((entry) {
-            final index = entry.key;
-            final slot = entry.value;
-            return Container(
-              margin: const EdgeInsets.only(bottom: 12),
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: Colors.grey[100]!),
-              ),
-              child: Row(
-                children: [
-                  // Start Time
-                  Expanded(
-                    child: InkWell(
-                      onTap: () async {
-                        final picked = await AppTimePicker.show(
-                          context,
-                          initialTime: slot['startTime']!,
-                        );
-                        if (picked != null) {
-                          setState(() {
-                            _recurringTimeslots[_selectedRecurringDate!]![index]['startTime'] =
-                                picked;
-                          });
-                        }
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: Colors.grey[50],
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: Colors.grey[200]!),
                         ),
-                        child: Row(
-                          children: [
-                            const Icon(
-                              Icons.access_time,
-                              size: 16,
-                              color: Colors.grey,
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                _formatTimeOfDay(slot['startTime']!),
-                                style: GoogleFonts.inter(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w600,
-                                  color: AppPalette.navyPrimary,
-                                ),
-                              ),
-                            ),
-                            Text(
-                              'START',
-                              style: GoogleFonts.inter(
-                                fontSize: 10,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.grey[400],
-                                letterSpacing: 0.5,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
+                    ],
                   ),
-                  const SizedBox(width: 12),
-                  // End Time
-                  Expanded(
-                    child: InkWell(
-                      onTap: () async {
-                        final picked = await AppTimePicker.show(
-                          context,
-                          initialTime: slot['endTime']!,
-                        );
-                        if (picked != null) {
-                          setState(() {
-                            _recurringTimeslots[_selectedRecurringDate!]![index]['endTime'] =
-                                picked;
-                          });
-                        }
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: Colors.grey[50],
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: Colors.grey[200]!),
-                        ),
-                        child: Row(
-                          children: [
-                            const Icon(
-                              Icons.access_time,
-                              size: 16,
-                              color: Colors.grey,
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                _formatTimeOfDay(slot['endTime']!),
-                                style: GoogleFonts.inter(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w600,
-                                  color: AppPalette.navyPrimary,
-                                ),
-                              ),
-                            ),
-                            Text(
-                              'END',
-                              style: GoogleFonts.inter(
-                                fontSize: 10,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.grey[400],
-                                letterSpacing: 0.5,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                  // Delete button
-                  if (currentTimeslots.length > 1) ...[
-                    const SizedBox(width: 8),
-                    IconButton(
-                      icon: const Icon(Icons.delete_outline, color: Colors.red),
-                      onPressed: () {
-                        setState(() {
-                          _recurringTimeslots[_selectedRecurringDate!]!
-                              .removeAt(index);
-                          // If no timeslots left, remove the date
-                          if (_recurringTimeslots[_selectedRecurringDate!]!
-                              .isEmpty) {
-                            _recurringTimeslots.remove(_selectedRecurringDate);
-                            _selectedRecurringDate = null;
-                          }
-                        });
-                      },
-                    ),
-                  ],
                 ],
               ),
-            );
-          }),
-
-          // Add time slot button
-          const SizedBox(height: 8),
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton.icon(
-              onPressed: () {
-                setState(() {
-                  final lastSlot = currentTimeslots.isNotEmpty
-                      ? currentTimeslots.last
-                      : null;
-                  _recurringTimeslots[_selectedRecurringDate!]!.add({
-                    'startTime':
-                        lastSlot?['endTime'] ??
-                        const TimeOfDay(hour: 9, minute: 0),
-                    'endTime': TimeOfDay(
-                      hour: (lastSlot?['endTime']?.hour ?? 9) + 1,
-                      minute: lastSlot?['endTime']?.minute ?? 30,
-                    ),
-                  });
-                });
-              },
-              icon: const Icon(Icons.add, color: Colors.orange),
-              label: Text(
-                'Add Time Slot',
-                style: GoogleFonts.inter(fontWeight: FontWeight.w600),
-              ),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: AppPalette.orangeAccent,
-                side: const BorderSide(color: AppPalette.orangeAccent),
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
             ),
           ),
-
-          // Remove date button
-          const SizedBox(height: 12),
-          SizedBox(
-            width: double.infinity,
-            child: TextButton.icon(
-              onPressed: () {
-                setState(() {
-                  _recurringTimeslots.remove(_selectedRecurringDate);
-                  _selectedRecurringDate = null;
-                });
-              },
-              icon: const Icon(Icons.delete_outline, color: Colors.orange),
-              label: Text(
-                'Remove This Date',
-                style: GoogleFonts.inter(fontWeight: FontWeight.w600),
+          const SizedBox(width: 8),
+          // Delete Button
+          InkWell(
+            onTap: () {
+              setState(() {
+                for (final date in _selectedDates) {
+                  final list = _sessionSchedule[date];
+                  if (list != null) {
+                    list.removeWhere(
+                      (s) =>
+                          s['startTime']!.hour == slot['startTime']!.hour &&
+                          s['startTime']!.minute == slot['startTime']!.minute,
+                    );
+                  }
+                }
+              });
+            },
+            child: Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Colors.red[50],
+                shape: BoxShape.circle,
               ),
-              style: TextButton.styleFrom(
-                foregroundColor: Colors.red,
-                padding: const EdgeInsets.symmetric(vertical: 12),
+              child: Icon(
+                Icons.delete_outline,
+                size: 18,
+                color: Colors.red[400],
               ),
             ),
           ),
         ],
-      ],
+      ),
     );
   }
 
@@ -1201,25 +901,31 @@ class _CreateSessionScreenState extends State<CreateSessionScreen>
               style: GoogleFonts.inter(
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
-                color: AppPalette.navyPrimary,
+                color: Theme.of(context).colorScheme.onSurface,
               ),
             ),
             const SizedBox(height: 8),
-            // Search Box wrapped in CompositedTransformTarget for Overlay
             CompositedTransformTarget(
               link: _layerLink,
               child: TextField(
                 controller: _locationController,
                 focusNode: _locationFocus,
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurface,
+                ),
                 decoration: InputDecoration(
-                  prefixIcon: const Icon(
+                  prefixIcon: Icon(
                     Icons.location_on,
-                    color: AppPalette.orangeAccent,
+                    color: Theme.of(context).colorScheme.secondary,
                   ),
                   hintText: 'Search or pick on map...',
-                  hintStyle: GoogleFonts.inter(color: Colors.grey[400]),
+                  hintStyle: GoogleFonts.inter(
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.onSurface.withValues(alpha: 0.4),
+                  ),
                   filled: true,
-                  fillColor: Colors.white,
+                  fillColor: Theme.of(context).cardColor,
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                     borderSide: BorderSide.none,
@@ -1242,7 +948,7 @@ class _CreateSessionScreenState extends State<CreateSessionScreen>
                 width: double.infinity,
                 child: GoogleMap(
                   initialCameraPosition: const CameraPosition(
-                    target: LatLng(37.422131, -122.084801), // Default
+                    target: LatLng(37.422131, -122.084801),
                     zoom: 14,
                   ),
                   onMapCreated: (controller) {
@@ -1271,19 +977,22 @@ class _CreateSessionScreenState extends State<CreateSessionScreen>
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: Theme.of(context).cardColor,
             borderRadius: BorderRadius.circular(16),
           ),
           child: Row(
             children: [
-              const Icon(Icons.groups, color: AppPalette.navyPrimary),
+              Icon(
+                Icons.groups,
+                color: Theme.of(context).colorScheme.onSurface,
+              ),
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
                   'Player Capacity',
                   style: GoogleFonts.inter(
                     fontWeight: FontWeight.w600,
-                    color: AppPalette.navyPrimary,
+                    color: Theme.of(context).colorScheme.onSurface,
                   ),
                 ),
               ),
@@ -1300,7 +1009,7 @@ class _CreateSessionScreenState extends State<CreateSessionScreen>
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: Theme.of(context).cardColor,
             borderRadius: BorderRadius.circular(16),
           ),
           child: Column(
@@ -1308,16 +1017,16 @@ class _CreateSessionScreenState extends State<CreateSessionScreen>
             children: [
               Row(
                 children: [
-                  const Icon(
+                  Icon(
                     Icons.attach_money,
-                    color: AppPalette.orangeAccent,
+                    color: Theme.of(context).colorScheme.secondary,
                   ),
                   const SizedBox(width: 12),
                   Text(
                     'Session Fee',
                     style: GoogleFonts.inter(
                       fontWeight: FontWeight.w600,
-                      color: AppPalette.navyPrimary,
+                      color: Theme.of(context).colorScheme.onSurface,
                     ),
                   ),
                 ],
@@ -1329,9 +1038,13 @@ class _CreateSessionScreenState extends State<CreateSessionScreen>
                 decoration: InputDecoration(
                   prefixText: '\$ ',
                   hintText: '60',
-                  hintStyle: GoogleFonts.inter(color: Colors.grey[400]),
+                  hintStyle: GoogleFonts.inter(
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.onSurface.withValues(alpha: 0.4),
+                  ),
                   filled: true,
-                  fillColor: AppPalette.backgroundLight,
+                  fillColor: Theme.of(context).cardColor,
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                     borderSide: BorderSide.none,
@@ -1342,8 +1055,8 @@ class _CreateSessionScreenState extends State<CreateSessionScreen>
                   ),
                 ),
               ),
-              // Only show pricing type selector for recurring sessions
-              if (_tabController.index == 1) ...[
+              // Only show pricing type selector if multiple dates are selected
+              if (_selectedDates.length > 1) ...[
                 const SizedBox(height: 12),
                 Row(
                   children: [
@@ -1354,13 +1067,15 @@ class _CreateSessionScreenState extends State<CreateSessionScreen>
                           padding: const EdgeInsets.symmetric(vertical: 12),
                           decoration: BoxDecoration(
                             color: _pricePerPerson
-                                ? Colors.orange.withValues(alpha: 0.1)
+                                ? Theme.of(
+                                    context,
+                                  ).colorScheme.secondary.withValues(alpha: 0.1)
                                 : Colors.transparent,
                             borderRadius: BorderRadius.circular(8),
                             border: Border.all(
                               color: _pricePerPerson
-                                  ? Colors.orange
-                                  : Colors.grey[300]!,
+                                  ? Theme.of(context).colorScheme.secondary
+                                  : Theme.of(context).dividerColor,
                             ),
                           ),
                           child: Text(
@@ -1371,8 +1086,9 @@ class _CreateSessionScreenState extends State<CreateSessionScreen>
                                   ? FontWeight.w600
                                   : FontWeight.normal,
                               color: _pricePerPerson
-                                  ? Colors.orange
-                                  : Colors.grey[600],
+                                  ? Theme.of(context).colorScheme.secondary
+                                  : Theme.of(context).colorScheme.onSurface
+                                        .withValues(alpha: 0.6),
                             ),
                           ),
                         ),
@@ -1386,13 +1102,15 @@ class _CreateSessionScreenState extends State<CreateSessionScreen>
                           padding: const EdgeInsets.symmetric(vertical: 12),
                           decoration: BoxDecoration(
                             color: !_pricePerPerson
-                                ? Colors.orange.withValues(alpha: 0.1)
+                                ? Theme.of(
+                                    context,
+                                  ).colorScheme.secondary.withValues(alpha: 0.1)
                                 : Colors.transparent,
                             borderRadius: BorderRadius.circular(8),
                             border: Border.all(
                               color: !_pricePerPerson
-                                  ? Colors.orange
-                                  : Colors.grey[300]!,
+                                  ? Theme.of(context).colorScheme.secondary
+                                  : Theme.of(context).dividerColor,
                             ),
                           ),
                           child: Text(
@@ -1403,8 +1121,9 @@ class _CreateSessionScreenState extends State<CreateSessionScreen>
                                   ? FontWeight.w600
                                   : FontWeight.normal,
                               color: !_pricePerPerson
-                                  ? Colors.orange
-                                  : Colors.grey[600],
+                                  ? Theme.of(context).colorScheme.secondary
+                                  : Theme.of(context).colorScheme.onSurface
+                                        .withValues(alpha: 0.6),
                             ),
                           ),
                         ),
@@ -1429,26 +1148,26 @@ class _CreateSessionScreenState extends State<CreateSessionScreen>
       }
 
       final predictions = await PlacesService.getAutocomplete(query);
-      if (mounted) {
-        setState(() {
-          _predictions = predictions;
-        });
-        if (_predictions.isNotEmpty) {
+      if (!mounted) return;
+
+      setState(() {
+        _predictions = predictions;
+      });
+      if (_predictions.isNotEmpty) {
+        if (context.mounted) {
           _showOverlay();
-        } else {
-          _removeOverlay();
         }
+      } else {
+        _removeOverlay();
       }
     });
   }
 
   void _showOverlay() {
     _removeOverlay();
-    // context.findRenderObject() not needed if we rely on LayerLink which is pre-composited
-
     _overlayEntry = OverlayEntry(
       builder: (context) => Positioned(
-        width: MediaQuery.of(context).size.width - 48, // 24 padding each side
+        width: MediaQuery.of(context).size.width - 48,
         child: CompositedTransformFollower(
           link: _layerLink,
           showWhenUnlinked: false,
@@ -1518,15 +1237,12 @@ class _CreateSessionScreenState extends State<CreateSessionScreen>
           ),
         ),
       );
-      // Show coordinates temporarily while fetching address
       _locationController.text =
           "${position.latitude.toStringAsFixed(4)}, ${position.longitude.toStringAsFixed(4)}";
     });
 
-    // Animate camera to center
     _mapController?.animateCamera(CameraUpdate.newLatLng(position));
 
-    // Reverse geocode to get place name/address
     final address = await PlacesService.reverseGeocode(
       position.latitude,
       position.longitude,
@@ -1551,10 +1267,14 @@ class _CreateSessionScreenState extends State<CreateSessionScreen>
           child: Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: Colors.grey[100],
+              color: Theme.of(context).dividerColor.withValues(alpha: 0.1),
               shape: BoxShape.circle,
             ),
-            child: const Icon(Icons.remove, size: 16),
+            child: Icon(
+              Icons.remove,
+              size: 16,
+              color: Theme.of(context).colorScheme.onSurface,
+            ),
           ),
         ),
         const SizedBox(width: 16),
@@ -1563,7 +1283,7 @@ class _CreateSessionScreenState extends State<CreateSessionScreen>
           style: GoogleFonts.outfit(
             fontSize: 18,
             fontWeight: FontWeight.bold,
-            color: AppPalette.navyPrimary,
+            color: Theme.of(context).colorScheme.onSurface,
           ),
         ),
         const SizedBox(width: 16),
@@ -1572,10 +1292,14 @@ class _CreateSessionScreenState extends State<CreateSessionScreen>
           child: Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: Colors.grey[100],
+              color: Theme.of(context).dividerColor.withValues(alpha: 0.1),
               shape: BoxShape.circle,
             ),
-            child: const Icon(Icons.add, size: 16),
+            child: Icon(
+              Icons.add,
+              size: 16,
+              color: Theme.of(context).colorScheme.onSurface,
+            ),
           ),
         ),
       ],
@@ -1588,13 +1312,13 @@ class _CreateSessionScreenState extends State<CreateSessionScreen>
       child: ElevatedButton(
         onPressed: _isCreating ? null : _createSession,
         style: ElevatedButton.styleFrom(
-          backgroundColor: AppPalette.orangeAccent,
+          backgroundColor: Theme.of(context).colorScheme.primary,
           padding: const EdgeInsets.symmetric(vertical: 16),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
           elevation: 4,
-          shadowColor: AppPalette.orangeAccent.withValues(alpha: 0.4),
+          shadowColor: Theme.of(context).shadowColor.withValues(alpha: 0.4),
         ),
         child: _isCreating
             ? const SizedBox(
@@ -1634,126 +1358,86 @@ class _CreateSessionScreenState extends State<CreateSessionScreen>
       return;
     }
 
-    // Validate that session date is not in the past
+    if (_selectedDates.isEmpty) {
+      _showError('Please select at least one date');
+      return;
+    }
+
+    // Validate if dates are in the past and if they have timeslots
     final now = DateTime.now();
-    if (_tabController.index == 0) {
-      // Single session - check if any time slot is in the past
-      for (final slot in _singleTimeSlots) {
+
+    // Check each selected date
+    for (final date in _selectedDates) {
+      final slots = _sessionSchedule[date];
+      if (slots == null || slots.isEmpty) {
+        _showError('Please add time slots for all selected dates');
+        return;
+      }
+
+      for (final slot in slots) {
         final startTime = slot['startTime']!;
         final sessionDateTime = DateTime(
-          _singleDate.year,
-          _singleDate.month,
-          _singleDate.day,
+          date.year,
+          date.month,
+          date.day,
           startTime.hour,
           startTime.minute,
         );
         if (sessionDateTime.isBefore(now)) {
-          _showError('Cannot create a session in the past');
+          _showError('Cannot create sessions with past dates');
           return;
         }
-      }
-    } else {
-      // Recurring sessions - check if any date is in the past
-      for (final entry in _recurringTimeslots.entries) {
-        final date = entry.key;
-        for (final slot in entry.value) {
-          final startTime = slot['startTime']!;
-          final sessionDateTime = DateTime(
-            date.year,
-            date.month,
-            date.day,
-            startTime.hour,
-            startTime.minute,
-          );
-          if (sessionDateTime.isBefore(now)) {
-            _showError('Cannot create sessions with past dates');
-            return;
-          }
-        }
-      }
-
-      // Check if there are any timeslots
-      if (_recurringTimeslots.isEmpty) {
-        _showError('Please add at least one recurring session date');
-        return;
       }
     }
 
     setState(() => _isCreating = true);
 
     try {
-      // Prepare data in the format expected by the backend
-      List<String> selectedDays;
-      List<Map<String, dynamic>> timeSlots;
-
+      final isRecurring = _selectedDates.length > 1;
+      List<String> selectedDays = [];
+      List<Map<String, dynamic>> timeSlots = [];
       List<Map<String, dynamic>> explicitTimeSlots = [];
 
-      if (_tabController.index == 0) {
-        // Single session - convert time slots to backend format
-        selectedDays = [_singleDate.toIso8601String().split('T')[0]];
-        timeSlots = _singleTimeSlots.map((slot) {
+      final sortedDates = _selectedDates.toList()
+        ..sort((a, b) => a.compareTo(b));
+
+      for (final date in sortedDates) {
+        final dateStr = date.toIso8601String().split('T')[0];
+        selectedDays.add(dateStr);
+
+        final slots = _sessionSchedule[date]!;
+        for (final slot in slots) {
           final startTime = slot['startTime']!;
           final endTime = slot['endTime']!;
-          // Calculate duration in minutes
-          final startMinutes = startTime.hour * 60 + startTime.minute;
-          final endMinutes = endTime.hour * 60 + endTime.minute;
-          final durationMinutes = endMinutes - startMinutes;
-          return {
-            'startTime': {'hour': startTime.hour, 'minute': startTime.minute},
-            'durationMinutes': durationMinutes > 0
-                ? durationMinutes
-                : 60, // Default to 60 if invalid
-          };
-        }).toList();
-      } else {
-        // Recurring sessions - Use explicitTimeSlots to avoid duplication
-        selectedDays = []; // Not used for custom recurrence in this flow
-        timeSlots = []; // Not used for custom recurrence in this flow
 
-        // Sort dates chronologically
-        final sortedDates = _recurringTimeslots.keys.toList()
-          ..sort((a, b) => a.compareTo(b));
+          // Calculate duration
+          final startMin = startTime.hour * 60 + startTime.minute;
+          final endMin = endTime.hour * 60 + endTime.minute;
+          final duration = endMin - startMin;
 
-        for (final date in sortedDates) {
-          final slots = _recurringTimeslots[date]!;
-          for (final slot in slots) {
-            final startTime = slot['startTime']!;
-            final endTime = slot['endTime']!;
+          final dt = DateTime(
+            date.year,
+            date.month,
+            date.day,
+            startTime.hour,
+            startTime.minute,
+          );
 
-            // Construct full DateTimes
-            final startDateTime = DateTime(
-              date.year,
-              date.month,
-              date.day,
-              startTime.hour,
-              startTime.minute,
-            );
+          explicitTimeSlots.add({
+            'startTime': dt.toIso8601String(),
+            'durationMinutes': duration > 0 ? duration : 60,
+          });
 
-            // Calculate duration
-            final startMinutes = startTime.hour * 60 + startTime.minute;
-            final endMinutes = endTime.hour * 60 + endTime.minute;
-            final durationMinutes = endMinutes - startMinutes;
-
-            explicitTimeSlots.add({
-              'startTime': startDateTime.toIso8601String(),
-              'durationMinutes': durationMinutes > 0 ? durationMinutes : 60,
+          if (!isRecurring) {
+            timeSlots.add({
+              'startTime': {'hour': startTime.hour, 'minute': startTime.minute},
+              'durationMinutes': duration > 0 ? duration : 60,
             });
-
-            // Also add to selectedDays just for record keeping if needed by other logic,
-            // though backend explicit flow ignores it.
-            final dateStr = date.toIso8601String().split('T')[0];
-            if (!selectedDays.contains(dateStr)) {
-              selectedDays.add(dateStr);
-            }
           }
         }
       }
 
       if (_isEditing) {
-        // UPDATE Existing Session
-        // We only update metadata fields + Price as per plan.
-        // Time Slots & Dates are not updated in this flow to avoid conflict complexity.
-
         final updates = {
           'title': _titleController.text.trim(),
           'description': _descriptionController.text.trim(),
@@ -1778,10 +1462,9 @@ class _CreateSessionScreenState extends State<CreateSessionScreen>
               backgroundColor: Colors.green,
             ),
           );
-          Navigator.pop(context, true); // Return true to trigger refresh
+          Navigator.pop(context, true);
         }
       } else {
-        // CREATE New Session
         await SessionService.createSession(
           title: _titleController.text.trim(),
           description: _descriptionController.text.trim(),
@@ -1790,7 +1473,7 @@ class _CreateSessionScreenState extends State<CreateSessionScreen>
           timeSlots: timeSlots,
           explicitTimeSlots: explicitTimeSlots,
           selectedDays: selectedDays,
-          isRecurring: _tabController.index == 1,
+          isRecurring: isRecurring,
           participants: <String>[],
           priceAmount: double.tryParse(_priceController.text.trim()) ?? 0.0,
           pricePerPerson: _pricePerPerson,
@@ -1821,6 +1504,12 @@ class _CreateSessionScreenState extends State<CreateSessionScreen>
       SnackBar(content: Text(message), backgroundColor: Colors.red),
     );
   }
+
+  String _formatTimeOfDay(TimeOfDay time) {
+    final now = DateTime.now();
+    final dt = DateTime(now.year, now.month, now.day, time.hour, time.minute);
+    return DateFormat.jm().format(dt);
+  }
 }
 
 class TimeSlot {
@@ -1844,26 +1533,20 @@ class DottedBorderContainer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Simplified fake dotted border using dashed decoration logic or image is heavy.
-    // Using simple border for now to avoid custom painter complexity unless requested.
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: Colors.grey[300]!,
+          color: Theme.of(context).dividerColor,
           style: BorderStyle.none,
-        ), // Placeholder
+        ),
       ),
-      // Using Stack to simulate Dotted border or just simplified visual
       child: Container(
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color: Colors.grey[300]!,
-            width: 2,
-          ), // Dashed effect tricky without package
+          border: Border.all(color: Theme.of(context).dividerColor, width: 2),
         ),
         padding: const EdgeInsets.all(16),
         child: child,

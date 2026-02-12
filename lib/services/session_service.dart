@@ -247,4 +247,32 @@ class SessionService {
       rethrow;
     }
   }
+
+  /// Update player attendance status
+  static Future<Map<String, dynamic>> updateAttendance(
+    String sessionId,
+    String playerId,
+    bool attended,
+  ) async {
+    try {
+      final httpResponse = await ApiService.put(
+        'sessions/$sessionId/players/$playerId/attendance',
+        {'attended': attended},
+      );
+      final responseData =
+          json.decode(httpResponse.body) as Map<String, dynamic>;
+
+      if (responseData['status'] == 'success') {
+        debugPrint('Attendance updated: $playerId -> $attended');
+        return responseData['data'] as Map<String, dynamic>;
+      } else {
+        throw Exception(
+          responseData['message'] ?? 'Failed to update attendance',
+        );
+      }
+    } catch (e) {
+      debugPrint('Error updating attendance: $e');
+      rethrow;
+    }
+  }
 }

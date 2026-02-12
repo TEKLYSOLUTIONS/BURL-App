@@ -5,9 +5,10 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../widgets/notification_button.dart';
-import '../../config/palette.dart';
+
 import '../../services/profile_service.dart';
 import '../../providers/theme_provider.dart';
+import '../../config/palette.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -80,6 +81,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    debugPrint(
+      'SettingsScreen Rebuild. Brightness: ${Theme.of(context).brightness}',
+    );
     if (_error != null) {
       return Scaffold(
         backgroundColor: Theme.of(context).scaffoldBackgroundColor,
@@ -119,7 +123,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               ),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.05),
+                  color: Theme.of(context).shadowColor.withValues(alpha: 0.05),
                   blurRadius: 20,
                   offset: const Offset(0, 10),
                 ),
@@ -132,9 +136,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   width: 40,
                   height: 40,
                   child: IconButton(
-                    icon: const Icon(
+                    icon: Icon(
                       Icons.arrow_back,
-                      color: AppPalette.navyPrimary,
+                      color: Theme.of(context).iconTheme.color,
                     ),
                     padding: EdgeInsets.zero,
                     onPressed: () {
@@ -153,14 +157,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     style: GoogleFonts.outfit(
                       fontSize: 28,
                       fontWeight: FontWeight.bold,
-                      color: AppPalette.navyPrimary,
+                      color: Theme.of(context).colorScheme.onSurface,
                     ),
                   ),
                 ),
                 NotificationButton(
-                  iconColor:
-                      Theme.of(context).iconTheme.color ??
-                      AppPalette.navyPrimary,
+                  iconColor: Theme.of(context).iconTheme.color,
                   backgroundColor: Theme.of(context).scaffoldBackgroundColor,
                 ),
               ],
@@ -181,7 +183,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                             borderRadius: BorderRadius.circular(20),
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.05),
+                                color: Theme.of(
+                                  context,
+                                ).shadowColor.withValues(alpha: 0.05),
                                 blurRadius: 10,
                                 offset: const Offset(0, 4),
                               ),
@@ -191,7 +195,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                             children: [
                               CircleAvatar(
                                 radius: 30,
-                                backgroundColor: AppPalette.navyPrimary,
+                                backgroundColor: Theme.of(
+                                  context,
+                                ).colorScheme.primary,
                                 child: Text(
                                   displayName.isNotEmpty
                                       ? displayName[0].toUpperCase()
@@ -213,14 +219,18 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                                       style: GoogleFonts.outfit(
                                         fontSize: 18,
                                         fontWeight: FontWeight.bold,
-                                        color: AppPalette.navyPrimary,
+                                        color: Theme.of(
+                                          context,
+                                        ).colorScheme.onSurface,
                                       ),
                                     ),
                                     if (displayRole.isNotEmpty)
                                       Text(
                                         displayRole,
                                         style: GoogleFonts.inter(
-                                          color: AppPalette.textSecondaryLight,
+                                          color: Theme.of(
+                                            context,
+                                          ).textTheme.bodyMedium?.color,
                                           fontSize: 14,
                                         ),
                                       ),
@@ -233,9 +243,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                                   borderRadius: BorderRadius.circular(8),
                                 ),
                                 child: IconButton(
-                                  icon: const Icon(
+                                  icon: Icon(
                                     Icons.edit_outlined,
-                                    color: Colors.orange,
+                                    color: AppPalette.orangeAccent,
                                   ),
                                   onPressed: () async {
                                     final role = _userData?['role'] as String?;
@@ -315,21 +325,36 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         ),
                         const SizedBox(height: 12),
                         _buildSettingsItem(
-                          icon: Icons.dark_mode_outlined,
-                          iconColor: Colors.grey.shade700,
-                          iconBg: Colors.grey.shade100,
-                          title: 'Dark Mode',
-                          trailing: Switch(
-                            value: ref.watch(themeProvider) == ThemeMode.dark,
-                            activeTrackColor: Colors.orange,
-                            onChanged: (value) {
-                              ref
-                                  .read(themeProvider.notifier)
-                                  .toggleTheme(value);
-                            },
+                          icon: Icons.palette_outlined,
+                          iconColor: Colors.purple,
+                          iconBg: Colors.purple.withValues(alpha: 0.1),
+                          title: 'Appearance',
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Consumer(
+                                builder: (context, ref, child) {
+                                  final isDark =
+                                      ref.watch(themeProvider) ==
+                                      ThemeMode.dark;
+                                  return Text(
+                                    isDark ? 'Dark Mode' : 'Light Mode',
+                                    style: GoogleFonts.inter(
+                                      color: Theme.of(context).disabledColor,
+                                      fontSize: 14,
+                                    ),
+                                  );
+                                },
+                              ),
+                              const SizedBox(width: 8),
+                              Icon(
+                                Icons.chevron_right,
+                                color: Theme.of(context).disabledColor,
+                              ),
+                            ],
                           ),
-                          onTap: null,
-                        ),
+                          onTap: () => _showThemeBottomSheet(context, ref),
+                        ).animate().fadeIn().slideX(),
                         const SizedBox(height: 12),
                         _buildSettingsItem(
                           icon: Icons.language,
@@ -373,20 +398,23 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                                 context.go('/login');
                               }
                             },
-                            icon: const Icon(Icons.logout, color: Colors.red),
+                            icon: Icon(
+                              Icons.logout,
+                              color: Theme.of(context).colorScheme.error,
+                            ),
                             label: Text(
                               'Log Out',
                               style: GoogleFonts.outfit(
-                                color: Colors.red,
+                                color: Theme.of(context).colorScheme.error,
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
                             style: TextButton.styleFrom(
                               padding: const EdgeInsets.symmetric(vertical: 16),
-                              backgroundColor: Colors.red.withValues(
-                                alpha: 0.05,
-                              ),
+                              backgroundColor: Theme.of(
+                                context,
+                              ).colorScheme.error.withValues(alpha: 0.05),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(12),
                               ),
@@ -412,9 +440,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         style: GoogleFonts.inter(
           fontSize: 12,
           fontWeight: FontWeight.bold,
-          color:
-              Theme.of(context).textTheme.bodyMedium?.color ??
-              AppPalette.textSecondaryLight,
+          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
           letterSpacing: 1.2,
         ),
       ),
@@ -435,7 +461,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
+            color: Theme.of(context).shadowColor.withValues(alpha: 0.02),
             blurRadius: 5,
             offset: const Offset(0, 2),
           ),
@@ -446,12 +472,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         leading: Container(
           padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
-            color: iconBg ?? AppPalette.navyPrimary.withValues(alpha: 0.05),
+            color:
+                iconBg ??
+                Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
             shape: BoxShape.circle,
           ),
           child: Icon(
             icon,
-            color: iconColor ?? AppPalette.navyPrimary,
+            color: iconColor ?? Theme.of(context).colorScheme.primary,
             size: 20,
           ),
         ),
@@ -459,20 +487,141 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           title,
           style: GoogleFonts.inter(
             fontWeight: FontWeight.w600,
-            color: AppPalette.navyPrimary,
+            color: Theme.of(context).colorScheme.onSurface,
             fontSize: 15,
           ),
         ),
         trailing:
             trailing ??
             (onTap != null
-                ? const Icon(
+                ? Icon(
                     Icons.chevron_right,
-                    color: AppPalette.textSecondaryLight,
+                    color: Theme.of(context).disabledColor,
                   )
                 : null),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       ),
     ).animate().fadeIn().slideX();
+  }
+
+  void _showThemeBottomSheet(BuildContext context, WidgetRef ref) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) {
+        final isDark = ref.watch(themeProvider) == ThemeMode.dark;
+        return Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Select Appearance',
+                style: GoogleFonts.outfit(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Theme.of(context).colorScheme.onSurface,
+                ),
+              ),
+              const SizedBox(height: 24),
+              _buildThemeOption(
+                context,
+                ref,
+                title: 'Light Mode',
+                icon: Icons.light_mode_outlined,
+                isSelected: !isDark,
+                onTap: () {
+                  ref.read(themeProvider.notifier).toggleTheme(false);
+                  Navigator.pop(context);
+                },
+              ),
+              const SizedBox(height: 12),
+              _buildThemeOption(
+                context,
+                ref,
+                title: 'Dark Mode',
+                icon: Icons.dark_mode_outlined,
+                isSelected: isDark,
+                onTap: () {
+                  ref.read(themeProvider.notifier).toggleTheme(true);
+                  Navigator.pop(context);
+                },
+              ),
+              const SizedBox(height: 24),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildThemeOption(
+    BuildContext context,
+    WidgetRef ref, {
+    required String title,
+    required IconData icon,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? Colors.orange.withValues(alpha: 0.1)
+              : Theme.of(context).cardColor,
+          borderRadius: BorderRadius.circular(16),
+          border: isSelected
+              ? Border.all(color: Colors.orange, width: 2)
+              : null,
+          boxShadow: [
+            if (!isSelected)
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.02),
+                blurRadius: 5,
+                offset: const Offset(0, 2),
+              ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: isSelected
+                    ? Colors.orange
+                    : Colors.grey.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                icon,
+                color: isSelected ? Colors.white : Colors.grey,
+                size: 20,
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Text(
+                title,
+                style: GoogleFonts.inter(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: isSelected
+                      ? Colors.orange
+                      : Theme.of(context).colorScheme.onSurface,
+                ),
+              ),
+            ),
+            if (isSelected)
+              const Icon(Icons.check_circle, color: Colors.orange),
+          ],
+        ),
+      ),
+    );
   }
 }

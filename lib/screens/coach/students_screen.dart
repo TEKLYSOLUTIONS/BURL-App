@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import '../../config/palette.dart';
+
 import '../../services/coach_service.dart';
+import '../../config/palette.dart';
 
 class StudentsScreen extends StatefulWidget {
   const StudentsScreen({super.key});
@@ -39,31 +40,22 @@ class _StudentsScreenState extends State<StudentsScreen> {
       setState(() {
         _allStudents = players.map((player) {
           // Map status from backend to display status
-          String status = 'Active';
+          String displayStatus = 'Active';
           String statusLabel = 'CONFIRMED';
-          Color statusColor = Colors.green[50]!;
-          Color statusTextColor = Colors.green[700]!;
-          
-          if (player['status'] == 'invited') {
-            status = 'Needs Review';
+          String rawStatus = player['status'] ?? 'confirmed';
+
+          if (rawStatus == 'invited') {
+            displayStatus = 'Needs Review';
             statusLabel = 'INVITED';
-            statusColor = Colors.orange[50]!;
-            statusTextColor = Colors.orange[800]!;
-          } else if (player['status'] == 'confirmed') {
-            status = 'Active';
+          } else if (rawStatus == 'confirmed') {
+            displayStatus = 'Active';
             statusLabel = 'CONFIRMED';
-            statusColor = Colors.green[50]!;
-            statusTextColor = Colors.green[700]!;
-          } else if (player['status'] == 'declined') {
-            status = 'Declined';
+          } else if (rawStatus == 'declined') {
+            displayStatus = 'Declined';
             statusLabel = 'DECLINED';
-            statusColor = Colors.red[50]!;
-            statusTextColor = Colors.red[700]!;
-          } else if (player['status'] == 'waitlisted') {
-            status = 'Waitlisted';
+          } else if (rawStatus == 'waitlisted') {
+            displayStatus = 'Waitlisted';
             statusLabel = 'WAITLISTED';
-            statusColor = Colors.blue[50]!;
-            statusTextColor = Colors.blue[700]!;
           }
 
           return {
@@ -71,12 +63,11 @@ class _StudentsScreenState extends State<StudentsScreen> {
             'name': player['name'] ?? 'Unknown',
             'detail': '${player['sessionsCount'] ?? 0} sessions',
             'avatarUrl': player['avatarUrl'] ?? 'https://i.pravatar.cc/150',
-            'status': status,
-            'statusLabel': statusLabel,
-            'statusColor': statusColor,
-            'statusTextColor': statusTextColor,
-            'showOnlineDot': player['status'] == 'confirmed',
-            'onlineDotColor': Colors.green,
+            'status': displayStatus, // For filter
+            'rawStatus': rawStatus, // For color logic
+            'statusLabel': statusLabel, // For badge text
+            'showOnlineDot': rawStatus == 'confirmed',
+            'onlineDotColor': AppPalette.successGreen,
           };
         }).toList();
 
@@ -91,7 +82,7 @@ class _StudentsScreenState extends State<StudentsScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Failed to load players: $e'),
-            backgroundColor: Colors.red,
+            backgroundColor: Theme.of(context).colorScheme.error,
           ),
         );
       }
@@ -106,22 +97,24 @@ class _StudentsScreenState extends State<StudentsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F7FA), // Light grey background
+      backgroundColor: Theme.of(
+        context,
+      ).scaffoldBackgroundColor, // Light grey background
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         title: Text(
           'My Players',
           style: GoogleFonts.outfit(
-            color: AppPalette.navyPrimary,
+            color: Theme.of(context).colorScheme.onSurface,
             fontWeight: FontWeight.bold,
           ),
         ),
         centerTitle: true,
         leading: IconButton(
-          icon: const Icon(
+          icon: Icon(
             Icons.arrow_back_ios_new,
-            color: AppPalette.navyPrimary,
+            color: Theme.of(context).colorScheme.onSurface,
           ),
           onPressed: () => context.pop(),
         ),
@@ -129,98 +122,145 @@ class _StudentsScreenState extends State<StudentsScreen> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(
-          24,
-          10,
-          24,
-          100,
-        ), // Added bottom padding
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Stats Row
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
+              padding: const EdgeInsets.fromLTRB(
+                24,
+                10,
+                24,
+                100,
+              ), // Added bottom padding
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _buildSummaryCard(
-                    title: 'TOTAL',
-                    value: _totalCount.toString(),
-                    subtitle: '${_allStudents.length} Players',
-                    isDark: true,
+                  // Stats Row
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: [
+                        _buildSummaryCard(
+                          title: 'TOTAL',
+                          value: _totalCount.toString(),
+                          subtitle: '${_allStudents.length} Players',
+                          isDark: true,
+                        ),
+                        const SizedBox(width: 12),
+                        _buildSummaryCard(
+                          title: 'ACTIVE',
+                          value: _activeCount.toString(),
+                          subtitle: 'Confirmed',
+                          subtitleColor: AppPalette.successGreen,
+                        ),
+                        const SizedBox(width: 12),
+                        _buildSummaryCard(
+                          title: 'PENDING',
+                          value: _needsReviewCount.toString(),
+                          subtitle: 'Needs Review',
+                          subtitleColor: AppPalette.warning,
+                        ),
+                      ],
+                    ),
                   ),
-                  const SizedBox(width: 12),
-                  _buildSummaryCard(
-                    title: 'ACTIVE',
-                    value: _activeCount.toString(),
-                    subtitle: 'Confirmed',
-                    subtitleColor: Colors.green,
+                  const SizedBox(height: 24),
+
+                  // Filter Chips
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: [
+                        _buildFilterChip('All Students'),
+                        const SizedBox(width: 8),
+                        _buildFilterChip('Active'),
+                        const SizedBox(width: 8),
+                        _buildFilterChip(
+                          'Declined',
+                          hasDot: true,
+                          dotColor: Theme.of(context).colorScheme.error,
+                        ),
+                        const SizedBox(width: 8),
+                        _buildFilterChip(
+                          'Needs Review',
+                          hasDot: true,
+                          dotColor: AppPalette.warning,
+                        ),
+                      ],
+                    ),
                   ),
-                  const SizedBox(width: 12),
-                  _buildSummaryCard(
-                    title: 'PENDING',
-                    value: _needsReviewCount.toString(),
-                    subtitle: 'Needs Review',
-                    subtitleColor: Colors.orange,
-                  ),
+                  const SizedBox(height: 24),
+
+                  // Student List (Filtered)
+                  if (_filteredStudents.isEmpty)
+                    Center(
+                      child: Padding(
+                        padding: const EdgeInsets.only(top: 40),
+                        child: Text(
+                          'No players found',
+                          style: GoogleFonts.inter(color: Colors.grey),
+                        ),
+                      ),
+                    )
+                  else
+                    ..._filteredStudents.map((student) {
+                      final colors = _getStatusColors(
+                        student['rawStatus'] ?? 'confirmed',
+                        context,
+                      );
+                      return _buildStudentCard(
+                        name: student['name'],
+                        detail: student['detail'],
+                        avatarUrl: student['avatarUrl'],
+                        status: student['statusLabel'],
+                        statusColor: colors.background,
+                        statusTextColor: colors.text,
+                        showOnlineDot: student['showOnlineDot'] ?? false,
+                        onlineDotColor:
+                            student['onlineDotColor'] ??
+                            AppPalette.successGreen,
+                      );
+                    }),
                 ],
               ),
             ),
-            const SizedBox(height: 24),
-
-            // Filter Chips
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: [
-                  _buildFilterChip('All Students'),
-                  const SizedBox(width: 8),
-                  _buildFilterChip('Active'),
-                  const SizedBox(width: 8),
-                  _buildFilterChip(
-                    'Declined',
-                    hasDot: true,
-                    dotColor: Colors.red,
-                  ),
-                  const SizedBox(width: 8),
-                  _buildFilterChip(
-                    'Needs Review',
-                    hasDot: true,
-                    dotColor: Colors.orange,
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 24),
-
-            // Student List (Filtered)
-            if (_filteredStudents.isEmpty)
-              Center(
-                child: Padding(
-                  padding: const EdgeInsets.only(top: 40),
-                  child: Text(
-                    'No players found',
-                    style: GoogleFonts.inter(color: Colors.grey),
-                  ),
-                ),
-              )
-            else
-              ..._filteredStudents.map((student) {
-                return _buildStudentCard(
-                  name: student['name'],
-                  detail: student['detail'],
-                  avatarUrl: student['avatarUrl'],
-                  status: student['statusLabel'],
-                  statusColor: student['statusColor'],
-                  statusTextColor: student['statusTextColor'],
-                  showOnlineDot: student['showOnlineDot'] ?? false,
-                  onlineDotColor: student['onlineDotColor'] ?? Colors.green,
-                );
-              }),
-          ],
-        ),
-      ),
     );
+  }
+
+  ({Color background, Color text}) _getStatusColors(
+    String status,
+    BuildContext context,
+  ) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    switch (status) {
+      case 'invited': // Needs Review
+        return (
+          background: isDark
+              ? AppPalette.warning.withValues(alpha: 0.2)
+              : AppPalette.warning.withValues(alpha: 0.1),
+          text: isDark ? AppPalette.warning : AppPalette.warning,
+        );
+      case 'declined':
+        return (
+          background: isDark
+              ? Theme.of(context).colorScheme.error.withValues(alpha: 0.2)
+              : Theme.of(context).colorScheme.error.withValues(alpha: 0.1),
+          text: isDark
+              ? Theme.of(context).colorScheme.error
+              : Theme.of(context).colorScheme.error,
+        );
+      case 'waitlisted':
+        return (
+          background: isDark
+              ? Colors.blue.withValues(alpha: 0.2)
+              : Colors.blue[50]!,
+          text: isDark ? Colors.blue[200]! : Colors.blue[700]!,
+        );
+      case 'confirmed':
+      default:
+        return (
+          background: isDark
+              ? AppPalette.successGreen.withValues(alpha: 0.2)
+              : AppPalette.successGreen.withValues(alpha: 0.1),
+          text: isDark ? AppPalette.successGreen : AppPalette.successGreen,
+        );
+    }
   }
 
   Widget _buildSummaryCard({
@@ -234,12 +274,14 @@ class _StudentsScreenState extends State<StudentsScreen> {
       width: 140, // Fixed width
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: isDark ? AppPalette.navyPrimary : Colors.white,
+        color: isDark
+            ? Theme.of(context).colorScheme.primary
+            : Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           if (!isDark)
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
+              color: Theme.of(context).shadowColor.withValues(alpha: 0.05),
               blurRadius: 10,
               offset: const Offset(0, 4),
             ),
@@ -252,7 +294,13 @@ class _StudentsScreenState extends State<StudentsScreen> {
             children: [
               Icon(
                 Icons.people,
-                color: isDark ? Colors.white70 : Colors.grey,
+                color: isDark
+                    ? Theme.of(
+                        context,
+                      ).colorScheme.onPrimary.withValues(alpha: 0.7)
+                    : Theme.of(
+                        context,
+                      ).colorScheme.onSurface.withValues(alpha: 0.5),
                 size: 16,
               ),
               const SizedBox(width: 6),
@@ -262,7 +310,13 @@ class _StudentsScreenState extends State<StudentsScreen> {
                   fontSize: 10,
                   fontWeight: FontWeight.bold,
                   letterSpacing: 1,
-                  color: isDark ? Colors.white70 : Colors.grey,
+                  color: isDark
+                      ? Theme.of(
+                          context,
+                        ).colorScheme.onPrimary.withValues(alpha: 0.7)
+                      : Theme.of(
+                          context,
+                        ).colorScheme.onSurface.withValues(alpha: 0.5),
                 ),
               ),
             ],
@@ -273,7 +327,9 @@ class _StudentsScreenState extends State<StudentsScreen> {
             style: GoogleFonts.outfit(
               fontSize: 32,
               fontWeight: FontWeight.bold,
-              color: isDark ? Colors.white : AppPalette.navyPrimary,
+              color: isDark
+                  ? Theme.of(context).colorScheme.onPrimary
+                  : Theme.of(context).colorScheme.onSurface,
             ),
           ),
           const SizedBox(height: 8),
@@ -281,7 +337,9 @@ class _StudentsScreenState extends State<StudentsScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             decoration: BoxDecoration(
               color: isDark
-                  ? Colors.white.withValues(alpha: 0.1)
+                  ? Theme.of(
+                      context,
+                    ).colorScheme.onPrimary.withValues(alpha: 0.1)
                   : Colors.transparent,
               borderRadius: BorderRadius.circular(20),
             ),
@@ -292,7 +350,11 @@ class _StudentsScreenState extends State<StudentsScreen> {
                 fontWeight: FontWeight.w600,
                 color:
                     subtitleColor ??
-                    (isDark ? Colors.orangeAccent : Colors.grey[600]),
+                    (isDark
+                        ? Theme.of(context).colorScheme.secondary
+                        : Theme.of(
+                            context,
+                          ).colorScheme.onSurface.withValues(alpha: 0.6)),
               ),
             ),
           ),
@@ -316,10 +378,14 @@ class _StudentsScreenState extends State<StudentsScreen> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
         decoration: BoxDecoration(
-          color: isSelected ? AppPalette.navyPrimary : Colors.white,
+          color: isSelected
+              ? Theme.of(context).colorScheme.primary
+              : Theme.of(context).cardColor,
           borderRadius: BorderRadius.circular(24),
           border: Border.all(
-            color: isSelected ? AppPalette.navyPrimary : Colors.grey[200]!,
+            color: isSelected
+                ? Theme.of(context).colorScheme.primary
+                : Theme.of(context).dividerColor,
           ),
         ),
         child: Row(
@@ -339,7 +405,9 @@ class _StudentsScreenState extends State<StudentsScreen> {
               label,
               style: GoogleFonts.inter(
                 fontWeight: FontWeight.w600,
-                color: isSelected ? Colors.white : AppPalette.navyPrimary,
+                color: isSelected
+                    ? Theme.of(context).colorScheme.onPrimary
+                    : Theme.of(context).colorScheme.onSurface,
               ),
             ),
           ],
@@ -356,7 +424,7 @@ class _StudentsScreenState extends State<StudentsScreen> {
     required Color statusColor,
     required Color statusTextColor,
     bool showOnlineDot = false,
-    Color onlineDotColor = Colors.green,
+    Color onlineDotColor = AppPalette.successGreen,
   }) {
     return InkWell(
       onTap: () {
@@ -373,11 +441,11 @@ class _StudentsScreenState extends State<StudentsScreen> {
         margin: const EdgeInsets.only(bottom: 16),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: Theme.of(context).cardColor,
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.03),
+              color: Theme.of(context).shadowColor.withValues(alpha: 0.05),
               blurRadius: 10,
               offset: const Offset(0, 4),
             ),
@@ -401,7 +469,10 @@ class _StudentsScreenState extends State<StudentsScreen> {
                       decoration: BoxDecoration(
                         color: onlineDotColor,
                         shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white, width: 2),
+                        border: Border.all(
+                          color: Theme.of(context).cardColor,
+                          width: 2,
+                        ),
                       ),
                     ),
                   ),
@@ -417,14 +488,16 @@ class _StudentsScreenState extends State<StudentsScreen> {
                     style: GoogleFonts.outfit(
                       fontWeight: FontWeight.bold,
                       fontSize: 16,
-                      color: AppPalette.navyPrimary,
+                      color: Theme.of(context).colorScheme.onSurface,
                     ),
                   ),
                   Text(
                     detail,
                     style: GoogleFonts.inter(
                       fontSize: 12,
-                      color: Colors.grey[500],
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.onSurface.withValues(alpha: 0.6),
                     ),
                   ),
                   const SizedBox(height: 8),
@@ -451,7 +524,10 @@ class _StudentsScreenState extends State<StudentsScreen> {
             ),
             Row(
               children: [
-                Icon(Icons.bar_chart_rounded, color: Colors.orange),
+                Icon(
+                  Icons.bar_chart_rounded,
+                  color: Theme.of(context).colorScheme.secondary,
+                ),
               ],
             ),
           ],

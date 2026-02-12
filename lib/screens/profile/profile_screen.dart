@@ -4,13 +4,18 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 
-class ProfileScreen extends StatelessWidget {
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../providers/theme_provider.dart';
+
+class ProfileScreen extends ConsumerWidget {
   final bool isCoachView;
   final String? playerId;
   const ProfileScreen({super.key, this.isCoachView = false, this.playerId});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final themeMode = ref.watch(themeProvider);
+    debugPrint('ProfileScreen Build: ThemeMode = $themeMode');
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SingleChildScrollView(
@@ -163,11 +168,38 @@ class ProfileScreen extends StatelessWidget {
                     value: true,
                     onChanged: (val) {},
                   ),
-                  _ProfileToggleItem(
-                    icon: Icons.dark_mode_outlined,
-                    label: 'Dark Mode',
-                    value: false,
-                    onChanged: (val) {},
+                  _ProfileMenuItem(
+                    icon: Icons.palette_outlined,
+                    label: 'Appearance',
+                    trailing: Consumer(
+                      builder: (context, ref, child) {
+                        final isDark =
+                            ref.watch(themeProvider) == ThemeMode.dark;
+                        return Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              isDark ? 'Dark Mode' : 'Light Mode',
+                              style: GoogleFonts.inter(
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSurfaceVariant,
+                                fontSize: 14,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Icon(
+                              Icons.arrow_forward_ios_rounded,
+                              size: 16,
+                              color: AppPalette.textDisabled.withValues(
+                                alpha: 0.5,
+                              ),
+                            ),
+                          ],
+                        );
+                      },
+                    ),
+                    onTap: () => _showThemeBottomSheet(context, ref),
                   ),
                   const SizedBox(height: 24),
                   _ProfileMenuItem(
@@ -212,12 +244,130 @@ class ProfileScreen extends StatelessWidget {
   Widget _buildDivider() {
     return Container(height: 30, width: 1, color: AppPalette.divider);
   }
+
+  void _showThemeBottomSheet(BuildContext context, WidgetRef ref) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) {
+        final isDark = ref.watch(themeProvider) == ThemeMode.dark;
+        return Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Select Appearance',
+                style: GoogleFonts.outfit(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Theme.of(context).colorScheme.onSurface,
+                ),
+              ),
+              const SizedBox(height: 24),
+              _buildThemeOption(
+                context,
+                ref,
+                title: 'Light Mode',
+                icon: Icons.light_mode_outlined,
+                isSelected: !isDark,
+                onTap: () {
+                  ref.read(themeProvider.notifier).toggleTheme(false);
+                  Navigator.pop(context);
+                },
+              ),
+              const SizedBox(height: 12),
+              _buildThemeOption(
+                context,
+                ref,
+                title: 'Dark Mode',
+                icon: Icons.dark_mode_outlined,
+                isSelected: isDark,
+                onTap: () {
+                  ref.read(themeProvider.notifier).toggleTheme(true);
+                  Navigator.pop(context);
+                },
+              ),
+              const SizedBox(height: 24),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildThemeOption(
+    BuildContext context,
+    WidgetRef ref, {
+    required String title,
+    required IconData icon,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? Colors.orange.withValues(alpha: 0.1)
+              : Theme.of(context).cardColor,
+          borderRadius: BorderRadius.circular(16),
+          border: isSelected
+              ? Border.all(color: Colors.orange, width: 2)
+              : Border.all(color: AppPalette.divider.withValues(alpha: 0.5)),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: isSelected
+                    ? Colors.orange
+                    : Theme.of(
+                        context,
+                      ).colorScheme.primary.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                icon,
+                color: isSelected
+                    ? Colors.white
+                    : Theme.of(context).colorScheme.primary,
+                size: 20,
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Text(
+                title,
+                style: GoogleFonts.inter(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: isSelected
+                      ? Colors.orange
+                      : Theme.of(context).colorScheme.onSurface,
+                ),
+              ),
+            ),
+            if (isSelected)
+              const Icon(Icons.check_circle, color: Colors.orange),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
-class _ProfileMenuItem extends StatelessWidget {
+class _ProfileMenuItem extends ConsumerWidget {
   final IconData icon;
   final String label;
   final VoidCallback onTap;
+  final Widget? trailing;
   final Color? color;
 
   const _ProfileMenuItem({
@@ -225,10 +375,11 @@ class _ProfileMenuItem extends StatelessWidget {
     required this.label,
     required this.onTap,
     this.color,
+    this.trailing,
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16.0),
       child: InkWell(
@@ -237,7 +388,9 @@ class _ProfileMenuItem extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: Theme.of(context).cardColor,
+            color: ref.watch(themeProvider) == ThemeMode.dark
+                ? AppPalette.surfaceGlassDark
+                : Theme.of(context).cardColor,
             borderRadius: BorderRadius.circular(16),
             boxShadow: [
               BoxShadow(
@@ -247,7 +400,9 @@ class _ProfileMenuItem extends StatelessWidget {
               ),
             ],
             border: Border.all(
-              color: AppPalette.divider.withValues(alpha: 0.5),
+              color: ref.watch(themeProvider) == ThemeMode.dark
+                  ? Colors.white.withValues(alpha: 0.1)
+                  : AppPalette.divider.withValues(alpha: 0.5),
             ),
           ),
           child: Row(
@@ -264,11 +419,14 @@ class _ProfileMenuItem extends StatelessWidget {
                   ),
                 ),
               ),
-              Icon(
-                Icons.arrow_forward_ios_rounded,
-                size: 16,
-                color: AppPalette.textDisabled.withValues(alpha: 0.5),
-              ),
+              if (trailing != null)
+                trailing!
+              else
+                Icon(
+                  Icons.arrow_forward_ios_rounded,
+                  size: 16,
+                  color: AppPalette.textDisabled.withValues(alpha: 0.5),
+                ),
             ],
           ),
         ),
@@ -277,7 +435,7 @@ class _ProfileMenuItem extends StatelessWidget {
   }
 }
 
-class _ProfileToggleItem extends StatelessWidget {
+class _ProfileToggleItem extends ConsumerWidget {
   final IconData icon;
   final String label;
   final bool value;
@@ -291,13 +449,15 @@ class _ProfileToggleItem extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16.0),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
-          color: Theme.of(context).cardColor,
+          color: ref.watch(themeProvider) == ThemeMode.dark
+              ? AppPalette.surfaceGlassDark
+              : Theme.of(context).cardColor,
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
@@ -306,7 +466,11 @@ class _ProfileToggleItem extends StatelessWidget {
               offset: const Offset(0, 2),
             ),
           ],
-          border: Border.all(color: AppPalette.divider.withValues(alpha: 0.5)),
+          border: Border.all(
+            color: ref.watch(themeProvider) == ThemeMode.dark
+                ? Colors.white.withValues(alpha: 0.1)
+                : AppPalette.divider.withValues(alpha: 0.5),
+          ),
         ),
         child: Row(
           children: [

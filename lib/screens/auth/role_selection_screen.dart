@@ -18,7 +18,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppPalette.backgroundLight,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SafeArea(
         child: SingleChildScrollView(
           child: Padding(
@@ -29,9 +29,9 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                 const SizedBox(height: 16),
                 // Back Button
                 IconButton(
-                  icon: const Icon(
+                  icon: Icon(
                     Ionicons.chevron_back,
-                    color: AppPalette.navyPrimary,
+                    color: Theme.of(context).iconTheme.color,
                     size: 28,
                   ),
                   padding: EdgeInsets.zero,
@@ -51,7 +51,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                   style: GoogleFonts.outfit(
                     fontSize: 32,
                     fontWeight: FontWeight.bold,
-                    color: AppPalette.navyPrimary,
+                    color: Theme.of(context).colorScheme.onSurface,
                     height: 1.2,
                   ),
                 ).animate().fadeIn().slideY(begin: -0.2),
@@ -63,7 +63,9 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                   'Select the role that best describes you to\ncustomize your experience.',
                   style: GoogleFonts.inter(
                     fontSize: 16,
-                    color: AppPalette.textSecondaryLight,
+                    color:
+                        Theme.of(context).textTheme.bodyMedium?.color ??
+                        AppPalette.textSecondaryLight,
                     height: 1.5,
                   ),
                 ).animate().fadeIn(delay: 100.ms),
@@ -78,7 +80,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                   value: 'coach',
                   groupValue: selectedRole,
                   iconBgColor: Colors.transparent,
-                  iconColor: AppPalette.navyPrimary,
+                  iconColor: Theme.of(context).colorScheme.primary,
                   onChanged: (value) => setState(() => selectedRole = value),
                 ).animate().fadeIn(delay: 200.ms).slideX(begin: -0.1),
 
@@ -155,7 +157,9 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                       text: TextSpan(
                         style: GoogleFonts.inter(
                           fontSize: 15,
-                          color: AppPalette.textSecondaryLight,
+                          color:
+                              Theme.of(context).textTheme.bodyMedium?.color ??
+                              AppPalette.textSecondaryLight,
                         ),
                         children: [
                           const TextSpan(text: 'Already have an account? '),
@@ -213,7 +217,7 @@ class _RoleOption extends StatelessWidget {
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: Theme.of(context).cardColor,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
             color: isSelected
@@ -223,7 +227,7 @@ class _RoleOption extends StatelessWidget {
           ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
+              color: Theme.of(context).shadowColor.withValues(alpha: 0.05),
               blurRadius: 10,
               offset: const Offset(0, 4),
             ),
@@ -256,7 +260,7 @@ class _RoleOption extends StatelessWidget {
                     style: GoogleFonts.outfit(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
-                      color: AppPalette.navyPrimary,
+                      color: Theme.of(context).colorScheme.onSurface,
                     ),
                   ),
                   const SizedBox(height: 4),
@@ -264,7 +268,9 @@ class _RoleOption extends StatelessWidget {
                     description,
                     style: GoogleFonts.inter(
                       fontSize: 14,
-                      color: AppPalette.textSecondaryLight,
+                      color:
+                          Theme.of(context).textTheme.bodyMedium?.color ??
+                          AppPalette.textSecondaryLight,
                     ),
                   ),
                 ],
@@ -279,7 +285,7 @@ class _RoleOption extends StatelessWidget {
                 border: Border.all(
                   color: isSelected
                       ? AppPalette.orangeAccent
-                      : AppPalette.divider,
+                      : Theme.of(context).dividerColor,
                   width: 2,
                 ),
               ),

@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import '../../config/palette.dart';
 
 class PlayerReportsScreen extends StatelessWidget {
   final String playerId;
@@ -12,22 +11,22 @@ class PlayerReportsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppPalette.backgroundLight,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         title: Text(
           'Performance Reports',
           style: GoogleFonts.outfit(
-            color: AppPalette.navyPrimary,
+            color: Theme.of(context).colorScheme.onSurface,
             fontWeight: FontWeight.bold,
           ),
         ),
-        backgroundColor: Colors.white,
+        backgroundColor: Colors.transparent,
         elevation: 0,
         centerTitle: true,
         leading: IconButton(
-          icon: const Icon(
+          icon: Icon(
             Icons.arrow_back_ios_new_rounded,
-            color: Colors.black,
+            color: Theme.of(context).colorScheme.onSurface,
           ),
           onPressed: () => context.pop(),
         ),
@@ -37,31 +36,35 @@ class PlayerReportsScreen extends StatelessWidget {
         itemCount: 8, // Mock count
         separatorBuilder: (context, index) => const SizedBox(height: 16),
         itemBuilder: (context, index) {
-          return _buildReportItem(index);
+          return _buildReportItem(context, index);
         },
       ),
     );
   }
 
-  Widget _buildReportItem(int index) {
+  Widget _buildReportItem(BuildContext context, int index) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppPalette.divider),
+        border: Border.all(
+          color: Theme.of(context).dividerColor.withValues(alpha: 0.5),
+        ),
       ),
       child: Row(
         children: [
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: AppPalette.navyPrimary.withValues(alpha: 0.1),
+              color: Theme.of(
+                context,
+              ).colorScheme.primary.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: const Icon(
+            child: Icon(
               Icons.description_outlined,
-              color: AppPalette.navyPrimary,
+              color: Theme.of(context).colorScheme.primary,
               size: 28,
             ),
           ),
@@ -75,7 +78,7 @@ class PlayerReportsScreen extends StatelessWidget {
                   style: GoogleFonts.outfit(
                     fontWeight: FontWeight.bold,
                     fontSize: 16,
-                    color: AppPalette.navyPrimary,
+                    color: Theme.of(context).colorScheme.onSurface,
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -83,24 +86,28 @@ class PlayerReportsScreen extends StatelessWidget {
                   'Coach Alex • Oct ${24 - index}, 2023',
                   style: GoogleFonts.inter(
                     fontSize: 12,
-                    color: Colors.grey[600],
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.onSurface.withValues(alpha: 0.6),
                   ),
                 ),
                 const SizedBox(height: 8),
                 Row(
                   children: [
-                    _buildScoreTag('Tech: 4/5'),
+                    _buildScoreTag(context, 'Tech: 4/5'),
                     const SizedBox(width: 8),
-                    _buildScoreTag('Effort: 5/5'),
+                    _buildScoreTag(context, 'Effort: 5/5'),
                   ],
                 ),
               ],
             ),
           ),
-          const Icon(
+          Icon(
             Icons.arrow_forward_ios_rounded,
             size: 16,
-            color: Colors.grey,
+            color: Theme.of(
+              context,
+            ).colorScheme.onSurface.withValues(alpha: 0.5),
           ),
         ],
       ),
@@ -121,11 +128,11 @@ class PlayerReportsScreen extends StatelessWidget {
     return titles[index % titles.length];
   }
 
-  Widget _buildScoreTag(String text) {
+  Widget _buildScoreTag(BuildContext context, String text) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: Colors.orange.withValues(alpha: 0.1),
+        color: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(6),
       ),
       child: Text(
@@ -133,7 +140,7 @@ class PlayerReportsScreen extends StatelessWidget {
         style: GoogleFonts.inter(
           fontSize: 10,
           fontWeight: FontWeight.w600,
-          color: Colors.orange[800],
+          color: Theme.of(context).colorScheme.secondary,
         ),
       ),
     );

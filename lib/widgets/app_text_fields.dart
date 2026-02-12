@@ -42,16 +42,26 @@ class AppTextField extends StatelessWidget {
       onChanged: onChanged,
       maxLines: maxLines,
       enabled: enabled,
-      style: const TextStyle(fontSize: 16, color: AppPalette.textPrimaryLight),
+      style: TextStyle(
+        fontSize: 16,
+        color: Theme.of(context).colorScheme.onSurface,
+      ),
       decoration: InputDecoration(
         hintText: hintText,
         labelText: labelText,
         prefixIcon: prefixIcon != null
-            ? Icon(prefixIcon, color: AppPalette.textSecondaryLight, size: 22)
+            ? Icon(
+                prefixIcon,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                size: 22,
+              )
             : null,
         suffixIcon: suffixIcon,
         filled: true,
-        fillColor: fillColor ?? Colors.grey.shade100,
+        fillColor:
+            fillColor ??
+            Theme.of(context).inputDecorationTheme.fillColor ??
+            Theme.of(context).cardColor,
 
         // Remove all borders
         border: OutlineInputBorder(
@@ -84,12 +94,9 @@ class AppTextField extends StatelessWidget {
           vertical: 18,
         ),
 
-        hintStyle: TextStyle(
-          color: AppPalette.textSecondaryLight.withValues(alpha: 0.6),
-          fontSize: 16,
-        ),
-        labelStyle: const TextStyle(
-          color: AppPalette.textSecondaryLight,
+        hintStyle: TextStyle(color: Theme.of(context).hintColor, fontSize: 16),
+        labelStyle: TextStyle(
+          color: Theme.of(context).colorScheme.onSurfaceVariant,
           fontSize: 16,
         ),
       ),
@@ -139,7 +146,7 @@ class _PasswordTextFieldState extends State<PasswordTextField> {
           _obscureText
               ? Icons.visibility_outlined
               : Icons.visibility_off_outlined,
-          color: AppPalette.textSecondaryLight,
+          color: Theme.of(context).colorScheme.onSurfaceVariant,
         ),
         onPressed: () {
           setState(() {

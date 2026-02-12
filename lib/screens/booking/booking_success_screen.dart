@@ -24,7 +24,7 @@ class BookingSuccessScreen extends StatelessWidget {
     final confirmationCode = '#TRX - 88592';
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -32,13 +32,13 @@ class BookingSuccessScreen extends StatelessWidget {
         title: Text(
           'Confirmation',
           style: GoogleFonts.outfit(
-            color: AppPalette.navyPrimary,
+            color: Theme.of(context).colorScheme.onSurface,
             fontWeight: FontWeight.bold,
             fontSize: 18,
           ),
         ),
         leading: IconButton(
-          icon: const Icon(Icons.close, color: AppPalette.navyPrimary),
+          icon: Icon(Icons.close, color: Theme.of(context).iconTheme.color),
           onPressed: () => context.go('/player/home'), // Go home on close
         ),
         actions: [
@@ -77,7 +77,7 @@ class BookingSuccessScreen extends StatelessWidget {
                 style: GoogleFonts.outfit(
                   fontSize: 28,
                   fontWeight: FontWeight.bold,
-                  color: AppPalette.navyPrimary,
+                  color: Theme.of(context).colorScheme.onSurface,
                 ),
               ).animate().fadeIn().slideY(begin: 0.2),
 
@@ -88,7 +88,7 @@ class BookingSuccessScreen extends StatelessWidget {
                 textAlign: TextAlign.center,
                 style: GoogleFonts.inter(
                   fontSize: 16,
-                  color: AppPalette.textSecondaryLight,
+                  color: Theme.of(context).textTheme.bodyMedium?.color,
                   height: 1.5,
                 ),
               ).animate().fadeIn(delay: 200.ms).slideY(begin: 0.2),
@@ -100,7 +100,7 @@ class BookingSuccessScreen extends StatelessWidget {
                 width: double.infinity,
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: Theme.of(context).cardColor,
                   borderRadius: BorderRadius.circular(20),
                   boxShadow: [
                     BoxShadow(
@@ -109,7 +109,11 @@ class BookingSuccessScreen extends StatelessWidget {
                       offset: const Offset(0, 10),
                     ),
                   ],
-                  border: Border.all(color: Colors.grey[100]!),
+                  border: Border.all(
+                    color: Theme.of(
+                      context,
+                    ).dividerColor.withValues(alpha: 0.1),
+                  ),
                 ),
                 child: Column(
                   children: [
@@ -151,14 +155,18 @@ class BookingSuccessScreen extends StatelessWidget {
                                 style: GoogleFonts.outfit(
                                   fontSize: 16,
                                   fontWeight: FontWeight.bold,
-                                  color: AppPalette.navyPrimary,
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onSurface,
                                 ),
                               ),
                               Text(
                                 'Coach $coachName',
                                 style: GoogleFonts.inter(
                                   fontSize: 13,
-                                  color: AppPalette.textSecondaryLight,
+                                  color: Theme.of(
+                                    context,
+                                  ).textTheme.bodyMedium?.color,
                                 ),
                               ),
                             ],
@@ -167,7 +175,7 @@ class BookingSuccessScreen extends StatelessWidget {
                       ],
                     ),
                     const SizedBox(height: 20),
-                    const Divider(height: 1),
+                    Divider(color: Theme.of(context).dividerColor, height: 1),
                     const SizedBox(height: 20),
 
                     // Date & Time
@@ -197,7 +205,9 @@ class BookingSuccessScreen extends StatelessWidget {
                                 style: GoogleFonts.inter(
                                   fontSize: 11,
                                   fontWeight: FontWeight.bold,
-                                  color: AppPalette.textSecondaryLight,
+                                  color: Theme.of(
+                                    context,
+                                  ).textTheme.bodyMedium?.color,
                                 ),
                               ),
                               Text(
@@ -205,7 +215,9 @@ class BookingSuccessScreen extends StatelessWidget {
                                 style: GoogleFonts.outfit(
                                   fontSize: 15,
                                   fontWeight: FontWeight.w600,
-                                  color: AppPalette.navyPrimary,
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onSurface,
                                 ),
                               ),
                             ],
@@ -241,7 +253,9 @@ class BookingSuccessScreen extends StatelessWidget {
                                 style: GoogleFonts.inter(
                                   fontSize: 11,
                                   fontWeight: FontWeight.bold,
-                                  color: AppPalette.textSecondaryLight,
+                                  color: Theme.of(
+                                    context,
+                                  ).textTheme.bodyMedium?.color,
                                 ),
                               ),
                               Text(
@@ -249,7 +263,9 @@ class BookingSuccessScreen extends StatelessWidget {
                                 style: GoogleFonts.outfit(
                                   fontSize: 15,
                                   fontWeight: FontWeight.w600,
-                                  color: AppPalette.navyPrimary,
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onSurface,
                                 ),
                               ),
                             ],
@@ -262,7 +278,7 @@ class BookingSuccessScreen extends StatelessWidget {
                     Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        color: Colors.grey[50],
+                        color: Theme.of(context).scaffoldBackgroundColor,
                         borderRadius: BorderRadius.circular(16),
                       ),
                       child: Row(
@@ -275,7 +291,9 @@ class BookingSuccessScreen extends StatelessWidget {
                                 'Total Paid',
                                 style: GoogleFonts.inter(
                                   fontSize: 12,
-                                  color: AppPalette.textSecondaryLight,
+                                  color: Theme.of(
+                                    context,
+                                  ).textTheme.bodyMedium?.color,
                                 ),
                               ),
                               Text(
@@ -283,7 +301,9 @@ class BookingSuccessScreen extends StatelessWidget {
                                 style: GoogleFonts.outfit(
                                   fontSize: 20,
                                   fontWeight: FontWeight.bold,
-                                  color: AppPalette.navyPrimary,
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onSurface,
                                 ),
                               ),
                             ],
@@ -296,7 +316,9 @@ class BookingSuccessScreen extends StatelessWidget {
                                 'Apple Pay',
                                 style: GoogleFonts.inter(
                                   fontWeight: FontWeight.bold,
-                                  color: AppPalette.navyPrimary,
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onSurface,
                                 ),
                               ),
                             ],
@@ -315,7 +337,7 @@ class BookingSuccessScreen extends StatelessWidget {
                 style: GoogleFonts.inter(
                   fontSize: 12,
                   fontWeight: FontWeight.bold,
-                  color: AppPalette.textSecondaryLight,
+                  color: Theme.of(context).textTheme.bodyMedium?.color,
                   letterSpacing: 1,
                 ),
               ),
@@ -328,7 +350,7 @@ class BookingSuccessScreen extends StatelessWidget {
                     style: GoogleFonts.outfit(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
-                      color: AppPalette.navyPrimary,
+                      color: Theme.of(context).colorScheme.onSurface,
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -370,7 +392,7 @@ class BookingSuccessScreen extends StatelessWidget {
                   'Back to Home',
                   style: GoogleFonts.inter(
                     fontWeight: FontWeight.bold,
-                    color: AppPalette.navyPrimary,
+                    color: Theme.of(context).colorScheme.onSurface,
                   ),
                 ),
               ).animate().fadeIn(delay: 700.ms),

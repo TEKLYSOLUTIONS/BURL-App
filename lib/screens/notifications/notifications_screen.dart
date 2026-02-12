@@ -17,7 +17,8 @@ class NotificationItem {
   final bool isLike;
   final IconData? typeIcon;
   final String? actionButton;
-  final String category; // 'Mentions', 'Schedule', 'Performance', 'Payments', 'Other'
+  final String
+  category; // 'Mentions', 'Schedule', 'Performance', 'Payments', 'Other'
 
   NotificationItem({
     required this.id,
@@ -130,7 +131,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       final notificationsList = data['notifications'] as List;
       setState(() {
         _allNotifications = notificationsList
-            .map((json) => NotificationItem.fromJson(json as Map<String, dynamic>))
+            .map(
+              (json) => NotificationItem.fromJson(json as Map<String, dynamic>),
+            )
             .toList();
         _isLoading = false;
       });
@@ -146,7 +149,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     try {
       await NotificationService.markAsRead(notificationId);
       setState(() {
-        final index = _allNotifications.indexWhere((n) => n.id == notificationId);
+        final index = _allNotifications.indexWhere(
+          (n) => n.id == notificationId,
+        );
         if (index != -1) {
           _allNotifications[index] = NotificationItem(
             id: _allNotifications[index].id,
@@ -167,9 +172,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       });
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to mark as read: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Failed to mark as read: $e')));
       }
     }
   }
@@ -219,9 +224,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       });
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Notification deleted')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Notification deleted')));
       }
     } catch (e) {
       if (mounted) {
@@ -248,7 +253,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     final earlierNotifications = filtered.where((i) => !i.isUnread).toList();
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F7FA),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: Column(
         children: [
           // Header
@@ -259,9 +264,13 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
               24,
               30,
             ),
-            decoration: const BoxDecoration(
-              color: AppPalette.navyPrimary,
-              borderRadius: BorderRadius.vertical(bottom: Radius.circular(30)),
+            decoration: BoxDecoration(
+              color: Theme.of(context).brightness == Brightness.dark
+                  ? AppPalette.surfaceGlassDark
+                  : AppPalette.navyPrimary,
+              borderRadius: const BorderRadius.vertical(
+                bottom: Radius.circular(30),
+              ),
             ),
             child: Stack(
               alignment: Alignment.center,
@@ -310,114 +319,95 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             child: _isLoading
                 ? const Center(child: CircularProgressIndicator())
                 : _error != null
-                    ? Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.error_outline,
-                                size: 64, color: Colors.grey[400]),
-                            const SizedBox(height: 16),
-                            Text('Failed to load notifications',
-                                style: GoogleFonts.inter(
-                                    fontSize: 16, color: Colors.grey[600])),
-                            const SizedBox(height: 8),
-                            TextButton(
-                              onPressed: _loadNotifications,
-                              child: const Text('Retry'),
-                            ),
-                          ],
+                ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.error_outline,
+                          size: 64,
+                          color: Colors.grey[400],
                         ),
-                      )
-                    : RefreshIndicator(
-                        onRefresh: _loadNotifications,
-                        child: SingleChildScrollView(
-                          physics: const AlwaysScrollableScrollPhysics(),
-                          padding: const EdgeInsets.all(24),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              // Filter Chips
-                              SingleChildScrollView(
-                                scrollDirection: Axis.horizontal,
-                                child: Row(
-                                  children: [
-                                    _buildFilterChip('All'),
-                                    _buildFilterChip('Mentions',
-                                        icon: Icons.alternate_email),
-                                    _buildFilterChip('Schedule',
-                                        icon: Icons.calendar_today),
-                                    _buildFilterChip('Performance',
-                                        icon: Icons.bar_chart),
-                                    _buildFilterChip('Payments',
-                                        icon: Icons.payment),
-                                  ],
+                        const SizedBox(height: 16),
+                        Text(
+                          'Failed to load notifications',
+                          style: GoogleFonts.inter(
+                            fontSize: 16,
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        TextButton(
+                          onPressed: _loadNotifications,
+                          child: const Text('Retry'),
+                        ),
+                      ],
+                    ),
+                  )
+                : RefreshIndicator(
+                    onRefresh: _loadNotifications,
+                    child: SingleChildScrollView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      padding: const EdgeInsets.all(24),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Filter Chips
+                          SingleChildScrollView(
+                            scrollDirection: Axis.horizontal,
+                            child: Row(
+                              children: [
+                                _buildFilterChip('All'),
+                                _buildFilterChip(
+                                  'Mentions',
+                                  icon: Icons.alternate_email,
                                 ),
-                              ),
-                              const SizedBox(height: 32),
-
-                              if (_allNotifications.isEmpty)
-                                Center(
-                                  child: Column(
-                                    children: [
-                                      const SizedBox(height: 64),
-                                      Icon(Icons.notifications_none,
-                                          size: 80, color: Colors.grey[300]),
-                                      const SizedBox(height: 16),
-                                      Text(
-                                        'No notifications yet',
-                                        style: GoogleFonts.outfit(
-                                          fontSize: 18,
-                                          color: Colors.grey[600],
-                                          fontWeight: FontWeight.w500,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
+                                _buildFilterChip(
+                                  'Schedule',
+                                  icon: Icons.calendar_today,
                                 ),
-
-                              if (newNotifications.isNotEmpty) ...[
-                                Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Text(
-                                      'NEW',
-                                      style: GoogleFonts.inter(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.grey[600],
-                                        letterSpacing: 1,
-                                      ),
-                                    ),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 8,
-                                        vertical: 4,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: Colors.orange[50],
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
-                                      child: Text(
-                                        '${newNotifications.length} unread',
-                                        style: GoogleFonts.inter(
-                                          fontSize: 10,
-                                          fontWeight: FontWeight.bold,
-                                          color: Colors.orange[800],
-                                        ),
-                                      ),
-                                    ),
-                                  ],
+                                _buildFilterChip(
+                                  'Performance',
+                                  icon: Icons.bar_chart,
                                 ),
-                                const SizedBox(height: 16),
-                                ...newNotifications
-                                    .map((n) => _buildNotificationCard(n)),
-                                const SizedBox(height: 32),
+                                _buildFilterChip(
+                                  'Payments',
+                                  icon: Icons.payment,
+                                ),
                               ],
+                            ),
+                          ),
+                          const SizedBox(height: 32),
 
-                              if (earlierNotifications.isNotEmpty) ...[
+                          if (_allNotifications.isEmpty)
+                            Center(
+                              child: Column(
+                                children: [
+                                  const SizedBox(height: 64),
+                                  Icon(
+                                    Icons.notifications_none,
+                                    size: 80,
+                                    color: Colors.grey[300],
+                                  ),
+                                  const SizedBox(height: 16),
+                                  Text(
+                                    'No notifications yet',
+                                    style: GoogleFonts.outfit(
+                                      fontSize: 18,
+                                      color: Colors.grey[600],
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+
+                          if (newNotifications.isNotEmpty) ...[
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
                                 Text(
-                                  'EARLIER',
+                                  'NEW',
                                   style: GoogleFonts.inter(
                                     fontSize: 12,
                                     fontWeight: FontWeight.bold,
@@ -425,14 +415,52 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                                     letterSpacing: 1,
                                   ),
                                 ),
-                                const SizedBox(height: 16),
-                                ...earlierNotifications
-                                    .map((n) => _buildNotificationCard(n)),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 4,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Colors.orange[50],
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Text(
+                                    '${newNotifications.length} unread',
+                                    style: GoogleFonts.inter(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.orange[800],
+                                    ),
+                                  ),
+                                ),
                               ],
-                            ],
-                          ),
-                        ),
+                            ),
+                            const SizedBox(height: 16),
+                            ...newNotifications.map(
+                              (n) => _buildNotificationCard(n),
+                            ),
+                            const SizedBox(height: 32),
+                          ],
+
+                          if (earlierNotifications.isNotEmpty) ...[
+                            Text(
+                              'EARLIER',
+                              style: GoogleFonts.inter(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.grey[600],
+                                letterSpacing: 1,
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            ...earlierNotifications.map(
+                              (n) => _buildNotificationCard(n),
+                            ),
+                          ],
+                        ],
                       ),
+                    ),
+                  ),
           ),
         ],
       ),
@@ -441,6 +469,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
   Widget _buildFilterChip(String label, {IconData? icon}) {
     final isSelected = _selectedFilter == label;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final selectedColor = isDark ? Colors.white : AppPalette.navyPrimary;
+    final unselectedColor = isDark ? Colors.white70 : AppPalette.navyPrimary;
+
     return Container(
       margin: const EdgeInsets.only(right: 12),
       child: FilterChip(
@@ -450,23 +482,27 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             ? Icon(
                 icon,
                 size: 16,
-                color: isSelected ? Colors.white : AppPalette.navyPrimary,
+                color: isSelected
+                    ? (isDark ? Colors.black : Colors.white)
+                    : unselectedColor,
               )
             : null,
         label: Text(
           label,
           style: GoogleFonts.inter(
             fontWeight: FontWeight.w600,
-            color: isSelected ? Colors.white : AppPalette.navyPrimary,
+            color: isSelected
+                ? (isDark ? Colors.black : Colors.white)
+                : unselectedColor,
           ),
         ),
-        backgroundColor: Colors.white,
-        selectedColor: AppPalette.navyPrimary,
+        backgroundColor: Theme.of(context).cardColor,
+        selectedColor: selectedColor,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(20),
           side: isSelected
               ? BorderSide.none
-              : BorderSide(color: Colors.grey[200]!),
+              : BorderSide(color: Theme.of(context).dividerColor),
         ),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         onSelected: (val) {
@@ -480,6 +516,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   }
 
   Widget _buildNotificationCard(NotificationItem item) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Dismissible(
       key: Key(item.id),
       direction: DismissDirection.endToStart,
@@ -518,11 +556,11 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           margin: const EdgeInsets.only(bottom: 12),
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: Theme.of(context).cardColor,
             borderRadius: BorderRadius.circular(16),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.02),
+                color: Colors.black.withValues(alpha: 0.05),
                 blurRadius: 10,
                 offset: const Offset(0, 4),
               ),
@@ -550,7 +588,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                                 ? Colors.pink
                                 : AppPalette.navyPrimary,
                             shape: BoxShape.circle,
-                            border: Border.all(color: Colors.white, width: 2),
+                            border: Border.all(
+                              color: Theme.of(context).cardColor,
+                              width: 2,
+                            ),
                           ),
                           child: Icon(
                             item.isLike ? Icons.favorite : item.typeIcon,
@@ -565,10 +606,18 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                 Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: item.iconBg ?? Colors.grey[100],
+                    color:
+                        item.iconBg ??
+                        Theme.of(context).colorScheme.surfaceContainerHighest,
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: Icon(item.iconData, color: item.iconColor, size: 20),
+                  child: Icon(
+                    item.iconData,
+                    color:
+                        item.iconColor ??
+                        Theme.of(context).colorScheme.onSurfaceVariant,
+                    size: 20,
+                  ),
                 ),
 
               const SizedBox(width: 16),
@@ -586,7 +635,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                             item.title,
                             style: GoogleFonts.inter(
                               fontWeight: FontWeight.bold,
-                              color: AppPalette.navyPrimary,
+                              color: Theme.of(context).colorScheme.onSurface,
                               fontSize: 14,
                             ),
                           ),
@@ -607,7 +656,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                       item.time,
                       style: GoogleFonts.inter(
                         fontSize: 12,
-                        color: Colors.grey[400],
+                        color: Theme.of(
+                          context,
+                        ).textTheme.bodyMedium?.color?.withValues(alpha: 0.7),
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -619,7 +670,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                         overflow: TextOverflow.ellipsis,
                         style: GoogleFonts.inter(
                           fontSize: 13,
-                          color: Colors.grey[600],
+                          color: Theme.of(context).textTheme.bodyMedium?.color,
                           height: 1.4,
                         ),
                       ),
@@ -632,14 +683,18 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                           vertical: 8,
                         ),
                         decoration: BoxDecoration(
-                          color: Colors.orange[50],
+                          color: isDark
+                              ? AppPalette.orangeAccent.withValues(alpha: 0.1)
+                              : Colors.orange[50],
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text(
                           item.actionButton!,
                           style: GoogleFonts.inter(
                             fontWeight: FontWeight.bold,
-                            color: Colors.orange[800],
+                            color: isDark
+                                ? AppPalette.orangeAccent
+                                : Colors.orange[800],
                             fontSize: 12,
                           ),
                         ),

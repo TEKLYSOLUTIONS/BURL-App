@@ -27,7 +27,7 @@ class _CoachHomeScreenState extends State<CoachHomeScreen> {
 
   // Dashboard data
   int _todaySessionsCount = 0;
-  double _todayEarnings = 0.0;
+  double _totalEarnings = 0.0; // New state for Total Earnings
   int _todayStudentsCount = 0;
   List<dynamic> _upcomingSessions = [];
   List<dynamic> _todaysSessions = [];
@@ -100,8 +100,12 @@ class _CoachHomeScreenState extends State<CoachHomeScreen> {
       if (data != null && mounted) {
         setState(() {
           final todaySummary = data['todaySummary'];
+          final stats = data['stats']; // Get stats for Total Earnings
+
           _todaySessionsCount = todaySummary?['sessions'] ?? 0;
-          _todayEarnings = (todaySummary?['earnings'] ?? 0).toDouble();
+          // _todayEarnings removed
+          _totalEarnings = (stats?['totalEarnings'] ?? 0)
+              .toDouble(); // Fetch Total Earnings
           _todayStudentsCount = todaySummary?['students'] ?? 0;
 
           _upcomingSessions = List.from(data['upcomingSessions'] ?? []);
@@ -127,7 +131,7 @@ class _CoachHomeScreenState extends State<CoachHomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppPalette.backgroundLight,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: Column(
         children: [
           // Fixed Header Section
@@ -152,7 +156,9 @@ class _CoachHomeScreenState extends State<CoachHomeScreen> {
                           style: GoogleFonts.inter(
                             fontSize: 10,
                             fontWeight: FontWeight.w600,
-                            color: Colors.white70,
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.onPrimary.withValues(alpha: 0.7),
                             letterSpacing: 1,
                           ),
                         ),
@@ -161,7 +167,7 @@ class _CoachHomeScreenState extends State<CoachHomeScreen> {
                           style: GoogleFonts.outfit(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
-                            color: Colors.white,
+                            color: Theme.of(context).colorScheme.onPrimary,
                           ),
                         ),
                       ],
@@ -212,6 +218,8 @@ class _CoachHomeScreenState extends State<CoachHomeScreen> {
                               if (_isToday(_selectedDate)) ...[
                                 _buildTodaySummary(),
                                 const SizedBox(height: 24),
+                                _buildQuickActions(),
+                                const SizedBox(height: 24),
                                 _buildNextSessionSection(),
                                 const SizedBox(height: 32),
                               ],
@@ -228,7 +236,9 @@ class _CoachHomeScreenState extends State<CoachHomeScreen> {
                                     style: GoogleFonts.outfit(
                                       fontSize: 18,
                                       fontWeight: FontWeight.bold,
-                                      color: AppPalette.navyPrimary,
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.onSurface,
                                     ),
                                   ),
                                   if (_isToday(_selectedDate))
@@ -240,7 +250,9 @@ class _CoachHomeScreenState extends State<CoachHomeScreen> {
                                         style: GoogleFonts.inter(
                                           fontSize: 14,
                                           fontWeight: FontWeight.w600,
-                                          color: AppPalette.navyPrimary,
+                                          color: Theme.of(
+                                            context,
+                                          ).colorScheme.secondary,
                                         ),
                                       ),
                                     ),
@@ -256,10 +268,10 @@ class _CoachHomeScreenState extends State<CoachHomeScreen> {
                                 Container(
                                   padding: const EdgeInsets.all(32),
                                   decoration: BoxDecoration(
-                                    color: Colors.white,
+                                    color: Theme.of(context).cardColor,
                                     borderRadius: BorderRadius.circular(16),
                                     border: Border.all(
-                                      color: Colors.grey.shade100,
+                                      color: Theme.of(context).dividerColor,
                                     ),
                                   ),
                                   child: Center(
@@ -268,7 +280,9 @@ class _CoachHomeScreenState extends State<CoachHomeScreen> {
                                         Icon(
                                           Icons.event_busy,
                                           size: 48,
-                                          color: Colors.grey[300],
+                                          color: Theme.of(
+                                            context,
+                                          ).disabledColor,
                                         ),
                                         const SizedBox(height: 16),
                                         Text(
@@ -276,7 +290,10 @@ class _CoachHomeScreenState extends State<CoachHomeScreen> {
                                               ? 'No sessions today'
                                               : 'No sessions scheduled',
                                           style: GoogleFonts.inter(
-                                            color: Colors.grey,
+                                            color: Theme.of(context)
+                                                .colorScheme
+                                                .onSurface
+                                                .withValues(alpha: 0.5),
                                             fontSize: 14,
                                             fontWeight: FontWeight.w500,
                                           ),
@@ -310,7 +327,9 @@ class _CoachHomeScreenState extends State<CoachHomeScreen> {
                                   style: GoogleFonts.outfit(
                                     fontSize: 18,
                                     fontWeight: FontWeight.bold,
-                                    color: AppPalette.navyPrimary,
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.onSurface,
                                   ),
                                 ),
                                 const SizedBox(height: 16),
@@ -321,7 +340,9 @@ class _CoachHomeScreenState extends State<CoachHomeScreen> {
                                       child: Text(
                                         'No recent activity',
                                         style: GoogleFonts.inter(
-                                          color: Colors.grey,
+                                          color: Theme.of(
+                                            context,
+                                          ).disabledColor,
                                           fontSize: 14,
                                         ),
                                       ),
@@ -370,8 +391,8 @@ class _CoachHomeScreenState extends State<CoachHomeScreen> {
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () => context.push('/coach/create-session'),
-        backgroundColor: Colors.orange,
-        child: const Icon(Icons.add, color: Colors.white),
+        backgroundColor: Theme.of(context).colorScheme.primary,
+        child: Icon(Icons.add, color: Theme.of(context).colorScheme.onPrimary),
       ),
     );
   }
@@ -380,11 +401,11 @@ class _CoachHomeScreenState extends State<CoachHomeScreen> {
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
+            color: Theme.of(context).shadowColor.withValues(alpha: 0.05),
             blurRadius: 20,
             offset: const Offset(0, 4),
           ),
@@ -394,7 +415,7 @@ class _CoachHomeScreenState extends State<CoachHomeScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            "TODAY'S SUMMARY",
+            "DASHBOARD SUMMARY", // Updated Title
             style: GoogleFonts.inter(
               fontSize: 12,
               fontWeight: FontWeight.w600,
@@ -406,12 +427,21 @@ class _CoachHomeScreenState extends State<CoachHomeScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              _buildSummaryItem(_todaySessionsCount.toString(), 'Sessions'),
               _buildSummaryItem(
-                '£${_todayEarnings.toStringAsFixed(0)}', // Assuming GBP as per request image
-                'Earnings',
+                _todaySessionsCount.toString(),
+                'Sessions\n(Today)',
+                onTap: () => context.push('/coach/sessions'),
               ),
-              _buildSummaryItem(_todayStudentsCount.toString(), 'Students'),
+              _buildSummaryItem(
+                '£${_totalEarnings.toStringAsFixed(0)}', // Display Total Earnings
+                'Total Earnings',
+                onTap: () => context.push('/coach/earnings'),
+              ),
+              _buildSummaryItem(
+                _todayStudentsCount.toString(),
+                'Students\n(Today)',
+                onTap: () => context.push('/coach/students'),
+              ),
             ],
           ),
         ],
@@ -419,27 +449,110 @@ class _CoachHomeScreenState extends State<CoachHomeScreen> {
     );
   }
 
-  Widget _buildSummaryItem(String value, String label) {
-    return Column(
+  Widget _buildQuickActions() {
+    return Row(
       children: [
-        Text(
-          value,
-          style: GoogleFonts.outfit(
-            fontSize: 28,
-            fontWeight: FontWeight.bold,
-            color: AppPalette.navyPrimary,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          label,
-          style: GoogleFonts.inter(
-            fontSize: 14,
-            color: AppPalette.textSecondaryLight,
-            fontWeight: FontWeight.w500,
+        Expanded(
+          child: InkWell(
+            onTap: () => context.push('/coach/bookings'),
+            borderRadius: BorderRadius.circular(16),
+            child: Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Theme.of(
+                  context,
+                ).colorScheme.primary.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.primary.withValues(alpha: 0.2),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.primary.withValues(
+                        alpha: 0.2,
+                      ), // Darker bg for icon
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.people_outline,
+                      color: Theme.of(context).colorScheme.primary,
+                      size: 20,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Manage Bookings',
+                          style: GoogleFonts.outfit(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Theme.of(context).colorScheme.onSurface,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'View incoming requests',
+                          style: GoogleFonts.inter(
+                            fontSize: 12,
+                            color: Theme.of(
+                              context,
+                            ).textTheme.bodyMedium?.color,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Icon(
+                    Icons.chevron_right,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                ],
+              ),
+            ),
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildSummaryItem(String value, String label, {VoidCallback? onTap}) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Padding(
+        padding: const EdgeInsets.all(8.0),
+        child: Column(
+          children: [
+            Text(
+              value,
+              style: GoogleFonts.outfit(
+                fontSize: 28,
+                fontWeight: FontWeight.bold,
+                color: Theme.of(context).colorScheme.primary,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              label,
+              textAlign: TextAlign.center,
+              style: GoogleFonts.inter(
+                fontSize: 14,
+                color: Theme.of(context).textTheme.bodyMedium?.color,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -493,14 +606,14 @@ class _CoachHomeScreenState extends State<CoachHomeScreen> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(24),
         border: isNextSession
-            ? Border.all(color: AppPalette.primary, width: 2)
+            ? Border.all(color: Theme.of(context).colorScheme.primary, width: 2)
             : null,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
+            color: Theme.of(context).shadowColor.withValues(alpha: 0.05),
             blurRadius: 15,
             offset: const Offset(0, 4),
           ),
@@ -520,7 +633,9 @@ class _CoachHomeScreenState extends State<CoachHomeScreen> {
                     vertical: 4,
                   ),
                   decoration: BoxDecoration(
-                    color: Colors.blue.withValues(alpha: 0.1),
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.primary.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
@@ -528,7 +643,7 @@ class _CoachHomeScreenState extends State<CoachHomeScreen> {
                     style: GoogleFonts.inter(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
-                      color: Colors.blue[700],
+                      color: Theme.of(context).colorScheme.primary,
                     ),
                   ),
                 ),
@@ -540,7 +655,7 @@ class _CoachHomeScreenState extends State<CoachHomeScreen> {
                   style: GoogleFonts.outfit(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
-                    color: AppPalette.navyPrimary,
+                    color: Theme.of(context).colorScheme.onSurface,
                   ),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
@@ -553,7 +668,9 @@ class _CoachHomeScreenState extends State<CoachHomeScreen> {
                     Icon(
                       Icons.access_time_filled,
                       size: 16,
-                      color: Colors.grey[500],
+                      color: Theme.of(
+                        context,
+                      ).iconTheme.color?.withValues(alpha: 0.6),
                     ),
                     const SizedBox(width: 6),
                     Text(
@@ -561,7 +678,7 @@ class _CoachHomeScreenState extends State<CoachHomeScreen> {
                       style: GoogleFonts.inter(
                         fontSize: 14,
                         fontWeight: FontWeight.w500,
-                        color: Colors.grey[600],
+                        color: Theme.of(context).textTheme.bodyMedium?.color,
                       ),
                     ),
                   ],
@@ -578,7 +695,9 @@ class _CoachHomeScreenState extends State<CoachHomeScreen> {
                       vertical: 10,
                     ),
                     decoration: BoxDecoration(
-                      color: Colors.grey[100],
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.surfaceContainerHighest,
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Row(
@@ -589,14 +708,14 @@ class _CoachHomeScreenState extends State<CoachHomeScreen> {
                           style: GoogleFonts.inter(
                             fontSize: 13,
                             fontWeight: FontWeight.w600,
-                            color: AppPalette.navyPrimary,
+                            color: Theme.of(context).colorScheme.onSurface,
                           ),
                         ),
                         const SizedBox(width: 6),
-                        const Icon(
+                        Icon(
                           Icons.arrow_forward,
                           size: 14,
-                          color: AppPalette.navyPrimary,
+                          color: Theme.of(context).colorScheme.onSurface,
                         ),
                       ],
                     ),
@@ -634,11 +753,11 @@ class _CoachHomeScreenState extends State<CoachHomeScreen> {
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
+            color: Theme.of(context).shadowColor.withValues(alpha: 0.02),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -660,7 +779,7 @@ class _CoachHomeScreenState extends State<CoachHomeScreen> {
                   text: TextSpan(
                     style: GoogleFonts.inter(
                       fontSize: 14,
-                      color: AppPalette.navyPrimary,
+                      color: Theme.of(context).colorScheme.onSurface,
                     ),
                     children: [
                       TextSpan(
@@ -681,13 +800,16 @@ class _CoachHomeScreenState extends State<CoachHomeScreen> {
                   time,
                   style: GoogleFonts.inter(
                     fontSize: 12,
-                    color: Colors.grey[400],
+                    color: Theme.of(context).disabledColor,
                   ),
                 ),
               ],
             ),
           ),
-          Icon(Icons.chevron_right, color: Colors.orange),
+          Icon(
+            Icons.chevron_right,
+            color: Theme.of(context).colorScheme.primary,
+          ),
         ],
       ),
     );

@@ -157,12 +157,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppPalette.offWhite,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: AppPalette.navyPrimary),
+          icon: Icon(
+            Icons.arrow_back,
+            color: Theme.of(context).iconTheme.color,
+          ),
           onPressed: () => context.pop(),
         ),
       ),
@@ -183,7 +186,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       style: TextStyle(
                         fontSize: 32,
                         fontWeight: FontWeight.bold,
-                        color: AppPalette.navyPrimary,
+                        color: Theme.of(context).colorScheme.onSurface,
                       ),
                     ),
                     const SizedBox(height: 8),
@@ -191,7 +194,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       'Sign up to get started',
                       style: TextStyle(
                         fontSize: 16,
-                        color: AppPalette.textSecondaryLight,
+                        color:
+                            Theme.of(context).textTheme.bodyMedium?.color ??
+                            AppPalette.textSecondaryLight,
                       ),
                     ),
                   ],
@@ -340,7 +345,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             'I agree to the ',
                             style: TextStyle(
                               fontSize: 14,
-                              color: AppPalette.textSecondaryLight,
+                              color:
+                                  Theme.of(
+                                    context,
+                                  ).textTheme.bodyMedium?.color ??
+                                  AppPalette.textSecondaryLight,
                             ),
                           ),
                           GestureDetector(
@@ -358,7 +367,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             ' and ',
                             style: TextStyle(
                               fontSize: 14,
-                              color: AppPalette.textSecondaryLight,
+                              color:
+                                  Theme.of(
+                                    context,
+                                  ).textTheme.bodyMedium?.color ??
+                                  AppPalette.textSecondaryLight,
                             ),
                           ),
                           GestureDetector(
@@ -398,7 +411,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       child: Text(
                         'OR',
                         style: TextStyle(
-                          color: AppPalette.textSecondaryLight,
+                          color:
+                              Theme.of(context).textTheme.bodyMedium?.color ??
+                              AppPalette.textSecondaryLight,
                           fontSize: 14,
                           fontWeight: FontWeight.w500,
                         ),
@@ -436,7 +451,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     Text(
                       'Already have an account? ',
                       style: TextStyle(
-                        color: AppPalette.textSecondaryLight,
+                        color:
+                            Theme.of(context).textTheme.bodyMedium?.color ??
+                            AppPalette.textSecondaryLight,
                         fontSize: 14,
                       ),
                     ),

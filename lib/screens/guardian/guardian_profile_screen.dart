@@ -6,17 +6,20 @@ import '../../config/palette.dart';
 import '../../widgets/notification_button.dart';
 import '../../services/profile_service.dart';
 
-class GuardianProfileScreen extends StatefulWidget {
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../providers/theme_provider.dart';
+
+class GuardianProfileScreen extends ConsumerStatefulWidget {
   const GuardianProfileScreen({super.key});
 
   @override
-  State<GuardianProfileScreen> createState() => _GuardianProfileScreenState();
+  ConsumerState<GuardianProfileScreen> createState() =>
+      _GuardianProfileScreenState();
 }
 
-class _GuardianProfileScreenState extends State<GuardianProfileScreen> {
+class _GuardianProfileScreenState extends ConsumerState<GuardianProfileScreen> {
   bool _isLoading = true;
   bool _pushNotifications = true;
-  bool _darkMode = false;
   String _userName = 'Guardian';
   String _userEmail = '';
   Map<String, dynamic>? _userProfile; // Store full profile data
@@ -38,7 +41,6 @@ class _GuardianProfileScreenState extends State<GuardianProfileScreen> {
         final prefs = profile['preferences'] as Map<String, dynamic>?;
         if (prefs != null) {
           _pushNotifications = prefs['pushNotifications'] ?? true;
-          _darkMode = prefs['darkMode'] ?? false;
         }
 
         _isLoading = false;
@@ -60,12 +62,12 @@ class _GuardianProfileScreenState extends State<GuardianProfileScreen> {
     }
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F7FA), // Light grey background
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         title: Text(
           'Profile',
           style: GoogleFonts.outfit(
-            color: AppPalette.navyPrimary,
+            color: Theme.of(context).colorScheme.onSurface,
             fontWeight: FontWeight.bold,
             fontSize: 24,
           ),
@@ -74,7 +76,10 @@ class _GuardianProfileScreenState extends State<GuardianProfileScreen> {
         elevation: 0,
         centerTitle: true,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: AppPalette.navyPrimary),
+          icon: Icon(
+            Icons.arrow_back,
+            color: Theme.of(context).colorScheme.onSurface,
+          ),
           onPressed: () => context.pop(),
         ),
         actions: [
@@ -95,7 +100,9 @@ class _GuardianProfileScreenState extends State<GuardianProfileScreen> {
               width: double.infinity,
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: ref.watch(themeProvider) == ThemeMode.dark
+                    ? AppPalette.surfaceGlassDark
+                    : Colors.white,
                 borderRadius: BorderRadius.circular(20),
                 boxShadow: [
                   BoxShadow(
@@ -151,7 +158,9 @@ class _GuardianProfileScreenState extends State<GuardianProfileScreen> {
                           style: GoogleFonts.outfit(
                             fontSize: 20,
                             fontWeight: FontWeight.bold,
-                            color: AppPalette.navyPrimary,
+                            color: ref.watch(themeProvider) == ThemeMode.dark
+                                ? Colors.white
+                                : AppPalette.navyPrimary,
                           ),
                         ),
                         const SizedBox(height: 4),
@@ -220,11 +229,33 @@ class _GuardianProfileScreenState extends State<GuardianProfileScreen> {
                 onToggle: (val) => setState(() => _pushNotifications = val),
               ),
               _buildSettingsTile(
-                icon: Icons.dark_mode_outlined,
-                title: 'Dark Mode',
-                isToggle: true,
-                switchValue: _darkMode,
-                onToggle: (val) => setState(() => _darkMode = val),
+                icon: Icons.palette_outlined,
+                title: 'Appearance',
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Consumer(
+                      builder: (context, ref, child) {
+                        final isDark =
+                            ref.watch(themeProvider) == ThemeMode.dark;
+                        return Text(
+                          isDark ? 'Dark Mode' : 'Light Mode',
+                          style: GoogleFonts.inter(
+                            color: Colors.grey[500],
+                            fontSize: 14,
+                          ),
+                        );
+                      },
+                    ),
+                    const SizedBox(width: 8),
+                    const Icon(
+                      Icons.arrow_forward_ios_rounded,
+                      size: 16,
+                      color: Colors.grey,
+                    ),
+                  ],
+                ),
+                onTap: () => _showThemeBottomSheet(context, ref),
               ),
               _buildSettingsTile(
                 icon: Icons.language,
@@ -278,7 +309,9 @@ class _GuardianProfileScreenState extends State<GuardianProfileScreen> {
             Container(
               width: double.infinity,
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: ref.watch(themeProvider) == ThemeMode.dark
+                    ? AppPalette.surfaceGlassDark
+                    : Colors.white,
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(color: Colors.red.withValues(alpha: 0.1)),
               ),
@@ -332,16 +365,19 @@ class _GuardianProfileScreenState extends State<GuardianProfileScreen> {
   Widget _buildSettingsList(List<Widget> children) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: ref.watch(themeProvider) == ThemeMode.dark
+            ? AppPalette.surfaceGlassDark
+            : Colors.white,
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
         ],
       ),
+
       child: Column(
         children: children.asMap().entries.map((entry) {
           final index = entry.key;
@@ -378,7 +414,9 @@ class _GuardianProfileScreenState extends State<GuardianProfileScreen> {
       leading: Container(
         padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
-          color: const Color(0xFFF5F7FA),
+          color: ref.watch(themeProvider) == ThemeMode.dark
+              ? Colors.white.withValues(alpha: 0.05)
+              : const Color(0xFFF5F7FA),
           borderRadius: BorderRadius.circular(10),
         ),
         child: Icon(icon, color: Colors.orange, size: 22),
@@ -388,7 +426,9 @@ class _GuardianProfileScreenState extends State<GuardianProfileScreen> {
         style: GoogleFonts.inter(
           fontSize: 15,
           fontWeight: FontWeight.w600,
-          color: AppPalette.navyPrimary,
+          color: ref.watch(themeProvider) == ThemeMode.dark
+              ? Colors.white
+              : AppPalette.navyPrimary,
         ),
       ),
       trailing: isToggle
@@ -404,6 +444,117 @@ class _GuardianProfileScreenState extends State<GuardianProfileScreen> {
                   size: 16,
                   color: Colors.grey,
                 )),
+    );
+  }
+
+  void _showThemeBottomSheet(BuildContext context, WidgetRef ref) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) {
+        final isDark = ref.watch(themeProvider) == ThemeMode.dark;
+        return Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Select Appearance',
+                style: GoogleFonts.outfit(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: AppPalette.navyPrimary,
+                ),
+              ),
+              const SizedBox(height: 24),
+              _buildThemeOption(
+                context,
+                ref,
+                title: 'Light Mode',
+                icon: Icons.light_mode_outlined,
+                isSelected: !isDark,
+                onTap: () {
+                  ref.read(themeProvider.notifier).toggleTheme(false);
+                  Navigator.pop(context);
+                },
+              ),
+              const SizedBox(height: 12),
+              _buildThemeOption(
+                context,
+                ref,
+                title: 'Dark Mode',
+                icon: Icons.dark_mode_outlined,
+                isSelected: isDark,
+                onTap: () {
+                  ref.read(themeProvider.notifier).toggleTheme(true);
+                  Navigator.pop(context);
+                },
+              ),
+              const SizedBox(height: 24),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildThemeOption(
+    BuildContext context,
+    WidgetRef ref, {
+    required String title,
+    required IconData icon,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? Colors.orange.withValues(alpha: 0.1)
+              : Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: isSelected
+              ? Border.all(color: Colors.orange, width: 2)
+              : Border.all(color: Colors.grey.shade200),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: isSelected
+                    ? Colors.orange
+                    : Colors.grey.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                icon,
+                color: isSelected ? Colors.white : Colors.grey,
+                size: 20,
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Text(
+                title,
+                style: GoogleFonts.inter(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: isSelected ? Colors.orange : AppPalette.navyPrimary,
+                ),
+              ),
+            ),
+            if (isSelected)
+              const Icon(Icons.check_circle, color: Colors.orange),
+          ],
+        ),
+      ),
     );
   }
 }

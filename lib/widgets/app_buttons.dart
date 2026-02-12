@@ -32,7 +32,9 @@ class PrimaryButton extends StatelessWidget {
         style: ElevatedButton.styleFrom(
           backgroundColor: AppPalette.orangeAccent,
           foregroundColor: Colors.white,
-          disabledBackgroundColor: AppPalette.orangeAccent.withValues(alpha: 0.5),
+          disabledBackgroundColor: AppPalette.orangeAccent.withValues(
+            alpha: 0.5,
+          ),
           elevation: 0,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(24),
@@ -91,28 +93,29 @@ class SecondaryButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final color = isDark ? Colors.white : AppPalette.navyPrimary;
+
     return SizedBox(
       width: width,
       height: height,
       child: OutlinedButton(
         onPressed: isLoading ? null : onPressed,
         style: OutlinedButton.styleFrom(
-          foregroundColor: AppPalette.navyPrimary,
-          side: const BorderSide(color: AppPalette.navyPrimary, width: 2),
+          foregroundColor: color,
+          side: BorderSide(color: color, width: 2),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(24),
           ),
           padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 0),
         ),
         child: isLoading
-            ? const SizedBox(
+            ? SizedBox(
                 height: 20,
                 width: 20,
                 child: CircularProgressIndicator(
                   strokeWidth: 2,
-                  valueColor: AlwaysStoppedAnimation<Color>(
-                    AppPalette.navyPrimary,
-                  ),
+                  valueColor: AlwaysStoppedAnimation<Color>(color),
                 ),
               )
             : Row(
@@ -159,19 +162,24 @@ class SocialButton extends StatelessWidget {
       child: OutlinedButton(
         onPressed: isLoading ? null : onPressed,
         style: OutlinedButton.styleFrom(
-          backgroundColor: Colors.white,
-          foregroundColor: AppPalette.textPrimaryLight,
-          side: BorderSide(color: Colors.grey.shade300, width: 1),
+          backgroundColor: Theme.of(context).cardColor,
+          foregroundColor: Theme.of(context).colorScheme.onSurface,
+          side: BorderSide(color: Theme.of(context).dividerColor, width: 1),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
         ),
         child: isLoading
-            ? const SizedBox(
+            ? SizedBox(
                 height: 20,
                 width: 20,
-                child: CircularProgressIndicator(strokeWidth: 2),
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(
+                    Theme.of(context).colorScheme.onSurface,
+                  ),
+                ),
               )
             : Row(
                 mainAxisAlignment: MainAxisAlignment.center,

@@ -18,12 +18,16 @@ class AuthService {
         final user = data['user'];
         final userName = user['fullName'] ?? 'Coach';
         final userRole = user['role'] ?? 'coach';
+        final userId = user['id'] ?? user['_id'];
 
         // Save token & user details to shared preferences
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString('auth_token', token);
         await prefs.setString('user_name', userName);
         await prefs.setString('user_role', userRole);
+        if (userId != null) {
+          await prefs.setString('user_id', userId);
+        }
 
         return true;
       } else {
@@ -56,12 +60,16 @@ class AuthService {
         final user = data['user'];
         final userName = user['fullName'] ?? name;
         final userRole = user['role'] ?? role;
+        final userId = user['id'] ?? user['_id'];
 
         // Save token & user details to shared preferences
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString('auth_token', token);
         await prefs.setString('user_name', userName);
         await prefs.setString('user_role', userRole);
+        if (userId != null) {
+          await prefs.setString('user_id', userId);
+        }
 
         return true;
       } else {
@@ -75,7 +83,7 @@ class AuthService {
 
   static Future<void> logout() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.clear(); // Clear all data (token, name, role)
+    await prefs.clear(); // Clear all data (token, name, role, id)
   }
 
   static Future<bool> isLoggedIn() async {
@@ -91,6 +99,11 @@ class AuthService {
   static Future<String?> getUserRole() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getString('user_role');
+  }
+
+  static Future<String?> getUserId() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString('user_id');
   }
 
   static Future<void> updateStoredUserData(String name, String role) async {

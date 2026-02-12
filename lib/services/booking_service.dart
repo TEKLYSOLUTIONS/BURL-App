@@ -14,6 +14,7 @@ class BookingService {
     required String occurrenceDate,
     required String paymentMethod,
     String? promoCode,
+    String? playerId,
   }) async {
     try {
       final response = await ApiService.post('bookings', {
@@ -21,6 +22,7 @@ class BookingService {
         'occurrenceDate': occurrenceDate,
         'paymentMethod': paymentMethod,
         if (promoCode != null && promoCode.isNotEmpty) 'promoCode': promoCode,
+        if (playerId != null && playerId.isNotEmpty) 'playerId': playerId,
       });
 
       final data = json.decode(response.body);
@@ -44,9 +46,6 @@ class BookingService {
     List<String>? playerIds,
   }) async {
     try {
-      print(
-        'DEBUG: BookingService.createPrivateBooking called with coachId: $coachId',
-      );
       final response = await ApiService.post('bookings/private', {
         'coachId': coachId,
         'startTime': startTime.toIso8601String(),
@@ -177,6 +176,64 @@ class BookingService {
         'discount': 0.0,
         'message': 'Error validating promo code',
       };
+    }
+  }
+
+  /// Get coach's bookings
+  ///
+  /// [type] - 'upcoming', 'past', or 'cancelled'
+  /// [limit] - Number of bookings to fetch (default: 20)
+  /// [page] - Page number for pagination (default: 1)
+  static Future<Map<String, dynamic>> getCoachBookings({
+    String type = 'upcoming',
+    int limit = 20,
+    int page = 1,
+  }) async {
+    try {
+      final response = await ApiService.get(
+        'bookings/coach?type=$type&limit=$limit&page=$page',
+      );
+
+      final data = json.decode(response.body);
+
+      if (response.statusCode == 200) {
+        return {
+          'bookings': data['bookings'] as List<dynamic>,
+          'pagination': data['pagination'],
+        };
+      } else {
+        throw Exception(data['message'] ?? 'Failed to fetch coach bookings');
+      }
+    } catch (e) {
+      throw Exception('Error fetching coach bookings: $e');
+    }
+  }
+
+  /// Update booking status (for Coach)
+  ///
+  /// [bookingId] - ID of the booking
+  /// [status] - 'confirmed', 'cancelled', or 'declined'
+  /// [reason] - Optional reason for cancellation/declining
+  static Future<Map<String, dynamic>> updateBookingStatus(
+    String bookingId,
+    String status, {
+    String? reason,
+  }) async {
+    try {
+      final response = await ApiService.put('bookings/$bookingId/status', {
+        'status': status,
+        if (reason != null && reason.isNotEmpty) 'reason': reason,
+      });
+
+      final data = json.decode(response.body);
+
+      if (response.statusCode == 200) {
+        return data['booking'];
+      } else {
+        throw Exception(data['message'] ?? 'Failed to update booking status');
+      }
+    } catch (e) {
+      throw Exception('Error updating booking status: $e');
     }
   }
 }

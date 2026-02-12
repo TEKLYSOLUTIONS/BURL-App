@@ -68,7 +68,7 @@ class _PlayerHomeScreenState extends State<PlayerHomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
@@ -84,9 +84,11 @@ class _PlayerHomeScreenState extends State<PlayerHomeScreen> {
                       Container(
                         width: 48,
                         height: 48,
-                        decoration: const BoxDecoration(
+                        decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          color: Color(0xFFFFE0B2), // Light Orange/Peach bg
+                          color: AppPalette.orangeAccent.withValues(
+                            alpha: 0.2,
+                          ), // Light Orange/Peach bg
                         ),
                         child: ClipOval(
                           child: Image.network(
@@ -109,7 +111,9 @@ class _PlayerHomeScreenState extends State<PlayerHomeScreen> {
                             style: GoogleFonts.inter(
                               fontSize: 10,
                               fontWeight: FontWeight.w600,
-                              color: AppPalette.textSecondaryLight,
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onSurface.withValues(alpha: 0.7),
                               letterSpacing: 0.5,
                             ),
                           ),
@@ -119,7 +123,7 @@ class _PlayerHomeScreenState extends State<PlayerHomeScreen> {
                             style: GoogleFonts.outfit(
                               fontSize: 18,
                               fontWeight: FontWeight.bold,
-                              color: AppPalette.navyPrimary,
+                              color: Theme.of(context).colorScheme.onSurface,
                             ),
                           ),
                         ],
@@ -128,8 +132,8 @@ class _PlayerHomeScreenState extends State<PlayerHomeScreen> {
                   ),
                   NotificationButton(
                     onTap: () => context.push('/player/notifications'),
-                    iconColor: AppPalette.navyPrimary,
-                    backgroundColor: const Color(0xFFF8F9FA),
+                    iconColor: Theme.of(context).colorScheme.onSurface,
+                    backgroundColor: Theme.of(context).cardColor,
                   ),
                 ],
               ).animate().fadeIn().slideY(begin: -0.2),
@@ -146,7 +150,7 @@ class _PlayerHomeScreenState extends State<PlayerHomeScreen> {
                       fontSize: 12,
                       fontWeight: FontWeight.bold,
                       letterSpacing: 1.0,
-                      color: AppPalette.navyPrimary,
+                      color: Theme.of(context).colorScheme.onSurface,
                     ),
                   ),
                   GestureDetector(
@@ -177,24 +181,28 @@ class _PlayerHomeScreenState extends State<PlayerHomeScreen> {
                   width: double.infinity,
                   padding: const EdgeInsets.all(24),
                   decoration: BoxDecoration(
-                    color: AppPalette.navyPrimary.withValues(alpha: 0.05),
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.primary.withValues(alpha: 0.05),
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(
-                      color: AppPalette.navyPrimary.withValues(alpha: 0.1),
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.primary.withValues(alpha: 0.1),
                     ),
                   ),
                   child: Column(
                     children: [
-                      const Icon(
+                      Icon(
                         Icons.event_busy,
                         size: 48,
-                        color: Colors.grey,
+                        color: Theme.of(context).disabledColor,
                       ),
                       const SizedBox(height: 12),
                       Text(
                         'No upcoming sessions',
                         style: GoogleFonts.inter(
-                          color: AppPalette.navyPrimary,
+                          color: Theme.of(context).colorScheme.primary,
                           fontSize: 16,
                           fontWeight: FontWeight.w600,
                         ),
@@ -219,11 +227,13 @@ class _PlayerHomeScreenState extends State<PlayerHomeScreen> {
                   width: double.infinity,
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
-                    color: AppPalette.navyPrimary,
+                    color: Theme.of(context).colorScheme.primary,
                     borderRadius: BorderRadius.circular(20),
                     boxShadow: [
                       BoxShadow(
-                        color: AppPalette.navyPrimary.withValues(alpha: 0.3),
+                        color: Theme.of(
+                          context,
+                        ).shadowColor.withValues(alpha: 0.3),
                         blurRadius: 12,
                         offset: const Offset(0, 4),
                       ),
@@ -247,7 +257,10 @@ class _PlayerHomeScreenState extends State<PlayerHomeScreen> {
                                     vertical: 4,
                                   ),
                                   decoration: BoxDecoration(
-                                    color: Colors.white.withValues(alpha: 0.15),
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onPrimary
+                                        .withValues(alpha: 0.15),
                                     borderRadius: BorderRadius.circular(8),
                                   ),
                                   child: Row(
@@ -267,7 +280,9 @@ class _PlayerHomeScreenState extends State<PlayerHomeScreen> {
                                           _upcomingSession!['timeSlots'][0]['startTime'],
                                         ),
                                         style: GoogleFonts.inter(
-                                          color: Colors.white,
+                                          color: Theme.of(
+                                            context,
+                                          ).colorScheme.onPrimary,
                                           fontSize: 12,
                                           fontWeight: FontWeight.w500,
                                         ),
@@ -282,7 +297,9 @@ class _PlayerHomeScreenState extends State<PlayerHomeScreen> {
                                   style: GoogleFonts.outfit(
                                     fontSize: 22,
                                     fontWeight: FontWeight.bold,
-                                    color: Colors.white,
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.onPrimary,
                                     height: 1.2,
                                   ),
                                 ),
@@ -290,16 +307,22 @@ class _PlayerHomeScreenState extends State<PlayerHomeScreen> {
                                 Text(
                                   '${_upcomingSession!['location'] ?? 'TBD'} • Coach ${_upcomingSession!['coach'] != null ? (_upcomingSession!['coach'] is String ? 'Unknown' : _upcomingSession!['coach']['fullName']) : 'Unknown'}',
                                   style: GoogleFonts.inter(
-                                    color: Colors.white.withValues(alpha: 0.7),
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onPrimary
+                                        .withValues(alpha: 0.7),
                                     fontSize: 13,
                                   ),
                                 ),
                                 const SizedBox(height: 12),
                                 Row(
                                   children: [
-                                    const Icon(
+                                    Icon(
                                       Icons.access_time_rounded,
-                                      color: Colors.white70,
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .onPrimary
+                                          .withValues(alpha: 0.7),
                                       size: 16,
                                     ),
                                     const SizedBox(width: 6),
@@ -308,9 +331,10 @@ class _PlayerHomeScreenState extends State<PlayerHomeScreen> {
                                         _upcomingSession!['timeSlots'][0]['startTime'],
                                       ),
                                       style: GoogleFonts.inter(
-                                        color: Colors.white.withValues(
-                                          alpha: 0.9,
-                                        ),
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .onPrimary
+                                            .withValues(alpha: 0.9),
                                         fontSize: 13,
                                         fontWeight: FontWeight.w500,
                                       ),
@@ -342,7 +366,9 @@ class _PlayerHomeScreenState extends State<PlayerHomeScreen> {
                               onPressed: () {},
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: AppPalette.orangeAccent,
-                                foregroundColor: Colors.white,
+                                foregroundColor: Theme.of(
+                                  context,
+                                ).colorScheme.onSecondary,
                                 elevation: 0,
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(12),
@@ -365,14 +391,16 @@ class _PlayerHomeScreenState extends State<PlayerHomeScreen> {
                             width: 48,
                             height: 48,
                             decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.15),
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onPrimary.withValues(alpha: 0.15),
                               borderRadius: BorderRadius.circular(12),
                             ),
                             child: IconButton(
                               onPressed: () {},
-                              icon: const Icon(
+                              icon: Icon(
                                 Icons.info_outline,
-                                color: Colors.white,
+                                color: Theme.of(context).colorScheme.onPrimary,
                               ),
                             ),
                           ),
@@ -391,7 +419,7 @@ class _PlayerHomeScreenState extends State<PlayerHomeScreen> {
                   fontSize: 12,
                   fontWeight: FontWeight.bold,
                   letterSpacing: 1.0,
-                  color: AppPalette.navyPrimary,
+                  color: Theme.of(context).colorScheme.onSurface,
                 ),
               ).animate().fadeIn(delay: 300.ms),
               const SizedBox(height: 12),
@@ -443,7 +471,7 @@ class _PlayerHomeScreenState extends State<PlayerHomeScreen> {
                   fontSize: 12,
                   fontWeight: FontWeight.bold,
                   letterSpacing: 1.0,
-                  color: AppPalette.navyPrimary,
+                  color: Theme.of(context).colorScheme.onSurface,
                 ),
               ).animate().fadeIn(delay: 500.ms),
               const SizedBox(height: 12),
@@ -554,12 +582,14 @@ class _MetricCard extends StatelessWidget {
       width: 140,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.grey[100]!),
+        border: Border.all(
+          color: Theme.of(context).dividerColor.withValues(alpha: 0.5),
+        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
+            color: Theme.of(context).shadowColor.withValues(alpha: 0.03),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -585,7 +615,9 @@ class _MetricCard extends StatelessWidget {
                   style: GoogleFonts.inter(
                     fontSize: 12,
                     fontWeight: FontWeight.w500,
-                    color: AppPalette.textSecondaryLight,
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.onSurface.withValues(alpha: 0.7),
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -599,7 +631,7 @@ class _MetricCard extends StatelessWidget {
             style: GoogleFonts.outfit(
               fontSize: 32,
               fontWeight: FontWeight.bold,
-              color: AppPalette.navyPrimary,
+              color: Theme.of(context).colorScheme.onSurface,
             ),
           ),
           const Spacer(),
@@ -645,12 +677,14 @@ class _QuickActionButton extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: Theme.of(context).cardColor,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.grey[200]!),
+          border: Border.all(
+            color: Theme.of(context).dividerColor.withValues(alpha: 0.5),
+          ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.03),
+              color: Theme.of(context).shadowColor.withValues(alpha: 0.03),
               blurRadius: 10,
               offset: const Offset(0, 4),
             ),
@@ -659,7 +693,7 @@ class _QuickActionButton extends StatelessWidget {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, color: AppPalette.navyPrimary, size: 24),
+            Icon(icon, color: Theme.of(context).colorScheme.primary, size: 24),
             const SizedBox(width: 12),
             Text(
               label,
@@ -696,9 +730,11 @@ class _FeaturedCoachCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.grey[100]!),
+        border: Border.all(
+          color: Theme.of(context).dividerColor.withValues(alpha: 0.5),
+        ),
       ),
       child: Row(
         children: [
@@ -752,13 +788,15 @@ class _FeaturedCoachCard extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              border: Border.all(color: AppPalette.divider),
+              border: Border.all(color: Theme.of(context).dividerColor),
               shape: BoxShape.circle,
             ),
-            child: const Icon(
+            child: Icon(
               Icons.arrow_forward_ios_rounded,
               size: 16,
-              color: AppPalette.textSecondaryLight,
+              color: Theme.of(
+                context,
+              ).colorScheme.onSurface.withValues(alpha: 0.5),
             ),
           ),
         ],

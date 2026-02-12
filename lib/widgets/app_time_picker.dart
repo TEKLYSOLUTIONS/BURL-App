@@ -16,9 +16,9 @@ class AppTimePicker {
       builder: (BuildContext context) {
         return Container(
           height: 320,
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.only(
+          decoration: BoxDecoration(
+            color: Theme.of(context).scaffoldBackgroundColor,
+            borderRadius: const BorderRadius.only(
               topLeft: Radius.circular(24),
               topRight: Radius.circular(24),
             ),
@@ -33,9 +33,7 @@ class AppTimePicker {
                 ),
                 decoration: BoxDecoration(
                   border: Border(
-                    bottom: BorderSide(
-                      color: Colors.grey.withValues(alpha: 0.2),
-                    ),
+                    bottom: BorderSide(color: Theme.of(context).dividerColor),
                   ),
                 ),
                 child: Row(
@@ -46,7 +44,7 @@ class AppTimePicker {
                       child: Text(
                         'Cancel',
                         style: GoogleFonts.inter(
-                          color: Colors.grey[600],
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
                           fontWeight: FontWeight.w600,
                           fontSize: 16,
                         ),
@@ -55,7 +53,7 @@ class AppTimePicker {
                     Text(
                       'Select Time',
                       style: GoogleFonts.outfit(
-                        color: AppPalette.navyPrimary,
+                        color: Theme.of(context).colorScheme.onSurface,
                         fontWeight: FontWeight.bold,
                         fontSize: 18,
                       ),
@@ -78,9 +76,10 @@ class AppTimePicker {
               Expanded(
                 child: CupertinoTheme(
                   data: CupertinoThemeData(
+                    brightness: Theme.of(context).brightness,
                     textTheme: CupertinoTextThemeData(
                       dateTimePickerTextStyle: GoogleFonts.outfit(
-                        color: AppPalette.navyPrimary,
+                        color: Theme.of(context).colorScheme.onSurface,
                         fontSize: 22,
                         fontWeight: FontWeight.w500,
                       ),
