@@ -36,11 +36,20 @@ class _CoachBookingsScreenState extends ConsumerState<CoachBookingsScreen>
   Future<void> _loadBookings() async {
     setState(() => _isLoading = true);
     try {
+      debugPrint('[CoachBookingsScreen] Loading bookings...');
       // Load all types in parallel
       final upcoming = await BookingService.getCoachBookings(type: 'upcoming');
       final past = await BookingService.getCoachBookings(type: 'past');
       final cancelled = await BookingService.getCoachBookings(
         type: 'cancelled',
+      );
+
+      debugPrint(
+        '[CoachBookingsScreen] Upcoming: ${upcoming['bookings'].length}',
+      );
+      debugPrint('[CoachBookingsScreen] Past: ${past['bookings'].length}');
+      debugPrint(
+        '[CoachBookingsScreen] Cancelled: ${cancelled['bookings'].length}',
       );
 
       if (mounted) {
@@ -52,6 +61,7 @@ class _CoachBookingsScreenState extends ConsumerState<CoachBookingsScreen>
         });
       }
     } catch (e) {
+      debugPrint('[CoachBookingsScreen] Error: $e');
       if (mounted) {
         setState(() => _isLoading = false);
         ScaffoldMessenger.of(

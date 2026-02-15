@@ -3,7 +3,6 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../config/palette.dart';
-
 import '../../services/booking_service.dart';
 import '../../services/guardian_service.dart';
 
@@ -20,23 +19,61 @@ class ConfirmBookingScreenSimple extends StatefulWidget {
 class _ConfirmBookingScreenSimpleState
     extends State<ConfirmBookingScreenSimple> {
   final TextEditingController _promoController = TextEditingController();
+  bool _isProcessing = false;
+
+  // Promo code state
   String? _appliedPromoCode;
   double _discountAmount = 0.0;
   String? _promoError;
-  int _selectedPaymentMethod = 0; // 0: Card, 1: Apple Pay, 2: Test Booking
-  bool _isProcessing = false;
+  bool _isValidatingPromo = false;
 
-  // Guardian specific
+  // Guardian state
   bool _isGuardian = false;
   List<dynamic> _players = [];
   String? _selectedPlayerId;
   bool _isLoadingPlayers = false;
 
-  final double _sessionFee = 60.00;
+  // Pricing
+  double get _sessionFee {
+    try {
+      final session = widget.bookingDetails['session'];
+      if (session is Map<String, dynamic> && session['pricing'] != null) {
+        final num amount = session['pricing']['amount'] ?? 50.0;
+        final selectedDates = widget.bookingDetails['selectedDates'] as List?;
+        if (selectedDates != null && selectedDates.length > 1) {
+          return amount.toDouble() * selectedDates.length;
+        }
+        return amount.toDouble();
+      }
+      final total = widget.bookingDetails['totalAmount'];
+      if (total != null) {
+        if (total is num) return total.toDouble();
+        if (total is String) return double.tryParse(total) ?? 60.0;
+      }
+      return 60.00;
+    } catch (e) {
+      debugPrint('Error calculating session fee: $e');
+      return 60.00;
+    }
+  }
+
   final double _serviceFee = 2.50;
   final double _tax = 0.00;
-
   double get _totalAmount => _sessionFee + _serviceFee + _tax - _discountAmount;
+
+  String get _sessionFeeLabel {
+    try {
+      final selectedDates = widget.bookingDetails['selectedDates'] as List?;
+      if (selectedDates != null && selectedDates.length > 1) {
+        final session = widget.bookingDetails['session'];
+        if (session is Map<String, dynamic>) {
+          final amount = session['pricing']?['amount'] ?? 50.0;
+          return 'Session Fee (${selectedDates.length} × \$$amount)';
+        }
+      }
+    } catch (_) {}
+    return 'Session Fee (1hr)';
+  }
 
   @override
   void initState() {
@@ -46,14 +83,10 @@ class _ConfirmBookingScreenSimpleState
 
   Future<void> _checkUserRole() async {
     final prefs = await SharedPreferences.getInstance();
+    if (!mounted) return;
     final role = prefs.getString('user_role');
-    setState(() {
-      _isGuardian = role == 'guardian';
-    });
-
-    if (_isGuardian) {
-      _fetchPlayers();
-    }
+    setState(() => _isGuardian = role == 'guardian');
+    if (_isGuardian) _fetchPlayers();
   }
 
   Future<void> _fetchPlayers() async {
@@ -63,38 +96,51 @@ class _ConfirmBookingScreenSimpleState
       if (mounted) {
         setState(() {
           _players = players;
-          if (_players.isNotEmpty) {
-            _selectedPlayerId = _players[0]['_id'];
-          }
+          if (_players.isNotEmpty) _selectedPlayerId = _players[0]['_id'];
         });
       }
     } catch (e) {
       debugPrint('Error fetching players: $e');
     } finally {
-      if (mounted) {
-        setState(() => _isLoadingPlayers = false);
-      }
+      if (mounted) setState(() => _isLoadingPlayers = false);
     }
   }
 
-  void _applyPromoCode() {
-    final code = _promoController.text.trim().toUpperCase();
+  Future<void> _applyPromoCode() async {
+    final code = _promoController.text.trim();
     if (code.isEmpty) return;
 
     setState(() {
+      _isValidatingPromo = true;
       _promoError = null;
-      if (code == 'SUMMER10') {
-        _appliedPromoCode = 'SUMMER10';
-        _discountAmount = 10.00;
-      } else if (code == 'CRICKET50') {
-        _appliedPromoCode = 'CRICKET50';
-        _discountAmount = 30.00;
-      } else {
-        _promoError = "The code '$code' is invalid or has expired.";
-        _appliedPromoCode = null;
-        _discountAmount = 0.0;
-      }
     });
+
+    try {
+      final result = await BookingService.validatePromoCode(code);
+      if (!mounted) return;
+
+      if (result['valid'] == true) {
+        setState(() {
+          _appliedPromoCode = result['code'] ?? code.toUpperCase();
+          _discountAmount = (result['discount'] as num?)?.toDouble() ?? 0.0;
+          _promoError = null;
+        });
+      } else {
+        setState(() {
+          _promoError = result['message'] ?? 'Invalid promo code';
+          _appliedPromoCode = null;
+          _discountAmount = 0.0;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _promoError = 'Failed to validate promo code';
+        });
+      }
+    } finally {
+      if (mounted) setState(() => _isValidatingPromo = false);
+    }
   }
 
   void _removePromoCode() {
@@ -106,6 +152,63 @@ class _ConfirmBookingScreenSimpleState
     });
   }
 
+  Future<void> _confirmBooking() async {
+    if (_isGuardian && _selectedPlayerId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please select a player'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    setState(() => _isProcessing = true);
+
+    try {
+      final sessionId = widget.bookingDetails['sessionId'] as String?;
+      final occurrenceDate = widget.bookingDetails['occurrenceDate'] as String?;
+
+      if (sessionId == null || occurrenceDate == null) {
+        throw Exception('Missing session details');
+      }
+
+      final booking = await BookingService.createBooking(
+        sessionId: sessionId,
+        occurrenceDate: occurrenceDate,
+        paymentMethod: 'test',
+        promoCode: _appliedPromoCode,
+        playerId: _isGuardian ? _selectedPlayerId : null,
+      );
+
+      if (mounted) {
+        context.push(
+          '/booking-success',
+          extra: {
+            ...widget.bookingDetails,
+            'booking': booking,
+            'totalPaid': _totalAmount,
+            'paymentMethod': 'Test Booking',
+            'confirmationCode':
+                booking['_id'] ??
+                '#TRX-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}',
+          },
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Booking Failed: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isProcessing = false);
+    }
+  }
+
   @override
   void dispose() {
     _promoController.dispose();
@@ -114,32 +217,40 @@ class _ConfirmBookingScreenSimpleState
 
   @override
   Widget build(BuildContext context) {
-    final coachName = widget.bookingDetails['coachName'] ?? 'Michael Ray';
+    final coachName = widget.bookingDetails['coachName'] ?? 'Coach';
     final coachImage =
         widget.bookingDetails['coachImage'] ??
         'https://i.pravatar.cc/150?img=12';
-    final dateStr = widget.bookingDetails['date'] ?? 'Tue, Oct 24';
-    final timeStr = widget.bookingDetails['time'] ?? '10:00 AM';
-    final location =
-        widget.bookingDetails['location'] ?? 'Sunnydale Sports Complex';
+    final dateStr = widget.bookingDetails['date'] ?? 'Date TBD';
+    final timeStr = widget.bookingDetails['time'] ?? 'Time TBD';
+    final location = widget.bookingDetails['location'] ?? 'Location TBD';
+
+    // Get session type
+    final session = widget.bookingDetails['session'];
+    final sessionType = session is Map<String, dynamic>
+        ? (session['sessionType'] ?? 'Group Session')
+        : 'Group Session';
+    final sessionTitle = session is Map<String, dynamic>
+        ? (session['title'] ?? 'Cricket Coaching')
+        : 'Cricket Coaching';
 
     return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      backgroundColor: const Color(0xFFF8F9FE),
       appBar: AppBar(
         title: Text(
           'Confirm Booking',
           style: GoogleFonts.outfit(
             fontWeight: FontWeight.bold,
-            color: Theme.of(context).colorScheme.onSurface,
+            color: AppPalette.navyPrimary,
+            fontSize: 18,
           ),
         ),
-        backgroundColor: Colors.transparent,
+        backgroundColor: Colors.white,
         elevation: 0,
+        centerTitle: true,
         leading: IconButton(
-          icon: Icon(
-            Icons.arrow_back_ios_new,
-            color: Theme.of(context).iconTheme.color,
-          ),
+          icon: const Icon(Icons.arrow_back_ios_new, size: 18),
+          color: AppPalette.navyPrimary,
           onPressed: () => context.pop(),
         ),
       ),
@@ -147,21 +258,28 @@ class _ConfirmBookingScreenSimpleState
         children: [
           Expanded(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.all(24),
+              padding: const EdgeInsets.all(20),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Success banner if discount applied
+                  // Discount Applied Banner
                   if (_appliedPromoCode != null) ...[
                     Container(
-                      padding: const EdgeInsets.all(16),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 14,
+                      ),
                       decoration: BoxDecoration(
                         color: const Color(0xFF22C55E),
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(14),
                       ),
                       child: Row(
                         children: [
-                          const Icon(Icons.check_circle, color: Colors.white),
+                          const Icon(
+                            Icons.check_circle,
+                            color: Colors.white,
+                            size: 22,
+                          ),
                           const SizedBox(width: 12),
                           Expanded(
                             child: Column(
@@ -172,11 +290,11 @@ class _ConfirmBookingScreenSimpleState
                                   style: GoogleFonts.outfit(
                                     color: Colors.white,
                                     fontWeight: FontWeight.bold,
-                                    fontSize: 16,
+                                    fontSize: 15,
                                   ),
                                 ),
                                 Text(
-                                  "You're saving \$${_discountAmount.toStringAsFixed(2)} on this session.",
+                                  'You\'re saving \$${_discountAmount.toStringAsFixed(2)} on this session.',
                                   style: GoogleFonts.inter(
                                     color: Colors.white.withValues(alpha: 0.9),
                                     fontSize: 12,
@@ -188,695 +306,200 @@ class _ConfirmBookingScreenSimpleState
                         ],
                       ),
                     ),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 20),
                   ],
 
-                  // Booking Summary Header
+                  // BOOKING SUMMARY
                   Text(
                     'BOOKING SUMMARY',
                     style: GoogleFonts.inter(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      letterSpacing: 1.0,
-                      color: Theme.of(context).colorScheme.onSurface,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 1.2,
+                      color: Colors.grey[600],
                     ),
                   ),
-                  const SizedBox(height: 12),
-
-                  // Booking Summary Card
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).cardColor,
-                      borderRadius: BorderRadius.circular(20),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.05),
-                          blurRadius: 20,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                      border: Border.all(
-                        color: Theme.of(
-                          context,
-                        ).dividerColor.withValues(alpha: 0.1),
-                      ),
-                    ),
-                    child: Column(
-                      children: [
-                        Row(
-                          children: [
-                            CircleAvatar(
-                              radius: 30,
-                              backgroundImage: NetworkImage(coachImage),
-                              backgroundColor: Colors.grey[200],
-                              onBackgroundImageError:
-                                  (exception, stackTrace) {},
-                            ),
-                            const SizedBox(width: 16),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    coachName,
-                                    style: GoogleFonts.outfit(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 18,
-                                      color: Theme.of(
-                                        context,
-                                      ).colorScheme.onSurface,
-                                    ),
-                                  ),
-                                  Text(
-                                    'Tennis Coaching • Private Session',
-                                    style: GoogleFonts.inter(
-                                      fontSize: 13,
-                                      color: Theme.of(
-                                        context,
-                                      ).textTheme.bodyMedium?.color,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Row(
-                                    children: [
-                                      const Icon(
-                                        Icons.verified,
-                                        size: 14,
-                                        color: AppPalette.orangeAccent,
-                                      ),
-                                      const SizedBox(width: 4),
-                                      Text(
-                                        'TOP RATED COACH',
-                                        style: GoogleFonts.inter(
-                                          fontSize: 11,
-                                          fontWeight: FontWeight.bold,
-                                          color: AppPalette.orangeAccent,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 20),
-                          child: Divider(
-                            color: Theme.of(context).dividerColor,
-                            height: 1,
-                          ),
-                        ),
-                        _buildInfoRow(
-                          context,
-                          Icons.calendar_today_rounded,
-                          'DATE & TIME',
-                          '$dateStr • $timeStr',
-                        ),
-                        const SizedBox(height: 16),
-                        _buildInfoRow(
-                          context,
-                          Icons.location_on_rounded,
-                          'LOCATION',
-                          location,
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  const SizedBox(height: 32),
-
-                  // Player Selection (For Guardians)
-                  if (_isGuardian) ...[
-                    Text(
-                      'BOOKING FOR',
-                      style: GoogleFonts.inter(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        letterSpacing: 1.0,
-                        color: Theme.of(context).colorScheme.onSurface,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    if (_isLoadingPlayers)
-                      const Center(child: CircularProgressIndicator())
-                    else if (_players.isEmpty)
-                      Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: AppPalette.error.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: AppPalette.error.withValues(alpha: 0.2),
-                          ),
-                        ),
-                        child: Row(
-                          children: [
-                            const Icon(
-                              Icons.warning_amber_rounded,
-                              color: AppPalette.error,
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Text(
-                                'You need to add a player to your account first.',
-                                style: GoogleFonts.inter(
-                                  color: AppPalette.error,
-                                  fontSize: 14,
-                                ),
-                              ),
-                            ),
-                            TextButton(
-                              onPressed: () =>
-                                  context.push('/guardian/add-player'),
-                              child: const Text('Add Player'),
-                            ),
-                          ],
-                        ),
-                      )
-                    else
-                      Container(
-                        decoration: BoxDecoration(
-                          color: Theme.of(context).cardColor,
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(
-                            color: Theme.of(
-                              context,
-                            ).dividerColor.withValues(alpha: 0.1),
-                          ),
-                        ),
-                        child: RadioGroup<String?>(
-                          groupValue: _selectedPlayerId,
-                          onChanged: (value) {
-                            setState(() {
-                              _selectedPlayerId = value;
-                            });
-                          },
-                          child: Column(
-                            children: _players.map((player) {
-                              final isSelected =
-                                  _selectedPlayerId == player['_id'];
-                              return RadioListTile<String>(
-                                value: player['_id'],
-                                title: Text(
-                                  player['fullName'],
-                                  style: GoogleFonts.outfit(
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                                secondary: CircleAvatar(
-                                  backgroundImage: NetworkImage(
-                                    player['profilePhoto'] ??
-                                        'https://i.pravatar.cc/150?u=${player['_id']}',
-                                  ),
-                                ),
-                                activeColor: AppPalette.navyPrimary,
-                                selected: isSelected,
-                              );
-                            }).toList(),
-                          ),
-                        ),
-                      ),
-                    const SizedBox(height: 32),
-                  ],
-
-                  // Price Breakdown
-                  Text(
-                    'PRICE BREAKDOWN',
-                    style: GoogleFonts.inter(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      letterSpacing: 1.0,
-                      color: Theme.of(context).colorScheme.onSurface,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).cardColor,
-                      borderRadius: BorderRadius.circular(20),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.05),
-                          blurRadius: 20,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                      border: Border.all(
-                        color: Theme.of(
-                          context,
-                        ).dividerColor.withValues(alpha: 0.1),
-                      ),
-                    ),
-                    child: Column(
-                      children: [
-                        _buildPriceRow(
-                          context,
-                          'Session Fee (1hr)',
-                          _sessionFee,
-                        ),
-                        const SizedBox(height: 12),
-                        _buildPriceRow(context, 'Service Fee', _serviceFee),
-                        const SizedBox(height: 12),
-                        _buildPriceRow(context, 'Tax', _tax),
-                        if (_appliedPromoCode != null) ...[
-                          const SizedBox(height: 12),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Row(
-                                children: [
-                                  const Icon(
-                                    Icons.local_offer,
-                                    size: 16,
-                                    color: Colors.green,
-                                  ),
-                                  const SizedBox(width: 6),
-                                  Text(
-                                    'Discount ($_appliedPromoCode)',
-                                    style: GoogleFonts.inter(
-                                      fontSize: 15,
-                                      color: Colors.green,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              Text(
-                                '-\$${_discountAmount.toStringAsFixed(2)}',
-                                style: GoogleFonts.inter(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.green,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                        Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          child: Divider(
-                            color: Theme.of(context).dividerColor,
-                            height: 1,
-                          ),
-                        ),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              'Total',
-                              style: GoogleFonts.outfit(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: Theme.of(context).colorScheme.onSurface,
-                              ),
-                            ),
-                            Text(
-                              '\$${_totalAmount.toStringAsFixed(2)}',
-                              style: GoogleFonts.outfit(
-                                fontSize: 24,
-                                fontWeight: FontWeight.bold,
-                                color: Theme.of(context).colorScheme.onSurface,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
+                  const SizedBox(height: 10),
+                  _buildBookingSummaryCard(
+                    coachName: coachName,
+                    coachImage: coachImage,
+                    sessionTitle: sessionTitle,
+                    sessionType: sessionType,
+                    dateStr: dateStr,
+                    timeStr: timeStr,
+                    location: location,
                   ),
 
                   const SizedBox(height: 24),
 
-                  // Promo Code Section
-                  if (_appliedPromoCode != null)
+                  // GUARDIAN PLAYER SELECTION
+                  if (_isGuardian) ...[
+                    Text(
+                      'BOOKING FOR',
+                      style: GoogleFonts.inter(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 1.2,
+                        color: Colors.grey[600],
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    _buildPlayerSelection(),
+                    const SizedBox(height: 24),
+                  ],
+
+                  // PRICE BREAKDOWN
+                  Text(
+                    'PRICE BREAKDOWN',
+                    style: GoogleFonts.inter(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 1.2,
+                      color: Colors.grey[600],
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  _buildPriceBreakdownCard(),
+
+                  const SizedBox(height: 20),
+
+                  // Promo error
+                  if (_promoError != null) ...[
                     Container(
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 12,
+                        horizontal: 12,
+                        vertical: 8,
                       ),
                       decoration: BoxDecoration(
-                        color: Theme.of(context).cardColor,
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                          color: Colors.green.withValues(alpha: 0.3),
-                        ),
+                        color: Colors.red.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(8),
                       ),
                       child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Row(
-                            children: [
-                              const Icon(
-                                Icons.check_circle,
-                                color: Colors.green,
-                              ),
-                              const SizedBox(width: 12),
-                              Text(
-                                _appliedPromoCode!,
-                                style: GoogleFonts.outfit(
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.green,
-                                  fontSize: 16,
-                                ),
-                              ),
-                            ],
+                          const Icon(
+                            Icons.error_outline,
+                            color: Colors.red,
+                            size: 16,
                           ),
-                          TextButton(
-                            onPressed: _removePromoCode,
-                            style: TextButton.styleFrom(
-                              foregroundColor: AppPalette.error,
-                              backgroundColor: AppPalette.error.withValues(
-                                alpha: 0.1,
-                              ),
-                            ),
-                            child: Text(
-                              'Remove',
-                              style: GoogleFonts.inter(
-                                fontWeight: FontWeight.w600,
-                              ),
+                          const SizedBox(width: 8),
+                          Text(
+                            _promoError!,
+                            style: GoogleFonts.inter(
+                              color: Colors.red,
+                              fontSize: 12,
                             ),
                           ),
                         ],
                       ),
-                    )
+                    ),
+                    const SizedBox(height: 8),
+                  ],
+
+                  // PROMO CODE
+                  if (_appliedPromoCode != null)
+                    _buildAppliedPromoRow()
                   else
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).cardColor,
-                        borderRadius: BorderRadius.circular(16),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.05),
-                            blurRadius: 10,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                        border: Border.all(
-                          color: Theme.of(
-                            context,
-                          ).dividerColor.withValues(alpha: 0.1),
-                        ),
-                      ),
-                      child: Row(
-                        children: [
-                          const SizedBox(width: 12),
-                          Icon(
-                            Icons.local_offer_outlined,
-                            color: Theme.of(context).hintColor,
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: TextField(
-                              controller: _promoController,
-                              style: GoogleFonts.inter(
-                                color: Theme.of(context).colorScheme.onSurface,
-                              ),
-                              decoration: InputDecoration(
-                                hintText: 'ENTER PROMO CODE',
-                                border: InputBorder.none,
-                                hintStyle: GoogleFonts.inter(
-                                  fontSize: 14,
-                                  color: Theme.of(context).hintColor,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ),
-                          ),
-                          ElevatedButton(
-                            onPressed: _applyPromoCode,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppPalette.orangeAccent
-                                  .withValues(alpha: 0.1),
-                              foregroundColor: AppPalette.orangeAccent,
-                              elevation: 0,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 20,
-                                vertical: 12,
-                              ),
-                            ),
-                            child: Text(
-                              'Apply',
-                              style: GoogleFonts.inter(
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
+                    _buildPromoCodeInput(),
 
-                  if (_promoError != null)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 12),
-                      child: Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: AppPalette.error.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: AppPalette.error.withValues(alpha: 0.3),
-                          ),
-                        ),
-                        child: Row(
-                          children: [
-                            const Icon(
-                              Icons.error,
-                              color: AppPalette.error,
-                              size: 20,
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Text(
-                                _promoError!,
-                                style: GoogleFonts.inter(
-                                  color: AppPalette.error,
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
+                  const SizedBox(height: 24),
 
-                  const SizedBox(height: 32),
-
-                  // Payment Method
+                  // PAYMENT METHOD
                   Text(
                     'PAYMENT METHOD',
                     style: GoogleFonts.inter(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      letterSpacing: 1.0,
-                      color: Theme.of(context).colorScheme.onSurface,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 1.2,
+                      color: Colors.grey[600],
                     ),
                   ),
+                  const SizedBox(height: 10),
+                  _buildPaymentMethod(),
+
                   const SizedBox(height: 12),
 
-                  _buildPaymentOption(
-                    context,
-                    index: 0,
-                    icon: Icons.credit_card,
-                    title: 'Visa ending in 4242',
-                    subtitle: 'Expires 12/25',
-                  ),
-                  const SizedBox(height: 12),
-                  _buildPaymentOption(
-                    context,
-                    index: 1,
-                    icon: Icons.apple,
-                    title: 'Apple Pay',
-                  ),
-                  const SizedBox(height: 12),
-                  _buildPaymentOption(
-                    context,
-                    index: 2,
-                    icon: Icons.bug_report,
-                    title: 'Test Booking',
-                    subtitle: 'For testing purposes only',
+                  Center(
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.lock_outline,
+                          size: 14,
+                          color: Colors.grey[500],
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          'Payments are secure and encrypted',
+                          style: GoogleFonts.inter(
+                            fontSize: 12,
+                            color: Colors.grey[500],
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
 
-                  const SizedBox(height: 40),
+                  const SizedBox(height: 20),
                 ],
               ),
             ),
           ),
 
-          // Bottom Pay Button
+          // PAY TOTAL BUTTON
           Container(
-            padding: const EdgeInsets.all(24),
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
             decoration: BoxDecoration(
-              color: Theme.of(context).cardColor,
+              color: Colors.white,
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withValues(alpha: 0.05),
-                  blurRadius: 20,
-                  offset: const Offset(0, -4),
+                  blurRadius: 10,
+                  offset: const Offset(0, -2),
                 ),
               ],
-              border: Border(
-                top: BorderSide(
-                  color: Theme.of(context).dividerColor.withValues(alpha: 0.1),
-                ),
-              ),
             ),
-            child: Column(
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      Icons.lock,
-                      size: 14,
-                      color: Theme.of(context).textTheme.bodyMedium?.color,
-                    ),
-                    const SizedBox(width: 6),
-                    Text(
-                      'Payments are secure and encrypted',
-                      style: GoogleFonts.inter(
-                        fontSize: 12,
-                        color: Theme.of(context).textTheme.bodyMedium?.color,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                SizedBox(
-                  width: double.infinity,
-                  height: 56,
-                  child: ElevatedButton(
-                    onPressed: _isProcessing
-                        ? null
-                        : () async {
-                            if (_isGuardian &&
-                                _players.isNotEmpty &&
-                                _selectedPlayerId == null) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('Please select a player'),
-                                  backgroundColor: AppPalette.error,
-                                ),
-                              );
-                              return;
-                            }
-
-                            if (_isGuardian && _players.isEmpty) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text(
-                                    'Please add a player to your account first',
-                                  ),
-                                  backgroundColor: AppPalette.error,
-                                ),
-                              );
-                              return;
-                            }
-
-                            setState(() {
-                              _isProcessing = true;
-                            });
-
-                            try {
-                              // Map payment method index to string
-                              String paymentMethodStr = 'card';
-                              if (_selectedPaymentMethod == 1) {
-                                paymentMethodStr = 'apple_pay';
-                              } else if (_selectedPaymentMethod == 2) {
-                                paymentMethodStr = 'test';
-                              }
-
-                              final sessionId =
-                                  widget.bookingDetails['sessionId'];
-                              final occurrenceDate =
-                                  widget.bookingDetails['occurrenceDate'];
-                              final promoCode = _appliedPromoCode;
-
-                              if (sessionId == null || occurrenceDate == null) {
-                                throw Exception('Missing booking details');
-                              }
-
-                              // Call API
-                              await BookingService.createBooking(
-                                sessionId: sessionId,
-                                occurrenceDate: occurrenceDate,
-                                paymentMethod: paymentMethodStr,
-                                promoCode: promoCode,
-                                playerId: _selectedPlayerId,
-                              );
-
-                              if (context.mounted) {
-                                context.push(
-                                  '/booking-success',
-                                  extra: widget.bookingDetails,
-                                );
-                              }
-                            } catch (e) {
-                              if (context.mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text('Booking failed: $e'),
-                                    backgroundColor: AppPalette.error,
-                                  ),
-                                );
-                              }
-                            } finally {
-                              if (mounted) {
-                                setState(() {
-                                  _isProcessing = false;
-                                });
-                              }
-                            }
-                          },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppPalette.orangeAccent,
-                      foregroundColor: Colors.white,
-                      elevation: 4,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                    ),
-                    child: _isProcessing
-                        ? const SizedBox(
-                            width: 24,
-                            height: 24,
-                            child: CircularProgressIndicator(
-                              color: Colors.white,
-                              strokeWidth: 2,
-                            ),
-                          )
-                        : Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(
-                                'Pay Total',
-                                style: GoogleFonts.outfit(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              Text(
-                                '\$${_totalAmount.toStringAsFixed(2)}',
-                                style: GoogleFonts.outfit(
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ],
-                          ),
+            child: SizedBox(
+              width: double.infinity,
+              height: 54,
+              child: ElevatedButton(
+                onPressed: _isProcessing ? null : _confirmBooking,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppPalette.orangeAccent,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
                   ),
+                  elevation: 0,
                 ),
-              ],
+                child: _isProcessing
+                    ? const SizedBox(
+                        width: 22,
+                        height: 22,
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2.5,
+                        ),
+                      )
+                    : Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'Pay Total',
+                            style: GoogleFonts.outfit(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          Text(
+                            '\$${_totalAmount.toStringAsFixed(2)}',
+                            style: GoogleFonts.outfit(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+              ),
             ),
           ),
         ],
@@ -884,24 +507,124 @@ class _ConfirmBookingScreenSimpleState
     );
   }
 
+  // ─── BOOKING SUMMARY CARD ───
+  Widget _buildBookingSummaryCard({
+    required String coachName,
+    required String coachImage,
+    required String sessionTitle,
+    required String sessionType,
+    required String dateStr,
+    required String timeStr,
+    required String location,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Column(
+        children: [
+          // Coach row
+          Row(
+            children: [
+              CircleAvatar(
+                radius: 26,
+                backgroundImage: NetworkImage(coachImage),
+                backgroundColor: Colors.grey[200],
+                onBackgroundImageError: (_, _) {},
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      coachName,
+                      style: GoogleFonts.outfit(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 17,
+                        color: AppPalette.navyPrimary,
+                      ),
+                    ),
+                    Text(
+                      'Cricket Coaching • $sessionType',
+                      style: GoogleFonts.inter(
+                        fontSize: 12,
+                        color: Colors.grey[600],
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Row(
+                      children: [
+                        const Icon(
+                          Icons.verified,
+                          size: 13,
+                          color: AppPalette.orangeAccent,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          'TOP RATED COACH',
+                          style: GoogleFonts.inter(
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                            color: AppPalette.orangeAccent,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            child: Divider(color: Colors.grey.shade200, height: 1),
+          ),
+
+          // Date & Time
+          _buildInfoRow(
+            Icons.calendar_today_rounded,
+            const Color(0xFFFFF3E0),
+            AppPalette.orangeAccent,
+            'DATE & TIME',
+            '$dateStr • $timeStr',
+          ),
+          const SizedBox(height: 14),
+          // Location
+          _buildInfoRow(
+            Icons.location_on_rounded,
+            const Color(0xFFFCE4EC),
+            Colors.red.shade400,
+            'LOCATION',
+            location,
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildInfoRow(
-    BuildContext context,
     IconData icon,
+    Color bgColor,
+    Color iconColor,
     String label,
     String value,
   ) {
     return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Container(
           padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
-            color: AppPalette.orangeAccent.withValues(alpha: 0.1),
-            shape: BoxShape.circle,
+            color: bgColor,
+            borderRadius: BorderRadius.circular(10),
           ),
-          child: Icon(icon, color: AppPalette.orangeAccent, size: 20),
+          child: Icon(icon, color: iconColor, size: 18),
         ),
-        const SizedBox(width: 16),
+        const SizedBox(width: 14),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -909,18 +632,18 @@ class _ConfirmBookingScreenSimpleState
               Text(
                 label,
                 style: GoogleFonts.inter(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                  color: Theme.of(context).textTheme.bodyMedium?.color,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.grey[500],
+                  letterSpacing: 0.8,
                 ),
               ),
-              const SizedBox(height: 4),
               Text(
                 value,
                 style: GoogleFonts.outfit(
-                  fontSize: 16,
+                  fontSize: 14,
                   fontWeight: FontWeight.w600,
-                  color: Theme.of(context).colorScheme.onSurface,
+                  color: AppPalette.navyPrimary,
                 ),
               ),
             ],
@@ -930,93 +653,355 @@ class _ConfirmBookingScreenSimpleState
     );
   }
 
-  Widget _buildPriceRow(BuildContext context, String label, double amount) {
+  // ─── PLAYER SELECTION ───
+  Widget _buildPlayerSelection() {
+    if (_isLoadingPlayers) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (_players.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.amber.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.amber.withValues(alpha: 0.3)),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.warning_amber_rounded, color: Colors.amber),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                'No players found. Add a player from your profile first.',
+                style: GoogleFonts.inter(fontSize: 13, color: Colors.black87),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Column(
+        children: _players.map((player) {
+          final playerId = player['_id'] as String;
+          final isSelected = _selectedPlayerId == playerId;
+          return InkWell(
+            onTap: () => setState(() => _selectedPlayerId = playerId),
+            borderRadius: BorderRadius.circular(14),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              child: Row(
+                children: [
+                  CircleAvatar(
+                    radius: 18,
+                    backgroundColor: AppPalette.orangeAccent.withValues(
+                      alpha: 0.15,
+                    ),
+                    backgroundImage: player['profilePhoto'] != null
+                        ? NetworkImage(player['profilePhoto'])
+                        : null,
+                    child: player['profilePhoto'] == null
+                        ? Text(
+                            (player['fullName'] ?? 'P')[0].toUpperCase(),
+                            style: GoogleFonts.outfit(
+                              color: AppPalette.orangeAccent,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          )
+                        : null,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      player['fullName'] ?? 'Player',
+                      style: GoogleFonts.outfit(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14,
+                        color: AppPalette.navyPrimary,
+                      ),
+                    ),
+                  ),
+                  Icon(
+                    isSelected
+                        ? Icons.radio_button_checked
+                        : Icons.radio_button_unchecked,
+                    color: isSelected
+                        ? AppPalette.orangeAccent
+                        : Colors.grey[400],
+                    size: 22,
+                  ),
+                ],
+              ),
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
+  // ─── PRICE BREAKDOWN ───
+  Widget _buildPriceBreakdownCard() {
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Column(
+        children: [
+          _buildPriceRow(_sessionFeeLabel, _sessionFee),
+          const SizedBox(height: 10),
+          _buildPriceRow('Service Fee', _serviceFee),
+          const SizedBox(height: 10),
+          _buildPriceRow('Tax', _tax),
+          if (_appliedPromoCode != null) ...[
+            const SizedBox(height: 10),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    const Icon(
+                      Icons.local_offer,
+                      size: 15,
+                      color: Color(0xFF22C55E),
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      'Discount ($_appliedPromoCode)',
+                      style: GoogleFonts.inter(
+                        fontSize: 14,
+                        color: const Color(0xFF22C55E),
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+                Text(
+                  '-\$${_discountAmount.toStringAsFixed(2)}',
+                  style: GoogleFonts.inter(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: const Color(0xFF22C55E),
+                  ),
+                ),
+              ],
+            ),
+          ],
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 14),
+            child: Divider(color: Colors.grey.shade200, height: 1),
+          ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Total',
+                style: GoogleFonts.outfit(
+                  fontSize: 17,
+                  fontWeight: FontWeight.bold,
+                  color: AppPalette.navyPrimary,
+                ),
+              ),
+              Text(
+                '\$${_totalAmount.toStringAsFixed(2)}',
+                style: GoogleFonts.outfit(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: AppPalette.navyPrimary,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPriceRow(String label, double amount) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Text(
           label,
-          style: GoogleFonts.inter(
-            fontSize: 15,
-            color: Theme.of(context).textTheme.bodyMedium?.color,
-          ),
+          style: GoogleFonts.inter(fontSize: 14, color: Colors.grey[600]),
         ),
         Text(
           '\$${amount.toStringAsFixed(2)}',
           style: GoogleFonts.inter(
-            fontSize: 15,
-            fontWeight: FontWeight.w600,
-            color: Theme.of(context).colorScheme.onSurface,
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+            color: AppPalette.navyPrimary,
           ),
         ),
       ],
     );
   }
 
-  Widget _buildPaymentOption(
-    BuildContext context, {
-    required int index,
-    required IconData icon,
-    required String title,
-    String? subtitle,
-  }) {
-    final isSelected = _selectedPaymentMethod == index;
-
-    return GestureDetector(
-      onTap: () => setState(() => _selectedPaymentMethod = index),
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: isSelected
-              ? AppPalette.orangeAccent.withValues(alpha: 0.05)
-              : Theme.of(context).cardColor,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: isSelected
-                ? AppPalette.orangeAccent
-                : Theme.of(context).dividerColor,
-            width: isSelected ? 2 : 1,
-          ),
-        ),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: Theme.of(context).scaffoldBackgroundColor,
-                borderRadius: BorderRadius.circular(8),
+  // ─── PROMO CODE INPUT ───
+  Widget _buildPromoCodeInput() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.local_offer_outlined, color: Colors.grey[400], size: 20),
+          const SizedBox(width: 10),
+          Expanded(
+            child: TextField(
+              controller: _promoController,
+              textCapitalization: TextCapitalization.characters,
+              decoration: InputDecoration(
+                hintText: 'ENTER PROMO CODE',
+                hintStyle: GoogleFonts.inter(
+                  fontSize: 13,
+                  color: Colors.grey[400],
+                  letterSpacing: 0.5,
+                ),
+                border: InputBorder.none,
+                isDense: true,
+                contentPadding: const EdgeInsets.symmetric(vertical: 10),
               ),
-              child: Icon(icon, color: Theme.of(context).colorScheme.onSurface),
+              style: GoogleFonts.inter(
+                fontWeight: FontWeight.w600,
+                fontSize: 13,
+                color: AppPalette.navyPrimary,
+              ),
             ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: GoogleFonts.inter(
-                      fontWeight: FontWeight.w600,
-                      color: Theme.of(context).colorScheme.onSurface,
-                      fontSize: 15,
+          ),
+          TextButton(
+            onPressed: _isValidatingPromo ? null : _applyPromoCode,
+            child: _isValidatingPromo
+                ? const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : Text(
+                    'Apply',
+                    style: GoogleFonts.outfit(
+                      fontWeight: FontWeight.bold,
+                      color: AppPalette.orangeAccent,
                     ),
                   ),
-                  if (subtitle != null)
-                    Text(
-                      subtitle,
-                      style: GoogleFonts.inter(
-                        color: Theme.of(context).textTheme.bodyMedium?.color,
-                        fontSize: 13,
-                      ),
-                    ),
-                ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ─── APPLIED PROMO ROW ───
+  Widget _buildAppliedPromoRow() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: const Color(0xFF22C55E).withValues(alpha: 0.3),
+        ),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.check_circle, color: Color(0xFF22C55E), size: 22),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              _appliedPromoCode!,
+              style: GoogleFonts.outfit(
+                fontWeight: FontWeight.bold,
+                color: const Color(0xFF22C55E),
+                fontSize: 15,
               ),
             ),
-            if (isSelected)
-              const Icon(Icons.check_circle, color: AppPalette.orangeAccent),
-          ],
-        ),
+          ),
+          TextButton(
+            onPressed: _removePromoCode,
+            style: TextButton.styleFrom(
+              foregroundColor: Colors.red,
+              backgroundColor: Colors.red.withValues(alpha: 0.08),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            child: Text(
+              'Remove',
+              style: GoogleFonts.inter(
+                fontWeight: FontWeight.w600,
+                fontSize: 12,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ─── PAYMENT METHOD ───
+  Widget _buildPaymentMethod() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppPalette.orangeAccent, width: 1.5),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: Colors.purple.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const Icon(
+              Icons.developer_mode,
+              color: Colors.purple,
+              size: 20,
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Test Booking',
+                  style: GoogleFonts.inter(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                    color: AppPalette.navyPrimary,
+                  ),
+                ),
+                Text(
+                  'No charge applied',
+                  style: GoogleFonts.inter(
+                    fontSize: 12,
+                    color: Colors.grey[500],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Icon(
+            Icons.radio_button_checked,
+            color: AppPalette.orangeAccent,
+            size: 22,
+          ),
+        ],
       ),
     );
   }

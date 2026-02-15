@@ -302,7 +302,12 @@ class _SessionDetailsScreenState extends State<SessionDetailsScreen> {
     if (createdByValue is Map<String, dynamic>) {
       coach = createdByValue;
     } else if (coachValue is Map<String, dynamic>) {
-      coach = coachValue;
+      // Check for nested coachProfile
+      if (coachValue['coachProfile'] is Map<String, dynamic>) {
+        coach = coachValue['coachProfile'];
+      } else {
+        coach = coachValue;
+      }
     }
 
     final isCoach = _userRole == 'coach';
@@ -578,6 +583,33 @@ class _SessionDetailsScreenState extends State<SessionDetailsScreen> {
 
                       const SizedBox(height: 32),
 
+                      // Session Level Note
+                      if (_session!['sessionNotes'] != null &&
+                          (_session!['sessionNotes'] as String).isNotEmpty) ...[
+                        _buildSectionTitle('Session Note'),
+                        const SizedBox(height: 12),
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).cardColor,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: Theme.of(context).dividerColor,
+                            ),
+                          ),
+                          child: Text(
+                            _session!['sessionNotes'] as String,
+                            style: GoogleFonts.inter(
+                              color: Theme.of(context).colorScheme.onSurface,
+                              fontSize: 14,
+                              fontStyle: FontStyle.italic,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 32),
+                      ],
+
                       // Participants & Attendance
                       if (assignedPlayers.isNotEmpty) ...[
                         Row(
@@ -641,16 +673,39 @@ class _SessionDetailsScreenState extends State<SessionDetailsScreen> {
                                       fontWeight: FontWeight.w600,
                                     ),
                                   ),
-                                  subtitle: Text(
-                                    attended ? 'Present' : 'Absent',
-                                    style: GoogleFonts.inter(
-                                      fontSize: 12,
-                                      color: attended
-                                          ? Colors.green
-                                          : Theme.of(
-                                              context,
-                                            ).colorScheme.onSurfaceVariant,
-                                    ),
+                                  subtitle: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        attended ? 'Present' : 'Absent',
+                                        style: GoogleFonts.inter(
+                                          fontSize: 12,
+                                          color: attended
+                                              ? Colors.green
+                                              : Theme.of(
+                                                  context,
+                                                ).colorScheme.onSurfaceVariant,
+                                        ),
+                                      ),
+                                      if (pData['note'] != null &&
+                                          (pData['note'] as String).isNotEmpty)
+                                        Padding(
+                                          padding: const EdgeInsets.only(
+                                            top: 4,
+                                          ),
+                                          child: Text(
+                                            'Note: ${pData['note']}',
+                                            style: GoogleFonts.inter(
+                                              fontSize: 12,
+                                              fontStyle: FontStyle.italic,
+                                              color: Theme.of(
+                                                context,
+                                              ).colorScheme.onSurfaceVariant,
+                                            ),
+                                          ),
+                                        ),
+                                    ],
                                   ),
                                   secondary: CircleAvatar(
                                     backgroundImage: NetworkImage(
@@ -661,6 +716,11 @@ class _SessionDetailsScreenState extends State<SessionDetailsScreen> {
                                   value: attended,
                                   activeTrackColor: Colors.green,
                                   onChanged: (val) async {
+                                    // Capture ScaffoldMessenger before async gap
+                                    final messenger = ScaffoldMessenger.of(
+                                      context,
+                                    );
+
                                     // Optimistic update
                                     setState(() {
                                       assignedPlayers[index]['attended'] = val;
@@ -679,9 +739,7 @@ class _SessionDetailsScreenState extends State<SessionDetailsScreen> {
                                           assignedPlayers[index]['attended'] =
                                               !val;
                                         });
-                                        ScaffoldMessenger.of(
-                                          context,
-                                        ).showSnackBar(
+                                        messenger.showSnackBar(
                                           SnackBar(
                                             content: Text(
                                               'Failed to update attendance: $e',

@@ -183,26 +183,7 @@ class _CoachDetailsScreenState extends State<CoachDetailsScreen>
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FE), // Light background
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
-          context.push(
-            '/coach/${widget.coachId}/book',
-            extra: {
-              'coachName': fullName,
-              'hourlyRate': double.tryParse(hourlyRate) ?? 0.0,
-            },
-          );
-        },
-        backgroundColor: AppPalette.navyPrimary,
-        icon: const Icon(Icons.calendar_today, color: Colors.white),
-        label: Text(
-          'Book Private Session',
-          style: GoogleFonts.outfit(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-      ),
+
       appBar: AppBar(
         backgroundColor: const Color(0xFFF8F9FE),
         elevation: 0,
@@ -888,7 +869,7 @@ class _CoachDetailsScreenState extends State<CoachDetailsScreen>
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          'Book Session',
+                          'Book Private Session',
                           style: GoogleFonts.outfit(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,

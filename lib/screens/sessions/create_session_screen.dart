@@ -1,15 +1,11 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter_form_builder/flutter_form_builder.dart';
+import 'package:form_builder_validators/form_builder_validators.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:table_calendar/table_calendar.dart';
-
-import '../../widgets/app_time_picker.dart';
-import '../../services/places_service.dart';
-import '../../services/session_service.dart';
-import '../../widgets/notification_button.dart';
 import 'package:go_router/go_router.dart';
+import '../../services/session_service.dart';
+// Removed unused import
 
 class CreateSessionScreen extends StatefulWidget {
   final Map<String, dynamic>? sessionToEdit;
@@ -20,150 +16,178 @@ class CreateSessionScreen extends StatefulWidget {
   State<CreateSessionScreen> createState() => _CreateSessionScreenState();
 }
 
-class _CreateSessionScreenState extends State<CreateSessionScreen>
-    with SingleTickerProviderStateMixin {
-  // Controllers
-  final _titleController = TextEditingController();
-  final _descriptionController = TextEditingController();
-  final _locationController = TextEditingController();
-  final _priceController = TextEditingController();
+class _CreateSessionScreenState extends State<CreateSessionScreen> {
+  final _formKey = GlobalKey<FormBuilderState>();
+  int _currentStep = 0;
+  bool _isLoading = false;
 
-  // Overlay & Search
-  final _layerLink = LayerLink();
-  final _locationFocus = FocusNode();
-  Timer? _debounce;
-  List<PlacePrediction> _predictions = [];
-  OverlayEntry? _overlayEntry;
-
-  // State
-  // Selection
-  final Set<DateTime> _selectedDates = {};
-  DateTime _focusedDay = DateTime.now();
-
-  // Schedule Source of Truth: Date -> List of Slots
-  final Map<DateTime, List<Map<String, TimeOfDay>>> _sessionSchedule = {};
-
-  // Logistics State
-  int _capacity = 18;
-  bool _pricePerPerson = true;
-  LatLng? _selectedLocation;
-  GoogleMapController? _mapController;
-  final Set<Marker> _markers = {};
-
-  // API State
-  bool _isCreating = false;
-
-  bool get _isEditing => widget.sessionToEdit != null;
+  // Form Data (Initialized with defaults or edit data)
+  late Map<String, dynamic> _initialValues;
 
   @override
   void initState() {
     super.initState();
-    // Default selection: Today
-    final now = DateTime.now();
-    final today = _normalizeDate(now);
-    _selectedDates.add(today);
-    _focusedDay = today;
+    _initialValues = _mapSessionToForm(widget.sessionToEdit);
+  }
 
-    // Default slot for today
-    _sessionSchedule[today] = [
-      {
-        'startTime': const TimeOfDay(hour: 9, minute: 0),
-        'endTime': const TimeOfDay(hour: 10, minute: 30),
-      },
-    ];
+  Map<String, dynamic> _mapSessionToForm(Map<String, dynamic>? session) {
+    if (session == null) {
+      return {
+        'sessionType': 'one-time',
+        'skillLevel': 'All Levels',
+        'capacity': 18.0,
+        'pricingModel': 'per-session',
+        'autoAccept': true,
+        'cancellationPolicy': 'flexible',
+        'duration': 60,
+      };
+    }
+    // Map existing session data to form fields
+    return {
+      'title': session['title'],
+      'description': session['description'],
+      'location': session['location'],
+      'sessionType':
+          session['sessionType'] ??
+          (session['isRecurring'] == true ? 'recurring' : 'one-time'),
+      'focusAreas': session['focusAreas'] != null
+          ? List<String>.from(session['focusAreas'])
+          : [],
+      'skillLevel': session['skillLevel'] ?? 'All Levels',
+      'ageGroups': session['ageGroups'] != null
+          ? List<String>.from(session['ageGroups'])
+          : [],
+      'capacity':
+          (session['capacity'] is Map
+                  ? session['capacity']['max']
+                  : (session['capacity'] ?? 18))
+              .toDouble(),
+      'pricingModel': session['pricing']?['model'] ?? 'per-session',
+      'price': session['pricing']?['amount']?.toString() ?? '0',
+    };
+  }
 
-    if (_isEditing) {
-      _initializeEditingState();
+  void _nextStep() {
+    if (_formKey.currentState?.saveAndValidate() ?? false) {
+      if (_currentStep < 2) {
+        setState(() => _currentStep++);
+      } else {
+        _submitSession();
+      }
     }
   }
 
-  void _initializeEditingState() {
-    final s = widget.sessionToEdit!;
-    _titleController.text = s['title'] ?? '';
-    _descriptionController.text = s['description'] ?? '';
-    _locationController.text = s['location'] ?? '';
-    _capacity = s['capacity'] ?? 18;
-
-    // Pricing
-    if (s['pricing'] != null) {
-      final amount = s['pricing']['amount'];
-      _priceController.text = amount != null ? amount.toString() : '0';
-      _pricePerPerson = s['pricing']['pricePerPerson'] ?? true;
+  void _prevStep() {
+    if (_currentStep > 0) {
+      setState(() => _currentStep--);
     }
+  }
 
-    // Populate Schedule
-    final timeSlots = s['timeSlots'] as List<dynamic>? ?? [];
+  Future<void> _submitSession() async {
+    setState(() => _isLoading = true);
+    try {
+      final formData = _formKey.currentState!.value;
 
-    // Clear defaults
-    _selectedDates.clear();
-    _sessionSchedule.clear();
+      // Safe data extraction with defaults
+      final sessionType = formData['sessionType'] as String? ?? 'one-time';
+      final isRecurring = sessionType == 'recurring';
 
-    if (timeSlots.isEmpty) return;
+      // Construct Time Slots
+      List<Map<String, dynamic>> timeSlots = [];
+      List<String> selectedDays = [];
+      Map<String, dynamic>? recurringPattern;
 
-    for (final slot in timeSlots) {
-      if (slot['startTime'] == null) continue;
+      final duration = (formData['duration'] as num?)?.toInt() ?? 60;
+      final startTime = formData['startTime'] as DateTime?;
 
-      final startDateTime = DateTime.parse(slot['startTime']).toLocal();
-      final endDateTime = slot['endTime'] != null
-          ? DateTime.parse(slot['endTime']).toLocal()
-          : startDateTime.add(Duration(minutes: slot['durationMinutes'] ?? 60));
+      if (startTime == null) throw Exception("Start time is required");
 
-      final dateKey = _normalizeDate(startDateTime);
-      _selectedDates.add(dateKey); // Select the date
+      final startHour = startTime.hour;
+      final startMinute = startTime.minute;
 
-      if (!_sessionSchedule.containsKey(dateKey)) {
-        _sessionSchedule[dateKey] = [];
-      }
+      if (isRecurring) {
+        final days = formData['daysOfWeek'] as List<dynamic>? ?? [];
+        final startDate = formData['startDate'] as DateTime?;
+        final endDate = formData['endDate'] as DateTime?;
 
-      // Add slot if not duplicate
-      final exists = _sessionSchedule[dateKey]!.any(
-        (existing) =>
-            existing['startTime']!.hour == startDateTime.hour &&
-            existing['startTime']!.minute == startDateTime.minute,
-      );
+        if (startDate == null || endDate == null || days.isEmpty) {
+          throw Exception(
+            "Recurring sessions require start date, end date and at least one day selected",
+          );
+        }
 
-      if (!exists) {
-        _sessionSchedule[dateKey]!.add({
-          'startTime': TimeOfDay.fromDateTime(startDateTime),
-          'endTime': TimeOfDay.fromDateTime(endDateTime),
+        recurringPattern = {
+          'frequency': 'weekly',
+          'daysOfWeek': days.map((d) => d.toString().toLowerCase()).toList(),
+          'startDate': startDate.toIso8601String(),
+          'endDate': endDate.toIso8601String(),
+        };
+
+        // For recurring, we send a template timeSlot
+        timeSlots.add({
+          'startTime': {'hour': startHour, 'minute': startMinute},
+          'durationMinutes': duration,
+        });
+      } else {
+        // One-time
+        final date = formData['date'] as DateTime?;
+        if (date == null) {
+          throw Exception("Date is required for one-time sessions");
+        }
+
+        selectedDays.add(DateFormat('yyyy-MM-dd').format(date));
+
+        timeSlots.add({
+          'startTime': {'hour': startHour, 'minute': startMinute},
+          'durationMinutes': duration,
         });
       }
-    }
 
-    if (_selectedDates.isNotEmpty) {
-      _focusedDay = _selectedDates.first;
-    }
-  }
+      await SessionService.createSession(
+        title: formData['title'] as String,
+        description: formData['description'] as String? ?? '',
+        location: formData['location'] as String? ?? '',
+        capacity: (formData['capacity'] as num).toInt(),
+        timeSlots: timeSlots,
+        selectedDays: selectedDays, // Only for one-time/legacy
+        isRecurring: isRecurring,
+        // Wizard Fields
+        sessionType: sessionType,
+        focusAreas: List<String>.from(formData['focusAreas'] ?? []),
+        skillLevel: formData['skillLevel'] as String? ?? 'All Levels',
+        ageGroups: List<String>.from(formData['ageGroups'] ?? []),
+        recurringPattern: recurringPattern,
+        pricing: {
+          'model': formData['pricingModel'],
+          'amount':
+              double.tryParse(formData['price']?.toString() ?? '0') ?? 0.0,
+          'currency': 'USD',
+          'pricePerPerson': true,
+        },
+        enrollmentSettings: {
+          'autoAccept': formData['autoAccept'] ?? true,
+          'allowWaitlist': formData['allowWaitlist'] ?? false,
+        },
+        cancellationPolicy: formData['cancellationPolicy'] as String?,
+      );
 
-  @override
-  void dispose() {
-    _titleController.dispose();
-    _descriptionController.dispose();
-    _locationController.dispose();
-    _priceController.dispose();
-    _locationFocus.dispose();
-    _debounce?.cancel();
-    super.dispose();
-  }
-
-  DateTime _normalizeDate(DateTime date) {
-    return DateTime(date.year, date.month, date.day);
-  }
-
-  void _onDaySelected(DateTime selectedDay, DateTime focusedDay) {
-    setState(() {
-      _focusedDay = focusedDay;
-      final normalized = _normalizeDate(selectedDay);
-
-      if (_selectedDates.contains(normalized)) {
-        _selectedDates.remove(normalized);
-      } else {
-        _selectedDates.add(normalized);
-        if (!_sessionSchedule.containsKey(normalized)) {
-          _sessionSchedule[normalized] = [];
-        }
+      if (mounted) {
+        context.pop();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Session created successfully!')),
+        );
       }
-    });
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
   }
 
   @override
@@ -174,40 +198,20 @@ class _CreateSessionScreenState extends State<CreateSessionScreen>
         children: [
           _buildHeader(),
           Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(24, 24, 24, 100),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+            child: FormBuilder(
+              key: _formKey,
+              initialValue: _initialValues,
+              child: IndexedStack(
+                index: _currentStep,
                 children: [
-                  _buildSectionHeader('Session Details'),
-                  const SizedBox(height: 12),
-                  _buildTextField(
-                    controller: _titleController,
-                    hint: 'e.g. Tactical Drill & Strategy',
-                    label: 'Session Title',
-                  ),
-                  const SizedBox(height: 16),
-                  _buildTextField(
-                    controller: _descriptionController,
-                    hint: 'Outline objectives...',
-                    label: 'Description',
-                    maxLines: 4,
-                  ),
-                  const SizedBox(height: 32),
-
-                  // Unified Schedule Section
-                  _buildUnifiedSchedule(),
-
-                  const SizedBox(height: 32),
-
-                  _buildLogisticsSection(),
-                  const SizedBox(height: 32),
-                  _buildBottomAction(),
-                  const SizedBox(height: 40),
+                  _buildStep1BasicDetails(),
+                  _buildStep2Schedule(),
+                  _buildStep3Participants(),
                 ],
               ),
             ),
           ),
+          _buildBottomBar(),
         ],
       ),
     );
@@ -234,1323 +238,507 @@ class _CreateSessionScreenState extends State<CreateSessionScreen>
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               IconButton(
-                onPressed: () => Navigator.pop(context),
+                onPressed: () {
+                  if (_currentStep > 0) {
+                    _prevStep();
+                  } else {
+                    Navigator.pop(context);
+                  }
+                },
                 icon: const Icon(Icons.arrow_back, color: Colors.white),
                 padding: EdgeInsets.zero,
                 constraints: const BoxConstraints(),
               ),
               Expanded(
                 child: Text(
-                  _isEditing ? 'Edit Session' : 'Create Session',
+                  _currentStep == 0
+                      ? 'Create Session'
+                      : _currentStep == 1
+                      ? 'Schedule'
+                      : 'Participants & Pricing',
                   textAlign: TextAlign.center,
                   style: GoogleFonts.outfit(
-                    fontSize: 24,
+                    fontSize: 20,
                     fontWeight: FontWeight.bold,
                     color: Colors.white,
                   ),
                 ),
               ),
-              NotificationButton(
-                iconColor: Colors.white,
-                backgroundColor: Colors.white.withValues(alpha: 0.1),
-                onTap: () => context.push('/coach/notifications'),
-              ),
+              const SizedBox(width: 40), // Balance back button approx
             ],
+          ),
+          const SizedBox(height: 24),
+          // Progress Indicators
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: List.generate(3, (index) {
+              final isActive = index <= _currentStep;
+              return Container(
+                margin: const EdgeInsets.symmetric(horizontal: 4),
+                width: isActive ? 32 : 12,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: isActive
+                      ? Colors.white
+                      : Colors.white.withValues(alpha: 0.3),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              );
+            }),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildSectionHeader(String title, {Widget? action}) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(
-          title,
-          style: GoogleFonts.outfit(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-            color: Theme.of(context).colorScheme.onSurface,
-          ),
-        ),
-        if (action != null) action,
-      ],
-    );
-  }
-
-  Widget _buildTextField({
-    required TextEditingController controller,
-    required String label,
-    required String hint,
-    int maxLines = 1,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: GoogleFonts.inter(
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
-            color: Theme.of(context).colorScheme.onSurface,
-          ),
-        ),
-        const SizedBox(height: 8),
-        TextField(
-          controller: controller,
-          maxLines: maxLines,
-          style: GoogleFonts.inter(
-            fontSize: 14,
-            color: Theme.of(context).colorScheme.onSurface,
-          ),
-          decoration: InputDecoration(
-            hintText: hint,
-            hintStyle: GoogleFonts.inter(
-              color: Theme.of(
-                context,
-              ).colorScheme.onSurface.withValues(alpha: 0.4),
-            ),
-            filled: true,
-            fillColor: Theme.of(context).cardColor,
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide.none,
-            ),
-            contentPadding: const EdgeInsets.all(16),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildUnifiedSchedule() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Dates & Time',
-          style: GoogleFonts.outfit(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-            color: Theme.of(context).colorScheme.onSurface,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          'Select multiple dates to create recurring sessions.',
-          style: GoogleFonts.inter(
-            fontSize: 13,
-            color: Theme.of(
-              context,
-            ).colorScheme.onSurface.withValues(alpha: 0.6),
-          ),
-        ),
-        const SizedBox(height: 16),
-
-        // Multi-Select Calendar
-        Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Theme.of(context).cardColor,
-            borderRadius: BorderRadius.circular(20),
-            boxShadow: [
-              BoxShadow(
-                color: Theme.of(context).shadowColor.withValues(alpha: 0.05),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: TableCalendar(
-            firstDay: DateTime.now(),
-            lastDay: DateTime.now().add(const Duration(days: 365)),
-            focusedDay: _focusedDay,
-            selectedDayPredicate: (day) =>
-                _selectedDates.contains(_normalizeDate(day)),
-            onDaySelected: _onDaySelected,
-            calendarFormat: CalendarFormat.month,
-            headerStyle: HeaderStyle(
-              titleCentered: true,
-              formatButtonVisible: false,
-              titleTextStyle: GoogleFonts.outfit(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: Theme.of(context).colorScheme.onSurface,
-              ),
-              leftChevronIcon: Icon(
-                Icons.chevron_left,
-                size: 20,
-                color: Theme.of(
-                  context,
-                ).colorScheme.onSurface.withValues(alpha: 0.6),
-              ),
-              rightChevronIcon: Icon(
-                Icons.chevron_right,
-                size: 20,
-                color: Theme.of(
-                  context,
-                ).colorScheme.onSurface.withValues(alpha: 0.6),
-              ),
-            ),
-            daysOfWeekStyle: DaysOfWeekStyle(
-              weekdayStyle: GoogleFonts.inter(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: Theme.of(
-                  context,
-                ).colorScheme.onSurface.withValues(alpha: 0.4),
-              ),
-              weekendStyle: GoogleFonts.inter(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: Theme.of(
-                  context,
-                ).colorScheme.onSurface.withValues(alpha: 0.4),
-              ),
-            ),
-            calendarBuilders: CalendarBuilders(
-              markerBuilder: (context, date, events) {
-                final normalized = _normalizeDate(date);
-                if (_sessionSchedule.containsKey(normalized) &&
-                    _sessionSchedule[normalized]!.isNotEmpty) {
-                  return Positioned(
-                    bottom: 1,
-                    child: Container(
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: Theme.of(context).colorScheme.secondary,
-                      ),
-                      width: 6.0,
-                      height: 6.0,
-                    ),
-                  );
-                }
-                return null;
-              },
-            ),
-            calendarStyle: CalendarStyle(
-              outsideDaysVisible: false,
-              defaultTextStyle: GoogleFonts.inter(
-                fontWeight: FontWeight.w500,
-                color: Theme.of(context).colorScheme.onSurface,
-              ),
-              weekendTextStyle: GoogleFonts.inter(
-                fontWeight: FontWeight.w500,
-                color: Theme.of(context).colorScheme.onSurface,
-              ),
-              selectedDecoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.secondary,
-                shape: BoxShape.circle,
-              ),
-              todayDecoration: BoxDecoration(
-                color: Colors.transparent,
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: Theme.of(context).colorScheme.secondary,
-                  width: 1,
-                ),
-              ),
-              todayTextStyle: GoogleFonts.inter(
-                fontWeight: FontWeight.w500,
-                color: Theme.of(context).colorScheme.secondary,
-              ),
-              disabledTextStyle: GoogleFonts.inter(
-                color: Theme.of(context).disabledColor,
-              ),
-            ),
-          ),
-        ),
-
-        const SizedBox(height: 24),
-
-        // Time Slots Manager
-        _buildTimeSlotManager(),
-      ],
-    );
-  }
-
-  Widget _buildTimeSlotManager() {
-    if (_selectedDates.isEmpty) {
-      return Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(24),
-        decoration: BoxDecoration(
-          color: Theme.of(context).cardColor,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: Theme.of(context).dividerColor.withValues(alpha: 0.5),
-          ),
-        ),
-        child: Column(
-          children: [
-            Icon(
-              Icons.calendar_today,
-              size: 40,
-              color: Theme.of(context).disabledColor,
-            ),
-            const SizedBox(height: 12),
-            Text(
-              'No dates selected',
-              style: GoogleFonts.inter(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: Theme.of(
-                  context,
-                ).colorScheme.onSurface.withValues(alpha: 0.4),
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
-    // Determine slots to show
-    final Set<String> uniqueSlotKeys = {};
-    final Map<String, Map<String, TimeOfDay>> keyToSlot = {};
-    final Map<String, int> slotCounts = {};
-
-    for (final date in _selectedDates) {
-      final slots = _sessionSchedule[date] ?? [];
-      for (final slot in slots) {
-        final key =
-            '${slot['startTime']!.format(context)}-${slot['endTime']!.format(context)}';
-        if (!uniqueSlotKeys.contains(key)) {
-          uniqueSlotKeys.add(key);
-          keyToSlot[key] = slot;
-        }
-        slotCounts[key] = (slotCounts[key] ?? 0) + 1;
-      }
-    }
-
-    final sortedKeys = uniqueSlotKeys.toList()
-      ..sort((a, b) {
-        final tA = keyToSlot[a]!['startTime']!;
-        final tB = keyToSlot[b]!['startTime']!;
-        if (tA.hour != tB.hour) return tA.hour.compareTo(tB.hour);
-        return tA.minute.compareTo(tB.minute);
-      });
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Text(
-              'Time Slots',
-              style: GoogleFonts.outfit(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: Theme.of(context).colorScheme.onSurface,
-              ),
-            ),
-            const SizedBox(width: 8),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: Theme.of(
-                  context,
-                ).colorScheme.secondary.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Text(
-                '${_selectedDates.length} Days Selected',
-                style: GoogleFonts.inter(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: Theme.of(context).colorScheme.secondary,
-                ),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-
-        // Existing Slots
-        ...sortedKeys.map((key) {
-          final slot = keyToSlot[key]!;
-          final count = slotCounts[key] ?? 0;
-          final isAll = count == _selectedDates.length;
-
-          return _buildUnifiedTimeSlotRow(slot, isAll, count);
-        }),
-
-        const SizedBox(height: 12),
-
-        // Add Button
-        InkWell(
-          onTap: () {
-            // Add default slot to ALL selected dates
-            setState(() {
-              for (final date in _selectedDates) {
-                if (!_sessionSchedule.containsKey(date)) {
-                  _sessionSchedule[date] = [];
-                }
-
-                final list = _sessionSchedule[date]!;
-                var startHour = 9;
-                if (list.isNotEmpty) {
-                  startHour = list.last['endTime']!.hour;
-                }
-
-                // Avoid duplicates
-                final exists = list.any(
-                  (s) => s['startTime']!.hour == startHour,
-                );
-                if (!exists) {
-                  list.add({
-                    'startTime': TimeOfDay(hour: startHour, minute: 0),
-                    'endTime': TimeOfDay(hour: startHour + 1, minute: 30),
-                  });
-                }
-              }
-            });
-          },
-          child: Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(vertical: 14),
-            decoration: BoxDecoration(
-              color: Theme.of(context).cardColor,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: Theme.of(
-                  context,
-                ).colorScheme.secondary.withValues(alpha: 0.5),
-                width: 1.5,
-                style: BorderStyle.solid,
-              ),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(4),
-                  decoration: BoxDecoration(
-                    color: Theme.of(
-                      context,
-                    ).colorScheme.secondary.withValues(alpha: 0.1),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    Icons.add,
-                    size: 16,
-                    color: Theme.of(context).colorScheme.secondary,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  'Add Time Slot to All Selected',
-                  style: GoogleFonts.inter(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: Theme.of(context).colorScheme.secondary,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildUnifiedTimeSlotRow(
-    Map<String, TimeOfDay> slot,
-    bool isAll,
-    int count,
-  ) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: Row(
+  Widget _buildStep1BasicDetails() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-              decoration: BoxDecoration(
-                color: Theme.of(context).cardColor,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: isAll
-                      ? Theme.of(context).dividerColor.withValues(alpha: 0.5)
-                      : Colors.orange.withValues(
-                          alpha: 0.3,
-                        ), // Keep orange warning? or use secondary?
-                ),
+          _buildSectionTitle('Type'),
+          FormBuilderRadioGroup<String>(
+            name: 'sessionType',
+            decoration: const InputDecoration(border: InputBorder.none),
+            options: const [
+              FormBuilderFieldOption(
+                value: 'one-time',
+                child: Text('One Time'),
               ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Row(
-                    children: [
-                      // Start Time
-                      InkWell(
-                        onTap: () async {
-                          final newStart = await AppTimePicker.show(
-                            context,
-                            initialTime: slot['startTime']!,
-                          );
-                          if (newStart == null) return;
-
-                          setState(() {
-                            for (final date in _selectedDates) {
-                              final list = _sessionSchedule[date];
-                              if (list == null) continue;
-
-                              for (final s in list) {
-                                if (s['startTime']!.hour ==
-                                        slot['startTime']!.hour &&
-                                    s['startTime']!.minute ==
-                                        slot['startTime']!.minute) {
-                                  s['startTime'] = newStart;
-                                  final startMin =
-                                      slot['startTime']!.hour * 60 +
-                                      slot['startTime']!.minute;
-                                  final endMin =
-                                      slot['endTime']!.hour * 60 +
-                                      slot['endTime']!.minute;
-                                  final duration = endMin - startMin;
-
-                                  final newStartMin =
-                                      newStart.hour * 60 + newStart.minute;
-                                  final newEndMin = newStartMin + duration;
-
-                                  s['endTime'] = TimeOfDay(
-                                    hour: (newEndMin ~/ 60) % 24,
-                                    minute: newEndMin % 60,
-                                  );
-                                }
-                              }
-                            }
-                          });
-                        },
-                        child: Row(
-                          children: [
-                            Text(
-                              _formatTimeOfDay(slot['startTime']!),
-                              style: GoogleFonts.inter(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600,
-                                color: Theme.of(context).colorScheme.onSurface,
-                                decoration: TextDecoration.underline,
-                                decorationStyle: TextDecorationStyle.dotted,
-                              ),
-                            ),
-                            const SizedBox(width: 4),
-                            Icon(
-                              Icons.edit,
-                              size: 14,
-                              color: Theme.of(context).colorScheme.secondary,
-                            ),
-                          ],
-                        ),
-                      ),
-
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 8.0),
-                        child: Text(
-                          '-',
-                          style: GoogleFonts.inter(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                            color: Theme.of(context).disabledColor,
-                          ),
-                        ),
-                      ),
-
-                      // End Time
-                      InkWell(
-                        onTap: () async {
-                          final newEnd = await AppTimePicker.show(
-                            context,
-                            initialTime: slot['endTime']!,
-                          );
-                          if (newEnd == null) return;
-
-                          // Validate validation: End time must be after start time
-                          final startMin =
-                              slot['startTime']!.hour * 60 +
-                              slot['startTime']!.minute;
-                          final endMin = newEnd.hour * 60 + newEnd.minute;
-
-                          if (endMin <= startMin) {
-                            if (mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text(
-                                    'End time must be after start time',
-                                  ),
-                                  backgroundColor: Colors.red,
-                                ),
-                              );
-                            }
-                            return;
-                          }
-
-                          setState(() {
-                            for (final date in _selectedDates) {
-                              final list = _sessionSchedule[date];
-                              if (list == null) continue;
-
-                              for (final s in list) {
-                                if (s['startTime']!.hour ==
-                                        slot['startTime']!.hour &&
-                                    s['startTime']!.minute ==
-                                        slot['startTime']!.minute) {
-                                  s['endTime'] = newEnd;
-                                }
-                              }
-                            }
-                          });
-                        },
-                        child: Row(
-                          children: [
-                            Text(
-                              _formatTimeOfDay(slot['endTime']!),
-                              style: GoogleFonts.inter(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600,
-                                color: Theme.of(context).colorScheme.onSurface,
-                                decoration: TextDecoration.underline,
-                                decorationStyle: TextDecorationStyle.dotted,
-                              ),
-                            ),
-                            const SizedBox(width: 4),
-                            Icon(
-                              Icons.edit,
-                              size: 14,
-                              color: Theme.of(context).colorScheme.secondary,
-                            ),
-                          ],
-                        ),
-                      ),
-
-                      if (!isAll)
-                        Padding(
-                          padding: const EdgeInsets.only(left: 8.0),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 6,
-                              vertical: 2,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.orange[50],
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            child: Text(
-                              '$count/${_selectedDates.length}',
-                              style: GoogleFonts.inter(
-                                fontSize: 10,
-                                color: Colors.orange,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
-                ],
+              FormBuilderFieldOption(
+                value: 'recurring',
+                child: Text('Recurring (Series)'),
               ),
-            ),
+              FormBuilderFieldOption(
+                value: 'camp',
+                child: Text('Camp / Workshop'),
+              ),
+            ],
+            validator: FormBuilderValidators.required(),
           ),
-          const SizedBox(width: 8),
-          // Delete Button
-          InkWell(
-            onTap: () {
-              setState(() {
-                for (final date in _selectedDates) {
-                  final list = _sessionSchedule[date];
-                  if (list != null) {
-                    list.removeWhere(
-                      (s) =>
-                          s['startTime']!.hour == slot['startTime']!.hour &&
-                          s['startTime']!.minute == slot['startTime']!.minute,
-                    );
-                  }
-                }
-              });
-            },
-            child: Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: Colors.red[50],
-                shape: BoxShape.circle,
+          const SizedBox(height: 20),
+
+          _buildLabel('Session Title'),
+          FormBuilderTextField(
+            name: 'title',
+            decoration: _inputDecoration('e.g. Batting Masterclass'),
+            validator: FormBuilderValidators.required(),
+          ),
+          const SizedBox(height: 20),
+
+          _buildLabel('Description'),
+          FormBuilderTextField(
+            name: 'description',
+            decoration: _inputDecoration('What will students learn?'),
+            maxLines: 4,
+          ),
+          const SizedBox(height: 20),
+
+          _buildLabel('Location'),
+          FormBuilderTextField(
+            name: 'location',
+            decoration: _inputDecoration('e.g. City Cricket Academy'),
+            validator: FormBuilderValidators.required(),
+          ),
+          const SizedBox(height: 20),
+
+          _buildLabel('Focus Areas'),
+          FormBuilderCheckboxGroup<String>(
+            name: 'focusAreas',
+            decoration: const InputDecoration(border: InputBorder.none),
+            orientation: OptionsOrientation.wrap,
+            options: const [
+              FormBuilderFieldOption(value: 'Batting'),
+              FormBuilderFieldOption(value: 'Bowling'),
+              FormBuilderFieldOption(value: 'Fielding'),
+              FormBuilderFieldOption(value: 'Fitness'),
+              FormBuilderFieldOption(value: 'Mental Game'),
+              FormBuilderFieldOption(value: 'Strategy'),
+            ],
+          ),
+          const SizedBox(height: 20),
+
+          _buildLabel('Skill Level'),
+          FormBuilderDropdown<String>(
+            name: 'skillLevel',
+            decoration: _inputDecoration('Select Level'),
+            items: const [
+              DropdownMenuItem(value: 'Beginner', child: Text('Beginner')),
+              DropdownMenuItem(
+                value: 'Intermediate',
+                child: Text('Intermediate'),
               ),
-              child: Icon(
-                Icons.delete_outline,
-                size: 18,
-                color: Colors.red[400],
-              ),
-            ),
+              DropdownMenuItem(value: 'Advanced', child: Text('Advanced')),
+              DropdownMenuItem(value: 'All Levels', child: Text('All Levels')),
+            ],
+          ),
+          const SizedBox(height: 20),
+
+          _buildLabel('Age Groups'),
+          FormBuilderCheckboxGroup<String>(
+            name: 'ageGroups',
+            decoration: const InputDecoration(border: InputBorder.none),
+            orientation: OptionsOrientation.wrap,
+            options: const [
+              FormBuilderFieldOption(value: 'Under 11'),
+              FormBuilderFieldOption(value: 'Under 13'),
+              FormBuilderFieldOption(value: 'Under 15'),
+              FormBuilderFieldOption(value: 'Under 19'),
+              FormBuilderFieldOption(value: 'Open'),
+            ],
           ),
         ],
       ),
     );
   }
 
-  Widget _buildLogisticsSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildSectionHeader('Logistics'),
-        const SizedBox(height: 12),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Location',
-              style: GoogleFonts.inter(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: Theme.of(context).colorScheme.onSurface,
-              ),
-            ),
-            const SizedBox(height: 8),
-            CompositedTransformTarget(
-              link: _layerLink,
-              child: TextField(
-                controller: _locationController,
-                focusNode: _locationFocus,
-                style: TextStyle(
-                  color: Theme.of(context).colorScheme.onSurface,
-                ),
-                decoration: InputDecoration(
-                  prefixIcon: Icon(
-                    Icons.location_on,
-                    color: Theme.of(context).colorScheme.secondary,
-                  ),
-                  hintText: 'Search or pick on map...',
-                  hintStyle: GoogleFonts.inter(
-                    color: Theme.of(
-                      context,
-                    ).colorScheme.onSurface.withValues(alpha: 0.4),
-                  ),
-                  filled: true,
-                  fillColor: Theme.of(context).cardColor,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none,
-                  ),
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 14,
-                  ),
-                ),
-                onChanged: _onSearchChanged,
-              ),
-            ),
-            const SizedBox(height: 16),
+  Widget _buildStep2Schedule() {
+    return FormBuilderField<String>(
+      name: 'sessionType_listener',
+      builder: (FormFieldState<String> field) {
+        // We listen to the form state to update the UI dynamically
+        final sessionType =
+            _formKey.currentState?.fields['sessionType']?.value as String? ??
+            'one-time';
+        final isRecurring = sessionType == 'recurring';
 
-            // Inline Map Preview
-            ClipRRect(
-              borderRadius: BorderRadius.circular(16),
-              child: SizedBox(
-                height: 200,
-                width: double.infinity,
-                child: GoogleMap(
-                  initialCameraPosition: const CameraPosition(
-                    target: LatLng(37.422131, -122.084801),
-                    zoom: 14,
-                  ),
-                  onMapCreated: (controller) {
-                    _mapController = controller;
-                    if (_selectedLocation != null) {
-                      _mapController?.moveCamera(
-                        CameraUpdate.newLatLng(_selectedLocation!),
-                      );
-                    }
-                  },
-                  onTap: _onMapTapped,
-                  markers: _markers,
-                  myLocationEnabled: true,
-                  myLocationButtonEnabled: true,
-                  zoomControlsEnabled: true,
-                  zoomGesturesEnabled: true,
-                  scrollGesturesEnabled: true,
-                  rotateGesturesEnabled: true,
-                  tiltGesturesEnabled: true,
-                ),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 16),
-        Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Theme.of(context).cardColor,
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: Row(
-            children: [
-              Icon(
-                Icons.groups,
-                color: Theme.of(context).colorScheme.onSurface,
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  'Player Capacity',
-                  style: GoogleFonts.inter(
-                    fontWeight: FontWeight.w600,
-                    color: Theme.of(context).colorScheme.onSurface,
-                  ),
-                ),
-              ),
-              _buildStepper(
-                value: _capacity,
-                onChanged: (val) => setState(() => _capacity = val),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 16),
-
-        // Pricing Section
-        Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Theme.of(context).cardColor,
-            borderRadius: BorderRadius.circular(16),
-          ),
+        return SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                children: [
-                  Icon(
-                    Icons.attach_money,
-                    color: Theme.of(context).colorScheme.secondary,
-                  ),
-                  const SizedBox(width: 12),
-                  Text(
-                    'Session Fee',
-                    style: GoogleFonts.inter(
-                      fontWeight: FontWeight.w600,
-                      color: Theme.of(context).colorScheme.onSurface,
-                    ),
-                  ),
-                ],
+              _buildSectionTitle(
+                isRecurring ? 'Recurring Schedule' : 'Session Schedule',
               ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _priceController,
-                keyboardType: TextInputType.number,
-                decoration: InputDecoration(
-                  prefixText: '\$ ',
-                  hintText: '60',
-                  hintStyle: GoogleFonts.inter(
-                    color: Theme.of(
-                      context,
-                    ).colorScheme.onSurface.withValues(alpha: 0.4),
-                  ),
-                  filled: true,
-                  fillColor: Theme.of(context).cardColor,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none,
-                  ),
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 14,
-                  ),
-                ),
-              ),
-              // Only show pricing type selector if multiple dates are selected
-              if (_selectedDates.length > 1) ...[
-                const SizedBox(height: 12),
+              const SizedBox(height: 16),
+
+              if (isRecurring) ...[
+                _buildLabel('Date Range'),
                 Row(
                   children: [
                     Expanded(
-                      child: InkWell(
-                        onTap: () => setState(() => _pricePerPerson = true),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          decoration: BoxDecoration(
-                            color: _pricePerPerson
-                                ? Theme.of(
-                                    context,
-                                  ).colorScheme.secondary.withValues(alpha: 0.1)
-                                : Colors.transparent,
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(
-                              color: _pricePerPerson
-                                  ? Theme.of(context).colorScheme.secondary
-                                  : Theme.of(context).dividerColor,
-                            ),
-                          ),
-                          child: Text(
-                            'Per Day',
-                            textAlign: TextAlign.center,
-                            style: GoogleFonts.inter(
-                              fontWeight: _pricePerPerson
-                                  ? FontWeight.w600
-                                  : FontWeight.normal,
-                              color: _pricePerPerson
-                                  ? Theme.of(context).colorScheme.secondary
-                                  : Theme.of(context).colorScheme.onSurface
-                                        .withValues(alpha: 0.6),
-                            ),
-                          ),
+                      child: FormBuilderDateTimePicker(
+                        name: 'startDate',
+                        inputType: InputType.date,
+                        decoration: _inputDecoration(
+                          'Start Date',
+                          icon: Icons.calendar_today,
                         ),
+                        validator: FormBuilderValidators.required(),
+                        initialDate: DateTime.now(),
+                        format: DateFormat('yyyy-MM-dd'),
                       ),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
-                      child: InkWell(
-                        onTap: () => setState(() => _pricePerPerson = false),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          decoration: BoxDecoration(
-                            color: !_pricePerPerson
-                                ? Theme.of(
-                                    context,
-                                  ).colorScheme.secondary.withValues(alpha: 0.1)
-                                : Colors.transparent,
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(
-                              color: !_pricePerPerson
-                                  ? Theme.of(context).colorScheme.secondary
-                                  : Theme.of(context).dividerColor,
-                            ),
-                          ),
-                          child: Text(
-                            'Per Session',
-                            textAlign: TextAlign.center,
-                            style: GoogleFonts.inter(
-                              fontWeight: !_pricePerPerson
-                                  ? FontWeight.w600
-                                  : FontWeight.normal,
-                              color: !_pricePerPerson
-                                  ? Theme.of(context).colorScheme.secondary
-                                  : Theme.of(context).colorScheme.onSurface
-                                        .withValues(alpha: 0.6),
-                            ),
-                          ),
+                      child: FormBuilderDateTimePicker(
+                        name: 'endDate',
+                        inputType: InputType.date,
+                        decoration: _inputDecoration(
+                          'End Date',
+                          icon: Icons.event,
                         ),
+                        validator: FormBuilderValidators.required(),
+                        initialDate: DateTime.now().add(
+                          const Duration(days: 30),
+                        ),
+                        format: DateFormat('yyyy-MM-dd'),
                       ),
                     ),
                   ],
                 ),
-              ],
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  void _onSearchChanged(String query) {
-    if (_debounce?.isActive ?? false) _debounce!.cancel();
-    _debounce = Timer(const Duration(milliseconds: 500), () async {
-      if (query.isEmpty) {
-        _removeOverlay();
-        return;
-      }
-
-      final predictions = await PlacesService.getAutocomplete(query);
-      if (!mounted) return;
-
-      setState(() {
-        _predictions = predictions;
-      });
-      if (_predictions.isNotEmpty) {
-        if (context.mounted) {
-          _showOverlay();
-        }
-      } else {
-        _removeOverlay();
-      }
-    });
-  }
-
-  void _showOverlay() {
-    _removeOverlay();
-    _overlayEntry = OverlayEntry(
-      builder: (context) => Positioned(
-        width: MediaQuery.of(context).size.width - 48,
-        child: CompositedTransformFollower(
-          link: _layerLink,
-          showWhenUnlinked: false,
-          offset: const Offset(0, 50),
-          child: Material(
-            elevation: 4,
-            borderRadius: BorderRadius.circular(12),
-            color: Colors.white,
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxHeight: 200),
-              child: ListView.separated(
-                padding: EdgeInsets.zero,
-                shrinkWrap: true,
-                itemCount: _predictions.length,
-                separatorBuilder: (context, index) => const Divider(height: 1),
-                itemBuilder: (context, index) {
-                  final p = _predictions[index];
-                  return ListTile(
-                    dense: true,
-                    title: Text(
-                      p.mainText,
-                      style: GoogleFonts.inter(fontWeight: FontWeight.w600),
+                const SizedBox(height: 20),
+                _buildLabel('Repeats On'),
+                FormBuilderCheckboxGroup<String>(
+                  name: 'daysOfWeek',
+                  decoration: const InputDecoration(border: InputBorder.none),
+                  orientation: OptionsOrientation.wrap,
+                  options: const [
+                    FormBuilderFieldOption(value: 'Monday', child: Text('Mon')),
+                    FormBuilderFieldOption(
+                      value: 'Tuesday',
+                      child: Text('Tue'),
                     ),
-                    subtitle: Text(
-                      p.secondaryText,
-                      style: GoogleFonts.inter(fontSize: 12),
+                    FormBuilderFieldOption(
+                      value: 'Wednesday',
+                      child: Text('Wed'),
                     ),
-                    onTap: () => _onPredictionSelected(p),
-                  );
-                },
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-
-    Overlay.of(context).insert(_overlayEntry!);
-  }
-
-  void _removeOverlay() {
-    _overlayEntry?.remove();
-    _overlayEntry = null;
-  }
-
-  Future<void> _onPredictionSelected(PlacePrediction prediction) async {
-    _removeOverlay();
-    _locationController.text = prediction.description;
-    _locationFocus.unfocus();
-
-    final details = await PlacesService.getPlaceDetails(prediction.placeId);
-    if (details != null && mounted) {
-      _onMapTapped(details.location);
-    }
-  }
-
-  void _onMapTapped(LatLng position) async {
-    setState(() {
-      _selectedLocation = position;
-      _markers.clear();
-      _markers.add(
-        Marker(
-          markerId: const MarkerId('selected'),
-          position: position,
-          icon: BitmapDescriptor.defaultMarkerWithHue(
-            BitmapDescriptor.hueOrange,
-          ),
-        ),
-      );
-      _locationController.text =
-          "${position.latitude.toStringAsFixed(4)}, ${position.longitude.toStringAsFixed(4)}";
-    });
-
-    _mapController?.animateCamera(CameraUpdate.newLatLng(position));
-
-    final address = await PlacesService.reverseGeocode(
-      position.latitude,
-      position.longitude,
-    );
-    if (address != null && mounted) {
-      setState(() {
-        _locationController.text = address;
-      });
-    }
-  }
-
-  Widget _buildStepper({
-    required int value,
-    required ValueChanged<int> onChanged,
-    int min = 1,
-    int max = 100,
-  }) {
-    return Row(
-      children: [
-        InkWell(
-          onTap: () => value > min ? onChanged(value - 1) : null,
-          child: Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: Theme.of(context).dividerColor.withValues(alpha: 0.1),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              Icons.remove,
-              size: 16,
-              color: Theme.of(context).colorScheme.onSurface,
-            ),
-          ),
-        ),
-        const SizedBox(width: 16),
-        Text(
-          '$value',
-          style: GoogleFonts.outfit(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-            color: Theme.of(context).colorScheme.onSurface,
-          ),
-        ),
-        const SizedBox(width: 16),
-        InkWell(
-          onTap: () => value < max ? onChanged(value + 1) : null,
-          child: Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: Theme.of(context).dividerColor.withValues(alpha: 0.1),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              Icons.add,
-              size: 16,
-              color: Theme.of(context).colorScheme.onSurface,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildBottomAction() {
-    return SizedBox(
-      width: double.infinity,
-      child: ElevatedButton(
-        onPressed: _isCreating ? null : _createSession,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Theme.of(context).colorScheme.primary,
-          padding: const EdgeInsets.symmetric(vertical: 16),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          elevation: 4,
-          shadowColor: Theme.of(context).shadowColor.withValues(alpha: 0.4),
-        ),
-        child: _isCreating
-            ? const SizedBox(
-                height: 24,
-                width: 24,
-                child: CircularProgressIndicator(
-                  color: Colors.white,
-                  strokeWidth: 2,
+                    FormBuilderFieldOption(
+                      value: 'Thursday',
+                      child: Text('Thu'),
+                    ),
+                    FormBuilderFieldOption(value: 'Friday', child: Text('Fri')),
+                    FormBuilderFieldOption(
+                      value: 'Saturday',
+                      child: Text('Sat'),
+                    ),
+                    FormBuilderFieldOption(value: 'Sunday', child: Text('Sun')),
+                  ],
+                  validator: FormBuilderValidators.required(),
                 ),
-              )
-            : Row(
-                mainAxisAlignment: MainAxisAlignment.center,
+              ] else ...[
+                _buildLabel('Date'),
+                FormBuilderDateTimePicker(
+                  name: 'date',
+                  inputType: InputType.date,
+                  decoration: _inputDecoration(
+                    'Select Date',
+                    icon: Icons.calendar_today,
+                  ),
+                  validator: FormBuilderValidators.required(),
+                  initialDate: DateTime.now(),
+                  format: DateFormat('EEE, MMM d, yyyy'),
+                ),
+              ],
+
+              const SizedBox(height: 20),
+              Row(
                 children: [
-                  Text(
-                    _isEditing ? 'Save Changes' : 'Create Session',
-                    style: GoogleFonts.outfit(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildLabel('Start Time'),
+                        FormBuilderDateTimePicker(
+                          name: 'startTime',
+                          inputType: InputType.time,
+                          decoration: _inputDecoration(
+                            '09:00 AM',
+                            icon: Icons.access_time,
+                          ),
+                          validator: FormBuilderValidators.required(),
+                          initialTime: const TimeOfDay(hour: 9, minute: 0),
+                        ),
+                      ],
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  Icon(
-                    _isEditing ? Icons.save : Icons.calendar_today,
-                    color: Colors.white,
-                    size: 20,
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildLabel('Duration (min)'),
+                        FormBuilderDropdown<int>(
+                          name: 'duration',
+                          decoration: _inputDecoration('60 min'),
+                          initialValue: 60,
+                          items: [30, 45, 60, 90, 120, 180]
+                              .map(
+                                (t) => DropdownMenuItem(
+                                  value: t,
+                                  child: Text('$t min'),
+                                ),
+                              )
+                              .toList(),
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildStep3Participants() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildSectionTitle('Capacity & Pricing'),
+          const SizedBox(height: 16),
+
+          _buildLabel('Max Capacity'),
+          FormBuilderSlider(
+            name: 'capacity',
+            min: 1,
+            max: 50,
+            divisions: 49,
+            initialValue: 18,
+            decoration: const InputDecoration(border: InputBorder.none),
+          ),
+
+          const SizedBox(height: 20),
+          _buildLabel('Pricing Model'),
+          FormBuilderRadioGroup<String>(
+            name: 'pricingModel',
+            decoration: const InputDecoration(border: InputBorder.none),
+            options: const [
+              FormBuilderFieldOption(
+                value: 'per-session',
+                child: Text('Per Session'),
+              ),
+              FormBuilderFieldOption(
+                value: 'full-series',
+                child: Text('Full Series Price'),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 12),
+          _buildLabel('Amount (USD)'),
+          FormBuilderTextField(
+            name: 'price',
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            decoration: _inputDecoration('0.00', icon: Icons.attach_money),
+            validator: FormBuilderValidators.numeric(),
+          ),
+
+          const SizedBox(height: 30),
+          _buildSectionTitle('Enrollment Settings'),
+          FormBuilderSwitch(
+            name: 'autoAccept',
+            title: const Text('Auto-accept Bookings'),
+            subtitle: const Text(
+              'Students are confirmed immediately upon booking.',
+            ),
+            initialValue: true,
+            decoration: const InputDecoration(border: InputBorder.none),
+          ),
+          FormBuilderSwitch(
+            name: 'allowWaitlist',
+            title: const Text('Allow Waitlist'),
+            subtitle: const Text('Students can join waitlist if full.'),
+            initialValue: false,
+            decoration: const InputDecoration(border: InputBorder.none),
+          ),
+
+          const SizedBox(height: 20),
+          _buildLabel('Cancellation Policy'),
+          FormBuilderDropdown<String>(
+            name: 'cancellationPolicy',
+            decoration: _inputDecoration('Select Policy'),
+            initialValue: 'flexible',
+            items: const [
+              DropdownMenuItem(
+                value: 'flexible',
+                child: Text('Flexible (24h refund)'),
+              ),
+              DropdownMenuItem(
+                value: 'moderate',
+                child: Text('Moderate (48h refund)'),
+              ),
+              DropdownMenuItem(
+                value: 'strict',
+                child: Text('Strict (No refund)'),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
 
-  Future<void> _createSession() async {
-    if (_titleController.text.trim().isEmpty) {
-      _showError('Please enter a session title');
-      return;
-    }
-
-    if (_selectedDates.isEmpty) {
-      _showError('Please select at least one date');
-      return;
-    }
-
-    // Validate if dates are in the past and if they have timeslots
-    final now = DateTime.now();
-
-    // Check each selected date
-    for (final date in _selectedDates) {
-      final slots = _sessionSchedule[date];
-      if (slots == null || slots.isEmpty) {
-        _showError('Please add time slots for all selected dates');
-        return;
-      }
-
-      for (final slot in slots) {
-        final startTime = slot['startTime']!;
-        final sessionDateTime = DateTime(
-          date.year,
-          date.month,
-          date.day,
-          startTime.hour,
-          startTime.minute,
-        );
-        if (sessionDateTime.isBefore(now)) {
-          _showError('Cannot create sessions with past dates');
-          return;
-        }
-      }
-    }
-
-    setState(() => _isCreating = true);
-
-    try {
-      final isRecurring = _selectedDates.length > 1;
-      List<String> selectedDays = [];
-      List<Map<String, dynamic>> timeSlots = [];
-      List<Map<String, dynamic>> explicitTimeSlots = [];
-
-      final sortedDates = _selectedDates.toList()
-        ..sort((a, b) => a.compareTo(b));
-
-      for (final date in sortedDates) {
-        final dateStr = date.toIso8601String().split('T')[0];
-        selectedDays.add(dateStr);
-
-        final slots = _sessionSchedule[date]!;
-        for (final slot in slots) {
-          final startTime = slot['startTime']!;
-          final endTime = slot['endTime']!;
-
-          // Calculate duration
-          final startMin = startTime.hour * 60 + startTime.minute;
-          final endMin = endTime.hour * 60 + endTime.minute;
-          final duration = endMin - startMin;
-
-          final dt = DateTime(
-            date.year,
-            date.month,
-            date.day,
-            startTime.hour,
-            startTime.minute,
-          );
-
-          explicitTimeSlots.add({
-            'startTime': dt.toIso8601String(),
-            'durationMinutes': duration > 0 ? duration : 60,
-          });
-
-          if (!isRecurring) {
-            timeSlots.add({
-              'startTime': {'hour': startTime.hour, 'minute': startTime.minute},
-              'durationMinutes': duration > 0 ? duration : 60,
-            });
-          }
-        }
-      }
-
-      if (_isEditing) {
-        final updates = {
-          'title': _titleController.text.trim(),
-          'description': _descriptionController.text.trim(),
-          'location': _locationController.text.trim(),
-          'capacity': _capacity,
-          'pricing': {
-            'amount': double.tryParse(_priceController.text.trim()) ?? 0.0,
-            'currency': 'USD',
-            'pricePerPerson': _pricePerPerson,
-          },
-        };
-
-        await SessionService.updateSession(
-          widget.sessionToEdit!['_id'],
-          updates,
-        );
-
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Session Updated Successfully!'),
-              backgroundColor: Colors.green,
-            ),
-          );
-          Navigator.pop(context, true);
-        }
-      } else {
-        await SessionService.createSession(
-          title: _titleController.text.trim(),
-          description: _descriptionController.text.trim(),
-          location: _locationController.text.trim(),
-          capacity: _capacity,
-          timeSlots: timeSlots,
-          explicitTimeSlots: explicitTimeSlots,
-          selectedDays: selectedDays,
-          isRecurring: isRecurring,
-          participants: <String>[],
-          priceAmount: double.tryParse(_priceController.text.trim()) ?? 0.0,
-          pricePerPerson: _pricePerPerson,
-        );
-
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Session Created Successfully!'),
-              backgroundColor: Colors.green,
-            ),
-          );
-          Navigator.pop(context, true);
-        }
-      }
-    } catch (e) {
-      if (mounted) {
-        _showError('Failed to ${_isEditing ? 'update' : 'create'}: $e');
-      }
-    } finally {
-      if (mounted) setState(() => _isCreating = false);
-    }
-  }
-
-  void _showError(String message) {
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), backgroundColor: Colors.red),
-    );
-  }
-
-  String _formatTimeOfDay(TimeOfDay time) {
-    final now = DateTime.now();
-    final dt = DateTime(now.year, now.month, now.day, time.hour, time.minute);
-    return DateFormat.jm().format(dt);
-  }
-}
-
-class TimeSlot {
-  final TimeOfDay startTime;
-  final int durationMinutes;
-
-  TimeSlot({required this.startTime, required this.durationMinutes});
-
-  TimeSlot copyWith({TimeOfDay? startTime, int? durationMinutes}) {
-    return TimeSlot(
-      startTime: startTime ?? this.startTime,
-      durationMinutes: durationMinutes ?? this.durationMinutes,
-    );
-  }
-}
-
-class DottedBorderContainer extends StatelessWidget {
-  final Widget child;
-
-  const DottedBorderContainer({super.key, required this.child});
-
-  @override
-  Widget build(BuildContext context) {
+  Widget _buildBottomBar() {
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 16),
+      padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: Theme.of(context).cardColor,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: Theme.of(context).dividerColor,
-          style: BorderStyle.none,
+        color: Theme.of(context).scaffoldBackgroundColor,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, -4),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          if (_currentStep > 0)
+            Expanded(
+              child: OutlinedButton(
+                onPressed: _prevStep,
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: const Text('Back'),
+              ),
+            )
+          else
+            Expanded(child: Container()), // Spacer
+
+          const SizedBox(width: 16),
+
+          Expanded(
+            flex: 2,
+            child: ElevatedButton(
+              onPressed: _isLoading ? null : _nextStep,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Theme.of(context).colorScheme.primary,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              child: _isLoading
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 2,
+                      ),
+                    )
+                  : Text(
+                      _currentStep == 2 ? 'Create Session' : 'Next Step',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSectionTitle(String title) {
+    return Text(
+      title,
+      style: GoogleFonts.outfit(
+        fontSize: 18,
+        fontWeight: FontWeight.bold,
+        color: Theme.of(context).colorScheme.onSurface,
+      ),
+    );
+  }
+
+  Widget _buildLabel(String label) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8.0),
+      child: Text(
+        label,
+        style: GoogleFonts.inter(
+          fontSize: 14,
+          fontWeight: FontWeight.w600,
+          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.8),
         ),
       ),
-      child: Container(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: Theme.of(context).dividerColor, width: 2),
-        ),
-        padding: const EdgeInsets.all(16),
-        child: child,
+    );
+  }
+
+  InputDecoration _inputDecoration(String hint, {IconData? icon}) {
+    return InputDecoration(
+      hintText: hint,
+      prefixIcon: icon != null
+          ? Icon(icon, size: 20, color: Colors.grey)
+          : null,
+      filled: true,
+      fillColor: Theme.of(context).cardColor,
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide.none,
       ),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
     );
   }
 }

@@ -260,11 +260,9 @@ class _CoachHomeScreenState extends State<CoachHomeScreen> {
                               ),
                               const SizedBox(height: 16),
 
-                              // Dynamic upcoming sessions from API
-                              if ((_isToday(_selectedDate)
-                                      ? _todaysSessions
-                                      : _upcomingSessions)
-                                  .isEmpty)
+                              // Dynamic sessions from API - always use _todaysSessions
+                              // (populated for selected date by _loadSessionsForDate)
+                              if (_todaysSessions.isEmpty)
                                 Container(
                                   padding: const EdgeInsets.all(32),
                                   decoration: BoxDecoration(
@@ -303,20 +301,15 @@ class _CoachHomeScreenState extends State<CoachHomeScreen> {
                                   ),
                                 )
                               else
-                                ...(_isToday(_selectedDate)
-                                        ? _todaysSessions
-                                        : _upcomingSessions)
-                                    .map((session) {
-                                      return Padding(
-                                        padding: const EdgeInsets.only(
-                                          bottom: 16,
-                                        ),
-                                        child: _buildNewSessionCard(
-                                          context,
-                                          session,
-                                        ),
-                                      );
-                                    }),
+                                ..._todaysSessions.map((session) {
+                                  return Padding(
+                                    padding: const EdgeInsets.only(bottom: 16),
+                                    child: _buildNewSessionCard(
+                                      context,
+                                      session,
+                                    ),
+                                  );
+                                }),
 
                               const SizedBox(height: 32),
 
@@ -685,41 +678,97 @@ class _CoachHomeScreenState extends State<CoachHomeScreen> {
                 ),
                 const SizedBox(height: 16),
 
-                // Button
-                InkWell(
-                  onTap: () => context.push('/session-details/$sessionId'),
-                  borderRadius: BorderRadius.circular(12),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 10,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Theme.of(
-                        context,
-                      ).colorScheme.surfaceContainerHighest,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          isNextSession ? 'Details' : 'View Plan',
-                          style: GoogleFonts.inter(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                            color: Theme.of(context).colorScheme.onSurface,
+                // Buttons Row
+                Row(
+                  children: [
+                    // Start Session Button (only for next session)
+                    if (isNextSession)
+                      Expanded(
+                        child: InkWell(
+                          onTap: () =>
+                              context.push('/session-attendance/$sessionId'),
+                          borderRadius: BorderRadius.circular(12),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 10,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Theme.of(context).colorScheme.primary,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.play_arrow,
+                                  size: 16,
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onPrimary,
+                                ),
+                                const SizedBox(width: 6),
+                                Text(
+                                  'Start',
+                                  style: GoogleFonts.inter(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.onPrimary,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
-                        const SizedBox(width: 6),
-                        Icon(
-                          Icons.arrow_forward,
-                          size: 14,
-                          color: Theme.of(context).colorScheme.onSurface,
+                      ),
+                    if (isNextSession) const SizedBox(width: 8),
+
+                    // Details Button
+                    Expanded(
+                      child: InkWell(
+                        onTap: () =>
+                            context.push('/session-details/$sessionId'),
+                        borderRadius: BorderRadius.circular(12),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 10,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.surfaceContainerHighest,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                isNextSession ? 'Details' : 'View Plan',
+                                style: GoogleFonts.inter(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onSurface,
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              Icon(
+                                Icons.arrow_forward,
+                                size: 14,
+                                color: Theme.of(context).colorScheme.onSurface,
+                              ),
+                            ],
+                          ),
                         ),
-                      ],
+                      ),
                     ),
-                  ),
+                  ],
                 ),
               ],
             ),

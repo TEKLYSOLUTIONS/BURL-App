@@ -9,6 +9,7 @@ import '../screens/auth/forgot_password_screen.dart';
 import '../screens/legal/terms_screen.dart';
 import '../screens/legal/privacy_policy_screen.dart';
 import '../screens/sessions/create_session_screen.dart'; // New Import // New Import
+import '../screens/sessions/attendance_screen.dart';
 import '../screens/coach/home_screen.dart';
 import '../screens/search/search_screen.dart';
 import '../screens/player/home_screen.dart';
@@ -118,7 +119,31 @@ class AppRouter {
       ),
 
       GoRoute(
-        path: 'booking/:sessionId',
+        path: '/session-attendance/:id',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) =>
+            AttendanceScreen(sessionId: state.pathParameters['id'] ?? ''),
+      ),
+
+      // IMPORTANT: Static /booking/confirm-private must come BEFORE /booking/:sessionId
+      // to prevent GoRouter from matching 'confirm-private' as a sessionId parameter
+      GoRoute(
+        path: '/booking/confirm-private',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) {
+          final extra = state.extra as Map<String, dynamic>? ?? {};
+          return ConfirmPrivateBookingScreen(
+            coachId: extra['coachId'],
+            coachName: extra['coachName'],
+            startTime: extra['startTime'],
+            durationMinutes: extra['durationMinutes'],
+            price: extra['price'],
+          );
+        },
+      ),
+
+      GoRoute(
+        path: '/booking/:sessionId',
         parentNavigatorKey: _rootNavigatorKey,
         builder: (context, state) {
           final sessionId = state.pathParameters['sessionId']!;
@@ -136,21 +161,6 @@ class AppRouter {
             coachId: coachId,
             coachName: extra['coachName'] ?? 'Coach',
             hourlyRate: extra['hourlyRate'] ?? 60.0,
-          );
-        },
-      ),
-
-      GoRoute(
-        path: '/booking/confirm-private',
-        parentNavigatorKey: _rootNavigatorKey,
-        builder: (context, state) {
-          final extra = state.extra as Map<String, dynamic>? ?? {};
-          return ConfirmPrivateBookingScreen(
-            coachId: extra['coachId'],
-            coachName: extra['coachName'],
-            startTime: extra['startTime'],
-            durationMinutes: extra['durationMinutes'],
-            price: extra['price'],
           );
         },
       ),

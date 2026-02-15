@@ -6,7 +6,7 @@ class CoachService {
   static Future<Map<String, dynamic>> getCoachPlayers() async {
     try {
       final response = await ApiService.get('coach/players');
-      
+
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         return data['data'] ?? {};
@@ -22,7 +22,7 @@ class CoachService {
   static Future<Map<String, dynamic>?> getCoachProfile() async {
     try {
       final response = await ApiService.get('coach/profile');
-      
+
       if (response.statusCode == 200) {
         return json.decode(response.body);
       } else {
@@ -38,11 +38,8 @@ class CoachService {
     Map<String, dynamic> profileData,
   ) async {
     try {
-      final response = await ApiService.put(
-        'coach/profile',
-        profileData,
-      );
-      
+      final response = await ApiService.put('coach/profile', profileData);
+
       if (response.statusCode == 200) {
         return json.decode(response.body);
       } else {
@@ -57,7 +54,7 @@ class CoachService {
   static Future<Map<String, dynamic>> getCoachAvailability() async {
     try {
       final response = await ApiService.get('coach/availability');
-      
+
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         return data['data'] ?? {};
@@ -78,12 +75,14 @@ class CoachService {
         'coach/availability',
         availabilityData,
       );
-      
+
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         return data['data'] ?? {};
       } else {
-        throw Exception('Failed to update availability: ${response.statusCode}');
+        throw Exception(
+          'Failed to update availability: ${response.statusCode}',
+        );
       }
     } catch (e) {
       throw Exception('Error updating coach availability: $e');
@@ -99,7 +98,7 @@ class CoachService {
         'coach/availability/blocked-date',
         blockedDateData,
       );
-      
+
       if (response.statusCode == 201 || response.statusCode == 200) {
         final data = json.decode(response.body);
         return data['data'] ?? {};
@@ -117,12 +116,53 @@ class CoachService {
       final response = await ApiService.delete(
         'coach/availability/blocked-date/$blockedDateId',
       );
-      
+
       if (response.statusCode != 200) {
-        throw Exception('Failed to remove blocked date: ${response.statusCode}');
+        throw Exception(
+          'Failed to remove blocked date: ${response.statusCode}',
+        );
       }
     } catch (e) {
       throw Exception('Error removing blocked date: $e');
+    }
+  }
+
+  /// Get session settings
+  static Future<Map<String, dynamic>> getSessionSettings() async {
+    try {
+      final response = await ApiService.get('coach/settings/session');
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        return data['data'] ?? {};
+      } else {
+        throw Exception(
+          'Failed to fetch session settings: ${response.statusCode}',
+        );
+      }
+    } catch (e) {
+      throw Exception('Error fetching session settings: $e');
+    }
+  }
+
+  /// Update session settings
+  static Future<Map<String, dynamic>> updateSessionSettings(
+    Map<String, dynamic> settingsData,
+  ) async {
+    try {
+      final response = await ApiService.put(
+        'coach/settings/session',
+        settingsData,
+      );
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        return data['data'] ?? {};
+      } else {
+        throw Exception(
+          'Failed to update session settings: ${response.statusCode}',
+        );
+      }
+    } catch (e) {
+      throw Exception('Error updating session settings: $e');
     }
   }
 }

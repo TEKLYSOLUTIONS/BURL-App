@@ -28,29 +28,56 @@ class SessionService {
     required List<Map<String, dynamic>> timeSlots,
     required List<String> selectedDays,
     required bool isRecurring,
-    List<Map<String, dynamic>> explicitTimeSlots =
-        const [], // New optional param
+    // Wizard Fields
+    String sessionType = 'one-time',
+    List<String> focusAreas = const [],
+    String skillLevel = 'All Levels',
+    List<String> ageGroups = const [],
+    Map<String, dynamic>?
+    recurringPattern, // {startDate, endDate, daysOfWeek, ...}
+    Map<String, dynamic>? pricing, // {model, amount, currency}
+    Map<String, dynamic>? enrollmentSettings,
+    String? cancellationPolicy,
+    List<String> equipmentRequired = const [],
+
+    List<Map<String, dynamic>> explicitTimeSlots = const [],
     List<String> participants = const [],
+    // Legacy support (to be removed or mapped to pricing)
     double priceAmount = 0.0,
     bool pricePerPerson = true,
   }) async {
     try {
-      final httpResponse = await ApiService.post('sessions', {
+      final body = {
         'title': title,
         'description': description,
         'location': location,
-        'capacity': capacity,
+        'capacity':
+            capacity, // Backend now handles plain number (converted to {min:1, max:capacity})
         'timeSlots': timeSlots,
-        'explicitTimeSlots': explicitTimeSlots, // Pass to backend
+        'explicitTimeSlots': explicitTimeSlots,
         'selectedDays': selectedDays,
         'isRecurring': isRecurring,
         'participants': participants,
-        'pricing': {
-          'amount': priceAmount,
-          'currency': 'USD',
-          'pricePerPerson': pricePerPerson,
-        },
-      });
+        // Wizard Fields
+        'sessionType': sessionType,
+        'focusAreas': focusAreas,
+        'skillLevel': skillLevel,
+        'ageGroups': ageGroups,
+        'recurringPattern': recurringPattern,
+        'enrollmentSettings': enrollmentSettings,
+        'cancellationPolicy': cancellationPolicy,
+        'equipmentRequired': equipmentRequired,
+        'pricing':
+            pricing ??
+            {
+              'amount': priceAmount,
+              'currency': 'USD',
+              'pricePerPerson': pricePerPerson,
+              'model': 'per-session',
+            },
+      };
+
+      final httpResponse = await ApiService.post('sessions', body);
 
       final responseData =
           json.decode(httpResponse.body) as Map<String, dynamic>;
@@ -252,12 +279,18 @@ class SessionService {
   static Future<Map<String, dynamic>> updateAttendance(
     String sessionId,
     String playerId,
-    bool attended,
-  ) async {
+    bool attended, {
+    String? note,
+  }) async {
     try {
+      final body = <String, dynamic>{'attended': attended};
+      if (note != null) {
+        body['note'] = note;
+      }
+
       final httpResponse = await ApiService.put(
         'sessions/$sessionId/players/$playerId/attendance',
-        {'attended': attended},
+        body,
       );
       final responseData =
           json.decode(httpResponse.body) as Map<String, dynamic>;
@@ -272,6 +305,55 @@ class SessionService {
       }
     } catch (e) {
       debugPrint('Error updating attendance: $e');
+      rethrow;
+    }
+  }
+
+  /// Start a session (mark as in-progress)
+  static Future<Map<String, dynamic>> startSession(String sessionId) async {
+    try {
+      final httpResponse = await ApiService.post(
+        'sessions/$sessionId/start',
+        {},
+      );
+      final responseData =
+          json.decode(httpResponse.body) as Map<String, dynamic>;
+
+      if (responseData['status'] == 'success') {
+        debugPrint('Session started: $sessionId');
+        return responseData['data'] as Map<String, dynamic>;
+      } else {
+        throw Exception(responseData['message'] ?? 'Failed to start session');
+      }
+    } catch (e) {
+      debugPrint('Error starting session: $e');
+      rethrow;
+    }
+  }
+
+  /// Complete a session
+  static Future<Map<String, dynamic>> completeSession(
+    String sessionId, {
+    String? sessionNotes,
+  }) async {
+    try {
+      final httpResponse = await ApiService.post(
+        'sessions/$sessionId/complete',
+        {'sessionNotes': sessionNotes ?? ''},
+      );
+      final responseData =
+          json.decode(httpResponse.body) as Map<String, dynamic>;
+
+      if (responseData['status'] == 'success') {
+        debugPrint('Session completed: $sessionId');
+        return responseData['data'] as Map<String, dynamic>;
+      } else {
+        throw Exception(
+          responseData['message'] ?? 'Failed to complete session',
+        );
+      }
+    } catch (e) {
+      debugPrint('Error completing session: $e');
       rethrow;
     }
   }

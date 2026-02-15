@@ -18,8 +18,7 @@ class BookingScreen extends StatefulWidget {
 class _BookingScreenState extends State<BookingScreen> {
   bool _isLoading = true;
   Map<String, dynamic>? _session;
-  int _selectedDateIndex = 0;
-  int _selectedTimeIndex = -1;
+  Set<int> _selectedDateIndices = {}; // Changed to Set for multi-select
 
   List<DateTime> _availableDates = [];
 
@@ -33,9 +32,21 @@ class _BookingScreenState extends State<BookingScreen> {
     try {
       final session = await SessionService.getSessionById(widget.sessionId);
 
-      // Extract available dates from occurrences
+      // Extract available dates from timeSlots
       final List<DateTime> dates = [];
-      if (session['occurrences'] != null) {
+
+      // Check for timeSlots first (new structure)
+      if (session['timeSlots'] != null) {
+        final now = DateTime.now();
+        for (var timeSlot in session['timeSlots']) {
+          final startTime = DateTime.parse(timeSlot['startTime']).toLocal();
+          if (startTime.isAfter(now)) {
+            dates.add(startTime);
+          }
+        }
+      }
+      // Fallback to occurrences (old structure)
+      else if (session['occurrences'] != null) {
         for (var occurrence in session['occurrences']) {
           final date = DateTime.parse(occurrence['date']);
           if (date.isAfter(DateTime.now())) {
@@ -216,13 +227,48 @@ class _BookingScreenState extends State<BookingScreen> {
 
             const SizedBox(height: 32),
 
-            Text(
-              'Select Date',
-              style: GoogleFonts.outfit(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Theme.of(context).colorScheme.onSurface,
-              ),
+            // Select Date Header with Select All button
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Select Dates',
+                  style: GoogleFonts.outfit(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Theme.of(context).colorScheme.onSurface,
+                  ),
+                ),
+                if (_availableDates.isNotEmpty)
+                  TextButton.icon(
+                    onPressed: () {
+                      setState(() {
+                        if (_selectedDateIndices.length ==
+                            _availableDates.length) {
+                          // Deselect all
+                          _selectedDateIndices.clear();
+                        } else {
+                          // Select all
+                          _selectedDateIndices = Set.from(
+                            List.generate(_availableDates.length, (i) => i),
+                          );
+                        }
+                      });
+                    },
+                    icon: Icon(
+                      _selectedDateIndices.length == _availableDates.length
+                          ? Icons.check_box
+                          : Icons.check_box_outline_blank,
+                      size: 20,
+                    ),
+                    label: Text(
+                      _selectedDateIndices.length == _availableDates.length
+                          ? 'Deselect All'
+                          : 'Select All',
+                      style: GoogleFonts.inter(fontWeight: FontWeight.w600),
+                    ),
+                  ),
+              ],
             ),
             const SizedBox(height: 16),
             _availableDates.isEmpty
@@ -245,20 +291,27 @@ class _BookingScreenState extends State<BookingScreen> {
                     ),
                   )
                 : SizedBox(
-                    height: 80,
+                    height: 100,
                     child: ListView.separated(
                       scrollDirection: Axis.horizontal,
                       itemCount: _availableDates.length,
                       separatorBuilder: (_, _) => const SizedBox(width: 12),
                       itemBuilder: (context, index) {
                         final date = _availableDates[index];
-                        final isSelected = index == _selectedDateIndex;
+                        final isSelected = _selectedDateIndices.contains(index);
                         return GestureDetector(
-                          onTap: () =>
-                              setState(() => _selectedDateIndex = index),
+                          onTap: () {
+                            setState(() {
+                              if (isSelected) {
+                                _selectedDateIndices.remove(index);
+                              } else {
+                                _selectedDateIndices.add(index);
+                              }
+                            });
+                          },
                           child: AnimatedContainer(
                             duration: 300.ms,
-                            width: 70,
+                            width: 80,
                             decoration: BoxDecoration(
                               color: isSelected
                                   ? AppPalette.navyPrimary
@@ -268,33 +321,66 @@ class _BookingScreenState extends State<BookingScreen> {
                                 color: isSelected
                                     ? AppPalette.navyPrimary
                                     : Theme.of(context).dividerColor,
+                                width: 2,
                               ),
                             ),
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
+                            child: Stack(
                               children: [
-                                Text(
-                                  DateFormat('EEE').format(date),
-                                  style: GoogleFonts.inter(
-                                    color: isSelected
-                                        ? Colors.white70
-                                        : Theme.of(
-                                            context,
-                                          ).textTheme.bodyMedium?.color,
-                                    fontSize: 12,
-                                  ),
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  DateFormat('d').format(date),
-                                  style: GoogleFonts.outfit(
+                                // Checkbox indicator
+                                Positioned(
+                                  top: 6,
+                                  right: 6,
+                                  child: Icon(
+                                    isSelected
+                                        ? Icons.check_circle
+                                        : Icons.circle_outlined,
+                                    size: 20,
                                     color: isSelected
                                         ? Colors.white
-                                        : Theme.of(
-                                            context,
-                                          ).colorScheme.onSurface,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 20,
+                                        : Theme.of(context).dividerColor,
+                                  ),
+                                ),
+                                // Date content
+                                Center(
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Text(
+                                        DateFormat('EEE').format(date),
+                                        style: GoogleFonts.inter(
+                                          color: isSelected
+                                              ? Colors.white70
+                                              : Theme.of(
+                                                  context,
+                                                ).textTheme.bodyMedium?.color,
+                                          fontSize: 12,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        DateFormat('d').format(date),
+                                        style: GoogleFonts.outfit(
+                                          color: isSelected
+                                              ? Colors.white
+                                              : Theme.of(
+                                                  context,
+                                                ).colorScheme.onSurface,
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 20,
+                                        ),
+                                      ),
+                                      Text(
+                                        DateFormat('MMM').format(date),
+                                        style: GoogleFonts.inter(
+                                          color: isSelected
+                                              ? Colors.white70
+                                              : Theme.of(
+                                                  context,
+                                                ).textTheme.bodyMedium?.color,
+                                          fontSize: 11,
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
                               ],
@@ -307,57 +393,42 @@ class _BookingScreenState extends State<BookingScreen> {
 
             const SizedBox(height: 24),
 
-            Text(
-              'Available Slots',
-              style: GoogleFonts.outfit(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Theme.of(context).colorScheme.onSurface,
-              ),
-            ),
-            const SizedBox(height: 16),
-            _availableDates.isEmpty
-                ? const SizedBox.shrink()
-                : Wrap(
-                    spacing: 12,
-                    runSpacing: 12,
-                    children: [
-                      GestureDetector(
-                        onTap: () => setState(() => _selectedTimeIndex = 0),
-                        child: AnimatedContainer(
-                          duration: 200.ms,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 20,
-                            vertical: 12,
-                          ),
-                          decoration: BoxDecoration(
-                            color: _selectedTimeIndex == 0
-                                ? AppPalette.orangeAccent
-                                : Theme.of(context).cardColor,
-                            borderRadius: BorderRadius.circular(30),
-                            border: Border.all(
-                              color: _selectedTimeIndex == 0
-                                  ? AppPalette.orangeAccent
-                                  : Theme.of(context).dividerColor,
-                            ),
-                          ),
-                          child: Text(
-                            _availableDates.isNotEmpty
-                                ? DateFormat(
-                                    'h:mm a',
-                                  ).format(_availableDates[_selectedDateIndex])
-                                : 'Select Date',
-                            style: GoogleFonts.inter(
-                              color: _selectedTimeIndex == 0
-                                  ? Colors.white
-                                  : Theme.of(context).colorScheme.onSurface,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
+            // Selected sessions summary
+            if (_selectedDateIndices.isNotEmpty)
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: AppPalette.navyPrimary.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: AppPalette.navyPrimary.withValues(alpha: 0.3),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.event_available, color: AppPalette.navyPrimary),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        '${_selectedDateIndices.length} session${_selectedDateIndices.length > 1 ? 's' : ''} selected',
+                        style: GoogleFonts.outfit(
+                          fontWeight: FontWeight.bold,
+                          color: AppPalette.navyPrimary,
+                          fontSize: 16,
                         ),
                       ),
-                    ],
-                  ).animate().fadeIn(delay: 300.ms),
+                    ),
+                    Text(
+                      '\$${(_session!['pricing']['amount'] as num) * _selectedDateIndices.length}',
+                      style: GoogleFonts.outfit(
+                        fontWeight: FontWeight.bold,
+                        color: AppPalette.navyPrimary,
+                        fontSize: 18,
+                      ),
+                    ),
+                  ],
+                ),
+              ).animate().fadeIn(),
 
             const SizedBox(height: 40),
 
@@ -366,23 +437,41 @@ class _BookingScreenState extends State<BookingScreen> {
               width: double.infinity,
               height: 56,
               child: ElevatedButton(
-                onPressed: _availableDates.isEmpty || _selectedTimeIndex == -1
+                onPressed: _selectedDateIndices.isEmpty
                     ? null
                     : () {
-                        final selectedDate =
-                            _availableDates[_selectedDateIndex];
+                        // Get all selected dates
+                        final selectedDates =
+                            _selectedDateIndices
+                                .map((i) => _availableDates[i])
+                                .toList()
+                              ..sort();
+
                         context.push(
                           '/confirm-booking',
                           extra: {
                             'sessionId': widget.sessionId,
                             'session': _session,
-                            'occurrenceDate': selectedDate.toIso8601String(),
-                            'date': DateFormat(
-                              'EEE, MMM d',
-                            ).format(selectedDate),
-                            'time': DateFormat('h:mm a').format(selectedDate),
+                            'selectedDates': selectedDates
+                                .map((d) => d.toIso8601String())
+                                .toList(),
+                            'occurrenceDate': selectedDates.first
+                                .toIso8601String(),
+                            'date': _selectedDateIndices.length == 1
+                                ? DateFormat(
+                                    'EEE, MMM d',
+                                  ).format(selectedDates.first)
+                                : '${_selectedDateIndices.length} sessions',
+                            'time': _selectedDateIndices.length == 1
+                                ? DateFormat(
+                                    'h:mm a',
+                                  ).format(selectedDates.first)
+                                : 'Multiple dates',
                             'coachName': coachName,
                             'location': location,
+                            'totalAmount':
+                                (_session!['pricing']['amount'] as num) *
+                                _selectedDateIndices.length,
                           },
                         );
                       },
@@ -395,7 +484,9 @@ class _BookingScreenState extends State<BookingScreen> {
                   ),
                 ),
                 child: Text(
-                  'Confirm Booking',
+                  _selectedDateIndices.isEmpty
+                      ? 'Select Dates to Continue'
+                      : 'Book ${_selectedDateIndices.length} Session${_selectedDateIndices.length > 1 ? 's' : ''}',
                   style: GoogleFonts.outfit(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,

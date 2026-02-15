@@ -179,7 +179,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         Container(
                           padding: const EdgeInsets.all(20),
                           decoration: BoxDecoration(
-                            color: Theme.of(context).cardColor,
+                            color:
+                                Theme.of(context).brightness == Brightness.dark
+                                ? const Color(0xFF2C3E50).withValues(alpha: 0.3)
+                                : Colors.white.withValues(alpha: 0.7),
                             borderRadius: BorderRadius.circular(20),
                             boxShadow: [
                               BoxShadow(
@@ -457,7 +460,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }) {
     return Container(
       decoration: BoxDecoration(
-        color: Theme.of(context).cardColor,
+        color: Theme.of(context).brightness == Brightness.dark
+            ? const Color(0xFF2C3E50).withValues(alpha: 0.3)
+            : Colors.white.withValues(alpha: 0.7),
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(

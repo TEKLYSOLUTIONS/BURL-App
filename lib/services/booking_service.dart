@@ -150,7 +150,7 @@ class BookingService {
   static Future<Map<String, dynamic>> validatePromoCode(String code) async {
     try {
       final response = await ApiService.post('bookings/validate-promo', {
-        'code': code,
+        'promoCode': code,
       });
 
       final data = json.decode(response.body);
