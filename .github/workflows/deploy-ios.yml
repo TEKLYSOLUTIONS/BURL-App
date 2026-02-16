@@ -59,13 +59,13 @@ jobs:
           flutter build ios --release --no-codesign
           cd ios
           xcodebuild -workspace Runner.xcworkspace -scheme Runner -configuration Release archive -archivePath Runner.xcarchive -allowProvisioningUpdates PROVISIONING_PROFILE_SPECIFIER="Burl_AppStore_Profile" DEVELOPMENT_TEAM="BGYRZ2L6NY" CODE_SIGN_STYLE="Manual" CODE_SIGN_IDENTITY="iPhone Distribution" 
-          xcodebuild -exportArchive -archivePath Runner.xcarchive -exportOptionsPlist ExportOptions.plist -exportPath ./build
+          xcodebuild -exportArchive -archivePath Runner.xcarchive -exportOptionsPlist ExportOptions.plist -exportPath ./build/ios/ipa
 
       # 4. Upload to TestFlight
       - name: Upload to TestFlight
         uses: apple-actions/upload-testflight-build@v1
         with:
-          app-path: build/ios/ipa/Runner.ipa
+          app-path: ios/build/ios/ipa/Runner.ipa
           issuer-id: ${{ secrets.APPSTORE_ISSUER_ID }}
           api-key-id: ${{ secrets.APPSTORE_API_KEY_ID }}
-          api-key-base64: ${{ secrets.APPSTORE_API_PRIVATE_KEY }}
+          api-private-key: ${{ secrets.APPSTORE_API_PRIVATE_KEY }}
