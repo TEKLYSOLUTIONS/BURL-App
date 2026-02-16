@@ -269,7 +269,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                   Expanded(
                     child: Text(
                       endTime.isAfter(DateTime.now())
-                          ? 'Time remaining: ${endTime.difference(DateTime.now()).inMinutes} minutes'
+                          ? 'Time remaining: ${DateTimeUtils.formatDurationDetailed(endTime.difference(DateTime.now()).inMinutes)}'
                           : 'Session time completed',
                       style: GoogleFonts.inter(
                         fontSize: 14,

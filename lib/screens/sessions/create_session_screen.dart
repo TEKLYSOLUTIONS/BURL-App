@@ -3,8 +3,10 @@ import 'package:flutter_form_builder/flutter_form_builder.dart';
 import 'package:form_builder_validators/form_builder_validators.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:go_router/go_router.dart';
 import '../../services/session_service.dart';
+import '../../utils/location_search_delegate.dart';
 // Removed unused import
 
 class CreateSessionScreen extends StatefulWidget {
@@ -40,6 +42,7 @@ class _CreateSessionScreenState extends State<CreateSessionScreen> {
         'autoAccept': true,
         'cancellationPolicy': 'flexible',
         'duration': 60,
+        'price': '0',
       };
     }
     // Map existing session data to form fields
@@ -68,12 +71,65 @@ class _CreateSessionScreenState extends State<CreateSessionScreen> {
   }
 
   void _nextStep() {
-    if (_formKey.currentState?.saveAndValidate() ?? false) {
+    // Save current values to ensure form state is up to date
+    _formKey.currentState?.save();
+
+    // Validate only fields for the current step
+    final currentFields = _getFieldsForStep(_currentStep);
+    bool isValid = true;
+
+    // Check validation only for the visible fields of this step
+    for (final fieldName in currentFields) {
+      final field = _formKey.currentState?.fields[fieldName];
+      if (field != null) {
+        if (!field.validate()) {
+          isValid = false;
+        }
+      }
+    }
+
+    if (isValid) {
       if (_currentStep < 2) {
         setState(() => _currentStep++);
       } else {
         _submitSession();
       }
+    }
+  }
+
+  List<String> _getFieldsForStep(int step) {
+    if (step == 0) {
+      return [
+        'sessionType',
+        'title',
+        'description',
+        'location',
+        'focusAreas',
+        'skillLevel',
+        'ageGroups',
+      ];
+    } else if (step == 1) {
+      final sessionType =
+          _formKey.currentState?.value['sessionType'] as String? ?? 'one-time';
+      final isRecurring = sessionType == 'recurring';
+
+      final fields = <String>['startTime', 'duration'];
+      if (isRecurring) {
+        fields.addAll(['startDate', 'endDate', 'daysOfWeek']);
+      } else {
+        fields.add('date');
+      }
+      return fields;
+    } else {
+      // Step 2
+      return [
+        'capacity',
+        'pricingModel',
+        'price',
+        'autoAccept',
+        'allowWaitlist',
+        'cancellationPolicy',
+      ];
     }
   }
 
@@ -143,6 +199,11 @@ class _CreateSessionScreenState extends State<CreateSessionScreen> {
         });
       }
 
+      debugPrint('Submitting Session Form Data: $formData');
+      debugPrint('Selected Days: $selectedDays');
+      debugPrint('Time Slots: $timeSlots');
+      debugPrint('Recurring Pattern: $recurringPattern');
+
       await SessionService.createSession(
         title: formData['title'] as String,
         description: formData['description'] as String? ?? '',
@@ -169,12 +230,18 @@ class _CreateSessionScreenState extends State<CreateSessionScreen> {
           'allowWaitlist': formData['allowWaitlist'] ?? false,
         },
         cancellationPolicy: formData['cancellationPolicy'] as String?,
+        status: 'published',
       );
 
       if (mounted) {
         context.pop();
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Session created successfully!')),
+          SnackBar(
+            content: Text(
+              'Session created! Status: published, Date: ${selectedDays.isNotEmpty ? selectedDays.first : "N/A"}',
+            ),
+            backgroundColor: Colors.green,
+          ),
         );
       }
     } catch (e) {
@@ -211,7 +278,6 @@ class _CreateSessionScreenState extends State<CreateSessionScreen> {
               ),
             ),
           ),
-          _buildBottomBar(),
         ],
       ),
     );
@@ -336,10 +402,119 @@ class _CreateSessionScreenState extends State<CreateSessionScreen> {
           const SizedBox(height: 20),
 
           _buildLabel('Location'),
-          FormBuilderTextField(
-            name: 'location',
-            decoration: _inputDecoration('e.g. City Cricket Academy'),
-            validator: FormBuilderValidators.required(),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              return Autocomplete<Map<String, dynamic>>(
+                optionsBuilder: (TextEditingValue textEditingValue) async {
+                  if (textEditingValue.text.isEmpty) {
+                    return const Iterable<Map<String, dynamic>>.empty();
+                  }
+                  final predictions =
+                      await LocationSearchDelegate.getPlacePredictions(
+                        textEditingValue.text,
+                      );
+                  return predictions.cast<Map<String, dynamic>>();
+                },
+                displayStringForOption: (Map<String, dynamic> option) =>
+                    option['description'] ?? '',
+                onSelected: (Map<String, dynamic> selection) {
+                  final description = selection['description'] as String;
+                  _formKey.currentState?.fields['location']?.didChange(
+                    description,
+                  );
+                },
+                fieldViewBuilder:
+                    (
+                      context,
+                      textEditingController,
+                      focusNode,
+                      onFieldSubmitted,
+                    ) {
+                      // Sync initial value if any
+                      if (textEditingController.text.isEmpty) {
+                        final initialLocation =
+                            _initialValues['location'] as String?;
+                        if (initialLocation != null &&
+                            initialLocation.isNotEmpty) {
+                          textEditingController.text = initialLocation;
+                        }
+                      }
+
+                      return FormBuilderTextField(
+                        name: 'location',
+                        controller: textEditingController,
+                        focusNode: focusNode,
+                        decoration: _inputDecoration(
+                          'Search location',
+                          icon: Icons.location_on,
+                        ),
+                        validator: FormBuilderValidators.required(),
+                        onChanged: (val) {
+                          // Optional: clear validation errors or handle manual typing
+                        },
+                      );
+                    },
+                optionsViewBuilder: (context, onSelected, options) {
+                  return Align(
+                    alignment: Alignment.topLeft,
+                    child: Material(
+                      elevation: 4.0,
+                      borderRadius: BorderRadius.circular(
+                        12,
+                      ), // Rounded corners for dropdown
+                      child: Container(
+                        width: constraints.maxWidth,
+                        constraints: const BoxConstraints(maxHeight: 200),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).cardColor,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: ListView.builder(
+                          padding: EdgeInsets.zero,
+                          shrinkWrap: true,
+                          itemCount: options.length,
+                          itemBuilder: (BuildContext context, int index) {
+                            final option = options.elementAt(index);
+                            final description = option['description'] as String;
+                            final structuredFormatting =
+                                option['structured_formatting'] ?? {};
+                            final mainText =
+                                structuredFormatting['main_text'] ??
+                                description;
+                            final secondaryText =
+                                structuredFormatting['secondary_text'] ?? '';
+
+                            return ListTile(
+                              leading: const Icon(
+                                Icons.location_on,
+                                size: 20,
+                                color: Colors.grey,
+                              ),
+                              title: Text(
+                                mainText,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              subtitle: secondaryText.isNotEmpty
+                                  ? Text(
+                                      secondaryText,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    )
+                                  : null,
+                              onTap: () {
+                                onSelected(option);
+                              },
+                            );
+                          },
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              );
+            },
           ),
           const SizedBox(height: 20),
 
@@ -388,6 +563,9 @@ class _CreateSessionScreenState extends State<CreateSessionScreen> {
               FormBuilderFieldOption(value: 'Open'),
             ],
           ),
+          const SizedBox(height: 30),
+          _buildNavigationButtons(),
+          const SizedBox(height: 20),
         ],
       ),
     );
@@ -500,15 +678,68 @@ class _CreateSessionScreenState extends State<CreateSessionScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         _buildLabel('Start Time'),
-                        FormBuilderDateTimePicker(
+                        FormBuilderField<DateTime>(
                           name: 'startTime',
-                          inputType: InputType.time,
-                          decoration: _inputDecoration(
-                            '09:00 AM',
-                            icon: Icons.access_time,
-                          ),
                           validator: FormBuilderValidators.required(),
-                          initialTime: const TimeOfDay(hour: 9, minute: 0),
+                          initialValue: DateTime(
+                            2024,
+                            1,
+                            1,
+                            9,
+                            0,
+                          ), // Default 9 AM
+                          builder: (FormFieldState<DateTime> field) {
+                            return GestureDetector(
+                              onTap: () {
+                                showCupertinoModalPopup<void>(
+                                  context: context,
+                                  builder: (BuildContext context) => Container(
+                                    height: 216,
+                                    padding: const EdgeInsets.only(top: 6.0),
+                                    margin: EdgeInsets.only(
+                                      bottom: MediaQuery.of(
+                                        context,
+                                      ).viewInsets.bottom,
+                                    ),
+                                    color: CupertinoColors.systemBackground
+                                        .resolveFrom(context),
+                                    child: SafeArea(
+                                      top: false,
+                                      child: CupertinoDatePicker(
+                                        initialDateTime:
+                                            field.value ??
+                                            DateTime(2024, 1, 1, 9, 0),
+                                        mode: CupertinoDatePickerMode.time,
+                                        use24hFormat: false,
+                                        onDateTimeChanged: (DateTime newTime) {
+                                          field.didChange(newTime);
+                                        },
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              },
+                              child: InputDecorator(
+                                decoration: _inputDecoration(
+                                  'Select Time',
+                                  icon: Icons.access_time,
+                                ).copyWith(errorText: field.errorText),
+                                child: Text(
+                                  field.value != null
+                                      ? DateFormat(
+                                          'h:mm a',
+                                        ).format(field.value!)
+                                      : 'Select Time',
+                                  style: GoogleFonts.outfit(
+                                    fontSize: 16,
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.onSurface,
+                                  ),
+                                ),
+                              ),
+                            );
+                          },
                         ),
                       ],
                     ),
@@ -537,6 +768,9 @@ class _CreateSessionScreenState extends State<CreateSessionScreen> {
                   ),
                 ],
               ),
+              const SizedBox(height: 30),
+              _buildNavigationButtons(),
+              const SizedBox(height: 20),
             ],
           ),
         );
@@ -629,75 +863,65 @@ class _CreateSessionScreenState extends State<CreateSessionScreen> {
               ),
             ],
           ),
+          const SizedBox(height: 30),
+          _buildNavigationButtons(),
+          const SizedBox(height: 20),
         ],
       ),
     );
   }
 
-  Widget _buildBottomBar() {
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: Theme.of(context).scaffoldBackgroundColor,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, -4),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          if (_currentStep > 0)
-            Expanded(
-              child: OutlinedButton(
-                onPressed: _prevStep,
-                style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                child: const Text('Back'),
-              ),
-            )
-          else
-            Expanded(child: Container()), // Spacer
-
-          const SizedBox(width: 16),
-
+  Widget _buildNavigationButtons() {
+    return Row(
+      children: [
+        if (_currentStep > 0)
           Expanded(
-            flex: 2,
-            child: ElevatedButton(
-              onPressed: _isLoading ? null : _nextStep,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Theme.of(context).colorScheme.primary,
+            child: OutlinedButton(
+              onPressed: _prevStep,
+              style: OutlinedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
               ),
-              child: _isLoading
-                  ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(
-                        color: Colors.white,
-                        strokeWidth: 2,
-                      ),
-                    )
-                  : Text(
-                      _currentStep == 2 ? 'Create Session' : 'Next Step',
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                    ),
+              child: const Text('Back'),
             ),
+          )
+        else
+          Expanded(child: Container()), // Spacer
+
+        const SizedBox(width: 16),
+
+        Expanded(
+          flex: 2,
+          child: ElevatedButton(
+            onPressed: _isLoading ? null : _nextStep,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.primary,
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            child: _isLoading
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      color: Colors.white,
+                      strokeWidth: 2,
+                    ),
+                  )
+                : Text(
+                    _currentStep == 2 ? 'Create Session' : 'Next Step',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 

@@ -71,25 +71,60 @@ class _CoachBookingsScreenState extends ConsumerState<CoachBookingsScreen>
     }
   }
 
-  Future<void> _cancelBooking(String bookingId) async {
-    // Show confirmation dialog
+  Future<void> _updateBookingStatus(String bookingId, String status) async {
+    try {
+      if (status == 'declined' || status == 'cancelled') {
+        // Show reason dialog for decline/cancel
+        final reason = await _showReasonDialog(
+          status == 'declined' ? 'Decline Booking' : 'Cancel Booking',
+          status == 'declined'
+              ? 'Reason for declining:'
+              : 'Reason for cancelling:',
+        );
+
+        if (reason == null) return; // User cancelled dialog
+
+        await BookingService.updateBookingStatus(
+          bookingId,
+          status,
+          reason: reason,
+        );
+      } else {
+        // Directly update for confirmed
+        await BookingService.updateBookingStatus(bookingId, status);
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Booking $status successfully')));
+        _loadBookings(); // Refresh lists
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Failed to update status: $e')));
+      }
+    }
+  }
+
+  Future<String?> _showReasonDialog(String title, String label) async {
     final reasonController = TextEditingController();
-    final confirm = await showDialog<bool>(
+    return showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Cancel Booking'),
+        title: Text(title),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text(
-              'Are you sure you want to cancel this booking? This action cannot be undone and will trigger a refund.',
-            ),
+            Text('Are you sure you want to ${title.toLowerCase()}?'),
             const SizedBox(height: 16),
             TextField(
               controller: reasonController,
-              decoration: const InputDecoration(
-                labelText: 'Reason (Optional)',
-                border: OutlineInputBorder(),
+              decoration: InputDecoration(
+                labelText: label,
+                border: const OutlineInputBorder(),
               ),
               maxLines: 2,
             ),
@@ -97,40 +132,21 @@ class _CoachBookingsScreenState extends ConsumerState<CoachBookingsScreen>
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Keep'),
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
           ),
           TextButton(
-            onPressed: () => Navigator.pop(context, true),
+            onPressed: () => Navigator.pop(context, reasonController.text),
             style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('Cancel Booking'),
+            child: Text(title),
           ),
         ],
       ),
     );
+  }
 
-    if (confirm == true) {
-      try {
-        await BookingService.updateBookingStatus(
-          bookingId,
-          'cancelled',
-          reason: reasonController.text,
-        );
-
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Booking cancelled successfully')),
-          );
-          _loadBookings(); // Refresh lists
-        }
-      } catch (e) {
-        if (mounted) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text('Failed to cancel: $e')));
-        }
-      }
-    }
+  Future<void> _cancelBooking(String bookingId) async {
+    await _updateBookingStatus(bookingId, 'cancelled');
   }
 
   @override
@@ -263,22 +279,43 @@ class _CoachBookingsScreenState extends ConsumerState<CoachBookingsScreen>
                     _buildStatusChip(status),
                   ],
                 ),
-                if (showActions &&
-                    status != 'cancelled' &&
-                    status != 'declined') ...[
+                if (showActions) ...[
                   const Divider(height: 24),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.end,
                     children: [
-                      OutlinedButton.icon(
-                        onPressed: () => _cancelBooking(booking['_id']),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: Colors.red,
-                          side: const BorderSide(color: Colors.red),
+                      if (status == 'pending') ...[
+                        OutlinedButton(
+                          onPressed: () =>
+                              _updateBookingStatus(booking['_id'], 'declined'),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: Colors.red,
+                            side: const BorderSide(color: Colors.red),
+                          ),
+                          child: const Text('Decline'),
                         ),
-                        icon: const Icon(Icons.cancel_outlined, size: 18),
-                        label: const Text('Cancel / Refund'),
-                      ),
+                        const SizedBox(width: 8),
+                        ElevatedButton(
+                          onPressed: () =>
+                              _updateBookingStatus(booking['_id'], 'confirmed'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.green,
+                            foregroundColor: Colors.white,
+                          ),
+                          child: const Text('Accept'),
+                        ),
+                      ] else if (status != 'cancelled' &&
+                          status != 'declined') ...[
+                        OutlinedButton.icon(
+                          onPressed: () => _cancelBooking(booking['_id']),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: Colors.red,
+                            side: const BorderSide(color: Colors.red),
+                          ),
+                          icon: const Icon(Icons.cancel_outlined, size: 18),
+                          label: const Text('Cancel / Refund'),
+                        ),
+                      ],
                     ],
                   ),
                 ],

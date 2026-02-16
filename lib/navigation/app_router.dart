@@ -70,8 +70,10 @@ class PlaceholderScreen extends StatelessWidget {
 
 class AppRouter {
   static final _rootNavigatorKey = GlobalKey<NavigatorState>();
+  static final routeObserver = RouteObserver<ModalRoute<void>>();
 
   static final router = GoRouter(
+    observers: [routeObserver],
     navigatorKey: _rootNavigatorKey,
     initialLocation: '/',
     routes: [
@@ -171,9 +173,10 @@ class AppRouter {
       ),
 
       GoRoute(
-        path: '/coach/session-report',
+        path: '/coach/session-report/:id',
         parentNavigatorKey: _rootNavigatorKey,
-        builder: (context, state) => const SessionReportScreen(),
+        builder: (context, state) =>
+            SessionReportScreen(sessionId: state.pathParameters['id'] ?? ''),
       ),
 
       GoRoute(

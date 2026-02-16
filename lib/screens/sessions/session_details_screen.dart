@@ -10,6 +10,8 @@ import '../../services/coach_service.dart';
 import '../../services/booking_service.dart';
 import '../../utils/date_time_utils.dart';
 import 'create_session_screen.dart';
+import '../../widgets/headers/coach_app_bar.dart';
+import '../../widgets/navigation/coach_bottom_bar.dart';
 
 class SessionDetailsScreen extends StatefulWidget {
   final String sessionId;
@@ -285,33 +287,115 @@ class _SessionDetailsScreenState extends State<SessionDetailsScreen> {
       );
     }
 
-    final timeSlots = _session!['timeSlots'] as List? ?? [];
-    final firstTimeSlot = timeSlots.isNotEmpty ? timeSlots[0] : null;
-    final startTime = firstTimeSlot != null
-        ? DateTime.parse(firstTimeSlot['startTime'] as String).toLocal()
-        : DateTime.now();
-    final duration = firstTimeSlot != null
-        ? firstTimeSlot['durationMinutes'] as int
-        : 0;
-    final assignedPlayers = _session!['assignedPlayers'] as List? ?? [];
-    // Handle coach data - backend might send it as 'coach' or 'createdBy'
-    Map<String, dynamic>? coach;
-    final createdByValue = _session!['createdBy'];
-    final coachValue = _session!['coach'];
+    final isCoach = _userRole == 'coach';
 
-    if (createdByValue is Map<String, dynamic>) {
-      coach = createdByValue;
-    } else if (coachValue is Map<String, dynamic>) {
-      // Check for nested coachProfile
-      if (coachValue['coachProfile'] is Map<String, dynamic>) {
-        coach = coachValue['coachProfile'];
-      } else {
-        coach = coachValue;
+    // Parse time early to check for completed status
+    final timeSlots =
+        (_session!['timeSlots'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+    final firstTimeSlot = timeSlots.isNotEmpty ? timeSlots[0] : null;
+
+    DateTime startTime = DateTime.now();
+    if (firstTimeSlot != null && firstTimeSlot['startTime'] != null) {
+      try {
+        startTime = DateTime.parse(
+          firstTimeSlot['startTime'].toString(),
+        ).toLocal();
+      } catch (e) {
+        debugPrint('Error parsing start time: $e');
       }
     }
 
-    final isCoach = _userRole == 'coach';
+    final isPastSession = startTime.isBefore(DateTime.now());
 
+    // --- COACH VIEW ---
+    if (isCoach) {
+      return Scaffold(
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+        bottomNavigationBar: const CoachBottomBar(),
+        body: Column(
+          children: [
+            CoachAppBar(
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  IconButton(
+                    icon: const Icon(
+                      Icons.arrow_back_ios_new_rounded,
+                      color: Colors.white,
+                    ),
+                    onPressed: () => context.pop(),
+                  ),
+                  Text(
+                    'Session Details',
+                    style: GoogleFonts.outfit(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                  PopupMenuButton<String>(
+                    icon: const Icon(Icons.more_vert, color: Colors.white),
+                    onSelected: (value) async {
+                      if (value == 'edit') {
+                        final result = await Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) =>
+                                CreateSessionScreen(sessionToEdit: _session),
+                          ),
+                        );
+                        if (result == true) {
+                          _fetchSessionDetails();
+                        }
+                      } else if (value == 'delete') {
+                        _deleteSession();
+                      }
+                    },
+                    itemBuilder: (context) => [
+                      if (!isPastSession)
+                        const PopupMenuItem(
+                          value: 'edit',
+                          child: Row(
+                            children: [
+                              Icon(Icons.edit, size: 20, color: Colors.orange),
+                              SizedBox(width: 12),
+                              Text('Edit Session'),
+                            ],
+                          ),
+                        ),
+                      const PopupMenuItem(
+                        value: 'delete',
+                        child: Row(
+                          children: [
+                            Icon(Icons.delete, size: 20, color: Colors.red),
+                            SizedBox(width: 12),
+                            Text(
+                              'Delete Session',
+                              style: TextStyle(color: Colors.red),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            Expanded(
+              child: SingleChildScrollView(
+                child: Stack(
+                  children: [
+                    _buildSessionContent(isCoach: true, startTime: startTime),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // --- PLAYER / GUARDIAN VIEW (Original Layout) ---
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: AppBar(
@@ -338,53 +422,6 @@ class _SessionDetailsScreenState extends State<SessionDetailsScreen> {
           ),
         ),
         centerTitle: true,
-        actions: [
-          if (isCoach)
-            PopupMenuButton<String>(
-              icon: const Icon(Icons.more_vert, color: Colors.orange),
-              onSelected: (value) async {
-                if (value == 'edit') {
-                  final result = await Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) =>
-                          CreateSessionScreen(sessionToEdit: _session),
-                    ),
-                  );
-                  if (result == true) {
-                    _fetchSessionDetails();
-                  }
-                } else if (value == 'delete') {
-                  _deleteSession();
-                }
-              },
-              itemBuilder: (context) => [
-                const PopupMenuItem(
-                  value: 'edit',
-                  child: Row(
-                    children: [
-                      Icon(Icons.edit, size: 20, color: Colors.orange),
-                      SizedBox(width: 12),
-                      Text('Edit Session'),
-                    ],
-                  ),
-                ),
-                const PopupMenuItem(
-                  value: 'delete',
-                  child: Row(
-                    children: [
-                      Icon(Icons.delete, size: 20, color: Colors.red),
-                      SizedBox(width: 12),
-                      Text(
-                        'Delete Session',
-                        style: TextStyle(color: Colors.red),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-        ],
         flexibleSpace: Container(
           color: Theme.of(context).scaffoldBackgroundColor,
         ),
@@ -396,7 +433,7 @@ class _SessionDetailsScreenState extends State<SessionDetailsScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Header Image with Cricket Icon
+                // Header Image with Cricket Icon (Only for non-coach)
                 Container(
                   height: 200,
                   width: double.infinity,
@@ -451,640 +488,636 @@ class _SessionDetailsScreenState extends State<SessionDetailsScreen> {
                   ),
                 ).animate().slideY(begin: 0.1, duration: 400.ms),
 
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Title
-                      Text(
-                        _session!['title'] as String,
-                        style: GoogleFonts.outfit(
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                          color: Theme.of(context).colorScheme.onSurface,
-                          height: 1.2,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-
-                      // Date Time
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.calendar_today_outlined,
-                            size: 18,
-                            color: Theme.of(context).colorScheme.primary,
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            DateTimeUtils.formatSessionDate(startTime),
-                            style: GoogleFonts.inter(
-                              color: Theme.of(
-                                context,
-                              ).colorScheme.onSurfaceVariant,
-                              fontSize: 14,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ],
-                      ),
-
-                      const SizedBox(height: 20),
-                      Divider(color: Theme.of(context).dividerColor),
-                      const SizedBox(height: 20),
-
-                      // Stats Row
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          _buildQuickStat(
-                            Icons.timer_outlined,
-                            DateTimeUtils.formatDuration(duration),
-                          ),
-                          _buildQuickStat(
-                            Icons.people_outline,
-                            '${_session!['capacity']} Capacity',
-                          ),
-                          _buildQuickStat(Icons.sports_cricket, 'Cricket'),
-                        ],
-                      ),
-
-                      const SizedBox(height: 32),
-
-                      // Description
-                      if (_session!['description'] != null &&
-                          (_session!['description'] as String).isNotEmpty) ...[
-                        _buildSectionTitle('Description'),
-                        const SizedBox(height: 12),
-                        Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: Theme.of(context).cardColor,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Text(
-                            _session!['description'] as String,
-                            style: GoogleFonts.inter(
-                              color: Theme.of(
-                                context,
-                              ).colorScheme.onSurfaceVariant,
-                              fontSize: 14,
-                              height: 1.5,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 32),
-                      ],
-
-                      // Coach & Location
-                      _buildSectionTitle('Coach & Location'),
-                      const SizedBox(height: 16),
-
-                      // Coach Card
-                      if (coach != null)
-                        _buildInfoCard(
-                          icon: CircleAvatar(
-                            backgroundColor: AppPalette.navyPrimary,
-                            child: Text(
-                              (coach['fullName'] as String)
-                                  .substring(0, 1)
-                                  .toUpperCase(),
-                              style: const TextStyle(color: Colors.white),
-                            ),
-                          ),
-                          title: coach['fullName'] as String,
-                          subtitle: 'Head Coach',
-                          actionIcon: Icons.phone,
-                        ),
-                      const SizedBox(height: 12),
-
-                      // Location Card
-                      _buildInfoCard(
-                        icon: Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: Theme.of(
-                              context,
-                            ).colorScheme.primaryContainer,
-                            shape: BoxShape.circle,
-                          ),
-                          child: Icon(
-                            Icons.location_on,
-                            color: Theme.of(
-                              context,
-                            ).colorScheme.onPrimaryContainer,
-                          ),
-                        ),
-                        title: _session!['location'] as String,
-                        subtitle: 'Training Location',
-                        actionIcon: Icons.directions,
-                      ),
-
-                      const SizedBox(height: 32),
-
-                      // Session Level Note
-                      if (_session!['sessionNotes'] != null &&
-                          (_session!['sessionNotes'] as String).isNotEmpty) ...[
-                        _buildSectionTitle('Session Note'),
-                        const SizedBox(height: 12),
-                        Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: Theme.of(context).cardColor,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: Theme.of(context).dividerColor,
-                            ),
-                          ),
-                          child: Text(
-                            _session!['sessionNotes'] as String,
-                            style: GoogleFonts.inter(
-                              color: Theme.of(context).colorScheme.onSurface,
-                              fontSize: 14,
-                              fontStyle: FontStyle.italic,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 32),
-                      ],
-
-                      // Participants & Attendance
-                      if (assignedPlayers.isNotEmpty) ...[
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            _buildSectionTitle(
-                              'Participants (${assignedPlayers.length})',
-                            ),
-                            if (isCoach)
-                              TextButton(
-                                onPressed: () {
-                                  _showAddPlayersSheet();
-                                },
-                                child: Text(
-                                  'Add Players',
-                                  style: GoogleFonts.outfit(
-                                    color: Theme.of(
-                                      context,
-                                    ).colorScheme.primary,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ),
-                          ],
-                        ),
-                        const SizedBox(height: 16),
-
-                        // If coach and session started/ended, show attendance list
-                        if (isCoach &&
-                            startTime.isBefore(
-                              DateTime.now().add(const Duration(minutes: 15)),
-                            ))
-                          ListView.separated(
-                            shrinkWrap: true,
-                            physics: const NeverScrollableScrollPhysics(),
-                            itemCount: assignedPlayers.length,
-                            separatorBuilder: (context, index) =>
-                                const SizedBox(height: 8),
-                            itemBuilder: (context, index) {
-                              final pData = assignedPlayers[index];
-                              final player =
-                                  pData['player'] as Map<String, dynamic>;
-                              final attended =
-                                  pData['attended'] as bool? ?? false;
-                              final playerId = player['_id'] as String;
-
-                              return Container(
-                                decoration: BoxDecoration(
-                                  color: Theme.of(context).cardColor,
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(
-                                    color: attended
-                                        ? Colors.green.withValues(alpha: 0.5)
-                                        : Theme.of(context).dividerColor,
-                                  ),
-                                ),
-                                child: SwitchListTile(
-                                  title: Text(
-                                    player['fullName'] as String,
-                                    style: GoogleFonts.outfit(
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                  subtitle: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        attended ? 'Present' : 'Absent',
-                                        style: GoogleFonts.inter(
-                                          fontSize: 12,
-                                          color: attended
-                                              ? Colors.green
-                                              : Theme.of(
-                                                  context,
-                                                ).colorScheme.onSurfaceVariant,
-                                        ),
-                                      ),
-                                      if (pData['note'] != null &&
-                                          (pData['note'] as String).isNotEmpty)
-                                        Padding(
-                                          padding: const EdgeInsets.only(
-                                            top: 4,
-                                          ),
-                                          child: Text(
-                                            'Note: ${pData['note']}',
-                                            style: GoogleFonts.inter(
-                                              fontSize: 12,
-                                              fontStyle: FontStyle.italic,
-                                              color: Theme.of(
-                                                context,
-                                              ).colorScheme.onSurfaceVariant,
-                                            ),
-                                          ),
-                                        ),
-                                    ],
-                                  ),
-                                  secondary: CircleAvatar(
-                                    backgroundImage: NetworkImage(
-                                      player['profilePhoto'] ??
-                                          'https://i.pravatar.cc/150?u=$playerId',
-                                    ),
-                                  ),
-                                  value: attended,
-                                  activeTrackColor: Colors.green,
-                                  onChanged: (val) async {
-                                    // Capture ScaffoldMessenger before async gap
-                                    final messenger = ScaffoldMessenger.of(
-                                      context,
-                                    );
-
-                                    // Optimistic update
-                                    setState(() {
-                                      assignedPlayers[index]['attended'] = val;
-                                    });
-
-                                    try {
-                                      await SessionService.updateAttendance(
-                                        widget.sessionId,
-                                        playerId,
-                                        val,
-                                      );
-                                    } catch (e) {
-                                      // Revert on error
-                                      if (mounted) {
-                                        setState(() {
-                                          assignedPlayers[index]['attended'] =
-                                              !val;
-                                        });
-                                        messenger.showSnackBar(
-                                          SnackBar(
-                                            content: Text(
-                                              'Failed to update attendance: $e',
-                                            ),
-                                          ),
-                                        );
-                                      }
-                                    }
-                                  },
-                                ),
-                              );
-                            },
-                          )
-                        else
-                          // Standard horizontal list for players or future sessions
-                          SizedBox(
-                            height: 60,
-                            child: ListView.separated(
-                              scrollDirection: Axis.horizontal,
-                              itemCount: assignedPlayers.length,
-                              separatorBuilder: (context, index) =>
-                                  const SizedBox(width: 16),
-                              itemBuilder: (context, index) {
-                                final player =
-                                    assignedPlayers[index]['player']
-                                        as Map<String, dynamic>;
-                                final fullName = player['fullName'] as String;
-                                return _buildAvatar(
-                                  fullName.split(' ')[0],
-                                  player['_id'] as String,
-                                );
-                              },
-                            ),
-                          ),
-                        const SizedBox(height: 32),
-                      ],
-
-                      // All Time Slots
-                      if (timeSlots.length > 1) ...[
-                        _buildSectionTitle(
-                          'All Sessions (${timeSlots.length})',
-                        ),
-                        const SizedBox(height: 16),
-                        ...timeSlots.asMap().entries.map((entry) {
-                          final index = entry.key;
-                          final timeSlot = entry.value;
-                          final occStartTime = DateTime.parse(
-                            timeSlot['startTime'] as String,
-                          ).toLocal();
-                          final occEndTime = DateTime.parse(
-                            timeSlot['endTime'] as String,
-                          ).toLocal();
-
-                          return Container(
-                            margin: const EdgeInsets.only(bottom: 12),
-                            padding: const EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              color: Theme.of(context).cardColor,
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(
-                                color: Theme.of(context).dividerColor,
-                              ),
-                            ),
-                            child: Row(
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.all(8),
-                                  decoration: BoxDecoration(
-                                    color: AppPalette.orangeLight.withValues(
-                                      alpha: 0.2,
-                                    ),
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: Text(
-                                    '${index + 1}',
-                                    style: GoogleFonts.outfit(
-                                      fontWeight: FontWeight.bold,
-                                      color: Theme.of(
-                                        context,
-                                      ).colorScheme.primary,
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        DateTimeUtils.formatSessionDate(
-                                          occStartTime,
-                                        ),
-                                        style: GoogleFonts.outfit(
-                                          fontWeight: FontWeight.bold,
-                                          color: Theme.of(
-                                            context,
-                                          ).colorScheme.onSurface,
-                                        ),
-                                      ),
-                                      Text(
-                                        '${DateTimeUtils.formatTimeFromDateTime(occStartTime)} - ${DateTimeUtils.formatTimeFromDateTime(occEndTime)}',
-                                        style: GoogleFonts.inter(
-                                          fontSize: 12,
-                                          color: Theme.of(
-                                            context,
-                                          ).colorScheme.onSurfaceVariant,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                Text(
-                                  DateTimeUtils.formatDuration(
-                                    timeSlot['durationMinutes'] as int,
-                                  ),
-                                  style: GoogleFonts.inter(
-                                    fontWeight: FontWeight.bold,
-                                    color: Theme.of(
-                                      context,
-                                    ).colorScheme.primary,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          );
-                        }),
-                        const SizedBox(height: 20),
-                      ],
-                    ],
-                  ),
-                ),
+                // Shared Content
+                _buildSessionContent(isCoach: false, startTime: startTime),
               ],
             ),
           ),
+        ],
+      ),
+    );
+  }
 
-          // Sticky Footer - Role-based actions
-          if (!isCoach && startTime.isAfter(DateTime.now()))
-            Positioned(
-              bottom: 0,
-              left: 0,
-              right: 0,
-              child: Container(
-                padding: const EdgeInsets.all(24),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).cardColor,
-                  boxShadow: [
-                    BoxShadow(
-                      color: Theme.of(
-                        context,
-                      ).shadowColor.withValues(alpha: 0.1),
-                      blurRadius: 20,
-                      offset: const Offset(0, -5),
-                    ),
-                  ],
+  Widget _buildSessionContent({
+    required bool isCoach,
+    required DateTime startTime,
+  }) {
+    final isPastSession = startTime.isBefore(DateTime.now());
+    final isToday = DateTimeUtils.isSameDay(startTime, DateTime.now());
+    final isCompleted = _session!['status'] == 'completed';
+    // Active if in-progress OR (isToday and not completed/cancelled)
+    // Also consider sessions active if they are past start time but within duration
+    final isActiveSession =
+        _session!['status'] == 'in-progress' ||
+        (isToday &&
+            _session!['status'] != 'completed' &&
+            _session!['status'] != 'cancelled');
+
+    final timeSlots =
+        (_session!['timeSlots'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+    final firstTimeSlot = timeSlots.isNotEmpty ? timeSlots[0] : null;
+
+    int duration = 0;
+    if (firstTimeSlot != null && firstTimeSlot['durationMinutes'] != null) {
+      duration = int.tryParse(firstTimeSlot['durationMinutes'].toString()) ?? 0;
+    }
+
+    final assignedPlayers = (_session!['assignedPlayers'] as List?) ?? [];
+
+    // Handle coach data - backend might send it as 'coach' or 'createdBy'
+    Map<String, dynamic>? coach;
+    final createdByValue = _session!['createdBy'];
+    final coachValue = _session!['coach'];
+
+    if (createdByValue is Map) {
+      coach = Map<String, dynamic>.from(createdByValue);
+    } else if (coachValue is Map) {
+      final coachMap = Map<String, dynamic>.from(coachValue);
+      // Check for nested coachProfile
+      if (coachMap['coachProfile'] is Map) {
+        coach = Map<String, dynamic>.from(coachMap['coachProfile']);
+      } else {
+        coach = coachMap;
+      }
+    }
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (isCoach) const SizedBox(height: 20), // Top spacing for coach
+          // Title
+          Text(
+            _session!['title']?.toString() ?? 'Untitled Session',
+            style: GoogleFonts.outfit(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              color: Theme.of(context).colorScheme.onSurface,
+              height: 1.2,
+            ),
+          ),
+          const SizedBox(height: 12),
+
+          // Date Time
+          Row(
+            children: [
+              Icon(
+                Icons.calendar_today_outlined,
+                size: 18,
+                color: Theme.of(context).colorScheme.primary,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                DateTimeUtils.formatSessionDate(startTime),
+                style: GoogleFonts.inter(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
                 ),
-                child: SizedBox(
-                  width: double.infinity,
-                  child: _isBooked
-                      ? OutlinedButton(
-                          onPressed: _isCancelling ? null : _cancelBooking,
-                          style: OutlinedButton.styleFrom(
-                            side: const BorderSide(color: Colors.red),
-                            foregroundColor: Colors.red,
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                          child: _isCancelling
-                              ? const SizedBox(
-                                  width: 24,
-                                  height: 24,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    color: Colors.red,
-                                  ),
-                                )
-                              : Text(
-                                  'Cancel Booking',
-                                  style: GoogleFonts.outfit(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                        )
-                      : ElevatedButton(
-                          onPressed: () {
-                            context.push('/booking/${widget.sessionId}');
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppPalette.navyPrimary,
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                          child: Text(
-                            'Book Session',
-                            style: GoogleFonts.outfit(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 20),
+          Divider(color: Theme.of(context).dividerColor),
+          const SizedBox(height: 20),
+
+          // Stats Row
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              _buildQuickStat(
+                Icons.timer_outlined,
+                DateTimeUtils.formatDuration(duration),
+              ),
+              _buildQuickStat(
+                Icons.people_outline,
+                '${_session!['capacity']?.toString() ?? '0'} Capacity',
+              ),
+              _buildQuickStat(Icons.sports_cricket, 'Cricket'),
+            ],
+          ),
+
+          const SizedBox(height: 32),
+
+          // Description
+          if (_session!['description'] != null &&
+              _session!['description'].toString().isNotEmpty) ...[
+            _buildSectionTitle('Description'),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Theme.of(context).cardColor,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(
+                _session!['description'].toString(),
+                style: GoogleFonts.inter(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  fontSize: 14,
+                  height: 1.5,
                 ),
               ),
             ),
+            const SizedBox(height: 32),
+          ],
 
-          if (isCoach)
-            Positioned(
-              bottom: 0,
-              left: 0,
-              right: 0,
-              child: Container(
-                padding: const EdgeInsets.all(24),
+          // Coach & Location
+          _buildSectionTitle('Coach & Location'),
+          const SizedBox(height: 16),
+
+          // Coach Card
+          if (coach != null)
+            _buildInfoCard(
+              icon: CircleAvatar(
+                backgroundColor: AppPalette.navyPrimary,
+                child: Text(
+                  (coach['fullName']?.toString() ?? 'C')
+                      .substring(0, 1)
+                      .toUpperCase(),
+                  style: const TextStyle(color: Colors.white),
+                ),
+              ),
+              title: coach['fullName']?.toString() ?? 'Coach',
+              subtitle: 'Head Coach',
+              actionIcon: Icons.phone,
+            ),
+          const SizedBox(height: 12),
+
+          // Location Card
+          _buildInfoCard(
+            icon: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.primaryContainer,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                Icons.location_on,
+                color: Theme.of(context).colorScheme.onPrimaryContainer,
+              ),
+            ),
+            title: _session!['location']?.toString() ?? 'Unknown Location',
+            subtitle: 'Training Location',
+            actionIcon: Icons.directions,
+          ),
+
+          const SizedBox(height: 32),
+
+          // Session Level Note
+          if (_session!['sessionNotes'] != null &&
+              _session!['sessionNotes'].toString().isNotEmpty) ...[
+            _buildSectionTitle('Session Note'),
+            const SizedBox(height: 12),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Theme.of(context).cardColor,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Theme.of(context).dividerColor),
+              ),
+              child: Text(
+                _session!['sessionNotes']?.toString() ?? '',
+                style: GoogleFonts.inter(
+                  color: Theme.of(context).colorScheme.onSurface,
+                  fontSize: 14,
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+            ),
+            const SizedBox(height: 32),
+          ],
+
+          // Participants & Attendance
+          if (assignedPlayers.isNotEmpty) ...[
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                _buildSectionTitle('Participants (${assignedPlayers.length})'),
+                if (isCoach)
+                  TextButton(
+                    onPressed: () {
+                      _showAddPlayersSheet();
+                    },
+                    child: Text(
+                      'Add Players',
+                      style: GoogleFonts.outfit(
+                        color: Theme.of(context).colorScheme.primary,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 16),
+
+            // If coach and session started/ended, show attendance list
+            if (isCoach &&
+                startTime.isBefore(
+                  DateTime.now().add(const Duration(minutes: 15)),
+                ))
+              ListView.separated(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: assignedPlayers.length,
+                separatorBuilder: (context, index) => const SizedBox(height: 8),
+                itemBuilder: (context, index) {
+                  final pData = assignedPlayers[index];
+                  final player = (pData['player'] is Map)
+                      ? Map<String, dynamic>.from(pData['player'])
+                      : <String, dynamic>{};
+                  final attended = pData['attended'] as bool? ?? false;
+                  final playerId = player['_id']?.toString() ?? '';
+
+                  return Container(
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).cardColor,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: attended
+                            ? Colors.green.withValues(alpha: 0.5)
+                            : Theme.of(context).dividerColor,
+                      ),
+                    ),
+                    child: SwitchListTile(
+                      title: Text(
+                        (player['fullName']?.toString() ?? 'Unknown Player'),
+                        style: GoogleFonts.outfit(fontWeight: FontWeight.w600),
+                      ),
+                      subtitle: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            attended ? 'Present' : 'Absent',
+                            style: GoogleFonts.inter(
+                              fontSize: 12,
+                              color: attended
+                                  ? Colors.green
+                                  : Theme.of(
+                                      context,
+                                    ).colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                          if (pData['note'] != null &&
+                              (pData['note'] as String).isNotEmpty)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 4),
+                              child: Text(
+                                'Note: ${pData['note']}',
+                                style: GoogleFonts.inter(
+                                  fontSize: 12,
+                                  fontStyle: FontStyle.italic,
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onSurfaceVariant,
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                      secondary: CircleAvatar(
+                        backgroundImage: NetworkImage(
+                          player['profilePhoto']?.toString() ??
+                              'https://i.pravatar.cc/150?u=$playerId',
+                        ),
+                      ),
+                      value: attended,
+                      activeTrackColor: Colors.green,
+                      onChanged: (val) async {
+                        // Capture ScaffoldMessenger before async gap
+                        final messenger = ScaffoldMessenger.of(context);
+
+                        // Optimistic update
+                        setState(() {
+                          assignedPlayers[index]['attended'] = val;
+                        });
+
+                        try {
+                          await SessionService.updateAttendance(
+                            widget.sessionId,
+                            playerId,
+                            val,
+                          );
+                        } catch (e) {
+                          // Revert on error
+                          if (mounted) {
+                            setState(() {
+                              assignedPlayers[index]['attended'] = !val;
+                            });
+                            messenger.showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  'Failed to update attendance: $e',
+                                ),
+                              ),
+                            );
+                          }
+                        }
+                      },
+                    ),
+                  );
+                },
+              )
+            else
+              // Standard horizontal list for players or future sessions
+              SizedBox(
+                height: 60,
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: assignedPlayers.length,
+                  separatorBuilder: (context, index) =>
+                      const SizedBox(width: 16),
+                  itemBuilder: (context, index) {
+                    final player = (assignedPlayers[index]['player'] is Map)
+                        ? Map<String, dynamic>.from(
+                            assignedPlayers[index]['player'],
+                          )
+                        : <String, dynamic>{};
+                    return _buildAvatar(
+                      (player['fullName']?.toString() ?? 'P').split(' ')[0],
+                      player['_id']?.toString() ?? '',
+                    );
+                  },
+                ),
+              ),
+            const SizedBox(height: 32),
+          ],
+
+          // All Time Slots
+          if (timeSlots.length > 1) ...[
+            _buildSectionTitle('All Sessions (${timeSlots.length})'),
+            const SizedBox(height: 16),
+            ...timeSlots.asMap().entries.map((entry) {
+              final index = entry.key;
+              final timeSlot = entry.value;
+              final occStartTime = DateTime.parse(
+                timeSlot['startTime'] as String,
+              ).toLocal();
+              final occEndTime = DateTime.parse(
+                timeSlot['endTime'] as String,
+              ).toLocal();
+
+              return Container(
+                margin: const EdgeInsets.only(bottom: 12),
+                padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
                   color: Theme.of(context).cardColor,
-                  boxShadow: [
-                    BoxShadow(
-                      color: Theme.of(
-                        context,
-                      ).shadowColor.withValues(alpha: 0.1),
-                      blurRadius: 20,
-                      offset: const Offset(0, -5),
-                    ),
-                  ],
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Theme.of(context).dividerColor),
                 ),
                 child: Row(
                   children: [
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed: _isDeleting
-                            ? null
-                            : () => context.push('/coach/session-report'),
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          side: const BorderSide(color: AppPalette.navyPrimary),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                        child: Text(
-                          'View Report',
-                          style: GoogleFonts.outfit(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: AppPalette.navyPrimary,
-                          ),
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: AppPalette.orangeLight.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        '${index + 1}',
+                        style: GoogleFonts.outfit(
+                          fontWeight: FontWeight.bold,
+                          color: Theme.of(context).colorScheme.primary,
                         ),
                       ),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
-                      child: ElevatedButton(
-                        onPressed: _isDeleting
-                            ? null
-                            : () async {
-                                final result = await Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => CreateSessionScreen(
-                                      sessionToEdit: _session,
-                                    ),
-                                  ),
-                                );
-                                if (result == true) {
-                                  _fetchSessionDetails();
-                                }
-                              },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppPalette.orangeAccent,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            DateTimeUtils.formatSessionDate(occStartTime),
+                            style: GoogleFonts.outfit(
+                              fontWeight: FontWeight.bold,
+                              color: Theme.of(context).colorScheme.onSurface,
+                            ),
                           ),
-                        ),
-                        child: Text(
-                          _isDeleting ? 'Deleting...' : 'Edit Session',
-                          style: GoogleFonts.outfit(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
+                          Text(
+                            '${DateTimeUtils.formatTimeFromDateTime(occStartTime)} - ${DateTimeUtils.formatTimeFromDateTime(occEndTime)}',
+                            style: GoogleFonts.inter(
+                              fontSize: 12,
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onSurfaceVariant,
+                            ),
                           ),
-                        ),
+                        ],
                       ),
                     ),
-                  ],
-                ),
-              ),
-            ),
-
-          // Sticky Footer for Players (Review)
-          if (!isCoach && startTime.isBefore(DateTime.now()))
-            Positioned(
-              bottom: 0,
-              left: 0,
-              right: 0,
-              child: Container(
-                padding: const EdgeInsets.all(24),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).cardColor,
-                  boxShadow: [
-                    BoxShadow(
-                      color: Theme.of(
-                        context,
-                      ).shadowColor.withValues(alpha: 0.1),
-                      blurRadius: 20,
-                      offset: const Offset(0, -5),
-                    ),
-                  ],
-                ),
-                child: SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: () async {
-                      final result = await context.push(
-                        '/add-review',
-                        extra: _session!,
-                      );
-                      if (result == true) {
-                        // Refresh session details if needed, or just show success
-                        _fetchSessionDetails();
-                      }
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppPalette.navyPrimary,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                    Text(
+                      DateTimeUtils.formatDuration(
+                        timeSlot['durationMinutes'] as int,
                       ),
-                    ),
-                    child: Text(
-                      'Leave a Review',
-                      style: GoogleFonts.outfit(
-                        fontSize: 16,
+                      style: GoogleFonts.inter(
                         fontWeight: FontWeight.bold,
+                        color: Theme.of(context).colorScheme.primary,
                       ),
                     ),
+                  ],
+                ),
+              );
+            }),
+            const SizedBox(height: 20),
+          ],
+
+          // Actions
+          if (isCoach) ...[
+            const SizedBox(height: 20),
+            Row(
+              children: [
+                // View Report Button (Visible for Past or Completed sessions)
+                if (isPastSession || isCompleted)
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: _isDeleting
+                          ? null
+                          : () => context.push(
+                              '/coach/session-report/${widget.sessionId}',
+                            ),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        side: const BorderSide(color: AppPalette.navyPrimary),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: Text(
+                        'View Report',
+                        style: GoogleFonts.outfit(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: AppPalette.navyPrimary,
+                        ),
+                      ),
+                    ),
+                  ),
+
+                // Start Session Button (Visible for Active/Today sessions that are not completed)
+                if (isActiveSession && !isCompleted) ...[
+                  if (isPastSession ||
+                      isCompleted) // Add spacing if Report button is also visible (rare edge case but good safety)
+                    const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: _isDeleting
+                          ? null
+                          : () => context.push(
+                              '/session-attendance/${widget.sessionId}',
+                            ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: Text(
+                        'Start Session',
+                        style: GoogleFonts.outfit(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+
+                // Edit Session Button (Only for future sessions)
+                if (!isPastSession && !isCompleted && !isActiveSession) ...[
+                  if (isPastSession || isCompleted) const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: _isDeleting
+                          ? null
+                          : () async {
+                              final result = await Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => CreateSessionScreen(
+                                    sessionToEdit: _session,
+                                  ),
+                                ),
+                              );
+                              if (result == true) {
+                                _fetchSessionDetails();
+                              }
+                            },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppPalette.orangeAccent,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: Text(
+                        _isDeleting ? 'Deleting...' : 'Edit Session',
+                        style: GoogleFonts.outfit(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+            const SizedBox(height: 32),
+          ],
+
+          if (!isCoach && startTime.isAfter(DateTime.now())) ...[
+            const SizedBox(height: 20),
+            SizedBox(
+              width: double.infinity,
+              child: _isBooked
+                  ? OutlinedButton(
+                      onPressed: _isCancelling ? null : _cancelBooking,
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(color: Colors.red),
+                        foregroundColor: Colors.red,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: _isCancelling
+                          ? const SizedBox(
+                              width: 24,
+                              height: 24,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.red,
+                              ),
+                            )
+                          : Text(
+                              'Cancel Booking',
+                              style: GoogleFonts.outfit(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                    )
+                  : ElevatedButton(
+                      onPressed: () {
+                        context.push('/booking/${widget.sessionId}');
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppPalette.navyPrimary,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: Text(
+                        'Book Session',
+                        style: GoogleFonts.outfit(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+            ),
+            const SizedBox(height: 32),
+          ],
+          if (!isCoach && startTime.isBefore(DateTime.now())) ...[
+            const SizedBox(height: 20),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () async {
+                  final result = await context.push(
+                    '/add-review',
+                    extra: _session!,
+                  );
+                  if (result == true) {
+                    _fetchSessionDetails();
+                  }
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppPalette.navyPrimary,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: Text(
+                  'Leave a Review',
+                  style: GoogleFonts.outfit(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
               ),
             ),
+            const SizedBox(height: 32),
+          ],
         ],
       ),
     );

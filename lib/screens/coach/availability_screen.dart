@@ -92,7 +92,7 @@ class _CoachAvailabilityScreenState extends State<CoachAvailabilityScreen> {
   bool _isSaving = false;
 
   // recurring schedule
-  final List<String> _weekDays = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+
   final List<String> _fullDayNames = [
     'Monday',
     'Tuesday',
@@ -119,7 +119,248 @@ class _CoachAvailabilityScreenState extends State<CoachAvailabilityScreen> {
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay = DateTime.now();
 
-  // Dynamic blocked dates list
+  // 0 = Sunday, 1 = Monday, ... 6 = Saturday
+  int _selectedDayIndex = 0;
+
+  // Helper to map UI Index (0=Sun) to Data Index (0=Mon)
+  int _getDataIndex(int uiIndex) {
+    if (uiIndex == 0) return 6; // Sunday -> 6
+    return uiIndex - 1; // 1->0, 2->1 ...
+  }
+
+  String _getDayName(int uiIndex) {
+    // _fullDayNames is Mon-Sun
+    // our UI is Sun-Sat
+    if (uiIndex == 0) return 'Sunday';
+    return _fullDayNames[uiIndex - 1];
+  }
+
+  Widget _buildDayDetails() {
+    final dataIndex = _getDataIndex(_selectedDayIndex);
+    final dayName = _getDayName(_selectedDayIndex);
+    final isActive = _daySchedules[dataIndex]?.isNotEmpty ?? false;
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardColor,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: Theme.of(context).dividerColor.withValues(alpha: 0.1),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Theme.of(context).shadowColor.withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header: Day Name + Toggle
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                dayName,
+                style: GoogleFonts.outfit(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Theme.of(context).colorScheme.onSurface,
+                ),
+              ),
+              Switch(
+                value: isActive,
+                activeTrackColor: AppPalette.navyPrimary,
+                onChanged: (val) {
+                  setState(() {
+                    if (val) {
+                      // Enable: Add default 9-5 slot
+                      _daySchedules[dataIndex] = [
+                        TimeInterval(start: '09:00 AM', end: '05:00 PM'),
+                      ];
+                    } else {
+                      // Disable: Clear slots
+                      _daySchedules[dataIndex] = [];
+                    }
+                  });
+                },
+              ),
+            ],
+          ),
+
+          if (isActive) ...[
+            const Divider(height: 32),
+            if (_daySchedules[dataIndex]!.isEmpty)
+              // Should not happen if isActive is true, but safe guard
+              Text(
+                'No availability slots added.',
+                style: GoogleFonts.inter(
+                  color: Colors.grey,
+                  fontStyle: FontStyle.italic,
+                ),
+              )
+            else
+              ...List.generate(_daySchedules[dataIndex]!.length, (slotIndex) {
+                final interval = _daySchedules[dataIndex]![slotIndex];
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 16),
+                  child: Row(
+                    children: [
+                      // Start Time
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Start',
+                              style: GoogleFonts.inter(
+                                fontSize: 12,
+                                color: Colors.grey,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            _buildTimeDropdown(interval.start, (val) {
+                              final startMin = _minutesFromTime(
+                                _parseTime(val),
+                              );
+                              final endMin = _minutesFromTime(
+                                _parseTime(interval.end),
+                              );
+                              setState(() {
+                                interval.start = val;
+                                if (startMin >= endMin) {
+                                  interval.end = _formatTime(
+                                    _timeFromMinutes(startMin + 60),
+                                  );
+                                }
+                              });
+                            }),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      // Arrow
+                      Padding(
+                        padding: const EdgeInsets.only(top: 16),
+                        child: Icon(
+                          Icons.arrow_forward_rounded,
+                          size: 16,
+                          color: Theme.of(context).disabledColor,
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      // End Time
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'End',
+                              style: GoogleFonts.inter(
+                                fontSize: 12,
+                                color: Colors.grey,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            _buildTimeDropdown(interval.end, (val) {
+                              final startMin = _minutesFromTime(
+                                _parseTime(interval.start),
+                              );
+                              final endMin = _minutesFromTime(_parseTime(val));
+
+                              if (endMin <= startMin) {
+                                if (mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text(
+                                        'End time must be after start time',
+                                      ),
+                                    ),
+                                  );
+                                }
+                                return;
+                              }
+                              setState(() => interval.end = val);
+                            }),
+                          ],
+                        ),
+                      ),
+                      // Remove Button
+                      Padding(
+                        padding: const EdgeInsets.only(left: 8, top: 16),
+                        child: IconButton(
+                          icon: const Icon(
+                            Icons.remove_circle_outline,
+                            color: Colors.redAccent,
+                          ),
+                          onPressed: () {
+                            setState(() {
+                              _daySchedules[dataIndex]!.removeAt(slotIndex);
+                            });
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }),
+
+            const SizedBox(height: 8),
+            // Add Slot Button
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () {
+                  setState(() {
+                    _daySchedules[dataIndex]!.add(
+                      TimeInterval(start: '09:00 AM', end: '05:00 PM'),
+                    );
+                  });
+                },
+                icon: const Icon(Icons.add),
+                label: const Text('Add Time Slot'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppPalette.navyPrimary,
+                  side: const BorderSide(color: AppPalette.navyPrimary),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                ),
+              ),
+            ),
+          ] else ...[
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 24),
+              child: Center(
+                child: Column(
+                  children: [
+                    Icon(
+                      Icons.event_busy,
+                      size: 48,
+                      color: Theme.of(
+                        context,
+                      ).disabledColor.withValues(alpha: 0.3),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      'No availability set for $dayName',
+                      style: GoogleFonts.inter(
+                        color: Theme.of(context).disabledColor,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
   List<BlockedDate> _blockedDates = [];
 
   // Date-specific availability overrides (format: "2026-02-10" => [TimeInterval(...)])
@@ -544,196 +785,80 @@ class _CoachAvailabilityScreenState extends State<CoachAvailabilityScreen> {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  // Weekly Schedule List
-                  ...List.generate(_weekDays.length, (index) {
-                    final dayName = _fullDayNames[index];
-                    final isActive = _daySchedules[index]!.isNotEmpty;
+                  // Horizontal Day Selector
+                  SizedBox(
+                    height: 50,
+                    child: ListView.separated(
+                      scrollDirection: Axis.horizontal,
+                      itemCount: 7,
+                      separatorBuilder: (context, index) =>
+                          const SizedBox(width: 12),
+                      itemBuilder: (context, index) {
+                        // Mapping UI index (0=Sun) to Data index (0=Mon)
+                        // UI: Sun(0), Mon(1), Tue(2) ... Sat(6)
+                        // Data: Mon(0), Tue(1) ... Sat(5), Sun(6)
+                        final dataIndex = index == 0 ? 6 : index - 1;
+                        final dayLabel = [
+                          'S',
+                          'M',
+                          'T',
+                          'W',
+                          'T',
+                          'F',
+                          'S',
+                        ][index];
+                        final isSelected = _selectedDayIndex == index;
+                        final hasAvailability =
+                            _daySchedules[dataIndex]?.isNotEmpty ?? false;
 
-                    return Container(
-                      margin: const EdgeInsets.only(bottom: 16),
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).cardColor,
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                          color: isActive
-                              ? AppPalette.navyPrimary.withValues(alpha: 0.1)
-                              : Theme.of(
-                                  context,
-                                ).dividerColor.withValues(alpha: 0.1),
-                          width: isActive ? 2 : 1,
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Theme.of(
-                              context,
-                            ).shadowColor.withValues(alpha: 0.03),
-                            blurRadius: 8,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // Header: Day + Toggle
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(
-                                dayName,
-                                style: GoogleFonts.outfit(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w600,
-                                  color: isActive
-                                      ? AppPalette.navyPrimary
-                                      : Theme.of(context).disabledColor,
-                                ),
-                              ),
-                              Switch(
-                                value: isActive,
-                                activeTrackColor: AppPalette.navyPrimary,
-                                onChanged: (val) {
-                                  setState(() {
-                                    if (val) {
-                                      // Enable: Add default 9-5 slot
-                                      _daySchedules[index] = [
-                                        TimeInterval(
-                                          start: '09:00 AM',
-                                          end: '05:00 PM',
-                                        ),
-                                      ];
-                                    } else {
-                                      // Disable: Clear slots
-                                      _daySchedules[index] = [];
-                                    }
-                                  });
-                                },
-                              ),
-                            ],
-                          ),
-
-                          // Time Slots (if active)
-                          if (isActive) ...[
-                            const Divider(height: 24),
-                            ...List.generate(_daySchedules[index]!.length, (
-                              slotIndex,
-                            ) {
-                              final interval = _daySchedules[index]![slotIndex];
-                              return Padding(
-                                padding: const EdgeInsets.only(bottom: 12),
-                                child: Row(
-                                  children: [
-                                    Expanded(
-                                      child: _buildTimeDropdown(interval.start, (
-                                        val,
-                                      ) {
-                                        final startMin = _minutesFromTime(
-                                          _parseTime(val),
-                                        );
-                                        final endMin = _minutesFromTime(
-                                          _parseTime(interval.end),
-                                        );
-
-                                        setState(() {
-                                          interval.start = val;
-                                          if (startMin >= endMin) {
-                                            // Auto-adjust end time to be 1 hour after start
-                                            interval.end = _formatTime(
-                                              _timeFromMinutes(startMin + 60),
-                                            );
-                                          }
-                                        });
-                                      }),
-                                    ),
-                                    Padding(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 12,
-                                      ),
-                                      child: Text(
-                                        'To',
-                                        style: GoogleFonts.inter(
-                                          color: Colors.grey,
-                                          fontSize: 12,
-                                        ),
-                                      ),
-                                    ),
-                                    Expanded(
-                                      child: _buildTimeDropdown(interval.end, (
-                                        val,
-                                      ) {
-                                        final startMin = _minutesFromTime(
-                                          _parseTime(interval.start),
-                                        );
-                                        final endMin = _minutesFromTime(
-                                          _parseTime(val),
-                                        );
-
-                                        if (endMin <= startMin) {
-                                          if (mounted) {
-                                            ScaffoldMessenger.of(
-                                              context,
-                                            ).showSnackBar(
-                                              const SnackBar(
-                                                content: Text(
-                                                  'End time must be after start time',
-                                                ),
-                                              ),
-                                            );
-                                          }
-                                          return;
-                                        }
-                                        setState(() => interval.end = val);
-                                      }),
-                                    ),
-                                    IconButton(
-                                      icon: const Icon(
-                                        Icons.close,
-                                        size: 20,
-                                        color: Colors.grey,
-                                      ),
-                                      onPressed: () {
-                                        setState(() {
-                                          _daySchedules[index]!.removeAt(
-                                            slotIndex,
-                                          );
-                                          // Ensure we don't end up with empty list (which implies disabled)
-                                          // unless user explicitly toggles off.
-                                          // But for now, empty list = disabled is consistent.
-                                        });
-                                      },
-                                    ),
-                                  ],
-                                ),
-                              );
-                            }),
-
-                            // Add Slot Button
-                            TextButton.icon(
-                              onPressed: () {
-                                setState(() {
-                                  _daySchedules[index]!.add(
-                                    TimeInterval(
-                                      start: '09:00 AM',
-                                      end: '05:00 PM',
-                                    ),
-                                  );
-                                });
-                              },
-                              icon: const Icon(
-                                Icons.add_circle_outline,
-                                size: 16,
-                              ),
-                              label: const Text('Add Time Slot'),
-                              style: TextButton.styleFrom(
-                                foregroundColor: AppPalette.navyPrimary,
+                        return GestureDetector(
+                          onTap: () =>
+                              setState(() => _selectedDayIndex = index),
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 200),
+                            width: 44,
+                            height: 44,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: isSelected
+                                  ? AppPalette.navyPrimary
+                                  : (hasAvailability
+                                        ? AppPalette.orangeAccent.withValues(
+                                            alpha: 0.2,
+                                          )
+                                        : Theme.of(context).cardColor),
+                              border: Border.all(
+                                color: isSelected
+                                    ? AppPalette.navyPrimary
+                                    : (hasAvailability
+                                          ? AppPalette.orangeAccent
+                                          : Colors.grey.withValues(alpha: 0.3)),
+                                width: 2,
                               ),
                             ),
-                          ],
-                        ],
-                      ),
-                    );
-                  }),
+                            alignment: Alignment.center,
+                            child: Text(
+                              dayLabel,
+                              style: GoogleFonts.outfit(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: isSelected
+                                    ? Colors.white
+                                    : (hasAvailability
+                                          ? AppPalette.orangeAccent
+                                          : Colors.grey),
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+
+                  const SizedBox(height: 24),
+
+                  // Selected Day Details
+                  _buildDayDetails(),
 
                   const SizedBox(height: 16),
 

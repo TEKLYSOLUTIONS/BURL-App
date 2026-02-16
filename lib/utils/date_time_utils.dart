@@ -127,6 +127,23 @@ class DateTimeUtils {
     }
   }
 
+  /// Format duration in minutes to readable format (e.g., "1d 2h 30m", "2h 45m")
+  static String formatDurationDetailed(int totalMinutes) {
+    if (totalMinutes < 0) return '0m';
+
+    final days = totalMinutes ~/ (24 * 60);
+    final hours = (totalMinutes % (24 * 60)) ~/ 60;
+    final minutes = totalMinutes % 60;
+
+    List<String> parts = [];
+    if (days > 0) parts.add('${days}d');
+    if (hours > 0) parts.add('${hours}h');
+    if (minutes > 0) parts.add('${minutes}m');
+
+    if (parts.isEmpty) return '0m';
+    return parts.join(' ');
+  }
+
   /// Get time until session starts (e.g., "Starts in 2h 30m", "Started 15m ago")
   static String getTimeUntilSession(DateTime startTime) {
     final now = DateTime.now();
@@ -172,5 +189,10 @@ class DateTimeUtils {
   /// Format DateTime object to standard date (e.g., "MMM dd, yyyy")
   static String formatDate(DateTime dateTime) {
     return DateFormat('MMM dd, yyyy').format(dateTime);
+  }
+
+  /// Check if two dates are on the same day
+  static bool isSameDay(DateTime a, DateTime b) {
+    return a.year == b.year && a.month == b.month && a.day == b.day;
   }
 }

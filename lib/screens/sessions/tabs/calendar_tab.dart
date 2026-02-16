@@ -241,12 +241,14 @@ class _CalendarTabState extends State<CalendarTab> {
           onTap: () {
             if (isBooking) {
               // Navigate to booking details (if implemented) or show bottom sheet
-              // For now, let's show a snackbar or simple dialog as placeholder if booking details screen doesn't exist
-              // Or navigate to unique booking details route
-              context.push('/coach/sessions/booking/${event['data']['_id']}');
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Booking details feature coming soon!'),
+                ),
+              );
             } else {
               // Navigate to session details
-              context.push('/coach/sessions/${event['data']['_id']}');
+              context.push('/session-details/${event['data']['_id']}');
             }
           },
           child: Container(

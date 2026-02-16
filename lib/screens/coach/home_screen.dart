@@ -12,6 +12,8 @@ import '../../services/dashboard_service.dart';
 import '../../services/session_service.dart'; // Import SessionService
 import '../../utils/date_time_utils.dart';
 import '../../utils/activity_utils.dart';
+import '../../utils/session_utils.dart'; // Import SessionUtils
+import '../../navigation/app_router.dart';
 
 class CoachHomeScreen extends StatefulWidget {
   const CoachHomeScreen({super.key});
@@ -20,7 +22,7 @@ class CoachHomeScreen extends StatefulWidget {
   State<CoachHomeScreen> createState() => _CoachHomeScreenState();
 }
 
-class _CoachHomeScreenState extends State<CoachHomeScreen> {
+class _CoachHomeScreenState extends State<CoachHomeScreen> with RouteAware {
   String _userName = 'Coach';
   bool _isLoading = true;
   DateTime _selectedDate = DateTime.now(); // Track selected date
@@ -29,7 +31,6 @@ class _CoachHomeScreenState extends State<CoachHomeScreen> {
   int _todaySessionsCount = 0;
   double _totalEarnings = 0.0; // New state for Total Earnings
   int _todayStudentsCount = 0;
-  List<dynamic> _upcomingSessions = [];
   List<dynamic> _todaysSessions = [];
   List<dynamic> _recentActivity = [];
 
@@ -38,6 +39,31 @@ class _CoachHomeScreenState extends State<CoachHomeScreen> {
     super.initState();
     _loadUserData();
     _loadDashboardData();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final route = ModalRoute.of(context);
+    if (route is PageRoute) {
+      AppRouter.routeObserver.subscribe(this, route);
+    }
+  }
+
+  @override
+  void dispose() {
+    AppRouter.routeObserver.unsubscribe(this);
+    super.dispose();
+  }
+
+  @override
+  void didPopNext() {
+    // Refresh data when returning to this screen
+    _loadDashboardData();
+    // Also reload sessions for the selected date if it's not today
+    if (!_isToday(_selectedDate)) {
+      _loadSessionsForDate(_selectedDate);
+    }
   }
 
   // Helper to check if date is today
@@ -108,7 +134,6 @@ class _CoachHomeScreenState extends State<CoachHomeScreen> {
               .toDouble(); // Fetch Total Earnings
           _todayStudentsCount = todaySummary?['students'] ?? 0;
 
-          _upcomingSessions = List.from(data['upcomingSessions'] ?? []);
           _recentActivity = List.from(data['recentActivity'] ?? []);
 
           _todaysSessions = todaySessionsResponse['sessions'] as List<dynamic>;
@@ -550,15 +575,60 @@ class _CoachHomeScreenState extends State<CoachHomeScreen> {
   }
 
   Widget _buildNextSessionSection() {
-    // Find the next session (closest to now but in future)
-    dynamic nextSession;
-    if (_upcomingSessions.isNotEmpty) {
-      nextSession = _upcomingSessions.first;
+    // 1. Check for TODAY'S sessions first
+    final hasTodaySessions = _todaysSessions.isNotEmpty;
+
+    if (!hasTodaySessions) {
+      // 2. Explicitly show "No sessions today" if today is empty
+      // We do NOT populate this with tomorrow's session anymore, per user request.
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'NEXT SESSION',
+            style: GoogleFonts.inter(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: AppPalette.textSecondaryLight,
+              letterSpacing: 1.2,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: Theme.of(context).cardColor,
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(
+                color: Theme.of(context).dividerColor.withValues(alpha: 0.1),
+              ),
+            ),
+            child: Column(
+              children: [
+                Icon(
+                  Icons.event_available,
+                  size: 32,
+                  color: Theme.of(context).disabledColor,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'No sessions today',
+                  style: GoogleFonts.inter(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: Theme.of(context).textTheme.bodyMedium?.color,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      );
     }
 
-    if (nextSession == null) {
-      return const SizedBox.shrink(); // Don't show if no next session
-    }
+    // 3. If we have sessions today, show the first one
+    final nextSession = _todaysSessions.first;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -690,7 +760,7 @@ class _CoachHomeScreenState extends State<CoachHomeScreen> {
                           borderRadius: BorderRadius.circular(12),
                           child: Container(
                             padding: const EdgeInsets.symmetric(
-                              horizontal: 16,
+                              horizontal: 12, // Reduced padding
                               vertical: 10,
                             ),
                             decoration: BoxDecoration(
@@ -708,7 +778,7 @@ class _CoachHomeScreenState extends State<CoachHomeScreen> {
                                     context,
                                   ).colorScheme.onPrimary,
                                 ),
-                                const SizedBox(width: 6),
+                                const SizedBox(width: 4), // Reduced spacing
                                 Text(
                                   'Start',
                                   style: GoogleFonts.inter(
@@ -734,7 +804,7 @@ class _CoachHomeScreenState extends State<CoachHomeScreen> {
                         borderRadius: BorderRadius.circular(12),
                         child: Container(
                           padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
+                            horizontal: 12, // Reduced padding
                             vertical: 10,
                           ),
                           decoration: BoxDecoration(
@@ -757,7 +827,7 @@ class _CoachHomeScreenState extends State<CoachHomeScreen> {
                                   ).colorScheme.onSurface,
                                 ),
                               ),
-                              const SizedBox(width: 6),
+                              const SizedBox(width: 4), // Reduced spacing
                               Icon(
                                 Icons.arrow_forward,
                                 size: 14,
@@ -773,16 +843,26 @@ class _CoachHomeScreenState extends State<CoachHomeScreen> {
               ],
             ),
           ),
-          const SizedBox(width: 16),
-
+          const SizedBox(width: 12), // Reduced spacing from 16
           // Image
           ClipRRect(
             borderRadius: BorderRadius.circular(16),
             child: Image.network(
-              'https://images.unsplash.com/photo-1566241142559-40e1dab266c6?auto=format&fit=crop&q=80&w=300',
+              SessionUtils.getSessionImage(session), // Dynamic Image
               width: 100,
               height: 100,
               fit: BoxFit.cover,
+              errorBuilder: (context, error, stackTrace) {
+                return Container(
+                  width: 100,
+                  height: 100,
+                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                  child: Icon(
+                    Icons.sports_cricket,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                );
+              },
             ),
           ),
         ],

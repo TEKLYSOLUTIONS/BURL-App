@@ -45,6 +45,7 @@ class SessionService {
     // Legacy support (to be removed or mapped to pricing)
     double priceAmount = 0.0,
     bool pricePerPerson = true,
+    String status = 'published', // Default to published
   }) async {
     try {
       final body = {
@@ -75,6 +76,7 @@ class SessionService {
               'pricePerPerson': pricePerPerson,
               'model': 'per-session',
             },
+        'status': status,
       };
 
       final httpResponse = await ApiService.post('sessions', body);
