@@ -43,7 +43,7 @@ jobs:
 
           # Apply provisioning profile
           mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
-          cp $PP_PATH ~/Library/MobileDevice/Provisioning\ Profiles
+          cp $PP_PATH ~/Library/MobileDevice/Provisioning\ Profiles/
 
       # 2. Setup Flutter
       - uses: subosito/flutter-action@v2
@@ -58,15 +58,8 @@ jobs:
         run: |
           flutter build ios --release --no-codesign
           cd ios
-          xcodebuild -workspace Runner.xcworkspace -scheme Runner -configuration Release archive -archivePath Runner.xcarchive -allowProvisioningUpdates PROVISIONING_PROFILE_SPECIFIER="Burl_AppStore_Profile" CODE_SIGN_STYLE="Manual" CODE_SIGN_IDENTITY="iPhone Distribution" 
+          xcodebuild -workspace Runner.xcworkspace -scheme Runner -configuration Release archive -archivePath Runner.xcarchive -allowProvisioningUpdates PROVISIONING_PROFILE_SPECIFIER="Burl_AppStore_Profile" DEVELOPMENT_TEAM="BGYRZ2L6NY" CODE_SIGN_STYLE="Manual" CODE_SIGN_IDENTITY="iPhone Distribution" 
           xcodebuild -exportArchive -archivePath Runner.xcarchive -exportOptionsPlist ExportOptions.plist -exportPath ./build
-
-      # Note: The above build command is complex. A simpler way with Flutter is usually:
-      # flutter build ipa --release --export-options-plist=ios/ExportOptions.plist
-      # You need to create ios/ExportOptions.plist first.
-
-      - name: Build IPA (Flutter way)
-        run: flutter build ipa --release --export-options-plist=ios/ExportOptions.plist
 
       # 4. Upload to TestFlight
       - name: Upload to TestFlight
