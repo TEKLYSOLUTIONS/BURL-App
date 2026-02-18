@@ -285,7 +285,7 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
               children: [
                 Text(
                   session['title'] ?? 'Training Session',
-                  style: GoogleFonts.outfit(
+                  style: GoogleFonts.inter(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
                     color: Theme.of(context).colorScheme.onSurface,
@@ -378,7 +378,7 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
                 const SizedBox(height: 8),
                 Text(
                   '${_stats?['managedPlayers'] ?? 0}',
-                  style: GoogleFonts.outfit(
+                  style: GoogleFonts.inter(
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
                     color: Theme.of(context).colorScheme.onSurface,
@@ -433,7 +433,7 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
                 const SizedBox(height: 8),
                 Text(
                   '${_stats?['upcomingSessions'] ?? 0}',
-                  style: GoogleFonts.outfit(
+                  style: GoogleFonts.inter(
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
                     color: Theme.of(context).colorScheme.onSurface,
@@ -514,7 +514,7 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
                     const SizedBox(width: 8),
                     Text(
                       'Overview',
-                      style: GoogleFonts.outfit(
+                      style: GoogleFonts.inter(
                         color: isSelected
                             ? Theme.of(context).colorScheme.onPrimary
                             : Theme.of(context).colorScheme.primary,
@@ -590,7 +590,7 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
                     const SizedBox(width: 10),
                     Text(
                       playerName,
-                      style: GoogleFonts.outfit(
+                      style: GoogleFonts.inter(
                         color: isSelected
                             ? Theme.of(context).colorScheme.onPrimary
                             : Theme.of(context).colorScheme.primary,
@@ -934,7 +934,7 @@ class _UpNextCard extends StatelessWidget {
                         children: [
                           Text(
                             session['title'] ?? 'Training',
-                            style: GoogleFonts.outfit(
+                            style: GoogleFonts.inter(
                               fontWeight: FontWeight.bold,
                               fontSize: 18,
                               color: AppPalette.navyPrimary,

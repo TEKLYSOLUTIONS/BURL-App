@@ -15,7 +15,7 @@ class PlayerReportsScreen extends StatelessWidget {
       appBar: AppBar(
         title: Text(
           'Performance Reports',
-          style: GoogleFonts.outfit(
+          style: GoogleFonts.inter(
             color: Theme.of(context).colorScheme.onSurface,
             fontWeight: FontWeight.bold,
           ),
@@ -75,7 +75,7 @@ class PlayerReportsScreen extends StatelessWidget {
               children: [
                 Text(
                   _getReportTitle(index),
-                  style: GoogleFonts.outfit(
+                  style: GoogleFonts.inter(
                     fontWeight: FontWeight.bold,
                     fontSize: 16,
                     color: Theme.of(context).colorScheme.onSurface,

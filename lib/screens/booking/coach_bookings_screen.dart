@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
+import '../../config/palette.dart';
+import '../../utils/responsive.dart';
 import '../../services/booking_service.dart';
 
 class CoachBookingsScreen extends ConsumerStatefulWidget {
@@ -66,7 +68,12 @@ class _CoachBookingsScreenState extends ConsumerState<CoachBookingsScreen>
         setState(() => _isLoading = false);
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text('Failed to load bookings: $e')));
+        ).showSnackBar(
+          SnackBar(
+            content: Text('Failed to load bookings: $e'),
+            backgroundColor: AppPalette.error,
+          ),
+        );
       }
     }
   }
@@ -97,14 +104,24 @@ class _CoachBookingsScreenState extends ConsumerState<CoachBookingsScreen>
       if (mounted) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text('Booking $status successfully')));
+        ).showSnackBar(
+          SnackBar(
+            content: Text('Booking $status successfully'),
+            backgroundColor: AppPalette.successGreen,
+          ),
+        );
         _loadBookings(); // Refresh lists
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text('Failed to update status: $e')));
+        ).showSnackBar(
+          SnackBar(
+            content: Text('Failed to update status: $e'),
+            backgroundColor: AppPalette.error,
+          ),
+        );
       }
     }
   }
@@ -114,19 +131,33 @@ class _CoachBookingsScreenState extends ConsumerState<CoachBookingsScreen>
     return showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text(title),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        title: Text(
+          title,
+          style: GoogleFonts.inter(
+            fontSize: context.text.h4,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text('Are you sure you want to ${title.toLowerCase()}?'),
-            const SizedBox(height: 16),
+            Text(
+              'Are you sure you want to ${title.toLowerCase()}?',
+              style: GoogleFonts.inter(
+                fontSize: context.text.body,
+              ),
+            ),
+            SizedBox(height: context.spacing.md),
             TextField(
               controller: reasonController,
               decoration: InputDecoration(
                 labelText: label,
                 border: const OutlineInputBorder(),
               ),
-              maxLines: 2,
+              maxLines: 3,
             ),
           ],
         ),
@@ -135,9 +166,11 @@ class _CoachBookingsScreenState extends ConsumerState<CoachBookingsScreen>
             onPressed: () => Navigator.pop(context),
             child: const Text('Cancel'),
           ),
-          TextButton(
+          ElevatedButton(
             onPressed: () => Navigator.pop(context, reasonController.text),
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppPalette.error,
+            ),
             child: Text(title),
           ),
         ],
@@ -152,17 +185,30 @@ class _CoachBookingsScreenState extends ConsumerState<CoachBookingsScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
+        elevation: 0,
         title: Text(
           'Manage Bookings',
-          style: GoogleFonts.outfit(fontWeight: FontWeight.bold),
+          style: GoogleFonts.inter(
+            fontWeight: FontWeight.bold,
+            fontSize: 18,
+          ),
         ),
         bottom: TabBar(
           controller: _tabController,
-          labelStyle: GoogleFonts.outfit(fontWeight: FontWeight.bold),
-          unselectedLabelStyle: GoogleFonts.outfit(),
-          indicatorColor: Theme.of(context).colorScheme.primary,
-          labelColor: Theme.of(context).colorScheme.primary,
+          labelStyle: GoogleFonts.inter(
+            fontWeight: FontWeight.w600,
+            fontSize: 14,
+          ),
+          unselectedLabelStyle: GoogleFonts.inter(
+            fontWeight: FontWeight.w500,
+            fontSize: 14,
+          ),
+          indicatorColor: AppPalette.orangeAccent,
+          labelColor: AppPalette.white,
+          unselectedLabelColor: AppPalette.white.withValues(alpha: 0.7),
+          indicatorWeight: 3,
           tabs: const [
             Tab(text: 'Upcoming'),
             Tab(text: 'Past'),
@@ -171,7 +217,11 @@ class _CoachBookingsScreenState extends ConsumerState<CoachBookingsScreen>
         ),
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? Center(
+              child: CircularProgressIndicator(
+                color: AppPalette.orangeAccent,
+              ),
+            )
           : TabBarView(
               controller: _tabController,
               children: [
@@ -191,13 +241,16 @@ class _CoachBookingsScreenState extends ConsumerState<CoachBookingsScreen>
           children: [
             Icon(
               Icons.calendar_today_outlined,
-              size: 64,
-              color: Colors.grey[400],
+              size: context.responsive.circularSize(32),
+              color: AppPalette.textDisabled,
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: context.spacing.lg),
             Text(
               'No bookings found',
-              style: GoogleFonts.outfit(fontSize: 18, color: Colors.grey[600]),
+              style: GoogleFonts.inter(
+                fontSize: context.text.body,
+                color: AppPalette.textSecondaryLight,
+              ),
             ),
           ],
         ),
@@ -205,7 +258,7 @@ class _CoachBookingsScreenState extends ConsumerState<CoachBookingsScreen>
     }
 
     return ListView.builder(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(context.spacing.md),
       itemCount: bookings.length,
       itemBuilder: (context, index) {
         final booking = bookings[index];
@@ -215,13 +268,13 @@ class _CoachBookingsScreenState extends ConsumerState<CoachBookingsScreen>
         final status = booking['status'];
 
         return Card(
-          margin: const EdgeInsets.only(bottom: 16),
+          margin: EdgeInsets.only(bottom: context.spacing.md),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
-          elevation: 2,
+          elevation: 0,
           child: Padding(
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.all(context.spacing.md),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -229,45 +282,45 @@ class _CoachBookingsScreenState extends ConsumerState<CoachBookingsScreen>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     CircleAvatar(
-                      radius: 24,
+                      radius: context.responsive.circularSize(12),
                       backgroundImage: NetworkImage(
                         player['profilePhoto'] ?? 'https://i.pravatar.cc/150',
                       ),
                     ),
-                    const SizedBox(width: 16),
+                    SizedBox(width: context.spacing.md),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
                             player['fullName'] ?? 'Unknown Player',
-                            style: GoogleFonts.outfit(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
+                            style: GoogleFonts.inter(
+                              fontSize: context.text.h4,
+                              fontWeight: FontWeight.w600,
                             ),
                           ),
-                          const SizedBox(height: 4),
+                          SizedBox(height: context.spacing.xs),
                           Text(
                             session['title'] ?? 'Unknown Session',
                             style: GoogleFonts.inter(
-                              color: Colors.grey[600],
-                              fontSize: 13,
+                              fontSize: context.text.caption,
+                              color: AppPalette.textSecondaryLight,
                             ),
                           ),
-                          const SizedBox(height: 4),
+                          SizedBox(height: context.spacing.xs),
                           Row(
                             children: [
                               Icon(
                                 Icons.access_time,
                                 size: 14,
-                                color: Colors.grey[600],
+                                color: AppPalette.textSecondaryLight,
                               ),
-                              const SizedBox(width: 4),
+                              SizedBox(width: context.spacing.xs),
                               Text(
                                 '${DateFormat('MMM d, y').format(date)} • ${DateFormat('h:mm a').format(date)}',
                                 style: GoogleFonts.inter(
-                                  color: Colors.grey[600],
-                                  fontSize: 13,
+                                  fontSize: context.text.caption,
+                                  color: AppPalette.textSecondaryLight,
                                   fontWeight: FontWeight.w500,
                                 ),
                               ),
@@ -280,7 +333,7 @@ class _CoachBookingsScreenState extends ConsumerState<CoachBookingsScreen>
                   ],
                 ),
                 if (showActions) ...[
-                  const Divider(height: 24),
+                  Divider(height: context.spacing.lg * 1.5),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.end,
                     children: [
@@ -289,18 +342,20 @@ class _CoachBookingsScreenState extends ConsumerState<CoachBookingsScreen>
                           onPressed: () =>
                               _updateBookingStatus(booking['_id'], 'declined'),
                           style: OutlinedButton.styleFrom(
-                            foregroundColor: Colors.red,
-                            side: const BorderSide(color: Colors.red),
+                            foregroundColor: AppPalette.error,
+                            side: BorderSide(color: AppPalette.error),
+                            minimumSize: const Size(90, 40),
                           ),
                           child: const Text('Decline'),
                         ),
-                        const SizedBox(width: 8),
+                        SizedBox(width: context.spacing.sm),
                         ElevatedButton(
                           onPressed: () =>
                               _updateBookingStatus(booking['_id'], 'confirmed'),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.green,
-                            foregroundColor: Colors.white,
+                            backgroundColor: AppPalette.successGreen,
+                            foregroundColor: AppPalette.white,
+                            minimumSize: const Size(90, 40),
                           ),
                           child: const Text('Accept'),
                         ),
@@ -309,11 +364,12 @@ class _CoachBookingsScreenState extends ConsumerState<CoachBookingsScreen>
                         OutlinedButton.icon(
                           onPressed: () => _cancelBooking(booking['_id']),
                           style: OutlinedButton.styleFrom(
-                            foregroundColor: Colors.red,
-                            side: const BorderSide(color: Colors.red),
+                            foregroundColor: AppPalette.error,
+                            side: BorderSide(color: AppPalette.error),
+                            minimumSize: const Size(140, 40),
                           ),
                           icon: const Icon(Icons.cancel_outlined, size: 18),
-                          label: const Text('Cancel / Refund'),
+                          label: const Text('Cancel'),
                         ),
                       ],
                     ],
@@ -331,24 +387,27 @@ class _CoachBookingsScreenState extends ConsumerState<CoachBookingsScreen>
     Color color;
     switch (status.toLowerCase()) {
       case 'confirmed':
-        color = Colors.green;
+        color = AppPalette.successGreen;
         break;
       case 'pending':
-        color = Colors.orange;
+        color = AppPalette.orangeAccent;
         break;
       case 'cancelled':
       case 'declined':
-        color = Colors.red;
+        color = AppPalette.error;
         break;
       case 'completed':
-        color = Colors.blue;
+        color = AppPalette.navyPrimary;
         break;
       default:
-        color = Colors.grey;
+        color = AppPalette.textDisabled;
     }
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      padding: EdgeInsets.symmetric(
+        horizontal: context.spacing.sm,
+        vertical: context.spacing.xs,
+      ),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(20),
@@ -356,10 +415,11 @@ class _CoachBookingsScreenState extends ConsumerState<CoachBookingsScreen>
       ),
       child: Text(
         status.toUpperCase(),
-        style: GoogleFonts.outfit(
+        style: GoogleFonts.inter(
           color: color,
           fontSize: 10,
           fontWeight: FontWeight.bold,
+          letterSpacing: 0.5,
         ),
       ),
     );

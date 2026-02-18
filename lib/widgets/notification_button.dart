@@ -84,51 +84,50 @@ class _NotificationButtonState extends State<NotificationButton> {
           child: Stack(
             alignment: Alignment.center,
             children: [
-              Icon(
-                hasNotification
-                    ? Icons.notifications
-                    : Icons.notifications_none,
-                color:
-                    widget.iconColor ??
-                    (isDark ? Colors.white : Theme.of(context).iconTheme.color),
-                size: 20,
+              Center(
+                child: Icon(
+                  hasNotification
+                      ? Icons
+                            .notifications_active // Changed icon for active state
+                      : Icons.notifications_none,
+                  color:
+                      widget.iconColor ??
+                      (isDark
+                          ? Colors.white
+                          : Theme.of(
+                              context,
+                            ).primaryColor), // Use primary color for light theme
+                  size: 24, // Increased size
+                ),
               ),
               if (hasNotification && widget.showCount)
                 Positioned(
-                  top: 8,
-                  right: 8,
+                  top: -2, // Adjusted top position
+                  right: -2, // Adjusted right position
                   child: Container(
-                    constraints: const BoxConstraints(
-                      minWidth: 16,
-                      minHeight: 16,
-                    ),
-                    padding: const EdgeInsets.all(2),
-                    decoration: const BoxDecoration(
+                    padding: const EdgeInsets.all(4), // Increased padding
+                    decoration: BoxDecoration(
                       color: Colors.red,
                       shape: BoxShape.circle,
+                      border: Border.all(
+                        color: Theme.of(context).scaffoldBackgroundColor,
+                        width: 1.5,
+                      ), // Add border for separation
+                    ),
+                    constraints: const BoxConstraints(
+                      minWidth: 18, // Minimum width for the badge
+                      minHeight: 18, // Minimum height for the badge
                     ),
                     child: Center(
                       child: Text(
-                        _unreadCount > 99 ? '99+' : _unreadCount.toString(),
+                        _unreadCount > 99 ? '99+' : '$_unreadCount',
                         style: GoogleFonts.inter(
                           color: Colors.white,
-                          fontSize: 9,
+                          fontSize: 10,
                           fontWeight: FontWeight.bold,
                         ),
+                        textAlign: TextAlign.center,
                       ),
-                    ),
-                  ),
-                )
-              else if (hasNotification)
-                Positioned(
-                  top: 10,
-                  right: 12,
-                  child: Container(
-                    width: 8,
-                    height: 8,
-                    decoration: const BoxDecoration(
-                      color: Colors.red,
-                      shape: BoxShape.circle,
                     ),
                   ),
                 ),

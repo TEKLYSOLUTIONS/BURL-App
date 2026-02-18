@@ -174,46 +174,6 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                         child: Column(
                           children: [
                             // Badge
-                            Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 16,
-                                    vertical: 8,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white.withValues(alpha: 0.5),
-                                    borderRadius: BorderRadius.circular(20),
-                                    border: Border.all(
-                                      color: Colors.white.withValues(
-                                        alpha: 0.2,
-                                      ),
-                                    ),
-                                  ),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      const Icon(
-                                        Icons.circle,
-                                        size: 8,
-                                        color: AppPalette.orangeAccent,
-                                      ),
-                                      const SizedBox(width: 8),
-                                      Text(
-                                        '#1 COACHING APP',
-                                        style: GoogleFonts.inter(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w600,
-                                          color: Colors.white,
-                                          letterSpacing: 0.5,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                )
-                                .animate()
-                                .fadeIn(delay: 200.ms)
-                                .slideY(begin: 0.2),
-
-                            const SizedBox(height: 24),
 
                             // Animated Headlines
                             AnimatedSwitcher(
@@ -222,7 +182,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                                 key: ValueKey<int>(_currentPage),
                                 textAlign: TextAlign.center,
                                 text: TextSpan(
-                                  style: GoogleFonts.outfit(
+                                  style: GoogleFonts.inter(
                                     fontSize: 32,
                                     fontWeight: FontWeight.bold,
                                     height: 1.1,

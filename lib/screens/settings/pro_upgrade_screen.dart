@@ -4,6 +4,9 @@ import 'package:go_router/go_router.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../config/palette.dart';
 
+import '../../models/subscription_plan.dart';
+import '../../services/subscription_service.dart';
+
 class ProUpgradeScreen extends StatefulWidget {
   const ProUpgradeScreen({super.key});
 
@@ -13,8 +16,36 @@ class ProUpgradeScreen extends StatefulWidget {
 
 class _ProUpgradeScreenState extends State<ProUpgradeScreen> {
   bool _isAnnual = false;
-  bool _isLoading = false;
+  bool _isLoading = true; // Start loading true
   final TextEditingController _promoController = TextEditingController();
+  final _subscriptionService = SubscriptionService();
+  List<SubscriptionPlan> _plans = [];
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchPlans();
+  }
+
+  Future<void> _fetchPlans() async {
+    try {
+      final plans = await _subscriptionService.getPlans();
+      if (mounted) {
+        setState(() {
+          _plans = plans;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _error = e.toString();
+          _isLoading = false;
+        });
+      }
+    }
+  }
 
   @override
   void dispose() {
@@ -68,136 +99,175 @@ class _ProUpgradeScreenState extends State<ProUpgradeScreen> {
         children: [
           _buildHeader(),
           Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  // 1. Free Plan Container
-                  _buildFreePlanCard()
-                      .animate()
-                      .fadeIn(duration: 400.ms)
-                      .slideY(begin: 0.1),
-
-                  const SizedBox(height: 24),
-
-                  // 2. Toggle for Monthly / Annual
-                  Center(
-                    child: Container(
-                      padding: const EdgeInsets.all(4),
-                      decoration: BoxDecoration(
-                        color: Colors.grey[100],
-                        borderRadius: BorderRadius.circular(30),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          _buildToggleOption('Monthly', !_isAnnual),
-                          _buildToggleOption('Annual (Save 20%)', _isAnnual),
-                        ],
-                      ),
-                    ),
-                  ).animate().fadeIn(delay: 100.ms),
-
-                  const SizedBox(height: 24),
-
-                  // 3. Pro Plan Card
-                  _buildProPlanCard()
-                      .animate()
-                      .fadeIn(delay: 200.ms)
-                      .slideY(begin: 0.1),
-
-                  const SizedBox(height: 24),
-
-                  // 4. Trial Banner
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFFF7D20), // Vibrant Orange
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Row(
+            child: _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : _error != null
+                ? Center(
+                    child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Icon(Icons.card_giftcard, color: Colors.white),
-                        const SizedBox(width: 8),
                         Text(
-                          '7-day free trial included',
-                          style: GoogleFonts.outfit(
-                            color: Colors.white,
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
+                          'Error loading plans',
+                          style: GoogleFonts.inter(fontSize: 18),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          _error!,
+                          style: GoogleFonts.inter(
+                            fontSize: 14,
+                            color: Colors.red,
                           ),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 16),
+                        ElevatedButton(
+                          onPressed: _fetchPlans,
+                          child: const Text('Retry'),
                         ),
                       ],
                     ),
-                  ).animate().fadeIn(delay: 300.ms),
+                  )
+                : SingleChildScrollView(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 24,
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        // 1. Free Plan Container
+                        _buildFreePlanCard()
+                            .animate()
+                            .fadeIn(duration: 400.ms)
+                            .slideY(begin: 0.1),
 
-                  const SizedBox(height: 32),
+                        const SizedBox(height: 24),
 
-                  // 5. Promo Code Section
-                  _buildPromoCodeSection().animate().fadeIn(delay: 400.ms),
-
-                  const SizedBox(height: 40),
-
-                  // 6. Start Free Trial CTA
-                  SizedBox(
-                    height: 56,
-                    child: ElevatedButton(
-                      onPressed: _isLoading ? null : _handleSubscription,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFFFF7D20),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(30),
-                        ),
-                        elevation: 4,
-                        shadowColor: Colors.orange.withValues(alpha: 0.4),
-                      ),
-                      child: _isLoading
-                          ? const SizedBox(
-                              width: 24,
-                              height: 24,
-                              child: CircularProgressIndicator(
-                                color: Colors.white,
-                                strokeWidth: 2,
-                              ),
-                            )
-                          : Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
+                        // 2. Toggle for Monthly / Annual
+                        Center(
+                          child: Container(
+                            padding: const EdgeInsets.all(4),
+                            decoration: BoxDecoration(
+                              color: Colors.grey[100],
+                              borderRadius: BorderRadius.circular(30),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
                               children: [
-                                Text(
-                                  'Start Free Trial',
-                                  style: GoogleFonts.outfit(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.white,
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                const Icon(
-                                  Icons.arrow_forward,
-                                  color: Colors.white,
+                                _buildToggleOption('Monthly', !_isAnnual),
+                                _buildToggleOption(
+                                  'Annual (Save 20%)',
+                                  _isAnnual,
                                 ),
                               ],
                             ),
-                    ),
-                  ).animate().fadeIn(delay: 500.ms).slideY(begin: 0.2),
+                          ),
+                        ).animate().fadeIn(delay: 100.ms),
 
-                  const SizedBox(height: 24),
+                        const SizedBox(height: 24),
 
-                  Text(
-                    'Recurring billing, cancel anytime.',
-                    textAlign: TextAlign.center,
-                    style: GoogleFonts.inter(
-                      fontSize: 12,
-                      color: Colors.grey[500],
+                        // 3. Pro Plan Card
+                        _buildProPlanCard()
+                            .animate()
+                            .fadeIn(delay: 200.ms)
+                            .slideY(begin: 0.1),
+
+                        const SizedBox(height: 24),
+
+                        // 4. Trial Banner
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFF7D20), // Vibrant Orange
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(
+                                Icons.card_giftcard,
+                                color: Colors.white,
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                '7-day free trial included',
+                                style: GoogleFonts.inter(
+                                  color: Colors.white,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ).animate().fadeIn(delay: 300.ms),
+
+                        const SizedBox(height: 32),
+
+                        // 5. Promo Code Section
+                        _buildPromoCodeSection().animate().fadeIn(
+                          delay: 400.ms,
+                        ),
+
+                        const SizedBox(height: 40),
+
+                        // 6. Start Free Trial CTA
+                        SizedBox(
+                          height: 56,
+                          child: ElevatedButton(
+                            onPressed: _isLoading ? null : _handleSubscription,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFFFF7D20),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(30),
+                              ),
+                              elevation: 4,
+                              shadowColor: Colors.orange.withValues(alpha: 0.4),
+                            ),
+                            child: _isLoading
+                                ? const SizedBox(
+                                    width: 24,
+                                    height: 24,
+                                    child: CircularProgressIndicator(
+                                      color: Colors.white,
+                                      strokeWidth: 2,
+                                    ),
+                                  )
+                                : Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Text(
+                                        'Start Free Trial',
+                                        style: GoogleFonts.inter(
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      const Icon(
+                                        Icons.arrow_forward,
+                                        color: Colors.white,
+                                      ),
+                                    ],
+                                  ),
+                          ),
+                        ).animate().fadeIn(delay: 500.ms).slideY(begin: 0.2),
+
+                        const SizedBox(height: 24),
+
+                        Text(
+                          'Recurring billing, cancel anytime.',
+                          textAlign: TextAlign.center,
+                          style: GoogleFonts.inter(
+                            fontSize: 12,
+                            color: Colors.grey[500],
+                          ),
+                        ),
+                        const SizedBox(height: 40),
+                      ],
                     ),
                   ),
-                  const SizedBox(height: 40),
-                ],
-              ),
-            ),
           ),
         ],
       ),
@@ -233,7 +303,7 @@ class _ProUpgradeScreenState extends State<ProUpgradeScreen> {
           Text(
             'Upgrade to Pro',
             textAlign: TextAlign.center,
-            style: GoogleFonts.outfit(
+            style: GoogleFonts.inter(
               fontSize: 24,
               fontWeight: FontWeight.bold,
               color: Colors.white,
@@ -268,7 +338,7 @@ class _ProUpgradeScreenState extends State<ProUpgradeScreen> {
             children: [
               Text(
                 'Free Plan',
-                style: GoogleFonts.outfit(
+                style: GoogleFonts.inter(
                   fontSize: 22,
                   fontWeight: FontWeight.bold,
                   color: AppPalette.navyPrimary,
@@ -335,10 +405,31 @@ class _ProUpgradeScreenState extends State<ProUpgradeScreen> {
   }
 
   Widget _buildProPlanCard() {
+    // Find the pro plan for the selected interval
+    final proPlan = _plans.firstWhere(
+      (p) => p.isPro && p.interval == (_isAnnual ? 'year' : 'month'),
+      orElse: () => SubscriptionPlan(
+        id: 'placeholder',
+        planId: 'pro',
+        name: 'Pro Plan',
+        price: _isAnnual ? 190 : 20,
+        currency: 'GBP',
+        interval: _isAnnual ? 'year' : 'month',
+        tier: 'Premium',
+        trialPeriodDays: 7,
+        features: [],
+        isPopular: true,
+      ), // Fallback or handle null
+    );
+
+    // Calculate savings if annual
+    // Assuming we have both monthly and annual plans to compare, or just hardcode logic
+    // For now, let's just use the fetched price.
+
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: const Color(0xFF0F253E), // Dark Navy from image
+        color: const Color(0xFF0F253E), // Dark Navy
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
@@ -358,8 +449,8 @@ class _ProUpgradeScreenState extends State<ProUpgradeScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Pro Plan',
-                    style: GoogleFonts.outfit(
+                    proPlan.name,
+                    style: GoogleFonts.inter(
                       fontSize: 28,
                       fontWeight: FontWeight.bold,
                       color: Colors.white,
@@ -367,7 +458,7 @@ class _ProUpgradeScreenState extends State<ProUpgradeScreen> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'Unlock your potential',
+                    proPlan.description ?? 'Unlock your potential',
                     style: GoogleFonts.inter(
                       fontSize: 14,
                       color: Colors.white.withValues(alpha: 0.7),
@@ -375,25 +466,26 @@ class _ProUpgradeScreenState extends State<ProUpgradeScreen> {
                   ),
                 ],
               ),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 6,
-                ),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFF7D20),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Text(
-                  'POPULAR',
-                  style: GoogleFonts.inter(
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                    letterSpacing: 1,
+              if (proPlan.isPopular)
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFF7D20),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    'POPULAR',
+                    style: GoogleFonts.inter(
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                      letterSpacing: 1,
+                    ),
                   ),
                 ),
-              ),
             ],
           ),
           const SizedBox(height: 24),
@@ -401,8 +493,8 @@ class _ProUpgradeScreenState extends State<ProUpgradeScreen> {
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Text(
-                _isAnnual ? '£190.00' : '£19.99',
-                style: GoogleFonts.outfit(
+                '£${proPlan.price}', // Assuming currency symbol matches
+                style: GoogleFonts.inter(
                   fontSize: 42,
                   fontWeight: FontWeight.bold,
                   color: Colors.white,
@@ -424,8 +516,10 @@ class _ProUpgradeScreenState extends State<ProUpgradeScreen> {
           ),
           if (_isAnnual) ...[
             const SizedBox(height: 4),
+            // We can calculate savings dynamically if we find the monthly plan too
+            // For now, let's just show text if we have it, or static text
             Text(
-              'Save £49.88 per year!',
+              'Save 20% paying annually', // Simplified for now
               style: GoogleFonts.inter(
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
@@ -437,11 +531,14 @@ class _ProUpgradeScreenState extends State<ProUpgradeScreen> {
           const Divider(color: Colors.white12),
           const SizedBox(height: 24),
           // Features
-          _buildFeatureItem('Unlimited bookings', isPro: true),
-          _buildFeatureItem('Weekly payouts', isPro: true),
-          _buildFeatureItem('Calendar integration', isPro: true),
-          _buildFeatureItem('Performance analytics', isPro: true),
-          _buildFeatureItem('Priority listing', isPro: true),
+          if (proPlan.features.isNotEmpty)
+            ...proPlan.features.map(
+              (f) => _buildFeatureItem(f.name, isPro: true),
+            )
+          else ...[
+            _buildFeatureItem('Unlimited bookings', isPro: true),
+            _buildFeatureItem('Weekly payouts', isPro: true),
+          ],
         ],
       ),
     );
@@ -512,7 +609,7 @@ class _ProUpgradeScreenState extends State<ProUpgradeScreen> {
               const SizedBox(width: 8),
               Text(
                 "Have a promo code?",
-                style: GoogleFonts.outfit(
+                style: GoogleFonts.inter(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
                   color: AppPalette.navyPrimary,

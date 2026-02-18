@@ -43,6 +43,7 @@ import '../screens/coach/students_screen.dart';
 import '../screens/coach/earning_history_screen.dart';
 import '../screens/coach/availability_screen.dart';
 import '../screens/coach/session_report_screen.dart';
+import '../screens/coach/subscription_plans_screen.dart';
 import '../screens/settings/settings_screen.dart';
 import '../screens/player/player_reports_screen.dart';
 import '../screens/player/player_settings_screen.dart';
@@ -251,6 +252,10 @@ class AppRouter {
           GoRoute(
             path: '/coach/bookings',
             builder: (context, state) => const CoachBookingsScreen(),
+          ),
+          GoRoute(
+            path: '/coach/subscription-plans',
+            builder: (context, state) => const SubscriptionPlansScreen(),
           ),
           GoRoute(
             path: '/edit-profile',

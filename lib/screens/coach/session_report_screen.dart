@@ -77,19 +77,14 @@ class _SessionReportScreenState extends State<SessionReportScreen> {
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: Theme.of(context).cardColor,
         elevation: 0,
         leading: IconButton(
-          icon: Icon(
-            Icons.close,
-            color: Theme.of(context).colorScheme.onSurface,
-          ),
+          icon: const Icon(Icons.close),
           onPressed: () => context.pop(),
         ),
         title: Text(
           'Session Report',
-          style: GoogleFonts.outfit(
-            color: Theme.of(context).colorScheme.onSurface,
+          style: GoogleFonts.inter(
             fontWeight: FontWeight.bold,
             fontSize: 20,
           ),
@@ -120,7 +115,7 @@ class _SessionReportScreenState extends State<SessionReportScreen> {
                 children: [
                   Text(
                     _session!['title']?.toString() ?? 'Untitled Session',
-                    style: GoogleFonts.outfit(
+                    style: GoogleFonts.inter(
                       fontSize: 22,
                       fontWeight: FontWeight.bold,
                       color: Theme.of(context).colorScheme.onSurface,
@@ -234,7 +229,7 @@ class _SessionReportScreenState extends State<SessionReportScreen> {
                           Expanded(
                             child: Text(
                               player['fullName']?.toString() ?? 'Player',
-                              style: GoogleFonts.outfit(
+                              style: GoogleFonts.inter(
                                 fontWeight: FontWeight.bold,
                                 fontSize: 16,
                               ),
@@ -341,7 +336,7 @@ class _SessionReportScreenState extends State<SessionReportScreen> {
           ),
           Text(
             value,
-            style: GoogleFonts.outfit(
+            style: GoogleFonts.inter(
               fontWeight: FontWeight.bold,
               color: Theme.of(context).colorScheme.onSurface,
             ),

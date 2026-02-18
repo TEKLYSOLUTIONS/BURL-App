@@ -239,7 +239,7 @@ class _ConfirmBookingScreenSimpleState
       appBar: AppBar(
         title: Text(
           'Confirm Booking',
-          style: GoogleFonts.outfit(
+          style: GoogleFonts.inter(
             fontWeight: FontWeight.bold,
             color: AppPalette.navyPrimary,
             fontSize: 18,
@@ -287,7 +287,7 @@ class _ConfirmBookingScreenSimpleState
                               children: [
                                 Text(
                                   'Discount Applied!',
-                                  style: GoogleFonts.outfit(
+                                  style: GoogleFonts.inter(
                                     color: Colors.white,
                                     fontWeight: FontWeight.bold,
                                     fontSize: 15,
@@ -485,14 +485,14 @@ class _ConfirmBookingScreenSimpleState
                         children: [
                           Text(
                             'Pay Total',
-                            style: GoogleFonts.outfit(
+                            style: GoogleFonts.inter(
                               fontSize: 16,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
                           Text(
                             '\$${_totalAmount.toStringAsFixed(2)}',
-                            style: GoogleFonts.outfit(
+                            style: GoogleFonts.inter(
                               fontSize: 16,
                               fontWeight: FontWeight.bold,
                             ),
@@ -542,7 +542,7 @@ class _ConfirmBookingScreenSimpleState
                   children: [
                     Text(
                       coachName,
-                      style: GoogleFonts.outfit(
+                      style: GoogleFonts.inter(
                         fontWeight: FontWeight.bold,
                         fontSize: 17,
                         color: AppPalette.navyPrimary,
@@ -640,7 +640,7 @@ class _ConfirmBookingScreenSimpleState
               ),
               Text(
                 value,
-                style: GoogleFonts.outfit(
+                style: GoogleFonts.inter(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
                   color: AppPalette.navyPrimary,
@@ -710,7 +710,7 @@ class _ConfirmBookingScreenSimpleState
                     child: player['profilePhoto'] == null
                         ? Text(
                             (player['fullName'] ?? 'P')[0].toUpperCase(),
-                            style: GoogleFonts.outfit(
+                            style: GoogleFonts.inter(
                               color: AppPalette.orangeAccent,
                               fontWeight: FontWeight.bold,
                             ),
@@ -721,7 +721,7 @@ class _ConfirmBookingScreenSimpleState
                   Expanded(
                     child: Text(
                       player['fullName'] ?? 'Player',
-                      style: GoogleFonts.outfit(
+                      style: GoogleFonts.inter(
                         fontWeight: FontWeight.w600,
                         fontSize: 14,
                         color: AppPalette.navyPrimary,
@@ -805,7 +805,7 @@ class _ConfirmBookingScreenSimpleState
             children: [
               Text(
                 'Total',
-                style: GoogleFonts.outfit(
+                style: GoogleFonts.inter(
                   fontSize: 17,
                   fontWeight: FontWeight.bold,
                   color: AppPalette.navyPrimary,
@@ -813,7 +813,7 @@ class _ConfirmBookingScreenSimpleState
               ),
               Text(
                 '\$${_totalAmount.toStringAsFixed(2)}',
-                style: GoogleFonts.outfit(
+                style: GoogleFonts.inter(
                   fontSize: 22,
                   fontWeight: FontWeight.bold,
                   color: AppPalette.navyPrimary,
@@ -891,7 +891,7 @@ class _ConfirmBookingScreenSimpleState
                   )
                 : Text(
                     'Apply',
-                    style: GoogleFonts.outfit(
+                    style: GoogleFonts.inter(
                       fontWeight: FontWeight.bold,
                       color: AppPalette.orangeAccent,
                     ),
@@ -920,7 +920,7 @@ class _ConfirmBookingScreenSimpleState
           Expanded(
             child: Text(
               _appliedPromoCode!,
-              style: GoogleFonts.outfit(
+              style: GoogleFonts.inter(
                 fontWeight: FontWeight.bold,
                 color: const Color(0xFF22C55E),
                 fontSize: 15,

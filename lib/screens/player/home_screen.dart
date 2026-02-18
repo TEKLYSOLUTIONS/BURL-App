@@ -120,7 +120,7 @@ class _PlayerHomeScreenState extends State<PlayerHomeScreen> {
                           const SizedBox(height: 2),
                           Text(
                             '${DateTimeUtils.getGreeting()}, $_userName',
-                            style: GoogleFonts.outfit(
+                            style: GoogleFonts.inter(
                               fontSize: 18,
                               fontWeight: FontWeight.bold,
                               color: Theme.of(context).colorScheme.onSurface,
@@ -294,7 +294,7 @@ class _PlayerHomeScreenState extends State<PlayerHomeScreen> {
                                 Text(
                                   _upcomingSession!['title'] ??
                                       'Training Session',
-                                  style: GoogleFonts.outfit(
+                                  style: GoogleFonts.inter(
                                     fontSize: 22,
                                     fontWeight: FontWeight.bold,
                                     color: Theme.of(
@@ -379,7 +379,7 @@ class _PlayerHomeScreenState extends State<PlayerHomeScreen> {
                               ),
                               child: Text(
                                 'Check In',
-                                style: GoogleFonts.outfit(
+                                style: GoogleFonts.inter(
                                   fontSize: 16,
                                   fontWeight: FontWeight.bold,
                                 ),
@@ -628,7 +628,7 @@ class _MetricCard extends StatelessWidget {
           const SizedBox(height: 12),
           Text(
             value,
-            style: GoogleFonts.outfit(
+            style: GoogleFonts.inter(
               fontSize: 32,
               fontWeight: FontWeight.bold,
               color: Theme.of(context).colorScheme.onSurface,
@@ -746,7 +746,7 @@ class _FeaturedCoachCard extends StatelessWidget {
               children: [
                 Text(
                   name,
-                  style: GoogleFonts.outfit(
+                  style: GoogleFonts.inter(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
                     color: AppPalette.navyPrimary,

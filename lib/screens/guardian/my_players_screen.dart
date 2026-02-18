@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 
+import '../../config/palette.dart';
 import '../../services/guardian_service.dart';
 
 class MyPlayersScreen extends StatefulWidget {
@@ -56,7 +57,7 @@ class _MyPlayersScreenState extends State<MyPlayersScreen> {
       appBar: AppBar(
         title: Text(
           'My Players',
-          style: GoogleFonts.outfit(
+          style: GoogleFonts.inter(
             fontWeight: FontWeight.bold,
             color: Theme.of(context).colorScheme.onSurface,
             fontSize: 24,
@@ -85,7 +86,7 @@ class _MyPlayersScreenState extends State<MyPlayersScreen> {
               _fetchPlayers(); // Refresh list if player added
             }
           },
-          backgroundColor: Colors.orange,
+          backgroundColor: AppPalette.orangeAccent,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
@@ -240,7 +241,7 @@ class _PlayerCard extends StatelessWidget {
                     children: [
                       Text(
                         fullName,
-                        style: GoogleFonts.outfit(
+                        style: GoogleFonts.inter(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
                           color: Theme.of(context).colorScheme.onSurface,
@@ -344,7 +345,7 @@ class _ConnectAthleteCard extends StatelessWidget {
                     children: [
                       Text(
                         'Connect Athlete',
-                        style: GoogleFonts.outfit(
+                        style: GoogleFonts.inter(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
                           color: Theme.of(context)

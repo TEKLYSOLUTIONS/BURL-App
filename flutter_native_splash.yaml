@@ -1,7 +1,7 @@
 flutter_native_splash:
   color: "#ffffff"
   image: "assets/images/logo_burl.png"
-  branding: "assets/images/logo_burl.png"
+
   color_dark: "#121212"
   image_dark: "assets/images/logo_burl.png"
 

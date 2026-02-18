@@ -3,6 +3,11 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../config/palette.dart';
+import '../../widgets/headers/coach_app_bar.dart';
+import '../../widgets/notification_button.dart';
+
+import '../../models/subscription_plan.dart';
+import '../../services/subscription_service.dart';
 
 class SubscriptionPlansScreen extends StatefulWidget {
   const SubscriptionPlansScreen({super.key});
@@ -14,123 +19,199 @@ class SubscriptionPlansScreen extends StatefulWidget {
 
 class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
   bool _isAnnual = false;
+  final _subscriptionService = SubscriptionService();
+  bool _isLoading = true;
+  List<SubscriptionPlan> _plans = [];
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchPlans();
+  }
+
+  Future<void> _fetchPlans() async {
+    try {
+      final plans = await _subscriptionService.getPlans();
+      if (mounted) {
+        setState(() {
+          _plans = plans;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _error = e.toString();
+          _isLoading = false;
+        });
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    // Filter plans based on interval (assuming backend returns both 'month' and 'year')
+    // OR if backend returns a single plan object with price/interval, we might need to handle it differently.
+    // For now, let's assume we filter by the selected interval.
+    // However, usually plans are grouped (e.g. Pro Monthly vs Pro Annual).
+    // Let's filter by matching interval.
+    final displayedPlans = _plans.where((p) {
+      final planInterval = p.interval.toLowerCase();
+      return _isAnnual ? planInterval == 'year' : planInterval == 'month';
+    }).toList();
+
+    // Sort by price to ensure order (Free -> Pro)
+    displayedPlans.sort((a, b) => a.price.compareTo(b.price));
+
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              // Header
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
+      body: Column(
+        children: [
+          CoachAppBar(
+            backgroundColor: AppPalette.navyPrimary,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                if (context.canPop())
                   IconButton(
+                    icon: const Icon(Icons.arrow_back, color: Colors.white),
                     onPressed: () => context.pop(),
-                    icon: const Icon(Icons.arrow_back_ios_new, size: 20),
-                    color: Theme.of(context).colorScheme.onSurface,
-                  ),
-                  Text(
+                  )
+                else
+                  const SizedBox(width: 40),
+                Expanded(
+                  child: Text(
                     'Upgrade Your Plan',
-                    style: GoogleFonts.outfit(
-                      fontSize: 20,
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.inter(
+                      fontSize: 24,
                       fontWeight: FontWeight.bold,
-                      color: Theme.of(context).colorScheme.onSurface,
+                      color: Colors.white,
                     ),
                   ),
-                  const SizedBox(width: 40), // Balance back button
-                ],
-              ),
-              const SizedBox(height: 32),
-
-              Text(
-                'Choose the Right Plan for You',
-                textAlign: TextAlign.center,
-                style: GoogleFonts.outfit(
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
-                  color: Theme.of(context).colorScheme.onSurface,
                 ),
-              ).animate().fadeIn().slideY(begin: 0.1),
-
-              const SizedBox(height: 12),
-
-              Text(
-                'Unlock advanced features to scale your coaching business.',
-                textAlign: TextAlign.center,
-                style: GoogleFonts.inter(
-                  fontSize: 16,
-                  color: Theme.of(
-                    context,
-                  ).colorScheme.onSurface.withValues(alpha: 0.6),
+                NotificationButton(
+                  iconColor: Colors.white,
+                  backgroundColor: Colors.white.withValues(alpha: 0.1),
+                  onTap: () => context.push('/coach/notifications'),
                 ),
-              ).animate().fadeIn().slideY(begin: 0.1, delay: 100.ms),
-
-              const SizedBox(height: 32),
-
-              // Monthly / Annual Toggle
-              Container(
-                padding: const EdgeInsets.all(4),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).cardColor,
-                  borderRadius: BorderRadius.circular(30),
-                  border: Border.all(
-                    color: Theme.of(
-                      context,
-                    ).dividerColor.withValues(alpha: 0.5),
-                  ),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
+              ],
+            ),
+          ),
+          Expanded(
+            child: _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : _error != null
+                    ? Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              'Error loading plans',
+                              style: GoogleFonts.inter(fontSize: 18),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              _error!,
+                              style: GoogleFonts.inter(fontSize: 14, color: Colors.red),
+                              textAlign: TextAlign.center,
+                            ),
+                            const SizedBox(height: 16),
+                            ElevatedButton(
+                              onPressed: _fetchPlans,
+                              child: const Text('Retry'),
+                            ),
+                          ],
+                        ),
+                      )
+                    : SingleChildScrollView(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    _buildToggleOption('Monthly', !_isAnnual),
-                    _buildToggleOption('Annual (Save 20%)', _isAnnual),
+                    const SizedBox(height: 16),
+
+                    Text(
+                      'Choose the Right Plan for You',
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.inter(
+                        fontSize: 28,
+                        fontWeight: FontWeight.bold,
+                        color: Theme.of(context).colorScheme.onSurface,
+                      ),
+                    ).animate().fadeIn().slideY(begin: 0.1),
+
+                    const SizedBox(height: 12),
+
+                    Text(
+                      'Unlock advanced features to scale your coaching business.',
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.inter(
+                        fontSize: 16,
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.onSurface.withValues(alpha: 0.6),
+                      ),
+                    ).animate().fadeIn().slideY(begin: 0.1, delay: 100.ms),
+
+                    const SizedBox(height: 32),
+
+                    // Monthly / Annual Toggle
+                    Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).cardColor,
+                        borderRadius: BorderRadius.circular(30),
+                        border: Border.all(
+                          color: Theme.of(
+                            context,
+                          ).dividerColor.withValues(alpha: 0.5),
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          _buildToggleOption('Monthly', !_isAnnual),
+                          _buildToggleOption('Annual (Save 20%)', _isAnnual),
+                        ],
+                      ),
+                    ).animate().fadeIn(delay: 200.ms),
+
+                    const SizedBox(height: 40),
+
+                    // Dynamic Plans
+                    if (displayedPlans.isEmpty)
+                      Padding(
+                        padding: const EdgeInsets.all(24.0),
+                        child: Text(
+                          "No plans available for this interval.",
+                          style: GoogleFonts.inter(color: Colors.grey),
+                        ),
+                      ),
+
+                    ...displayedPlans.map((plan) {
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 24.0),
+                        child: _buildPlanCard(
+                          title: plan.name,
+                          price: plan.price,
+                          description: plan.description ?? '',
+                          features: plan.features,
+                          isPro:
+                              plan.isPro, // You might want to adjust this logic
+                          isAnnual: plan.interval == 'year',
+                          isPopular: plan.isPopular,
+                        ).animate().fadeIn(delay: 300.ms).slideY(begin: 0.2),
+                      );
+                    }),
+
+                    const SizedBox(height: 40),
                   ],
                 ),
-              ).animate().fadeIn(delay: 200.ms),
-
-              const SizedBox(height: 40),
-
-              // Plans
-              _buildPlanCard(
-                title: 'Free Plan',
-                price: 0,
-                description: 'For new coaches just starting out.',
-                features: [
-                  'Basic Coach Profile',
-                  'Up to 3 Active Clients',
-                  'Standard Booking System',
-                  '5% Transaction Fee',
-                ],
-                isPro: false,
-              ).animate().fadeIn(delay: 300.ms).slideY(begin: 0.2),
-
-              const SizedBox(height: 24),
-
-              _buildPlanCard(
-                title: 'Pro Plan',
-                price: _isAnnual ? 290 : 29,
-                description: 'Everything needed to scale a coaching business.',
-                features: [
-                  'Verified Pro Badge',
-                  'Unlimited Clients',
-                  'Advanced Analytics & Reporting',
-                  'Reduced 2% Transaction Fee',
-                  'Priority 24/7 Support',
-                  'Custom Branding',
-                ],
-                isPro: true,
-                isAnnual: _isAnnual,
-              ).animate().fadeIn(delay: 400.ms).slideY(begin: 0.2),
-
-              const SizedBox(height: 40),
-            ],
+              ),
           ),
-        ),
+        ],
       ),
     );
   }
@@ -170,8 +251,9 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
     required String title,
     required int price,
     required String description,
-    required List<String> features,
+    required List<SubscriptionFeature> features,
     required bool isPro,
+    required bool isPopular,
     bool isAnnual = false,
   }) {
     return Stack(
@@ -214,7 +296,7 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
               if (isPro) const SizedBox(height: 12), // Space for badge
               Text(
                 title,
-                style: GoogleFonts.outfit(
+                style: GoogleFonts.inter(
                   fontSize: 24,
                   fontWeight: FontWeight.bold,
                   color: Theme.of(context).colorScheme.onSurface,
@@ -237,7 +319,7 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
                 children: [
                   Text(
                     '\$$price',
-                    style: GoogleFonts.outfit(
+                    style: GoogleFonts.inter(
                       fontSize: 48,
                       fontWeight: FontWeight.bold,
                       color: Theme.of(context).colorScheme.onSurface,
@@ -258,7 +340,9 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
               const SizedBox(height: 24),
               Divider(color: Theme.of(context).dividerColor),
               const SizedBox(height: 24),
-              ...features.map((feature) => _buildFeatureItem(feature, isPro)),
+              ...features.map(
+                (feature) => _buildFeatureItem(feature.name, feature.included),
+              ),
               const SizedBox(height: 32),
               SizedBox(
                 width: double.infinity,
@@ -279,7 +363,7 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
                   ),
                   child: Text(
                     isPro ? 'Get Started' : 'Current Plan',
-                    style: GoogleFonts.outfit(
+                    style: GoogleFonts.inter(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
                     ),
@@ -289,7 +373,7 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
             ],
           ),
         ),
-        if (isPro)
+        if (isPopular)
           Positioned(
             top: -12,
             right: 24,

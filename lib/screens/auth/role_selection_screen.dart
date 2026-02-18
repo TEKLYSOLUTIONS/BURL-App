@@ -39,6 +39,8 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                   onPressed: () {
                     if (context.canPop()) {
                       context.pop();
+                    } else {
+                      context.go('/welcome');
                     }
                   },
                 ),
@@ -48,7 +50,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                 // Title
                 Text(
                   'What\'s your\ngame plan?',
-                  style: GoogleFonts.outfit(
+                  style: GoogleFonts.inter(
                     fontSize: 32,
                     fontWeight: FontWeight.bold,
                     color: Theme.of(context).colorScheme.onSurface,
@@ -135,7 +137,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                       children: [
                         Text(
                           'Continue',
-                          style: GoogleFonts.outfit(
+                          style: GoogleFonts.inter(
                             fontSize: 18,
                             fontWeight: FontWeight.w600,
                           ),
@@ -257,7 +259,7 @@ class _RoleOption extends StatelessWidget {
                 children: [
                   Text(
                     title,
-                    style: GoogleFonts.outfit(
+                    style: GoogleFonts.inter(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
                       color: Theme.of(context).colorScheme.onSurface,

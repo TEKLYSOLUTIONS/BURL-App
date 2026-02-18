@@ -41,10 +41,7 @@ class _CompleteCoachProfileScreenState
   final TextEditingController _playingCareerController =
       TextEditingController();
 
-  // Pricing Controllers
-  final TextEditingController _hourlyRateController = TextEditingController();
-  final TextEditingController _sessionDurationController =
-      TextEditingController(text: '60');
+  // Pricing Controllers removed as per request
 
   // Dropdown/Selection State
   String? _primarySpecialization;
@@ -140,14 +137,7 @@ class _CompleteCoachProfileScreenState
       _playingCareerController.text =
           coachProfile['playingCareerBackground'] ?? '';
 
-      // Pricing
-      if (coachProfile['defaultPricing'] != null) {
-        _hourlyRateController.text =
-            coachProfile['defaultPricing']['hourlyRate']?.toString() ?? '';
-        _sessionDurationController.text =
-            coachProfile['defaultPricing']['sessionDuration']?.toString() ??
-            '60';
-      }
+      // Pricing removed
 
       _primarySpecialization = coachProfile['primarySpecialization'];
 
@@ -215,8 +205,7 @@ class _CompleteCoachProfileScreenState
     _experienceController.dispose();
     _philosophyController.dispose();
     _playingCareerController.dispose();
-    _hourlyRateController.dispose();
-    _sessionDurationController.dispose();
+
     super.dispose();
   }
 
@@ -230,9 +219,8 @@ class _CompleteCoachProfileScreenState
         'email': _emailController.text.trim(),
         'phone': _phoneController.text.trim(),
         'city': _cityController.text.trim(),
-        'hourlyRate': double.tryParse(_hourlyRateController.text.trim()) ?? 0,
-        'sessionDuration':
-            int.tryParse(_sessionDurationController.text.trim()) ?? 60,
+        'hourlyRate': 0, // Default to 0
+        'sessionDuration': 60, // Default to 60
         'coachTitle': _coachTitleController.text.trim(),
         'bio': _bioController.text.trim(),
         'experienceYears': int.tryParse(_experienceController.text) ?? 0,
@@ -494,7 +482,7 @@ class _CompleteCoachProfileScreenState
       children: [
         Text(
           label,
-          style: GoogleFonts.outfit(
+          style: GoogleFonts.inter(
             fontSize: 16,
             fontWeight: FontWeight.w600,
             color: AppPalette.navyPrimary,
@@ -536,7 +524,7 @@ class _CompleteCoachProfileScreenState
                   children: [
                     Text(
                       option,
-                      style: GoogleFonts.outfit(
+                      style: GoogleFonts.inter(
                         fontSize: 14,
                         fontWeight: FontWeight.w500,
                         color: isSelected ? Colors.orange : Colors.grey[700],
@@ -726,7 +714,7 @@ class _CompleteCoachProfileScreenState
       builder: (context) => AlertDialog(
         title: Text(
           title,
-          style: GoogleFonts.outfit(fontWeight: FontWeight.bold),
+          style: GoogleFonts.inter(fontWeight: FontWeight.bold),
         ),
         content: TextField(
           controller: controller,
@@ -909,85 +897,7 @@ class _CompleteCoachProfileScreenState
                     setState(() => _sessionTypes = selected),
               ),
               const SizedBox(height: 16),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Coaching Rate',
-                    style: GoogleFonts.outfit(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: AppPalette.navyPrimary,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 8,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      border: Border.all(color: Colors.grey[200]!),
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Row(
-                      children: [
-                        Text(
-                          '\$',
-                          style: GoogleFonts.outfit(
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.grey[400],
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: TextFormField(
-                            controller: _hourlyRateController,
-                            style: GoogleFonts.outfit(
-                              fontSize: 32,
-                              fontWeight: FontWeight.bold,
-                              color: AppPalette.navyPrimary,
-                            ),
-                            keyboardType: TextInputType.number,
-                            decoration: const InputDecoration(
-                              border: InputBorder.none,
-                              hintText: '00.00',
-                            ),
-                          ),
-                        ),
-                        Text(
-                          '/ hour',
-                          style: GoogleFonts.outfit(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w500,
-                            color: Colors.grey[400],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'We suggest a competitive rate between \$30 and \$60 based on your profile and location.',
-                    style: GoogleFonts.inter(
-                      fontSize: 12,
-                      color: Colors.grey[500],
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  _buildTextField(
-                    controller: _sessionDurationController,
-                    label: 'Session Duration (minutes)',
-                    hint: '60',
-                    icon: Icons.timer_outlined,
-                    keyboardType: TextInputType.number,
-                    isOptional: true,
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
+
               _buildListField(
                 label: 'Certifications',
                 items: _certifications,
@@ -1041,7 +951,7 @@ class _CompleteCoachProfileScreenState
           const SizedBox(width: 16),
           Text(
             'Edit Profile',
-            style: GoogleFonts.outfit(
+            style: GoogleFonts.inter(
               fontSize: 20,
               fontWeight: FontWeight.bold,
               color: Colors.white,
@@ -1095,7 +1005,7 @@ class _CompleteCoachProfileScreenState
                 ? const Icon(Icons.check, color: Colors.white, size: 16)
                 : Text(
                     '${stepIndex + 1}',
-                    style: GoogleFonts.outfit(
+                    style: GoogleFonts.inter(
                       color: isActive ? Colors.white : Colors.grey[600],
                       fontWeight: FontWeight.bold,
                     ),
@@ -1178,7 +1088,7 @@ class _CompleteCoachProfileScreenState
                   children: [
                     Text(
                       isLastStep ? 'Finish Profile' : 'Continue',
-                      style: GoogleFonts.outfit(
+                      style: GoogleFonts.inter(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
                         color: Colors.white,

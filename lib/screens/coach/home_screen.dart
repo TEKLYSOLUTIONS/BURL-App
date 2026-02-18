@@ -10,8 +10,10 @@ import '../../widgets/calendar/horizontal_week_calendar.dart'; // Import Calenda
 import '../../services/auth_service.dart';
 import '../../services/dashboard_service.dart';
 import '../../services/session_service.dart'; // Import SessionService
+import '../../services/earnings_service.dart'; // Import EarningsService
 import '../../utils/date_time_utils.dart';
-import '../../utils/activity_utils.dart';
+import '../../utils/responsive.dart'; // Import Responsive utility
+
 import '../../utils/session_utils.dart'; // Import SessionUtils
 import '../../navigation/app_router.dart';
 
@@ -29,10 +31,10 @@ class _CoachHomeScreenState extends State<CoachHomeScreen> with RouteAware {
 
   // Dashboard data
   int _todaySessionsCount = 0;
-  double _totalEarnings = 0.0; // New state for Total Earnings
+  double _totalEarnings = 0.0;
+  String _currency = 'USD'; // Default currency
   int _todayStudentsCount = 0;
   List<dynamic> _todaysSessions = [];
-  List<dynamic> _recentActivity = [];
 
   @override
   void initState() {
@@ -130,11 +132,9 @@ class _CoachHomeScreenState extends State<CoachHomeScreen> with RouteAware {
 
           _todaySessionsCount = todaySummary?['sessions'] ?? 0;
           // _todayEarnings removed
-          _totalEarnings = (stats?['totalEarnings'] ?? 0)
-              .toDouble(); // Fetch Total Earnings
+          _totalEarnings = (stats?['totalEarnings'] ?? 0).toDouble();
+          _currency = stats?['currency'] ?? 'USD'; // Fetch currency
           _todayStudentsCount = todaySummary?['students'] ?? 0;
-
-          _recentActivity = List.from(data['recentActivity'] ?? []);
 
           _todaysSessions = todaySessionsResponse['sessions'] as List<dynamic>;
 
@@ -166,20 +166,24 @@ class _CoachHomeScreenState extends State<CoachHomeScreen> with RouteAware {
               children: [
                 Row(
                   children: [
-                    const CircleAvatar(
-                      radius: 20,
-                      backgroundImage: NetworkImage(
+                    CircleAvatar(
+                      radius: context.responsive.circularSize(
+                        20,
+                        min: 18,
+                        max: 24,
+                      ),
+                      backgroundImage: const NetworkImage(
                         'https://i.pravatar.cc/150?img=11',
                       ),
                     ),
-                    const SizedBox(width: 12),
+                    SizedBox(width: context.spacing.sm),
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
                           DateTimeUtils.getCurrentDateFormatted(),
                           style: GoogleFonts.inter(
-                            fontSize: 10,
+                            fontSize: context.text.tiny,
                             fontWeight: FontWeight.w600,
                             color: Theme.of(
                               context,
@@ -189,8 +193,8 @@ class _CoachHomeScreenState extends State<CoachHomeScreen> with RouteAware {
                         ),
                         Text(
                           '${DateTimeUtils.getGreeting()}, $_userName',
-                          style: GoogleFonts.outfit(
-                            fontSize: 18,
+                          style: GoogleFonts.inter(
+                            fontSize: context.text.h4,
                             fontWeight: FontWeight.bold,
                             color: Theme.of(context).colorScheme.onPrimary,
                           ),
@@ -200,6 +204,12 @@ class _CoachHomeScreenState extends State<CoachHomeScreen> with RouteAware {
                     const Spacer(),
                     NotificationButton(
                       onTap: () => context.push('/coach/notifications'),
+                      iconColor: Theme.of(context)
+                          .colorScheme
+                          .onPrimary, // Ensure visibility on primary background
+                      backgroundColor: Colors.white.withValues(
+                        alpha: 0.1,
+                      ), // Subtle background
                     ),
                   ],
                 ),
@@ -215,7 +225,7 @@ class _CoachHomeScreenState extends State<CoachHomeScreen> with RouteAware {
                 children: [
                   // 📅 Horizontal Calendar
                   Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    padding: EdgeInsets.symmetric(vertical: context.spacing.md),
                     child: HorizontalWeekCalendar(
                       initialDate: _selectedDate,
                       onDateSelected: (date) {
@@ -228,7 +238,9 @@ class _CoachHomeScreenState extends State<CoachHomeScreen> with RouteAware {
                   ),
 
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                    padding: EdgeInsets.symmetric(
+                      horizontal: context.spacing.screenPadding,
+                    ),
                     child: _isLoading
                         ? const Center(
                             child: Padding(
@@ -242,11 +254,13 @@ class _CoachHomeScreenState extends State<CoachHomeScreen> with RouteAware {
                               // Only show Today's Summary and Next Session if selected date is Today
                               if (_isToday(_selectedDate)) ...[
                                 _buildTodaySummary(),
-                                const SizedBox(height: 24),
+                                SizedBox(height: context.spacing.lg),
                                 _buildQuickActions(),
-                                const SizedBox(height: 24),
+                                SizedBox(height: context.spacing.lg),
                                 _buildNextSessionSection(),
-                                const SizedBox(height: 32),
+                                SizedBox(
+                                  height: context.spacing.sectionSpacing,
+                                ),
                               ],
 
                               // Sessions List Header
@@ -258,8 +272,8 @@ class _CoachHomeScreenState extends State<CoachHomeScreen> with RouteAware {
                                     _isToday(_selectedDate)
                                         ? "Today's Schedule"
                                         : 'Sessions for ${_formatDate(_selectedDate)}',
-                                    style: GoogleFonts.outfit(
-                                      fontSize: 18,
+                                    style: GoogleFonts.inter(
+                                      fontSize: context.text.h4,
                                       fontWeight: FontWeight.bold,
                                       color: Theme.of(
                                         context,
@@ -273,7 +287,7 @@ class _CoachHomeScreenState extends State<CoachHomeScreen> with RouteAware {
                                       child: Text(
                                         'See all',
                                         style: GoogleFonts.inter(
-                                          fontSize: 14,
+                                          fontSize: context.text.bodySmall,
                                           fontWeight: FontWeight.w600,
                                           color: Theme.of(
                                             context,
@@ -283,16 +297,20 @@ class _CoachHomeScreenState extends State<CoachHomeScreen> with RouteAware {
                                     ),
                                 ],
                               ),
-                              const SizedBox(height: 16),
+                              SizedBox(height: context.spacing.md),
 
                               // Dynamic sessions from API - always use _todaysSessions
                               // (populated for selected date by _loadSessionsForDate)
                               if (_todaysSessions.isEmpty)
                                 Container(
-                                  padding: const EdgeInsets.all(32),
+                                  padding: EdgeInsets.all(
+                                    context.spacing.sectionSpacing,
+                                  ),
                                   decoration: BoxDecoration(
                                     color: Theme.of(context).cardColor,
-                                    borderRadius: BorderRadius.circular(16),
+                                    borderRadius: BorderRadius.circular(
+                                      context.responsive.radius(16),
+                                    ),
                                     border: Border.all(
                                       color: Theme.of(context).dividerColor,
                                     ),
@@ -302,12 +320,12 @@ class _CoachHomeScreenState extends State<CoachHomeScreen> with RouteAware {
                                       children: [
                                         Icon(
                                           Icons.event_busy,
-                                          size: 48,
+                                          size: context.responsive.iconSize(48),
                                           color: Theme.of(
                                             context,
                                           ).disabledColor,
                                         ),
-                                        const SizedBox(height: 16),
+                                        SizedBox(height: context.spacing.md),
                                         Text(
                                           _isToday(_selectedDate)
                                               ? 'No sessions today'
@@ -317,7 +335,7 @@ class _CoachHomeScreenState extends State<CoachHomeScreen> with RouteAware {
                                                 .colorScheme
                                                 .onSurface
                                                 .withValues(alpha: 0.5),
-                                            fontSize: 14,
+                                            fontSize: context.text.bodySmall,
                                             fontWeight: FontWeight.w500,
                                           ),
                                         ),
@@ -328,7 +346,9 @@ class _CoachHomeScreenState extends State<CoachHomeScreen> with RouteAware {
                               else
                                 ..._todaysSessions.map((session) {
                                   return Padding(
-                                    padding: const EdgeInsets.only(bottom: 16),
+                                    padding: EdgeInsets.only(
+                                      bottom: context.spacing.md,
+                                    ),
                                     child: _buildNewSessionCard(
                                       context,
                                       session,
@@ -336,67 +356,9 @@ class _CoachHomeScreenState extends State<CoachHomeScreen> with RouteAware {
                                   );
                                 }),
 
-                              const SizedBox(height: 32),
+                              SizedBox(height: context.spacing.sectionSpacing),
 
-                              // Recent Activity (Only show on Today view to reduce clutter)
-                              if (_isToday(_selectedDate)) ...[
-                                Text(
-                                  'Recent Activity',
-                                  style: GoogleFonts.outfit(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
-                                    color: Theme.of(
-                                      context,
-                                    ).colorScheme.onSurface,
-                                  ),
-                                ),
-                                const SizedBox(height: 16),
-                                if (_recentActivity.isEmpty)
-                                  Container(
-                                    padding: const EdgeInsets.all(32),
-                                    child: Center(
-                                      child: Text(
-                                        'No recent activity',
-                                        style: GoogleFonts.inter(
-                                          color: Theme.of(
-                                            context,
-                                          ).disabledColor,
-                                          fontSize: 14,
-                                        ),
-                                      ),
-                                    ),
-                                  )
-                                else
-                                  ..._recentActivity.map((activity) {
-                                    final activityType = activity['type'];
-                                    final icon = ActivityUtils.getActivityIcon(
-                                      activityType,
-                                    );
-                                    final iconColor =
-                                        ActivityUtils.getActivityIconColor(
-                                          activityType,
-                                        );
-                                    final bgColor =
-                                        ActivityUtils.getActivityBgColor(
-                                          activityType,
-                                        );
-                                    final timeAgo =
-                                        DateTimeUtils.formatRelativeTime(
-                                          activity['createdAt'] ??
-                                              DateTime.now().toIso8601String(),
-                                        );
-
-                                    return _buildActivityItem(
-                                      icon,
-                                      bgColor,
-                                      iconColor,
-                                      activity['title'] ?? '',
-                                      activity['description'] ?? '',
-                                      timeAgo,
-                                    );
-                                  }),
-                              ],
-
+                              // Recent Activity Removed
                               const SizedBox(height: 80), // Footer spacing
                             ],
                           ),
@@ -409,18 +371,18 @@ class _CoachHomeScreenState extends State<CoachHomeScreen> with RouteAware {
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () => context.push('/coach/create-session'),
-        backgroundColor: Theme.of(context).colorScheme.primary,
-        child: Icon(Icons.add, color: Theme.of(context).colorScheme.onPrimary),
+        backgroundColor: AppPalette.orangeAccent,
+        child: const Icon(Icons.add, color: Colors.white),
       ),
     );
   }
 
   Widget _buildTodaySummary() {
     return Container(
-      padding: const EdgeInsets.all(24),
+      padding: EdgeInsets.all(context.spacing.lg),
       decoration: BoxDecoration(
         color: Theme.of(context).cardColor,
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(context.responsive.radius(24)),
         boxShadow: [
           BoxShadow(
             color: Theme.of(context).shadowColor.withValues(alpha: 0.05),
@@ -435,29 +397,33 @@ class _CoachHomeScreenState extends State<CoachHomeScreen> with RouteAware {
           Text(
             "DASHBOARD SUMMARY", // Updated Title
             style: GoogleFonts.inter(
-              fontSize: 12,
+              fontSize: context.text.caption,
               fontWeight: FontWeight.w600,
               color: AppPalette.textSecondaryLight,
               letterSpacing: 1.2,
             ),
           ),
-          const SizedBox(height: 24),
+          SizedBox(height: context.spacing.lg),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               _buildSummaryItem(
                 _todaySessionsCount.toString(),
-                'Sessions\n(Today)',
+                'Sessions',
                 onTap: () => context.push('/coach/sessions'),
               ),
               _buildSummaryItem(
-                '£${_totalEarnings.toStringAsFixed(0)}', // Display Total Earnings
+                // Removed hardcoded currency
+                EarningsService.formatCurrency(
+                  _totalEarnings,
+                  currency: _currency,
+                ).split('.')[0], // Display Dynamic Currency
                 'Total Earnings',
                 onTap: () => context.push('/coach/earnings'),
               ),
               _buildSummaryItem(
                 _todayStudentsCount.toString(),
-                'Students\n(Today)',
+                'Students',
                 onTap: () => context.push('/coach/students'),
               ),
             ],
@@ -473,14 +439,16 @@ class _CoachHomeScreenState extends State<CoachHomeScreen> with RouteAware {
         Expanded(
           child: InkWell(
             onTap: () => context.push('/coach/bookings'),
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(context.responsive.radius(16)),
             child: Container(
-              padding: const EdgeInsets.all(16),
+              padding: EdgeInsets.all(context.spacing.md),
               decoration: BoxDecoration(
                 color: Theme.of(
                   context,
                 ).colorScheme.primary.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(
+                  context.responsive.radius(16),
+                ),
                 border: Border.all(
                   color: Theme.of(
                     context,
@@ -490,7 +458,7 @@ class _CoachHomeScreenState extends State<CoachHomeScreen> with RouteAware {
               child: Row(
                 children: [
                   Container(
-                    padding: const EdgeInsets.all(8),
+                    padding: EdgeInsets.all(context.spacing.sm),
                     decoration: BoxDecoration(
                       color: Theme.of(context).colorScheme.primary.withValues(
                         alpha: 0.2,
@@ -500,27 +468,27 @@ class _CoachHomeScreenState extends State<CoachHomeScreen> with RouteAware {
                     child: Icon(
                       Icons.people_outline,
                       color: Theme.of(context).colorScheme.primary,
-                      size: 20,
+                      size: context.responsive.iconSize(20),
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  SizedBox(width: context.spacing.sm),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
                           'Manage Bookings',
-                          style: GoogleFonts.outfit(
-                            fontSize: 16,
+                          style: GoogleFonts.inter(
+                            fontSize: context.text.h4,
                             fontWeight: FontWeight.bold,
                             color: Theme.of(context).colorScheme.onSurface,
                           ),
                         ),
-                        const SizedBox(height: 4),
+                        SizedBox(height: context.spacing.xs),
                         Text(
                           'View incoming requests',
                           style: GoogleFonts.inter(
-                            fontSize: 12,
+                            fontSize: context.text.caption,
                             color: Theme.of(
                               context,
                             ).textTheme.bodyMedium?.color,
@@ -532,6 +500,7 @@ class _CoachHomeScreenState extends State<CoachHomeScreen> with RouteAware {
                   Icon(
                     Icons.chevron_right,
                     color: Theme.of(context).colorScheme.primary,
+                    size: context.responsive.iconSize(24),
                   ),
                 ],
               ),
@@ -545,25 +514,25 @@ class _CoachHomeScreenState extends State<CoachHomeScreen> with RouteAware {
   Widget _buildSummaryItem(String value, String label, {VoidCallback? onTap}) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(context.responsive.radius(12)),
       child: Padding(
-        padding: const EdgeInsets.all(8.0),
+        padding: EdgeInsets.all(context.spacing.sm),
         child: Column(
           children: [
             Text(
               value,
-              style: GoogleFonts.outfit(
-                fontSize: 28,
+              style: GoogleFonts.inter(
+                fontSize: context.text.h1,
                 fontWeight: FontWeight.bold,
                 color: Theme.of(context).colorScheme.primary,
               ),
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: context.spacing.sm),
             Text(
               label,
               textAlign: TextAlign.center,
               style: GoogleFonts.inter(
-                fontSize: 14,
+                fontSize: context.text.bodySmall,
                 color: Theme.of(context).textTheme.bodyMedium?.color,
                 fontWeight: FontWeight.w500,
               ),
@@ -587,19 +556,21 @@ class _CoachHomeScreenState extends State<CoachHomeScreen> with RouteAware {
           Text(
             'NEXT SESSION',
             style: GoogleFonts.inter(
-              fontSize: 12,
+              fontSize: context.text.caption,
               fontWeight: FontWeight.w600,
               color: AppPalette.textSecondaryLight,
               letterSpacing: 1.2,
             ),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: context.spacing.md),
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.all(24),
+            padding: EdgeInsets.all(context.spacing.lg),
             decoration: BoxDecoration(
               color: Theme.of(context).cardColor,
-              borderRadius: BorderRadius.circular(24),
+              borderRadius: BorderRadius.circular(
+                context.responsive.radius(24),
+              ),
               border: Border.all(
                 color: Theme.of(context).dividerColor.withValues(alpha: 0.1),
               ),
@@ -608,14 +579,14 @@ class _CoachHomeScreenState extends State<CoachHomeScreen> with RouteAware {
               children: [
                 Icon(
                   Icons.event_available,
-                  size: 32,
+                  size: context.responsive.iconSize(32),
                   color: Theme.of(context).disabledColor,
                 ),
-                const SizedBox(height: 8),
+                SizedBox(height: context.spacing.sm),
                 Text(
                   'No sessions today',
                   style: GoogleFonts.inter(
-                    fontSize: 14,
+                    fontSize: context.text.bodySmall,
                     fontWeight: FontWeight.w500,
                     color: Theme.of(context).textTheme.bodyMedium?.color,
                   ),
@@ -627,8 +598,81 @@ class _CoachHomeScreenState extends State<CoachHomeScreen> with RouteAware {
       );
     }
 
-    // 3. If we have sessions today, show the first one
-    final nextSession = _todaysSessions.first;
+    // 3. Find the next UPCOMING session
+    // Filter out completed, cancelled, or past sessions
+    final now = DateTime.now();
+    final upcomingSessions = _todaysSessions.where((s) {
+      final status = s['status'];
+      if (status == 'completed' || status == 'cancelled') return false;
+
+      // check time
+      final timeSlots =
+          (s['timeSlots'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+      if (timeSlots.isEmpty) return false;
+
+      final startTimeStr = timeSlots[0]['startTime'];
+      if (startTimeStr == null) return false;
+
+      final startTime = DateTime.parse(startTimeStr).toLocal();
+      // Consider it "next" if it hasn't ended yet (start + duration)
+      // or simply if it's in the future or currently running
+      final duration = timeSlots[0]['durationMinutes'] ?? 60;
+      final endTime = startTime.add(Duration(minutes: duration));
+
+      return endTime.isAfter(now);
+    }).toList();
+
+    if (upcomingSessions.isEmpty) {
+      // Same "No sessions" view but specific for "No MORE sessions today"
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'NEXT SESSION',
+            style: GoogleFonts.inter(
+              fontSize: context.text.caption,
+              fontWeight: FontWeight.w600,
+              color: AppPalette.textSecondaryLight,
+              letterSpacing: 1.2,
+            ),
+          ),
+          SizedBox(height: context.spacing.md),
+          Container(
+            width: double.infinity,
+            padding: EdgeInsets.all(context.spacing.lg),
+            decoration: BoxDecoration(
+              color: Theme.of(context).cardColor,
+              borderRadius: BorderRadius.circular(
+                context.responsive.radius(24),
+              ),
+              border: Border.all(
+                color: Theme.of(context).dividerColor.withValues(alpha: 0.1),
+              ),
+            ),
+            child: Column(
+              children: [
+                Icon(
+                  Icons.check_circle_outline,
+                  size: context.responsive.iconSize(32),
+                  color: Colors.green.withValues(alpha: 0.5),
+                ),
+                SizedBox(height: context.spacing.sm),
+                Text(
+                  'All sessions completed',
+                  style: GoogleFonts.inter(
+                    fontSize: context.text.bodySmall,
+                    fontWeight: FontWeight.w500,
+                    color: Theme.of(context).textTheme.bodyMedium?.color,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      );
+    }
+
+    final nextSession = upcomingSessions.first;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -636,13 +680,13 @@ class _CoachHomeScreenState extends State<CoachHomeScreen> with RouteAware {
         Text(
           'NEXT SESSION',
           style: GoogleFonts.inter(
-            fontSize: 12,
+            fontSize: context.text.caption,
             fontWeight: FontWeight.w600,
             color: AppPalette.textSecondaryLight,
             letterSpacing: 1.2,
           ),
         ),
-        const SizedBox(height: 16),
+        SizedBox(height: context.spacing.md),
         _buildNewSessionCard(context, nextSession, isNextSession: true),
       ],
     );
@@ -667,10 +711,10 @@ class _CoachHomeScreenState extends State<CoachHomeScreen> with RouteAware {
         : 'TBD';
 
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(context.spacing.md),
       decoration: BoxDecoration(
         color: Theme.of(context).cardColor,
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(context.responsive.radius(24)),
         border: isNextSession
             ? Border.all(color: Theme.of(context).colorScheme.primary, width: 2)
             : null,
@@ -691,62 +735,64 @@ class _CoachHomeScreenState extends State<CoachHomeScreen> with RouteAware {
               children: [
                 // Location Tag
                 Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 4,
+                  padding: EdgeInsets.symmetric(
+                    horizontal: context.spacing.sm,
+                    vertical: context.spacing.xs,
                   ),
                   decoration: BoxDecoration(
                     color: Theme.of(
                       context,
                     ).colorScheme.primary.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(
+                      context.responsive.radius(8),
+                    ),
                   ),
                   child: Text(
                     location,
                     style: GoogleFonts.inter(
-                      fontSize: 12,
+                      fontSize: context.text.caption,
                       fontWeight: FontWeight.w600,
                       color: Theme.of(context).colorScheme.primary,
                     ),
                   ),
                 ),
-                const SizedBox(height: 12),
+                SizedBox(height: context.spacing.sm),
 
                 // Title
                 Text(
                   title,
-                  style: GoogleFonts.outfit(
-                    fontSize: 18,
+                  style: GoogleFonts.inter(
+                    fontSize: context.text.h4,
                     fontWeight: FontWeight.bold,
                     color: Theme.of(context).colorScheme.onSurface,
                   ),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
-                const SizedBox(height: 8),
+                SizedBox(height: context.spacing.sm),
 
                 // Time
                 Row(
                   children: [
                     Icon(
                       Icons.access_time_filled,
-                      size: 16,
+                      size: context.responsive.iconSize(16),
                       color: Theme.of(
                         context,
                       ).iconTheme.color?.withValues(alpha: 0.6),
                     ),
-                    const SizedBox(width: 6),
+                    SizedBox(width: context.spacing.xs),
                     Text(
                       formattedTime,
                       style: GoogleFonts.inter(
-                        fontSize: 14,
+                        fontSize: context.text.bodySmall,
                         fontWeight: FontWeight.w500,
                         color: Theme.of(context).textTheme.bodyMedium?.color,
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 16),
+                SizedBox(height: context.spacing.md),
 
                 // Buttons Row
                 Row(
@@ -757,15 +803,19 @@ class _CoachHomeScreenState extends State<CoachHomeScreen> with RouteAware {
                         child: InkWell(
                           onTap: () =>
                               context.push('/session-attendance/$sessionId'),
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(
+                            context.responsive.radius(12),
+                          ),
                           child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12, // Reduced padding
-                              vertical: 10,
+                            padding: EdgeInsets.symmetric(
+                              horizontal: context.spacing.sm,
+                              vertical: context.spacing.sm,
                             ),
                             decoration: BoxDecoration(
                               color: Theme.of(context).colorScheme.primary,
-                              borderRadius: BorderRadius.circular(12),
+                              borderRadius: BorderRadius.circular(
+                                context.responsive.radius(12),
+                              ),
                             ),
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.center,
@@ -773,16 +823,16 @@ class _CoachHomeScreenState extends State<CoachHomeScreen> with RouteAware {
                               children: [
                                 Icon(
                                   Icons.play_arrow,
-                                  size: 16,
+                                  size: context.responsive.iconSize(16),
                                   color: Theme.of(
                                     context,
                                   ).colorScheme.onPrimary,
                                 ),
-                                const SizedBox(width: 4), // Reduced spacing
+                                SizedBox(width: context.spacing.xs),
                                 Text(
                                   'Start',
                                   style: GoogleFonts.inter(
-                                    fontSize: 13,
+                                    fontSize: context.text.bodySmall,
                                     fontWeight: FontWeight.w600,
                                     color: Theme.of(
                                       context,
@@ -794,24 +844,28 @@ class _CoachHomeScreenState extends State<CoachHomeScreen> with RouteAware {
                           ),
                         ),
                       ),
-                    if (isNextSession) const SizedBox(width: 8),
+                    if (isNextSession) SizedBox(width: context.spacing.sm),
 
                     // Details Button
                     Expanded(
                       child: InkWell(
                         onTap: () =>
                             context.push('/session-details/$sessionId'),
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(
+                          context.responsive.radius(12),
+                        ),
                         child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12, // Reduced padding
-                            vertical: 10,
+                          padding: EdgeInsets.symmetric(
+                            horizontal: context.spacing.sm,
+                            vertical: context.spacing.sm,
                           ),
                           decoration: BoxDecoration(
                             color: Theme.of(
                               context,
                             ).colorScheme.surfaceContainerHighest,
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(
+                              context.responsive.radius(12),
+                            ),
                           ),
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.center,
@@ -820,17 +874,17 @@ class _CoachHomeScreenState extends State<CoachHomeScreen> with RouteAware {
                               Text(
                                 isNextSession ? 'Details' : 'View Plan',
                                 style: GoogleFonts.inter(
-                                  fontSize: 13,
+                                  fontSize: context.text.bodySmall,
                                   fontWeight: FontWeight.w600,
                                   color: Theme.of(
                                     context,
                                   ).colorScheme.onSurface,
                                 ),
                               ),
-                              const SizedBox(width: 4), // Reduced spacing
+                              SizedBox(width: context.spacing.xs),
                               Icon(
                                 Icons.arrow_forward,
-                                size: 14,
+                                size: context.responsive.iconSize(14),
                                 color: Theme.of(context).colorScheme.onSurface,
                               ),
                             ],
@@ -843,101 +897,36 @@ class _CoachHomeScreenState extends State<CoachHomeScreen> with RouteAware {
               ],
             ),
           ),
-          const SizedBox(width: 12), // Reduced spacing from 16
+          SizedBox(width: context.spacing.sm),
           // Image
           ClipRRect(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(context.responsive.radius(16)),
             child: Image.network(
               SessionUtils.getSessionImage(session), // Dynamic Image
-              width: 100,
-              height: 100,
+              width: context.responsive.circularSize(100, min: 80, max: 120),
+              height: context.responsive.circularSize(100, min: 80, max: 120),
               fit: BoxFit.cover,
               errorBuilder: (context, error, stackTrace) {
                 return Container(
-                  width: 100,
-                  height: 100,
+                  width: context.responsive.circularSize(
+                    100,
+                    min: 80,
+                    max: 120,
+                  ),
+                  height: context.responsive.circularSize(
+                    100,
+                    min: 80,
+                    max: 120,
+                  ),
                   color: Theme.of(context).colorScheme.surfaceContainerHighest,
                   child: Icon(
                     Icons.sports_cricket,
+                    size: context.responsive.iconSize(40),
                     color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
                 );
               },
             ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildActivityItem(
-    IconData icon,
-    Color bgColor,
-    Color iconColor,
-    String name,
-    String action,
-    String time,
-  ) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Theme.of(context).cardColor,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Theme.of(context).shadowColor.withValues(alpha: 0.02),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(color: bgColor, shape: BoxShape.circle),
-            child: Icon(icon, color: iconColor, size: 20),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                RichText(
-                  text: TextSpan(
-                    style: GoogleFonts.inter(
-                      fontSize: 14,
-                      color: Theme.of(context).colorScheme.onSurface,
-                    ),
-                    children: [
-                      TextSpan(
-                        text: name,
-                        style: const TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                      TextSpan(
-                        text: ' $action',
-                        style: const TextStyle(
-                          color: AppPalette.textSecondaryLight,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  time,
-                  style: GoogleFonts.inter(
-                    fontSize: 12,
-                    color: Theme.of(context).disabledColor,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Icon(
-            Icons.chevron_right,
-            color: Theme.of(context).colorScheme.primary,
           ),
         ],
       ),

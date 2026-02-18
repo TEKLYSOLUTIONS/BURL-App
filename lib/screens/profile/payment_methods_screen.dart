@@ -108,7 +108,7 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
       appBar: AppBar(
         title: Text(
           'Payment Methods',
-          style: GoogleFonts.outfit(
+          style: GoogleFonts.inter(
             color: AppPalette.navyPrimary,
             fontWeight: FontWeight.bold,
             fontSize: 20,
@@ -141,7 +141,7 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
             const SizedBox(height: 24),
             Text(
               'No Payment Methods',
-              style: GoogleFonts.outfit(
+              style: GoogleFonts.inter(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
                 color: AppPalette.navyPrimary,
@@ -179,7 +179,7 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16),
                 ),
-                textStyle: GoogleFonts.outfit(
+                textStyle: GoogleFonts.inter(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
                 ),

@@ -200,7 +200,7 @@ class _CoachDetailsScreenState extends State<CoachDetailsScreen>
         ),
         title: Text(
           fullName,
-          style: GoogleFonts.outfit(
+          style: GoogleFonts.inter(
             color: Colors.black,
             fontWeight: FontWeight.bold,
             fontSize: 18,
@@ -279,7 +279,7 @@ class _CoachDetailsScreenState extends State<CoachDetailsScreen>
                   // Name & Title
                   Text(
                     fullName,
-                    style: GoogleFonts.outfit(
+                    style: GoogleFonts.inter(
                       fontSize: 24,
                       fontWeight: FontWeight.bold,
                       color: AppPalette.navyPrimary,
@@ -347,11 +347,11 @@ class _CoachDetailsScreenState extends State<CoachDetailsScreen>
                       controller: _tabController,
                       labelColor: AppPalette.navyPrimary,
                       unselectedLabelColor: Colors.grey,
-                      labelStyle: GoogleFonts.outfit(
+                      labelStyle: GoogleFonts.inter(
                         fontWeight: FontWeight.bold,
                         fontSize: 16,
                       ),
-                      unselectedLabelStyle: GoogleFonts.outfit(
+                      unselectedLabelStyle: GoogleFonts.inter(
                         fontWeight: FontWeight.w600,
                         fontSize: 16,
                       ),
@@ -385,7 +385,7 @@ class _CoachDetailsScreenState extends State<CoachDetailsScreen>
                               children: [
                                 Text(
                                   'About Me',
-                                  style: GoogleFonts.outfit(
+                                  style: GoogleFonts.inter(
                                     fontSize: 18,
                                     fontWeight: FontWeight.bold,
                                     color: AppPalette.navyPrimary,
@@ -487,7 +487,7 @@ class _CoachDetailsScreenState extends State<CoachDetailsScreen>
 
                                 Text(
                                   'Training Gallery',
-                                  style: GoogleFonts.outfit(
+                                  style: GoogleFonts.inter(
                                     fontSize: 18,
                                     fontWeight: FontWeight.bold,
                                     color: AppPalette.navyPrimary,
@@ -585,7 +585,7 @@ class _CoachDetailsScreenState extends State<CoachDetailsScreen>
                                                   children: [
                                                     Text(
                                                       playerName,
-                                                      style: GoogleFonts.outfit(
+                                                      style: GoogleFonts.inter(
                                                         fontWeight:
                                                             FontWeight.bold,
                                                         color: AppPalette
@@ -626,7 +626,7 @@ class _CoachDetailsScreenState extends State<CoachDetailsScreen>
                                                     const SizedBox(width: 4),
                                                     Text(
                                                       rating.toString(),
-                                                      style: GoogleFonts.outfit(
+                                                      style: GoogleFonts.inter(
                                                         fontWeight:
                                                             FontWeight.bold,
                                                         fontSize: 12,
@@ -742,7 +742,7 @@ class _CoachDetailsScreenState extends State<CoachDetailsScreen>
                                                 children: [
                                                   Text(
                                                     title,
-                                                    style: GoogleFonts.outfit(
+                                                    style: GoogleFonts.inter(
                                                       fontWeight:
                                                           FontWeight.w600,
                                                       fontSize: 16,
@@ -763,7 +763,7 @@ class _CoachDetailsScreenState extends State<CoachDetailsScreen>
                                             ),
                                             Text(
                                               '\$$price',
-                                              style: GoogleFonts.outfit(
+                                              style: GoogleFonts.inter(
                                                 fontWeight: FontWeight.bold,
                                                 fontSize: 16,
                                                 color: AppPalette.orangeAccent,
@@ -817,7 +817,7 @@ class _CoachDetailsScreenState extends State<CoachDetailsScreen>
                       children: [
                         Text(
                           '\$$hourlyRate',
-                          style: GoogleFonts.outfit(
+                          style: GoogleFonts.inter(
                             fontSize: 28,
                             fontWeight: FontWeight.bold,
                             color: AppPalette.navyPrimary,
@@ -870,7 +870,7 @@ class _CoachDetailsScreenState extends State<CoachDetailsScreen>
                         const SizedBox(height: 8),
                         Text(
                           'Book Private Session',
-                          style: GoogleFonts.outfit(
+                          style: GoogleFonts.inter(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
                             color: Colors.white,
@@ -923,7 +923,7 @@ class _CoachDetailsScreenState extends State<CoachDetailsScreen>
           children: [
             Text(
               value,
-              style: GoogleFonts.outfit(
+              style: GoogleFonts.inter(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
                 color: AppPalette.navyPrimary,
@@ -970,7 +970,7 @@ class _CoachDetailsScreenState extends State<CoachDetailsScreen>
   Widget _buildSectionTitle(String title) {
     return Text(
       title,
-      style: GoogleFonts.outfit(
+      style: GoogleFonts.inter(
         fontSize: 16,
         fontWeight: FontWeight.bold,
         color: AppPalette.navyPrimary,

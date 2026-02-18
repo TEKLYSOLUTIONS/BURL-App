@@ -138,7 +138,7 @@ class _AddPlayerScreenState extends State<AddPlayerScreen> {
       appBar: AppBar(
         title: Text(
           'Add New Athlete',
-          style: GoogleFonts.outfit(
+          style: GoogleFonts.inter(
             color: Theme.of(context).colorScheme.onSurface,
             fontWeight: FontWeight.bold,
             fontSize: 20,
@@ -165,7 +165,7 @@ class _AddPlayerScreenState extends State<AddPlayerScreen> {
                   )
                 : Text(
                     'Save',
-                    style: GoogleFonts.outfit(
+                    style: GoogleFonts.inter(
                       color: AppPalette.orangeAccent,
                       fontWeight: FontWeight.bold,
                       fontSize: 16,
@@ -314,7 +314,7 @@ class _AddPlayerScreenState extends State<AddPlayerScreen> {
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16),
                     ),
-                    textStyle: GoogleFonts.outfit(
+                    textStyle: GoogleFonts.inter(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
                     ),

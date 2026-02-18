@@ -336,7 +336,7 @@ class _LoginScreenState extends State<LoginScreen> {
               // Title
               Text(
                 'Welcome Back',
-                style: GoogleFonts.outfit(
+                style: GoogleFonts.inter(
                   fontSize: 30,
                   fontWeight: FontWeight.bold,
                   color: Theme.of(context).colorScheme.onSurface,
@@ -463,7 +463,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           children: [
                             Text(
                               'Log In',
-                              style: GoogleFonts.outfit(
+                              style: GoogleFonts.inter(
                                 fontSize: 18,
                                 fontWeight: FontWeight.bold,
                               ),
@@ -505,22 +505,21 @@ class _LoginScreenState extends State<LoginScreen> {
 
               // Social Buttons
               Row(
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   if (!Platform.isWindows)
-                    Expanded(
-                      child: _SocialButton(
-                        assetPath: 'assets/images/logo_google.png',
-                        onTap: _handleGoogleSignIn,
-                      ),
+                    _SocialButton(
+                      assetPath: 'assets/images/google_logo_transparent.png',
+                      onTap: _handleGoogleSignIn,
                     ),
-                  if (!Platform.isWindows) const SizedBox(width: 16),
+                  if (!Platform.isWindows &&
+                      (Platform.isIOS || Platform.isMacOS))
+                    const SizedBox(width: 20),
                   if (Platform.isIOS || Platform.isMacOS)
-                    Expanded(
-                      child: _SocialButton(
-                        assetPath: 'assets/images/logo_apple.png',
-                        isApple: true,
-                        onTap: _handleAppleSignIn,
-                      ),
+                    _SocialButton(
+                      assetPath: 'assets/images/logo_apple.png',
+                      isApple: true,
+                      onTap: _handleAppleSignIn,
                     ),
                 ],
               ).animate().fadeIn(delay: 900.ms),
@@ -532,7 +531,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 child: GestureDetector(
                   onTap: () {
                     // Navigate to role selection instead of directly to register
-                    context.go('/role-selection');
+                    context.push('/role-selection');
                   },
                   child: RichText(
                     text: TextSpan(
@@ -596,7 +595,7 @@ class _CustomTextField extends StatelessWidget {
       children: [
         Text(
           label,
-          style: GoogleFonts.outfit(
+          style: GoogleFonts.inter(
             fontSize: 14,
             fontWeight: FontWeight.w600,
             color: Theme.of(context).colorScheme.onSurface,
@@ -675,34 +674,19 @@ class _SocialButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(16),
       child: Container(
-        height: 56, // Match main button height
+        height: 60,
+        width: 60,
         alignment: Alignment.center,
         decoration: BoxDecoration(
           border: Border.all(
             color: Theme.of(context).dividerColor.withValues(alpha: 0.5),
           ),
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(16),
           color: Theme.of(context).cardColor,
         ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Image.asset(assetPath, height: 24, width: 24),
-            if (isApple) ...[
-              const SizedBox(width: 8),
-              Text(
-                'iOS',
-                style: GoogleFonts.inter(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
-                  color: Theme.of(context).colorScheme.onSurface,
-                ),
-              ),
-            ],
-          ],
-        ),
+        child: Image.asset(assetPath, height: 28, width: 28),
       ),
     );
   }

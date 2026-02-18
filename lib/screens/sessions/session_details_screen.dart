@@ -232,7 +232,7 @@ class _SessionDetailsScreenState extends State<SessionDetailsScreen> {
           elevation: 0,
           title: Text(
             'Session Details',
-            style: GoogleFonts.outfit(
+            style: GoogleFonts.inter(
               color: Theme.of(context).colorScheme.onSurface,
               fontWeight: FontWeight.bold,
             ),
@@ -256,7 +256,7 @@ class _SessionDetailsScreenState extends State<SessionDetailsScreen> {
           elevation: 0,
           title: Text(
             'Session Details',
-            style: GoogleFonts.outfit(
+            style: GoogleFonts.inter(
               color: Theme.of(context).colorScheme.onSurface,
               fontWeight: FontWeight.bold,
             ),
@@ -327,7 +327,7 @@ class _SessionDetailsScreenState extends State<SessionDetailsScreen> {
                   ),
                   Text(
                     'Session Details',
-                    style: GoogleFonts.outfit(
+                    style: GoogleFonts.inter(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
                       color: Colors.white,
@@ -416,7 +416,7 @@ class _SessionDetailsScreenState extends State<SessionDetailsScreen> {
         ),
         title: Text(
           'Session Details',
-          style: GoogleFonts.outfit(
+          style: GoogleFonts.inter(
             color: Theme.of(context).colorScheme.onSurface,
             fontWeight: FontWeight.bold,
           ),
@@ -476,7 +476,7 @@ class _SessionDetailsScreenState extends State<SessionDetailsScreen> {
                             startTime.isAfter(DateTime.now())
                                 ? 'Upcoming'
                                 : 'Completed',
-                            style: GoogleFonts.outfit(
+                            style: GoogleFonts.inter(
                               color: Colors.white,
                               fontWeight: FontWeight.bold,
                               fontSize: 12,
@@ -550,7 +550,7 @@ class _SessionDetailsScreenState extends State<SessionDetailsScreen> {
           // Title
           Text(
             _session!['title']?.toString() ?? 'Untitled Session',
-            style: GoogleFonts.outfit(
+            style: GoogleFonts.inter(
               fontSize: 24,
               fontWeight: FontWeight.bold,
               color: Theme.of(context).colorScheme.onSurface,
@@ -593,7 +593,9 @@ class _SessionDetailsScreenState extends State<SessionDetailsScreen> {
               ),
               _buildQuickStat(
                 Icons.people_outline,
-                '${_session!['capacity']?.toString() ?? '0'} Capacity',
+                (_session!['capacity'] == 0 || _session!['capacity'] == null)
+                    ? '1 Capacity' // Default to 1 for 1-on-1 if 0/null
+                    : '${_session!['capacity']} Capacity',
               ),
               _buildQuickStat(Icons.sports_cricket, 'Cricket'),
             ],
@@ -634,14 +636,19 @@ class _SessionDetailsScreenState extends State<SessionDetailsScreen> {
               icon: CircleAvatar(
                 backgroundColor: AppPalette.navyPrimary,
                 child: Text(
-                  (coach['fullName']?.toString() ?? 'C')
+                  (coach['fullName']?.toString() ??
+                          _session!['coachName']?.toString() ??
+                          'C')
                       .substring(0, 1)
                       .toUpperCase(),
                   style: const TextStyle(color: Colors.white),
                 ),
               ),
-              title: coach['fullName']?.toString() ?? 'Coach',
-              subtitle: 'Head Coach',
+              title:
+                  coach['fullName']?.toString() ??
+                  _session!['coachName']?.toString() ??
+                  'Coach',
+              subtitle: coach['coachTitle']?.toString() ?? 'Head Coach',
               actionIcon: Icons.phone,
             ),
           const SizedBox(height: 12),
@@ -704,7 +711,7 @@ class _SessionDetailsScreenState extends State<SessionDetailsScreen> {
                     },
                     child: Text(
                       'Add Players',
-                      style: GoogleFonts.outfit(
+                      style: GoogleFonts.inter(
                         color: Theme.of(context).colorScheme.primary,
                         fontWeight: FontWeight.bold,
                       ),
@@ -745,7 +752,7 @@ class _SessionDetailsScreenState extends State<SessionDetailsScreen> {
                     child: SwitchListTile(
                       title: Text(
                         (player['fullName']?.toString() ?? 'Unknown Player'),
-                        style: GoogleFonts.outfit(fontWeight: FontWeight.w600),
+                        style: GoogleFonts.inter(fontWeight: FontWeight.w600),
                       ),
                       subtitle: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -878,7 +885,7 @@ class _SessionDetailsScreenState extends State<SessionDetailsScreen> {
                       ),
                       child: Text(
                         '${index + 1}',
-                        style: GoogleFonts.outfit(
+                        style: GoogleFonts.inter(
                           fontWeight: FontWeight.bold,
                           color: Theme.of(context).colorScheme.primary,
                         ),
@@ -891,7 +898,7 @@ class _SessionDetailsScreenState extends State<SessionDetailsScreen> {
                         children: [
                           Text(
                             DateTimeUtils.formatSessionDate(occStartTime),
-                            style: GoogleFonts.outfit(
+                            style: GoogleFonts.inter(
                               fontWeight: FontWeight.bold,
                               color: Theme.of(context).colorScheme.onSurface,
                             ),
@@ -947,7 +954,7 @@ class _SessionDetailsScreenState extends State<SessionDetailsScreen> {
                       ),
                       child: Text(
                         'View Report',
-                        style: GoogleFonts.outfit(
+                        style: GoogleFonts.inter(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
                           color: AppPalette.navyPrimary,
@@ -957,33 +964,62 @@ class _SessionDetailsScreenState extends State<SessionDetailsScreen> {
                   ),
 
                 // Start Session Button (Visible for Active/Today sessions that are not completed)
+                // Start Session Button (Visible for Active/Today sessions that are not completed)
+                // Also hide if session time has passed and it's not in-progress
                 if (isActiveSession && !isCompleted) ...[
-                  if (isPastSession ||
-                      isCompleted) // Add spacing if Report button is also visible (rare edge case but good safety)
-                    const SizedBox(width: 12),
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: _isDeleting
-                          ? null
-                          : () => context.push(
-                              '/session-attendance/${widget.sessionId}',
+                  Builder(
+                    builder: (context) {
+                      final status = _session!['status'];
+                      final now = DateTime.now();
+                      final isTimePassed = startTime
+                          .add(Duration(minutes: duration))
+                          .isBefore(now);
+
+                      // If time passed and not started, user treats as ended -> hide start
+                      // If in-progress, we allow resuming (or completing)
+                      if (isTimePassed && status != 'in-progress') {
+                        return const SizedBox.shrink();
+                      }
+
+                      return Expanded(
+                        child: Row(
+                          children: [
+                            if (isPastSession || isCompleted)
+                              const SizedBox(width: 12),
+                            Expanded(
+                              child: ElevatedButton(
+                                onPressed: _isDeleting
+                                    ? null
+                                    : () => context.push(
+                                        '/session-attendance/${widget.sessionId}',
+                                      ),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: status == 'in-progress'
+                                      ? Colors.blue
+                                      : Colors.green,
+                                  foregroundColor: Colors.white,
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 16,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                ),
+                                child: Text(
+                                  status == 'in-progress'
+                                      ? 'Resume Session'
+                                      : 'Start Session',
+                                  style: GoogleFonts.inter(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
                             ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.green,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+                          ],
                         ),
-                      ),
-                      child: Text(
-                        'Start Session',
-                        style: GoogleFonts.outfit(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
+                      );
+                    },
                   ),
                 ],
 
@@ -1017,7 +1053,7 @@ class _SessionDetailsScreenState extends State<SessionDetailsScreen> {
                       ),
                       child: Text(
                         _isDeleting ? 'Deleting...' : 'Edit Session',
-                        style: GoogleFonts.outfit(
+                        style: GoogleFonts.inter(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
                         ),
@@ -1056,7 +1092,7 @@ class _SessionDetailsScreenState extends State<SessionDetailsScreen> {
                             )
                           : Text(
                               'Cancel Booking',
-                              style: GoogleFonts.outfit(
+                              style: GoogleFonts.inter(
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold,
                               ),
@@ -1076,7 +1112,7 @@ class _SessionDetailsScreenState extends State<SessionDetailsScreen> {
                       ),
                       child: Text(
                         'Book Session',
-                        style: GoogleFonts.outfit(
+                        style: GoogleFonts.inter(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
                         ),
@@ -1109,7 +1145,7 @@ class _SessionDetailsScreenState extends State<SessionDetailsScreen> {
                 ),
                 child: Text(
                   'Leave a Review',
-                  style: GoogleFonts.outfit(
+                  style: GoogleFonts.inter(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
                   ),
@@ -1143,7 +1179,7 @@ class _SessionDetailsScreenState extends State<SessionDetailsScreen> {
   Widget _buildSectionTitle(String title) {
     return Text(
       title,
-      style: GoogleFonts.outfit(
+      style: GoogleFonts.inter(
         fontSize: 18,
         fontWeight: FontWeight.bold,
         color: Theme.of(context).colorScheme.onSurface,
@@ -1216,7 +1252,7 @@ class _SessionDetailsScreenState extends State<SessionDetailsScreen> {
       child: Center(
         child: Text(
           label.substring(0, min(label.length, 2)).toUpperCase(),
-          style: GoogleFonts.outfit(
+          style: GoogleFonts.inter(
             fontWeight: FontWeight.bold,
             color: AppPalette.navyPrimary,
             fontSize: 14,
@@ -1365,7 +1401,7 @@ class _AddPlayersSheetState extends State<_AddPlayersSheet> {
               children: [
                 Text(
                   'Add Players',
-                  style: GoogleFonts.outfit(
+                  style: GoogleFonts.inter(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
                     color: Theme.of(context).colorScheme.onSurface,
@@ -1382,7 +1418,7 @@ class _AddPlayersSheetState extends State<_AddPlayersSheet> {
                           )
                         : Text(
                             'Add (${_selectedPlayers.length})',
-                            style: GoogleFonts.outfit(
+                            style: GoogleFonts.inter(
                               fontWeight: FontWeight.bold,
                             ),
                           ),
@@ -1453,7 +1489,7 @@ class _AddPlayersSheetState extends State<_AddPlayersSheet> {
                           ),
                           title: Text(
                             player['name'] ?? 'Unknown',
-                            style: GoogleFonts.outfit(
+                            style: GoogleFonts.inter(
                               fontWeight: FontWeight.w600,
                             ),
                           ),

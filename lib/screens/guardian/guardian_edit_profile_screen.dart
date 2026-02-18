@@ -142,7 +142,7 @@ class _GuardianEditProfileScreenState extends State<GuardianEditProfileScreen> {
       builder: (context) => AlertDialog(
         title: Text(
           'Change Profile Photo',
-          style: GoogleFonts.outfit(fontWeight: FontWeight.bold),
+          style: GoogleFonts.inter(fontWeight: FontWeight.bold),
         ),
         content: Text(
           'Photo upload feature coming soon!',
@@ -166,7 +166,7 @@ class _GuardianEditProfileScreenState extends State<GuardianEditProfileScreen> {
         appBar: AppBar(
           title: Text(
             'Edit Profile',
-            style: GoogleFonts.outfit(
+            style: GoogleFonts.inter(
               color: AppPalette.navyPrimary,
               fontWeight: FontWeight.bold,
             ),
@@ -184,7 +184,7 @@ class _GuardianEditProfileScreenState extends State<GuardianEditProfileScreen> {
       appBar: AppBar(
         title: Text(
           'Edit Profile',
-          style: GoogleFonts.outfit(
+          style: GoogleFonts.inter(
             color: AppPalette.navyPrimary,
             fontWeight: FontWeight.bold,
           ),
@@ -264,7 +264,7 @@ class _GuardianEditProfileScreenState extends State<GuardianEditProfileScreen> {
               // Personal Information
               Text(
                 "Personal Information",
-                style: GoogleFonts.outfit(
+                style: GoogleFonts.inter(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
                   color: AppPalette.navyPrimary,
@@ -298,7 +298,7 @@ class _GuardianEditProfileScreenState extends State<GuardianEditProfileScreen> {
               // Contact Details
               Text(
                 "Contact Details",
-                style: GoogleFonts.outfit(
+                style: GoogleFonts.inter(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
                   color: AppPalette.navyPrimary,
@@ -334,7 +334,7 @@ class _GuardianEditProfileScreenState extends State<GuardianEditProfileScreen> {
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  textStyle: GoogleFonts.outfit(
+                  textStyle: GoogleFonts.inter(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
                   ),

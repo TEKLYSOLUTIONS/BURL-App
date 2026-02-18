@@ -92,7 +92,7 @@ class ProfileScreen extends ConsumerWidget {
 
             Text(
               'Arjun Kumar',
-              style: GoogleFonts.outfit(
+              style: GoogleFonts.inter(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
                 color: Theme.of(context).colorScheme.onSurface,
@@ -224,7 +224,7 @@ class ProfileScreen extends ConsumerWidget {
       children: [
         Text(
           value,
-          style: GoogleFonts.outfit(
+          style: GoogleFonts.inter(
             fontSize: 24,
             fontWeight: FontWeight.bold,
             color: Theme.of(context).colorScheme.primary,
@@ -262,7 +262,7 @@ class ProfileScreen extends ConsumerWidget {
             children: [
               Text(
                 'Select Appearance',
-                style: GoogleFonts.outfit(
+                style: GoogleFonts.inter(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
                   color: Theme.of(context).colorScheme.onSurface,

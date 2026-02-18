@@ -42,7 +42,7 @@ class HelpCenterScreen extends StatelessWidget {
                 Text(
                   'Help Center',
                   textAlign: TextAlign.center,
-                  style: GoogleFonts.outfit(
+                  style: GoogleFonts.inter(
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
                     color: Theme.of(context).colorScheme.onSurface,
@@ -61,7 +61,7 @@ class HelpCenterScreen extends StatelessWidget {
                   const SizedBox(height: 12),
                   Text(
                     'How can we help you?',
-                    style: GoogleFonts.outfit(
+                    style: GoogleFonts.inter(
                       fontSize: 24,
                       fontWeight: FontWeight.bold,
                       color: Theme.of(context).colorScheme.onSurface,
@@ -99,7 +99,7 @@ class HelpCenterScreen extends StatelessWidget {
 
                   Text(
                     'Frequently Asked Questions',
-                    style: GoogleFonts.outfit(
+                    style: GoogleFonts.inter(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
                       color: AppPalette.navyPrimary,
@@ -157,7 +157,7 @@ class HelpCenterScreen extends StatelessWidget {
                         const SizedBox(height: 16),
                         Text(
                           'Still need help?',
-                          style: GoogleFonts.outfit(
+                          style: GoogleFonts.inter(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
                             color: Theme.of(context).colorScheme.onSurface,

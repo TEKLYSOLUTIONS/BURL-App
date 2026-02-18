@@ -13,7 +13,7 @@ class TermsOfServiceScreen extends StatelessWidget {
       appBar: AppBar(
         title: Text(
           'Terms of Service',
-          style: GoogleFonts.outfit(
+          style: GoogleFonts.inter(
             color: AppPalette.navyPrimary,
             fontWeight: FontWeight.bold,
           ),
@@ -35,7 +35,7 @@ class TermsOfServiceScreen extends StatelessWidget {
           children: [
             Text(
               'Terms of Service',
-              style: GoogleFonts.outfit(
+              style: GoogleFonts.inter(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
               ),

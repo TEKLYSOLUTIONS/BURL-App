@@ -73,7 +73,7 @@ class _EditPlayerScreenState extends State<EditPlayerScreen> {
       builder: (ctx) => AlertDialog(
         title: Text(
           'Remove Player',
-          style: GoogleFonts.outfit(fontWeight: FontWeight.bold),
+          style: GoogleFonts.inter(fontWeight: FontWeight.bold),
         ),
         content: Text(
           'Are you sure you want to remove this player? This action cannot be undone.',
@@ -170,7 +170,7 @@ class _EditPlayerScreenState extends State<EditPlayerScreen> {
       appBar: AppBar(
         title: Text(
           'Edit Player',
-          style: GoogleFonts.outfit(
+          style: GoogleFonts.inter(
             color: AppPalette.navyPrimary,
             fontWeight: FontWeight.bold,
             fontSize: 20,
@@ -233,7 +233,7 @@ class _EditPlayerScreenState extends State<EditPlayerScreen> {
                   const SizedBox(height: 16),
                   Text(
                     _playerName,
-                    style: GoogleFonts.outfit(
+                    style: GoogleFonts.inter(
                       fontSize: 22,
                       fontWeight: FontWeight.bold,
                       color: AppPalette.navyPrimary,
@@ -388,7 +388,7 @@ class _EditPlayerScreenState extends State<EditPlayerScreen> {
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  textStyle: GoogleFonts.outfit(
+                  textStyle: GoogleFonts.inter(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
                   ),

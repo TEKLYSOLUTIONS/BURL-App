@@ -79,7 +79,7 @@ class _AddReviewScreenState extends State<AddReviewScreen> {
       appBar: AppBar(
         title: Text(
           'Write a Review',
-          style: GoogleFonts.outfit(
+          style: GoogleFonts.inter(
             fontWeight: FontWeight.bold,
             color: Theme.of(context).colorScheme.onSurface,
           ),
@@ -104,7 +104,7 @@ class _AddReviewScreenState extends State<AddReviewScreen> {
                 children: [
                   Text(
                     'How was your session?',
-                    style: GoogleFonts.outfit(
+                    style: GoogleFonts.inter(
                       fontSize: 24,
                       fontWeight: FontWeight.bold,
                       color: Theme.of(context).colorScheme.onSurface,
@@ -137,7 +137,7 @@ class _AddReviewScreenState extends State<AddReviewScreen> {
                   const SizedBox(height: 16),
                   Text(
                     '$_rating/5',
-                    style: GoogleFonts.outfit(
+                    style: GoogleFonts.inter(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
                       color: Theme.of(context).colorScheme.primary,
@@ -149,7 +149,7 @@ class _AddReviewScreenState extends State<AddReviewScreen> {
             const SizedBox(height: 48),
             Text(
               'Share your experience',
-              style: GoogleFonts.outfit(
+              style: GoogleFonts.inter(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
                 color: Theme.of(context).colorScheme.onSurface,
@@ -201,7 +201,7 @@ class _AddReviewScreenState extends State<AddReviewScreen> {
                     ? const CircularProgressIndicator(color: Colors.white)
                     : Text(
                         'Submit Review',
-                        style: GoogleFonts.outfit(
+                        style: GoogleFonts.inter(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
                           color: Colors.white,

@@ -79,7 +79,7 @@ class _SplashScreenState extends State<SplashScreen>
                 // // Tagline
                 // Text(
                 //   'Master Your Game',
-                //   style: GoogleFonts.outfit(
+                //   style: GoogleFonts.inter(
                 //     color: AppPalette.textSecondaryLight,
                 //     fontSize: 16,
                 //     fontWeight: FontWeight.w500,

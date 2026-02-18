@@ -101,21 +101,16 @@ class _StudentsScreenState extends State<StudentsScreen> {
         context,
       ).scaffoldBackgroundColor, // Light grey background
       appBar: AppBar(
-        backgroundColor: Colors.transparent,
         elevation: 0,
         title: Text(
           'My Players',
-          style: GoogleFonts.outfit(
-            color: Theme.of(context).colorScheme.onSurface,
+          style: GoogleFonts.inter(
             fontWeight: FontWeight.bold,
           ),
         ),
         centerTitle: true,
         leading: IconButton(
-          icon: Icon(
-            Icons.arrow_back_ios_new,
-            color: Theme.of(context).colorScheme.onSurface,
-          ),
+          icon: const Icon(Icons.arrow_back_ios_new),
           onPressed: () => context.pop(),
         ),
       ),
@@ -324,7 +319,7 @@ class _StudentsScreenState extends State<StudentsScreen> {
           const SizedBox(height: 12),
           Text(
             value,
-            style: GoogleFonts.outfit(
+            style: GoogleFonts.inter(
               fontSize: 32,
               fontWeight: FontWeight.bold,
               color: isDark
@@ -485,7 +480,7 @@ class _StudentsScreenState extends State<StudentsScreen> {
                 children: [
                   Text(
                     name,
-                    style: GoogleFonts.outfit(
+                    style: GoogleFonts.inter(
                       fontWeight: FontWeight.bold,
                       fontSize: 16,
                       color: Theme.of(context).colorScheme.onSurface,

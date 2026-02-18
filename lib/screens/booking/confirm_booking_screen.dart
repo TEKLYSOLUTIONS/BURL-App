@@ -150,7 +150,7 @@ class _ConfirmBookingScreenState extends State<ConfirmBookingScreen> {
       appBar: AppBar(
         title: Text(
           'Confirm Booking',
-          style: GoogleFonts.outfit(
+          style: GoogleFonts.inter(
             fontWeight: FontWeight.bold,
             color: Theme.of(context).colorScheme.onSurface,
           ),
@@ -193,7 +193,7 @@ class _ConfirmBookingScreenState extends State<ConfirmBookingScreen> {
                                 children: [
                                   Text(
                                     'Discount Applied!',
-                                    style: GoogleFonts.outfit(
+                                    style: GoogleFonts.inter(
                                       color: Colors.white,
                                       fontWeight: FontWeight.bold,
                                       fontSize: 16,
@@ -265,7 +265,7 @@ class _ConfirmBookingScreenState extends State<ConfirmBookingScreen> {
                                   children: [
                                     Text(
                                       coachName,
-                                      style: GoogleFonts.outfit(
+                                      style: GoogleFonts.inter(
                                         fontWeight: FontWeight.bold,
                                         fontSize: 18,
                                         color: Theme.of(
@@ -349,7 +349,7 @@ class _ConfirmBookingScreenState extends State<ConfirmBookingScreen> {
                                     const SizedBox(height: 4),
                                     Text(
                                       '$dateStr • $timeStr',
-                                      style: GoogleFonts.outfit(
+                                      style: GoogleFonts.inter(
                                         fontSize: 16,
                                         fontWeight: FontWeight.w600,
                                         color: Theme.of(
@@ -399,7 +399,7 @@ class _ConfirmBookingScreenState extends State<ConfirmBookingScreen> {
                                     const SizedBox(height: 4),
                                     Text(
                                       location,
-                                      style: GoogleFonts.outfit(
+                                      style: GoogleFonts.inter(
                                         fontSize: 16,
                                         fontWeight: FontWeight.w600,
                                         color: Theme.of(
@@ -497,7 +497,7 @@ class _ConfirmBookingScreenState extends State<ConfirmBookingScreen> {
                             children: [
                               Text(
                                 'Total',
-                                style: GoogleFonts.outfit(
+                                style: GoogleFonts.inter(
                                   fontSize: 18,
                                   fontWeight: FontWeight.bold,
                                   color: Theme.of(
@@ -507,7 +507,7 @@ class _ConfirmBookingScreenState extends State<ConfirmBookingScreen> {
                               ),
                               Text(
                                 '\$${_totalAmount.toStringAsFixed(2)}',
-                                style: GoogleFonts.outfit(
+                                style: GoogleFonts.inter(
                                   fontSize: 24,
                                   fontWeight: FontWeight.bold,
                                   color: Theme.of(
@@ -549,7 +549,7 @@ class _ConfirmBookingScreenState extends State<ConfirmBookingScreen> {
                                 const SizedBox(width: 12),
                                 Text(
                                   _appliedPromoCode!,
-                                  style: GoogleFonts.outfit(
+                                  style: GoogleFonts.inter(
                                     fontWeight: FontWeight.bold,
                                     color: Colors.green,
                                     fontSize: 16,
@@ -857,7 +857,7 @@ class _ConfirmBookingScreenState extends State<ConfirmBookingScreen> {
                         children: [
                           Text(
                             'Pay Total',
-                            style: GoogleFonts.outfit(
+                            style: GoogleFonts.inter(
                               fontSize: 18,
                               fontWeight: FontWeight.bold,
                               color: Colors.white,
@@ -865,7 +865,7 @@ class _ConfirmBookingScreenState extends State<ConfirmBookingScreen> {
                           ),
                           Text(
                             '\$${_totalAmount.toStringAsFixed(2)}',
-                            style: GoogleFonts.outfit(
+                            style: GoogleFonts.inter(
                               fontSize: 20,
                               fontWeight: FontWeight.bold,
                               color: Colors.white,

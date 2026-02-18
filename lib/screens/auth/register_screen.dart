@@ -31,8 +31,33 @@ class _RegisterScreenState extends State<RegisterScreen> {
   bool _isConfirmPasswordVisible = false;
   bool _agreedToTerms = false;
 
+  // Password Strength State
+  bool _hasMinLength = false;
+  bool _hasUppercase = false;
+  bool _hasDigits = false;
+  bool _hasSpecialCharacters = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _passwordController.addListener(_checkPasswordStrength);
+  }
+
+  void _checkPasswordStrength() {
+    final password = _passwordController.text;
+    setState(() {
+      _hasMinLength = password.length >= 8;
+      _hasUppercase = password.contains(RegExp(r'[A-Z]'));
+      _hasDigits = password.contains(RegExp(r'[0-9]'));
+      _hasSpecialCharacters = password.contains(
+        RegExp(r'[!@#$%^&*(),.?":{}|<>]'),
+      );
+    });
+  }
+
   @override
   void dispose() {
+    _passwordController.removeListener(_checkPasswordStrength);
     _nameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
@@ -52,6 +77,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
     if (_passwordController.text != _confirmPasswordController.text) {
       _showSnackBar('Passwords do not match.', isError: true);
+      return;
+    }
+
+    if (!(_hasMinLength &&
+        _hasUppercase &&
+        _hasDigits &&
+        _hasSpecialCharacters)) {
+      _showSnackBar(
+        'Please ensure your password meets all strength requirements.',
+        isError: true,
+      );
       return;
     }
 
@@ -166,7 +202,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               // Title
               Text(
                 'Account Created!',
-                style: GoogleFonts.outfit(
+                style: GoogleFonts.inter(
                   fontSize: 24,
                   fontWeight: FontWeight.bold,
                   color: AppPalette.navyPrimary,
@@ -210,7 +246,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   ),
                   child: Text(
                     'Login',
-                    style: GoogleFonts.outfit(
+                    style: GoogleFonts.inter(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
                     ),
@@ -268,7 +304,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               // Title & Subtitle
               Text(
                 'Create Account',
-                style: GoogleFonts.outfit(
+                style: GoogleFonts.inter(
                   fontSize: 32,
                   fontWeight: FontWeight.bold,
                   color: Theme.of(context).colorScheme.onSurface,
@@ -373,6 +409,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       },
                     ).animate().fadeIn(delay: 500.ms).slideX(begin: -0.1),
 
+                    const SizedBox(height: 16),
+
+                    // Password Criteria
+                    _PasswordCriteria(
+                      hasMinLength: _hasMinLength,
+                      hasUppercase: _hasUppercase,
+                      hasDigits: _hasDigits,
+                      hasSpecialCharacters: _hasSpecialCharacters,
+                    ).animate().fadeIn(delay: 550.ms),
+
                     const SizedBox(height: 24),
 
                     // Terms Checkbox
@@ -430,7 +476,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 children: [
                                   Text(
                                     'Register',
-                                    style: GoogleFonts.outfit(
+                                    style: GoogleFonts.inter(
                                       fontSize: 18,
                                       fontWeight: FontWeight.bold,
                                     ),
@@ -472,22 +518,22 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
                     // Social Buttons
                     Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Expanded(
-                          child: _SocialButton(
-                            label: 'Google',
-                            assetPath: 'assets/images/logo_google.png',
-                            onTap: _handleGoogleSignIn,
-                          ),
+                        _SocialButton(
+                          label:
+                              'Google', // Kept for API compatibility but unused
+                          assetPath:
+                              'assets/images/google_logo_transparent.png',
+                          onTap: _handleGoogleSignIn,
                         ),
-                        const SizedBox(width: 16),
                         if (Platform.isIOS || Platform.isMacOS)
-                          Expanded(
-                            child: _SocialButton(
-                              label: 'Apple',
-                              assetPath: 'assets/images/logo_apple.png',
-                              onTap: _handleAppleSignIn,
-                            ),
+                          const SizedBox(width: 20),
+                        if (Platform.isIOS || Platform.isMacOS)
+                          _SocialButton(
+                            label: 'Apple',
+                            assetPath: 'assets/images/logo_apple.png',
+                            onTap: _handleAppleSignIn,
                           ),
                       ],
                     ).animate().fadeIn(delay: 900.ms),
@@ -613,7 +659,7 @@ class _CustomTextField extends StatelessWidget {
       children: [
         Text(
           label,
-          style: GoogleFonts.outfit(
+          style: GoogleFonts.inter(
             fontSize: 14,
             fontWeight: FontWeight.w600,
             color: Theme.of(context).colorScheme.onSurface,
@@ -694,31 +740,90 @@ class _SocialButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(16),
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12),
+        height: 60,
+        width: 60,
+        alignment: Alignment.center,
         decoration: BoxDecoration(
           border: Border.all(
             color: Theme.of(context).dividerColor.withValues(alpha: 0.5),
           ),
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(16),
           color: Theme.of(context).cardColor,
         ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Image.asset(assetPath, height: 24, width: 24),
-            const SizedBox(width: 8),
-            Text(
-              label,
-              style: GoogleFonts.inter(
-                fontSize: 15,
-                fontWeight: FontWeight.w600,
-                color: Theme.of(context).colorScheme.onSurface,
-              ),
-            ),
-          ],
+        child: Image.asset(assetPath, height: 28, width: 28),
+      ),
+    );
+  }
+}
+
+class _PasswordCriteria extends StatelessWidget {
+  final bool hasMinLength;
+  final bool hasUppercase;
+  final bool hasDigits;
+  final bool hasSpecialCharacters;
+
+  const _PasswordCriteria({
+    required this.hasMinLength,
+    required this.hasUppercase,
+    required this.hasDigits,
+    required this.hasSpecialCharacters,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Password Requirements:',
+          style: GoogleFonts.inter(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            color: Theme.of(context).colorScheme.onSurface,
+          ),
         ),
+        const SizedBox(height: 8),
+        _buildCriteriaItem(context, 'At least 8 characters', hasMinLength),
+        _buildCriteriaItem(context, 'One uppercase letter', hasUppercase),
+        _buildCriteriaItem(context, 'One number', hasDigits),
+        _buildCriteriaItem(
+          context,
+          'One special character',
+          hasSpecialCharacters,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCriteriaItem(BuildContext context, String text, bool isMet) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4.0),
+      child: Row(
+        children: [
+          Icon(
+            isMet ? Ionicons.checkmark_circle : Ionicons.ellipse_outline,
+            size: 16,
+            color: isMet
+                ? AppPalette.successGreen
+                : Theme.of(
+                    context,
+                  ).textTheme.bodyMedium?.color?.withValues(alpha: 0.5),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            text,
+            style: GoogleFonts.inter(
+              fontSize: 13,
+              color: isMet
+                  ? Theme.of(context).colorScheme.onSurface
+                  : Theme.of(
+                      context,
+                    ).textTheme.bodyMedium?.color?.withValues(alpha: 0.5),
+            ),
+          ),
+        ],
       ),
     );
   }

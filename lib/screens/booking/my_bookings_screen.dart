@@ -69,7 +69,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
       builder: (context) => AlertDialog(
         title: Text(
           'Cancel Booking',
-          style: GoogleFonts.outfit(fontWeight: FontWeight.bold),
+          style: GoogleFonts.inter(fontWeight: FontWeight.bold),
         ),
         content: Text(
           'Are you sure you want to cancel this booking?',
@@ -118,7 +118,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
       appBar: AppBar(
         title: Text(
           'My Bookings',
-          style: GoogleFonts.outfit(
+          style: GoogleFonts.inter(
             fontWeight: FontWeight.bold,
             color: Theme.of(context).colorScheme.onSurface,
           ),
@@ -173,7 +173,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
             const SizedBox(height: 16),
             Text(
               isUpcoming ? 'No upcoming bookings' : 'No past bookings',
-              style: GoogleFonts.outfit(
+              style: GoogleFonts.inter(
                 fontSize: 18,
                 fontWeight: FontWeight.w600,
                 color: Theme.of(context).textTheme.bodyMedium?.color,
@@ -270,7 +270,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
           const SizedBox(height: 12),
           Text(
             sessionTitle,
-            style: GoogleFonts.outfit(
+            style: GoogleFonts.inter(
               fontSize: 18,
               fontWeight: FontWeight.bold,
               color: Theme.of(context).colorScheme.onSurface,
@@ -336,7 +336,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
               ),
               Text(
                 '\$${total.toStringAsFixed(2)}',
-                style: GoogleFonts.outfit(
+                style: GoogleFonts.inter(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
                   color: Theme.of(context).colorScheme.onSurface,

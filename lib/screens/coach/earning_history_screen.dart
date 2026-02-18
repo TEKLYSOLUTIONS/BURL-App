@@ -141,12 +141,18 @@ class _EarningHistoryScreenState extends State<EarningHistoryScreen> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const SizedBox(width: 40),
+                  if (context.canPop())
+                    IconButton(
+                      icon: const Icon(Icons.arrow_back, color: Colors.white),
+                      onPressed: () => context.pop(),
+                    )
+                  else
+                    const SizedBox(width: 40),
                   Expanded(
                     child: Text(
                       'Earnings',
                       textAlign: TextAlign.center,
-                      style: GoogleFonts.outfit(
+                      style: GoogleFonts.inter(
                         fontSize: 24,
                         fontWeight: FontWeight.bold,
                         color: Theme.of(context).colorScheme.onPrimary,
@@ -181,12 +187,18 @@ class _EarningHistoryScreenState extends State<EarningHistoryScreen> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const SizedBox(width: 40),
+                if (context.canPop())
+                  IconButton(
+                    icon: const Icon(Icons.arrow_back, color: Colors.white),
+                    onPressed: () => context.pop(),
+                  )
+                else
+                  const SizedBox(width: 40),
                 Expanded(
                   child: Text(
                     'Earnings',
                     textAlign: TextAlign.center,
-                    style: GoogleFonts.outfit(
+                    style: GoogleFonts.inter(
                       fontSize: 24,
                       fontWeight: FontWeight.bold,
                       color: Theme.of(context).colorScheme.onPrimary,
@@ -267,7 +279,7 @@ class _EarningHistoryScreenState extends State<EarningHistoryScreen> {
                                         EarningsService.formatPercentageChange(
                                           percentageChange,
                                         ),
-                                        style: GoogleFonts.outfit(
+                                        style: GoogleFonts.inter(
                                           color: Colors.white,
                                           fontSize: 12,
                                           fontWeight: FontWeight.bold,
@@ -281,7 +293,7 @@ class _EarningHistoryScreenState extends State<EarningHistoryScreen> {
                           const SizedBox(height: 8),
                           Text(
                             EarningsService.formatCurrency(totalBalance),
-                            style: GoogleFonts.outfit(
+                            style: GoogleFonts.inter(
                               color: Colors.white,
                               fontSize: 40,
                               fontWeight: FontWeight.bold,
@@ -322,7 +334,7 @@ class _EarningHistoryScreenState extends State<EarningHistoryScreen> {
                                   const SizedBox(width: 8),
                                   Text(
                                     'Cash Out Now',
-                                    style: GoogleFonts.outfit(
+                                    style: GoogleFonts.inter(
                                       color: Colors.white,
                                       fontSize: 16,
                                       fontWeight: FontWeight.bold,
@@ -377,7 +389,7 @@ class _EarningHistoryScreenState extends State<EarningHistoryScreen> {
                             const SizedBox(height: 4),
                             Text(
                               EarningsService.formatCurrency(currentMonthTotal),
-                              style: GoogleFonts.outfit(
+                              style: GoogleFonts.inter(
                                 color: Theme.of(context).colorScheme.onSurface,
                                 fontSize: 24,
                                 fontWeight: FontWeight.bold,
@@ -403,7 +415,7 @@ class _EarningHistoryScreenState extends State<EarningHistoryScreen> {
                             ),
                             child: Text(
                               '${changeAmount >= 0 ? '+ ' : ''}${EarningsService.formatCurrency(changeAmount)} vs last month',
-                              style: GoogleFonts.outfit(
+                              style: GoogleFonts.inter(
                                 color: changeAmount >= 0
                                     ? AppPalette.successGreen
                                     : Theme.of(context).colorScheme.error,
@@ -465,7 +477,7 @@ class _EarningHistoryScreenState extends State<EarningHistoryScreen> {
                       children: [
                         Text(
                           'Recent Activity',
-                          style: GoogleFonts.outfit(
+                          style: GoogleFonts.inter(
                             fontSize: 20,
                             fontWeight: FontWeight.bold,
                             color: Theme.of(context).colorScheme.onSurface,
@@ -733,7 +745,7 @@ class _EarningHistoryScreenState extends State<EarningHistoryScreen> {
               children: [
                 Text(
                   name,
-                  style: GoogleFonts.outfit(
+                  style: GoogleFonts.inter(
                     fontWeight: FontWeight.bold,
                     fontSize: 16,
                     color: Theme.of(context).colorScheme.onSurface,
@@ -758,7 +770,7 @@ class _EarningHistoryScreenState extends State<EarningHistoryScreen> {
             children: [
               Text(
                 amount,
-                style: GoogleFonts.outfit(
+                style: GoogleFonts.inter(
                   fontWeight: FontWeight.bold,
                   fontSize: 16,
                   color: isCompleted

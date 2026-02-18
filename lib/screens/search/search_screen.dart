@@ -119,7 +119,7 @@ class _SearchScreenState extends State<SearchScreen> {
                   // Search Header
                   Text(
                     'Search',
-                    style: GoogleFonts.outfit(
+                    style: GoogleFonts.inter(
                       fontSize: 32,
                       fontWeight: FontWeight.bold,
                       color: Theme.of(context).colorScheme.onSurface,
@@ -235,7 +235,7 @@ class _SearchScreenState extends State<SearchScreen> {
                               _hasSearched
                                   ? 'Coaches (${_coaches.length})'
                                   : 'Recommended Coaches',
-                              style: GoogleFonts.outfit(
+                              style: GoogleFonts.inter(
                                 fontSize: 18,
                                 fontWeight: FontWeight.w600,
                                 color: Theme.of(context).colorScheme.onSurface,
@@ -284,7 +284,7 @@ class _SearchScreenState extends State<SearchScreen> {
                           if (_sessions.isNotEmpty) ...[
                             Text(
                               'Sessions (${_sessions.length})',
-                              style: GoogleFonts.outfit(
+                              style: GoogleFonts.inter(
                                 fontSize: 18,
                                 fontWeight: FontWeight.w600,
                                 color: Theme.of(context).colorScheme.onSurface,
@@ -342,7 +342,7 @@ class _SearchScreenState extends State<SearchScreen> {
                                       _hasSearched
                                           ? 'No results found'
                                           : 'No coaches available',
-                                      style: GoogleFonts.outfit(
+                                      style: GoogleFonts.inter(
                                         fontSize: 18,
                                         fontWeight: FontWeight.w600,
                                         color: Theme.of(
@@ -440,7 +440,7 @@ class _CoachCard extends StatelessWidget {
             const SizedBox(height: 12),
             Text(
               name,
-              style: GoogleFonts.outfit(
+              style: GoogleFonts.inter(
                 fontWeight: FontWeight.bold,
                 fontSize: 14,
                 color: Theme.of(context).colorScheme.onSurface,
@@ -531,7 +531,7 @@ class _SearchResultItem extends StatelessWidget {
                 children: [
                   Text(
                     title,
-                    style: GoogleFonts.outfit(
+                    style: GoogleFonts.inter(
                       fontWeight: FontWeight.w600,
                       fontSize: 16,
                       color: Theme.of(context).colorScheme.onSurface,

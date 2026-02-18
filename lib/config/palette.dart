@@ -30,7 +30,8 @@ class AppPalette {
   static const Color onSecondary = Colors.white;
   static const Color tertiary = navyLight;
   static const Color onTertiary = Colors.white;
-  static const Color error = Color(0xFFBA1A1A);
+  static const Color error = Color(0xFFDC2626); // Light mode error
+  static const Color errorDarkMode = Color(0xFFEF4444); // Dark mode error
   static const Color onError = Colors.white;
   static const Color outline = Color(0xFF79747E);
 
@@ -39,13 +40,19 @@ class AppPalette {
   static const Color textSecondaryLight = Color(0xFF475569);
   static const Color textPrimaryDark = Color(0xFFF8FAFC);
   static const Color textSecondaryDark = Color(0xFFCBD5E1);
-  static const Color textDisabled = Color(0xFF94A3B8);
+  static const Color textDisabled = Color(0xFF94A3B8); // Light mode disabled
+  static const Color textDisabledDark = Color(0xFF64748B); // Dark mode disabled
 
-  // Status Colors
+  // Status Colors (Light Mode)
   static const Color success = Color(0xFF16A34A);
   static const Color successGreen = Color(0xFF16A34A);
   static const Color warning = Color(0xFFF59E0B);
-  static const Color errorRed = Color(0xFFBA1A1A);
+  static const Color errorRed = Color(0xFFDC2626);
+  
+  // Status Colors (Dark Mode)
+  static const Color successDark = Color(0xFF22C55E);
+  static const Color warningDark = Color(0xFFFDBE24);
+  static const Color errorDark = Color(0xFFEF4444);
 
   // Legacy/Compatibility Aliases
   static const Color navyBlue = navyPrimary;

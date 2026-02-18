@@ -45,7 +45,7 @@ class BookingSuccessScreen extends StatelessWidget {
         centerTitle: true,
         title: Text(
           'Confirmation',
-          style: GoogleFonts.outfit(
+          style: GoogleFonts.inter(
             color: AppPalette.navyPrimary,
             fontWeight: FontWeight.bold,
             fontSize: 18,
@@ -94,7 +94,7 @@ class BookingSuccessScreen extends StatelessWidget {
 
                     Text(
                       'Booking Confirmed!',
-                      style: GoogleFonts.outfit(
+                      style: GoogleFonts.inter(
                         fontSize: 28,
                         fontWeight: FontWeight.bold,
                         color: AppPalette.navyPrimary,
@@ -147,7 +147,7 @@ class BookingSuccessScreen extends StatelessWidget {
                                         coachName.isNotEmpty
                                             ? coachName[0].toUpperCase()
                                             : 'C',
-                                        style: GoogleFonts.outfit(
+                                        style: GoogleFonts.inter(
                                           fontWeight: FontWeight.bold,
                                           fontSize: 18,
                                           color: AppPalette.navyPrimary,
@@ -184,7 +184,7 @@ class BookingSuccessScreen extends StatelessWidget {
                                           const SizedBox(height: 4),
                                           Text(
                                             sessionTitle,
-                                            style: GoogleFonts.outfit(
+                                            style: GoogleFonts.inter(
                                               fontSize: 16,
                                               fontWeight: FontWeight.bold,
                                               color: AppPalette.navyPrimary,
@@ -278,7 +278,7 @@ class BookingSuccessScreen extends StatelessWidget {
                                     ),
                                     Text(
                                       totalStr,
-                                      style: GoogleFonts.outfit(
+                                      style: GoogleFonts.inter(
                                         fontSize: 22,
                                         fontWeight: FontWeight.bold,
                                         color: AppPalette.navyPrimary,
@@ -353,7 +353,7 @@ class BookingSuccessScreen extends StatelessWidget {
                         children: [
                           Text(
                             confirmationCode,
-                            style: GoogleFonts.outfit(
+                            style: GoogleFonts.inter(
                               fontSize: 20,
                               fontWeight: FontWeight.bold,
                               color: AppPalette.navyPrimary,
@@ -406,7 +406,7 @@ class BookingSuccessScreen extends StatelessWidget {
                       ),
                       child: Text(
                         'View Booking Details',
-                        style: GoogleFonts.outfit(
+                        style: GoogleFonts.inter(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
                         ),
@@ -428,7 +428,7 @@ class BookingSuccessScreen extends StatelessWidget {
                       ),
                       child: Text(
                         'Back to Home',
-                        style: GoogleFonts.outfit(
+                        style: GoogleFonts.inter(
                           fontSize: 15,
                           fontWeight: FontWeight.bold,
                         ),
@@ -473,7 +473,7 @@ class BookingSuccessScreen extends StatelessWidget {
           const SizedBox(height: 4),
           Text(
             line1,
-            style: GoogleFonts.outfit(
+            style: GoogleFonts.inter(
               fontSize: 13,
               fontWeight: FontWeight.w600,
               color: AppPalette.navyPrimary,

@@ -52,7 +52,7 @@ class AppTimePicker {
                     ),
                     Text(
                       'Select Time',
-                      style: GoogleFonts.outfit(
+                      style: GoogleFonts.inter(
                         color: Theme.of(context).colorScheme.onSurface,
                         fontWeight: FontWeight.bold,
                         fontSize: 18,
@@ -78,7 +78,7 @@ class AppTimePicker {
                   data: CupertinoThemeData(
                     brightness: Theme.of(context).brightness,
                     textTheme: CupertinoTextThemeData(
-                      dateTimePickerTextStyle: GoogleFonts.outfit(
+                      dateTimePickerTextStyle: GoogleFonts.inter(
                         color: Theme.of(context).colorScheme.onSurface,
                         fontSize: 22,
                         fontWeight: FontWeight.w500,

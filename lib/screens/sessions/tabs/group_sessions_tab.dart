@@ -229,7 +229,7 @@ class _GroupSessionsTabState extends State<GroupSessionsTab>
                 const SizedBox(height: 12),
                 Text(
                   session['title'] as String,
-                  style: GoogleFonts.outfit(
+                  style: GoogleFonts.inter(
                     fontWeight: FontWeight.bold,
                     fontSize: 18,
                     color: Theme.of(context).textTheme.bodyLarge?.color,

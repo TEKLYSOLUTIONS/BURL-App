@@ -267,7 +267,7 @@ class _PlayerSessionsViewState extends State<PlayerSessionsView>
                 const SizedBox(height: 12),
                 Text(
                   session['title'] as String? ?? 'Untitled Session',
-                  style: GoogleFonts.outfit(
+                  style: GoogleFonts.inter(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
                     color: Theme.of(context).textTheme.bodyLarge?.color,

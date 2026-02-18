@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import 'package:go_router/go_router.dart';
 import '../../../services/session_service.dart';
 import '../../../services/booking_service.dart';
+import '../../../config/palette.dart';
 
 class CalendarTab extends StatefulWidget {
   const CalendarTab({super.key});
@@ -160,22 +161,22 @@ class _CalendarTabState extends State<CalendarTab> {
             headerStyle: HeaderStyle(
               titleCentered: true,
               formatButtonVisible: false,
-              titleTextStyle: GoogleFonts.outfit(
+              titleTextStyle: GoogleFonts.inter(
                 fontSize: 18,
                 fontWeight: FontWeight.w600,
               ),
             ),
             calendarStyle: CalendarStyle(
-              selectedDecoration: BoxDecoration(
-                color: Theme.of(context).primaryColor,
+              selectedDecoration: const BoxDecoration(
+                color: AppPalette.orangeAccent,
                 shape: BoxShape.circle,
               ),
               todayDecoration: BoxDecoration(
-                color: Theme.of(context).primaryColor.withValues(alpha: 0.3),
+                color: AppPalette.orangeAccent.withValues(alpha: 0.3),
                 shape: BoxShape.circle,
               ),
-              markerDecoration: BoxDecoration(
-                color: Theme.of(context).primaryColor,
+              markerDecoration: const BoxDecoration(
+                color: AppPalette.navyPrimary,
                 shape: BoxShape.circle,
               ),
             ),

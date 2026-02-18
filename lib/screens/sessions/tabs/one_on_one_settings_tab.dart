@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter_form_builder/flutter_form_builder.dart';
+import 'package:form_builder_validators/form_builder_validators.dart';
 import '../../../services/coach_service.dart';
+import '../../../widgets/modern_text_field.dart';
+import '../../../widgets/modern_duration_selector.dart';
 
 class OneOnOneSettingsTab extends StatefulWidget {
   const OneOnOneSettingsTab({super.key});
@@ -12,14 +16,14 @@ class OneOnOneSettingsTab extends StatefulWidget {
 class _OneOnOneSettingsTabState extends State<OneOnOneSettingsTab> {
   bool _isLoading = true;
   bool _isSaving = false;
-  final _formKey = GlobalKey<FormState>();
+  final _formKey = GlobalKey<FormBuilderState>();
 
-  // Form Controllers
+  // Form Controllers & State
   final _hourlyRateController = TextEditingController();
-  final _sessionDurationController = TextEditingController(); // minutes
-  final _bufferTimeController = TextEditingController(); // minutes
-  final _minAdvanceController = TextEditingController(); // hours
-  final _maxAdvanceController = TextEditingController(); // days
+  int _sessionDuration = 60; // minutes
+  int _bufferTime = 15; // minutes
+  int _minAdvance = 24; // hours
+  int _maxAdvance = 30; // days
 
   String _cancellationPolicy = 'flexible';
   bool _autoAccept = true;
@@ -34,10 +38,6 @@ class _OneOnOneSettingsTabState extends State<OneOnOneSettingsTab> {
   @override
   void dispose() {
     _hourlyRateController.dispose();
-    _sessionDurationController.dispose();
-    _bufferTimeController.dispose();
-    _minAdvanceController.dispose();
-    _maxAdvanceController.dispose();
     super.dispose();
   }
 
@@ -51,16 +51,12 @@ class _OneOnOneSettingsTabState extends State<OneOnOneSettingsTab> {
       setState(() {
         _hourlyRateController.text = (defaultPricing['hourlyRate'] ?? 0)
             .toString();
-        _sessionDurationController.text =
-            (defaultPricing['sessionDuration'] ?? 60).toString();
+        _sessionDuration = (defaultPricing['sessionDuration'] ?? 60).toInt();
         _currency = defaultPricing['currency'] ?? 'USD';
 
-        _bufferTimeController.text = (bookingSettings['bufferTime'] ?? 15)
-            .toString();
-        _minAdvanceController.text =
-            (bookingSettings['minAdvanceBookingHours'] ?? 24).toString();
-        _maxAdvanceController.text =
-            (bookingSettings['maxAdvanceBookingDays'] ?? 30).toString();
+        _bufferTime = (bookingSettings['bufferTime'] ?? 15).toInt();
+        _minAdvance = (bookingSettings['minAdvanceBookingHours'] ?? 24).toInt();
+        _maxAdvance = (bookingSettings['maxAdvanceBookingDays'] ?? 30).toInt();
         _cancellationPolicy =
             bookingSettings['cancellationPolicy'] ?? 'flexible';
         _autoAccept = bookingSettings['autoAccept'] ?? true;
@@ -78,23 +74,20 @@ class _OneOnOneSettingsTabState extends State<OneOnOneSettingsTab> {
   }
 
   Future<void> _saveSettings() async {
-    if (!_formKey.currentState!.validate()) return;
+    if (_formKey.currentState?.saveAndValidate() != true) return;
 
     setState(() => _isSaving = true);
     try {
       final settingsData = {
         'defaultPricing': {
           'hourlyRate': double.tryParse(_hourlyRateController.text) ?? 0,
-          'sessionDuration':
-              int.tryParse(_sessionDurationController.text) ?? 60,
+          'sessionDuration': _sessionDuration,
           'currency': _currency,
         },
         'bookingSettings': {
-          'bufferTime': int.tryParse(_bufferTimeController.text) ?? 15,
-          'minAdvanceBookingHours':
-              int.tryParse(_minAdvanceController.text) ?? 24,
-          'maxAdvanceBookingDays':
-              int.tryParse(_maxAdvanceController.text) ?? 30,
+          'bufferTime': _bufferTime,
+          'minAdvanceBookingHours': _minAdvance,
+          'maxAdvanceBookingDays': _maxAdvance,
           'cancellationPolicy': _cancellationPolicy,
           'autoAccept': _autoAccept,
         },
@@ -132,7 +125,7 @@ class _OneOnOneSettingsTabState extends State<OneOnOneSettingsTab> {
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
-      child: Form(
+      child: FormBuilder(
         key: _formKey,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -141,30 +134,106 @@ class _OneOnOneSettingsTabState extends State<OneOnOneSettingsTab> {
             const SizedBox(height: 16),
             _buildCard(
               children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: _buildTextField(
-                        controller: _hourlyRateController,
-                        label: 'Hourly Rate',
-                        hint: '0',
-                        prefix: '\$',
-                        keyboardType: const TextInputType.numberWithOptions(
-                          decimal: true,
+                IntrinsicHeight(
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Expanded(
+                        flex: 1,
+                        child: ModernTextField(
+                          name: 'hourlyRate',
+                          controller: _hourlyRateController,
+                          labelText: 'Rate',
+                          hintText: '0',
+                          prefixIcon: Icons.attach_money,
+                          keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true,
+                          ),
+                          validator: FormBuilderValidators.required(),
                         ),
                       ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: _buildTextField(
-                        controller: _sessionDurationController,
-                        label: 'Session Duration',
-                        hint: '60',
-                        suffix: 'min',
-                        keyboardType: TextInputType.number,
+                      const SizedBox(width: 16),
+                      Expanded(
+                        flex: 1,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Session Duration',
+                              style: GoogleFonts.inter(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.black87,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Expanded(
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  color: Colors.grey.shade50,
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: Colors.grey.shade200,
+                                  ),
+                                ),
+                                child: PopupMenuButton<int>(
+                                  initialValue: _sessionDuration,
+                                  offset: const Offset(0, 50),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  color: Colors.white,
+                                  elevation: 4,
+                                  constraints: const BoxConstraints(
+                                    minWidth: 150,
+                                  ),
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(16),
+                                    child: Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Text(
+                                          '$_sessionDuration min',
+                                          style: GoogleFonts.inter(
+                                            fontSize: 16,
+                                            color: Colors.black87,
+                                          ),
+                                        ),
+                                        Icon(
+                                          Icons.keyboard_arrow_down_rounded,
+                                          color: Colors.grey.shade400,
+                                          size: 22,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  itemBuilder: (context) {
+                                    return [30, 45, 60, 90, 120].map((
+                                      int value,
+                                    ) {
+                                      return PopupMenuItem<int>(
+                                        value: value,
+                                        child: Text(
+                                          '$value min',
+                                          style: GoogleFonts.inter(
+                                            fontSize: 15,
+                                          ),
+                                        ),
+                                      );
+                                    }).toList();
+                                  },
+                                  onSelected: (val) {
+                                    setState(() => _sessionDuration = val);
+                                  },
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ],
             ),
@@ -174,71 +243,69 @@ class _OneOnOneSettingsTabState extends State<OneOnOneSettingsTab> {
             const SizedBox(height: 16),
             _buildCard(
               children: [
-                _buildTextField(
-                  controller: _bufferTimeController,
-                  label: 'Buffer Time Between Sessions',
-                  hint: '15',
-                  suffix: 'min',
-                  keyboardType: TextInputType.number,
-                  helperText: 'Time needed to reset between sessions',
+                _buildLabel('Buffer Time Between Sessions'),
+                ModernDurationSelector<int>(
+                  selectedValue: _bufferTime,
+                  options: const [0, 15, 30, 45, 60],
+                  labelBuilder: (val) => '$val min',
+                  onSelected: (val) => setState(() => _bufferTime = val),
                 ),
-                const SizedBox(height: 16),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _buildTextField(
-                        controller: _minAdvanceController,
-                        label: 'Min Advance Booking',
-                        hint: '24',
-                        suffix: 'hours',
-                        keyboardType: TextInputType.number,
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: _buildTextField(
-                        controller: _maxAdvanceController,
-                        label: 'Max Advance Booking',
-                        hint: '30',
-                        suffix: 'days',
-                        keyboardType: TextInputType.number,
-                      ),
-                    ),
-                  ],
+                const SizedBox(height: 24),
+
+                _buildLabel('Min Advance Booking'),
+                ModernDurationSelector<int>(
+                  selectedValue: _minAdvance,
+                  options: const [6, 12, 24, 48],
+                  labelBuilder: (val) => '$val hours',
+                  onSelected: (val) => setState(() => _minAdvance = val),
                 ),
-                const SizedBox(height: 16),
-                DropdownButtonFormField<String>(
-                  key: ValueKey(_cancellationPolicy),
-                  initialValue: _cancellationPolicy,
-                  decoration: InputDecoration(
-                    labelText: 'Cancellation Policy',
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 16,
+                const SizedBox(height: 24),
+
+                _buildLabel('Max Advance Booking'),
+                ModernDurationSelector<int>(
+                  selectedValue: _maxAdvance,
+                  options: const [7, 14, 30, 60, 90],
+                  labelBuilder: (val) => '$val days',
+                  onSelected: (val) => setState(() => _maxAdvance = val),
+                ),
+                const SizedBox(height: 24),
+
+                _buildLabel('Cancellation Policy'),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade50,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.grey.shade200),
+                  ),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<String>(
+                      value: _cancellationPolicy,
+                      isExpanded: true,
+                      items: const [
+                        DropdownMenuItem(
+                          value: 'flexible',
+                          child: Text('Flexible (24h prior)'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'moderate',
+                          child: Text('Moderate (48h prior)'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'strict',
+                          child: Text('Strict (No refund)'),
+                        ),
+                      ],
+                      onChanged: (val) {
+                        if (val != null) {
+                          setState(() => _cancellationPolicy = val);
+                        }
+                      },
                     ),
                   ),
-                  items: const [
-                    DropdownMenuItem(
-                      value: 'flexible',
-                      child: Text('Flexible (24h prior)'),
-                    ),
-                    DropdownMenuItem(
-                      value: 'moderate',
-                      child: Text('Moderate (48h prior)'),
-                    ),
-                    DropdownMenuItem(
-                      value: 'strict',
-                      child: Text('Strict (No refund)'),
-                    ),
-                  ],
-                  onChanged: (val) {
-                    if (val != null) setState(() => _cancellationPolicy = val);
-                  },
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 24),
+
                 SwitchListTile(
                   title: Text(
                     'Auto-Accept Bookings',
@@ -280,7 +347,7 @@ class _OneOnOneSettingsTabState extends State<OneOnOneSettingsTab> {
                       )
                     : Text(
                         'Save Changes',
-                        style: GoogleFonts.outfit(
+                        style: GoogleFonts.inter(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
                           color: Colors.white,
@@ -298,13 +365,27 @@ class _OneOnOneSettingsTabState extends State<OneOnOneSettingsTab> {
   Widget _buildSectionTitle(String title) {
     return Text(
       title,
-      style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.bold),
+      style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.bold),
+    );
+  }
+
+  Widget _buildLabel(String label) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12.0),
+      child: Text(
+        label,
+        style: GoogleFonts.inter(
+          fontSize: 14,
+          fontWeight: FontWeight.w600,
+          color: Colors.black87,
+        ),
+      ),
     );
   }
 
   Widget _buildCard({required List<Widget> children}) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
@@ -320,39 +401,6 @@ class _OneOnOneSettingsTabState extends State<OneOnOneSettingsTab> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: children,
       ),
-    );
-  }
-
-  Widget _buildTextField({
-    required TextEditingController controller,
-    required String label,
-    required String hint,
-    String? prefix,
-    String? suffix,
-    String? helperText,
-    TextInputType keyboardType = TextInputType.text,
-  }) {
-    return TextFormField(
-      controller: controller,
-      keyboardType: keyboardType,
-      decoration: InputDecoration(
-        labelText: label,
-        hintText: hint,
-        helperText: helperText,
-        prefixText: prefix,
-        suffixText: suffix,
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 16,
-          vertical: 16,
-        ),
-      ),
-      validator: (value) {
-        if (value == null || value.isEmpty) {
-          return 'Required';
-        }
-        return null;
-      },
     );
   }
 }

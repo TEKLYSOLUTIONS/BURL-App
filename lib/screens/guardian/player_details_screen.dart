@@ -81,7 +81,7 @@ class _PlayerDetailsScreenState extends State<PlayerDetailsScreen> {
       appBar: AppBar(
         title: Text(
           fullName,
-          style: GoogleFonts.outfit(
+          style: GoogleFonts.inter(
             color: Theme.of(context).colorScheme.onSurface,
             fontWeight: FontWeight.bold,
           ),
@@ -145,7 +145,7 @@ class _PlayerDetailsScreenState extends State<PlayerDetailsScreen> {
                       children: [
                         Text(
                           fullName,
-                          style: GoogleFonts.outfit(
+                          style: GoogleFonts.inter(
                             fontSize: 20,
                             fontWeight: FontWeight.bold,
                             color: Theme.of(context).colorScheme.onSurface,
@@ -217,7 +217,7 @@ class _PlayerDetailsScreenState extends State<PlayerDetailsScreen> {
       alignment: Alignment.centerLeft,
       child: Text(
         title,
-        style: GoogleFonts.outfit(
+        style: GoogleFonts.inter(
           fontSize: 18,
           fontWeight: FontWeight.bold,
           color: Theme.of(context).colorScheme.onSurface,
@@ -274,7 +274,7 @@ class _PlayerDetailsScreenState extends State<PlayerDetailsScreen> {
           const SizedBox(height: 12),
           Text(
             value,
-            style: GoogleFonts.outfit(
+            style: GoogleFonts.inter(
               fontSize: 24,
               fontWeight: FontWeight.bold,
               color: Theme.of(context).colorScheme.onSurface,

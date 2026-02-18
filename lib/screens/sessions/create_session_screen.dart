@@ -5,8 +5,13 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:go_router/go_router.dart';
+import 'package:table_calendar/table_calendar.dart'; // Import TableCalendar
+import 'package:google_maps_flutter/google_maps_flutter.dart'; // Import Google Maps
 import '../../services/session_service.dart';
 import '../../utils/location_search_delegate.dart';
+import '../../screens/common/location_picker_screen.dart'; // Import Location Picker
+import '../../widgets/modern_text_field.dart';
+import '../../widgets/modern_duration_selector.dart';
 // Removed unused import
 
 class CreateSessionScreen extends StatefulWidget {
@@ -22,6 +27,10 @@ class _CreateSessionScreenState extends State<CreateSessionScreen> {
   final _formKey = GlobalKey<FormBuilderState>();
   int _currentStep = 0;
   bool _isLoading = false;
+
+  // Calendar State
+  DateTime _focusedDay = DateTime.now();
+  final Set<DateTime> _selectedDates = {}; // Changed to Set for multi-selection
 
   // Form Data (Initialized with defaults or edit data)
   late Map<String, dynamic> _initialValues;
@@ -162,24 +171,20 @@ class _CreateSessionScreenState extends State<CreateSessionScreen> {
       final startMinute = startTime.minute;
 
       if (isRecurring) {
-        final days = formData['daysOfWeek'] as List<dynamic>? ?? [];
-        final startDate = formData['startDate'] as DateTime?;
-        final endDate = formData['endDate'] as DateTime?;
-
-        if (startDate == null || endDate == null || days.isEmpty) {
+        if (_selectedDates.isEmpty) {
           throw Exception(
-            "Recurring sessions require start date, end date and at least one day selected",
+            "At least one date must be selected for recurring sessions",
           );
         }
 
-        recurringPattern = {
-          'frequency': 'weekly',
-          'daysOfWeek': days.map((d) => d.toString().toLowerCase()).toList(),
-          'startDate': startDate.toIso8601String(),
-          'endDate': endDate.toIso8601String(),
-        };
+        // Add all selected dates to selectedDays list
+        for (var date in _selectedDates) {
+          selectedDays.add(DateFormat('yyyy-MM-dd').format(date));
+        }
 
-        // For recurring, we send a template timeSlot
+        // We do NOT set recurringPattern, triggering Backend 'Manual Day Selection' strategy
+
+        // Add template time slot
         timeSlots.add({
           'startTime': {'hour': startHour, 'minute': startMinute},
           'durationMinutes': duration,
@@ -323,7 +328,7 @@ class _CreateSessionScreenState extends State<CreateSessionScreen> {
                       ? 'Schedule'
                       : 'Participants & Pricing',
                   textAlign: TextAlign.center,
-                  style: GoogleFonts.outfit(
+                  style: GoogleFonts.inter(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
                     color: Colors.white,
@@ -363,40 +368,92 @@ class _CreateSessionScreenState extends State<CreateSessionScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildSectionTitle('Type'),
-          FormBuilderRadioGroup<String>(
+          _buildLabel('Type'),
+          FormBuilderField<String>(
             name: 'sessionType',
-            decoration: const InputDecoration(border: InputBorder.none),
-            options: const [
-              FormBuilderFieldOption(
-                value: 'one-time',
-                child: Text('One Time'),
-              ),
-              FormBuilderFieldOption(
-                value: 'recurring',
-                child: Text('Recurring (Series)'),
-              ),
-              FormBuilderFieldOption(
-                value: 'camp',
-                child: Text('Camp / Workshop'),
-              ),
-            ],
-            validator: FormBuilderValidators.required(),
+            initialValue: 'one-time',
+            builder: (field) {
+              return LayoutBuilder(
+                builder: (context, constraints) {
+                  return Container(
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade50,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.grey.shade200),
+                    ),
+                    child: PopupMenuButton<String>(
+                      initialValue: field.value,
+                      offset: const Offset(0, 50),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      color: Colors.white,
+                      elevation: 4,
+                      constraints: BoxConstraints(
+                        minWidth: constraints.maxWidth,
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              field.value == 'one-time'
+                                  ? 'One Time'
+                                  : field.value == 'recurring'
+                                  ? 'Recurring'
+                                  : 'Camp',
+                              style: GoogleFonts.inter(
+                                fontSize: 16,
+                                color: Colors.black87,
+                              ),
+                            ),
+                            Icon(
+                              Icons.keyboard_arrow_down_rounded,
+                              color: Colors.grey.shade400,
+                              size: 22,
+                            ),
+                          ],
+                        ),
+                      ),
+                      itemBuilder: (context) {
+                        return ['one-time', 'recurring', 'camp'].map((
+                          String value,
+                        ) {
+                          return PopupMenuItem<String>(
+                            value: value,
+                            child: Text(
+                              value == 'one-time'
+                                  ? 'One Time'
+                                  : value == 'recurring'
+                                  ? 'Recurring'
+                                  : 'Camp',
+                              style: GoogleFonts.inter(fontSize: 15),
+                            ),
+                          );
+                        }).toList();
+                      },
+                      onSelected: (value) => field.didChange(value),
+                    ),
+                  );
+                },
+              );
+            },
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 24),
 
-          _buildLabel('Session Title'),
-          FormBuilderTextField(
+          ModernTextField(
             name: 'title',
-            decoration: _inputDecoration('e.g. Batting Masterclass'),
+            labelText: 'Session Title',
+            hintText: 'e.g. Batting Masterclass',
             validator: FormBuilderValidators.required(),
           ),
           const SizedBox(height: 20),
 
-          _buildLabel('Description'),
-          FormBuilderTextField(
+          ModernTextField(
             name: 'description',
-            decoration: _inputDecoration('What will students learn?'),
+            labelText: 'Description',
+            hintText: 'What will students learn?',
             maxLines: 4,
           ),
           const SizedBox(height: 20),
@@ -430,7 +487,6 @@ class _CreateSessionScreenState extends State<CreateSessionScreen> {
                       focusNode,
                       onFieldSubmitted,
                     ) {
-                      // Sync initial value if any
                       if (textEditingController.text.isEmpty) {
                         final initialLocation =
                             _initialValues['location'] as String?;
@@ -439,75 +495,97 @@ class _CreateSessionScreenState extends State<CreateSessionScreen> {
                           textEditingController.text = initialLocation;
                         }
                       }
-
                       return FormBuilderTextField(
                         name: 'location',
                         controller: textEditingController,
                         focusNode: focusNode,
-                        decoration: _inputDecoration(
-                          'Search location',
-                          icon: Icons.location_on,
+                        decoration: InputDecoration(
+                          hintText: 'Search location',
+                          hintStyle: GoogleFonts.inter(
+                            color: Colors.grey.shade400,
+                          ),
+                          prefixIcon: Icon(
+                            Icons.location_on,
+                            color: Colors.grey,
+                          ),
+                          suffixIcon: IconButton(
+                            icon: const Icon(Icons.map, color: Colors.blue),
+                            onPressed: () async {
+                              final result = await Navigator.push<LatLng>(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) =>
+                                      const LocationPickerScreen(),
+                                ),
+                              );
+
+                              if (result != null) {
+                                // Update the text field with coordinates
+                                final locString =
+                                    '${result.latitude.toStringAsFixed(5)}, ${result.longitude.toStringAsFixed(5)}';
+                                textEditingController.text = locString;
+                                _formKey.currentState?.fields['location']
+                                    ?.didChange(locString);
+                              }
+                            },
+                          ),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide.none,
+                          ),
+                          filled: true,
+                          fillColor: Colors.grey.shade50,
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 14,
+                          ),
                         ),
                         validator: FormBuilderValidators.required(),
-                        onChanged: (val) {
-                          // Optional: clear validation errors or handle manual typing
-                        },
+                        onSubmitted: (_) => onFieldSubmitted(),
                       );
                     },
                 optionsViewBuilder: (context, onSelected, options) {
-                  return Align(
-                    alignment: Alignment.topLeft,
-                    child: Material(
-                      elevation: 4.0,
-                      borderRadius: BorderRadius.circular(
-                        12,
-                      ), // Rounded corners for dropdown
-                      child: Container(
-                        width: constraints.maxWidth,
-                        constraints: const BoxConstraints(maxHeight: 200),
-                        decoration: BoxDecoration(
-                          color: Theme.of(context).cardColor,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: ListView.builder(
-                          padding: EdgeInsets.zero,
-                          shrinkWrap: true,
-                          itemCount: options.length,
-                          itemBuilder: (BuildContext context, int index) {
-                            final option = options.elementAt(index);
-                            final description = option['description'] as String;
-                            final structuredFormatting =
-                                option['structured_formatting'] ?? {};
-                            final mainText =
-                                structuredFormatting['main_text'] ??
-                                description;
-                            final secondaryText =
-                                structuredFormatting['secondary_text'] ?? '';
-
-                            return ListTile(
-                              leading: const Icon(
-                                Icons.location_on,
-                                size: 20,
-                                color: Colors.grey,
-                              ),
-                              title: Text(
-                                mainText,
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
+                  return Padding(
+                    padding: const EdgeInsets.only(top: 4.0),
+                    child: Align(
+                      alignment: Alignment.topLeft,
+                      child: Material(
+                        elevation: 8.0,
+                        borderRadius: BorderRadius.circular(12),
+                        child: Container(
+                          width: constraints.maxWidth,
+                          constraints: const BoxConstraints(maxHeight: 200),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: Colors.grey.shade300,
+                              width: 1,
+                            ),
+                          ),
+                          child: ListView.builder(
+                            padding: const EdgeInsets.symmetric(vertical: 8),
+                            shrinkWrap: true,
+                            itemCount: options.length,
+                            itemBuilder: (BuildContext context, int index) {
+                              final option = options.elementAt(index);
+                              return ListTile(
+                                dense: true,
+                                leading: const Icon(
+                                  Icons.location_on,
+                                  size: 20,
+                                  color: Colors.grey,
                                 ),
-                              ),
-                              subtitle: secondaryText.isNotEmpty
-                                  ? Text(
-                                      secondaryText,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    )
-                                  : null,
-                              onTap: () {
-                                onSelected(option);
-                              },
-                            );
-                          },
+                                title: Text(
+                                  option['description'] ?? '',
+                                  style: const TextStyle(
+                                    fontSize: 14,
+                                  ),
+                                ),
+                                onTap: () => onSelected(option),
+                              );
+                            },
+                          ),
                         ),
                       ),
                     ),
@@ -516,52 +594,201 @@ class _CreateSessionScreenState extends State<CreateSessionScreen> {
               );
             },
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 24),
 
           _buildLabel('Focus Areas'),
-          FormBuilderCheckboxGroup<String>(
+          FormBuilderField<List<String>>(
             name: 'focusAreas',
-            decoration: const InputDecoration(border: InputBorder.none),
-            orientation: OptionsOrientation.wrap,
-            options: const [
-              FormBuilderFieldOption(value: 'Batting'),
-              FormBuilderFieldOption(value: 'Bowling'),
-              FormBuilderFieldOption(value: 'Fielding'),
-              FormBuilderFieldOption(value: 'Fitness'),
-              FormBuilderFieldOption(value: 'Mental Game'),
-              FormBuilderFieldOption(value: 'Strategy'),
-            ],
+            initialValue: const [],
+            builder: (field) {
+              final val = field.value ?? [];
+              return Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children:
+                    [
+                      'Batting',
+                      'Bowling',
+                      'Fielding',
+                      'Fitness',
+                      'Mental Game',
+                      'Strategy',
+                    ].map((option) {
+                      final isSelected = val.contains(option);
+                      return FilterChip(
+                        label: Text(
+                          option,
+                          style: GoogleFonts.inter(
+                            fontSize: 13,
+                            color: isSelected
+                                ? Theme.of(context).colorScheme.onSecondary
+                                : Colors.black87,
+                            fontWeight: isSelected
+                                ? FontWeight.w600
+                                : FontWeight.normal,
+                          ),
+                        ),
+                        selected: isSelected,
+                        onSelected: (selected) {
+                          final newVal = List<String>.from(val);
+                          if (selected) {
+                            newVal.add(option);
+                          } else {
+                            newVal.remove(option);
+                          }
+                          field.didChange(newVal);
+                        },
+                        selectedColor: Theme.of(context).colorScheme.secondary,
+                        backgroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20),
+                          side: BorderSide(
+                            color: isSelected
+                                ? Theme.of(context).colorScheme.secondary
+                                : Colors.grey.withValues(alpha: 0.3),
+                          ),
+                        ),
+                        showCheckmark: false,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 8,
+                        ),
+                      );
+                    }).toList(),
+              );
+            },
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 24),
 
           _buildLabel('Skill Level'),
-          FormBuilderDropdown<String>(
+          FormBuilderField<String>(
             name: 'skillLevel',
-            decoration: _inputDecoration('Select Level'),
-            items: const [
-              DropdownMenuItem(value: 'Beginner', child: Text('Beginner')),
-              DropdownMenuItem(
-                value: 'Intermediate',
-                child: Text('Intermediate'),
-              ),
-              DropdownMenuItem(value: 'Advanced', child: Text('Advanced')),
-              DropdownMenuItem(value: 'All Levels', child: Text('All Levels')),
-            ],
+            initialValue: 'All Levels',
+            builder: (field) {
+              return LayoutBuilder(
+                builder: (context, constraints) {
+                  return Container(
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade50,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.grey.shade200),
+                    ),
+                    child: PopupMenuButton<String>(
+                      initialValue: field.value,
+                      offset: const Offset(0, 50),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      color: Colors.white,
+                      elevation: 4,
+                      constraints: BoxConstraints(
+                        minWidth: constraints.maxWidth,
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              field.value ?? 'All Levels',
+                              style: GoogleFonts.inter(
+                                fontSize: 16,
+                                color: Colors.black87,
+                              ),
+                            ),
+                            Icon(
+                              Icons.keyboard_arrow_down_rounded,
+                              color: Colors.grey.shade400,
+                              size: 22,
+                            ),
+                          ],
+                        ),
+                      ),
+                      itemBuilder: (context) {
+                        return [
+                          'Beginner',
+                          'Intermediate',
+                          'Advanced',
+                          'All Levels',
+                        ].map((String value) {
+                          return PopupMenuItem<String>(
+                            value: value,
+                            child: Text(
+                              value,
+                              style: GoogleFonts.inter(fontSize: 15),
+                            ),
+                          );
+                        }).toList();
+                      },
+                      onSelected: (val) => field.didChange(val),
+                    ),
+                  );
+                },
+              );
+            },
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 24),
 
           _buildLabel('Age Groups'),
-          FormBuilderCheckboxGroup<String>(
+          FormBuilderField<List<String>>(
             name: 'ageGroups',
-            decoration: const InputDecoration(border: InputBorder.none),
-            orientation: OptionsOrientation.wrap,
-            options: const [
-              FormBuilderFieldOption(value: 'Under 11'),
-              FormBuilderFieldOption(value: 'Under 13'),
-              FormBuilderFieldOption(value: 'Under 15'),
-              FormBuilderFieldOption(value: 'Under 19'),
-              FormBuilderFieldOption(value: 'Open'),
-            ],
+            initialValue: const [],
+            builder: (field) {
+              final val = field.value ?? [];
+              return Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children:
+                    [
+                      'Under 11',
+                      'Under 13',
+                      'Under 15',
+                      'Under 19',
+                      'Open',
+                    ].map((option) {
+                      final isSelected = val.contains(option);
+                      return FilterChip(
+                        label: Text(
+                          option,
+                          style: GoogleFonts.inter(
+                            fontSize: 13,
+                            color: isSelected
+                                ? Theme.of(context).colorScheme.onSecondary
+                                : Colors.black87,
+                            fontWeight: isSelected
+                                ? FontWeight.w600
+                                : FontWeight.normal,
+                          ),
+                        ),
+                        selected: isSelected,
+                        onSelected: (selected) {
+                          final newVal = List<String>.from(val);
+                          if (selected) {
+                            newVal.add(option);
+                          } else {
+                            newVal.remove(option);
+                          }
+                          field.didChange(newVal);
+                        },
+                        selectedColor: Theme.of(context).colorScheme.secondary,
+                        backgroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20),
+                          side: BorderSide(
+                            color: isSelected
+                                ? Theme.of(context).colorScheme.secondary
+                                : Colors.grey.withValues(alpha: 0.3),
+                          ),
+                        ),
+                        showCheckmark: false,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 8,
+                        ),
+                      );
+                    }).toList(),
+              );
+            },
           ),
           const SizedBox(height: 30),
           _buildNavigationButtons(),
@@ -592,77 +819,116 @@ class _CreateSessionScreenState extends State<CreateSessionScreen> {
               const SizedBox(height: 16),
 
               if (isRecurring) ...[
-                _buildLabel('Date Range'),
-                Row(
-                  children: [
-                    Expanded(
-                      child: FormBuilderDateTimePicker(
-                        name: 'startDate',
-                        inputType: InputType.date,
-                        decoration: _inputDecoration(
-                          'Start Date',
-                          icon: Icons.calendar_today,
-                        ),
-                        validator: FormBuilderValidators.required(),
-                        initialDate: DateTime.now(),
-                        format: DateFormat('yyyy-MM-dd'),
+                _buildLabel('Select Specific Dates (${_selectedDates.length})'),
+                Container(
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).cardColor,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Theme.of(context).dividerColor),
+                  ),
+                  padding: const EdgeInsets.all(8),
+                  child: TableCalendar(
+                    firstDay: DateTime.now(),
+                    lastDay: DateTime.now().add(const Duration(days: 365)),
+                    focusedDay: _focusedDay,
+                    selectedDayPredicate: (day) {
+                      return _selectedDates.any((d) => isSameDay(d, day));
+                    },
+                    calendarFormat: CalendarFormat.month,
+                    rangeSelectionMode: RangeSelectionMode.toggledOff,
+                    headerStyle: const HeaderStyle(
+                      formatButtonVisible: false,
+                      titleCentered: true,
+                    ),
+                    onDaySelected: (selectedDay, focusedDay) {
+                      setState(() {
+                        _focusedDay = focusedDay;
+                        // Toggle selection
+                        if (_selectedDates.any(
+                          (d) => isSameDay(d, selectedDay),
+                        )) {
+                          _selectedDates.removeWhere(
+                            (d) => isSameDay(d, selectedDay),
+                          );
+                        } else {
+                          _selectedDates.add(selectedDay);
+                        }
+                      });
+                    },
+                    onPageChanged: (focusedDay) {
+                      _focusedDay = focusedDay;
+                    },
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                // Display selected dates summary
+                if (_selectedDates.isNotEmpty)
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.primaryContainer.withValues(alpha: 0.3),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.primary.withValues(alpha: 0.2),
                       ),
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: FormBuilderDateTimePicker(
-                        name: 'endDate',
-                        inputType: InputType.date,
-                        decoration: _inputDecoration(
-                          'End Date',
-                          icon: Icons.event,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Selected Dates:',
+                          style: GoogleFonts.inter(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 12,
+                            color: Theme.of(context).colorScheme.primary,
+                          ),
                         ),
-                        validator: FormBuilderValidators.required(),
-                        initialDate: DateTime.now().add(
-                          const Duration(days: 30),
+                        const SizedBox(height: 8),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: _selectedDates.map((date) {
+                            return Chip(
+                              label: Text(
+                                DateFormat('MMM d').format(date),
+                                style: const TextStyle(fontSize: 12),
+                              ),
+                              deleteIcon: const Icon(Icons.close, size: 14),
+                              onDeleted: () {
+                                setState(() {
+                                  _selectedDates.remove(date);
+                                });
+                              },
+                              visualDensity: VisualDensity.compact,
+                              padding: EdgeInsets.zero,
+                            );
+                          }).toList(),
                         ),
-                        format: DateFormat('yyyy-MM-dd'),
-                      ),
+                      ],
                     ),
-                  ],
-                ),
-                const SizedBox(height: 20),
-                _buildLabel('Repeats On'),
-                FormBuilderCheckboxGroup<String>(
-                  name: 'daysOfWeek',
-                  decoration: const InputDecoration(border: InputBorder.none),
-                  orientation: OptionsOrientation.wrap,
-                  options: const [
-                    FormBuilderFieldOption(value: 'Monday', child: Text('Mon')),
-                    FormBuilderFieldOption(
-                      value: 'Tuesday',
-                      child: Text('Tue'),
-                    ),
-                    FormBuilderFieldOption(
-                      value: 'Wednesday',
-                      child: Text('Wed'),
-                    ),
-                    FormBuilderFieldOption(
-                      value: 'Thursday',
-                      child: Text('Thu'),
-                    ),
-                    FormBuilderFieldOption(value: 'Friday', child: Text('Fri')),
-                    FormBuilderFieldOption(
-                      value: 'Saturday',
-                      child: Text('Sat'),
-                    ),
-                    FormBuilderFieldOption(value: 'Sunday', child: Text('Sun')),
-                  ],
-                  validator: FormBuilderValidators.required(),
-                ),
+                  ),
               ] else ...[
                 _buildLabel('Date'),
                 FormBuilderDateTimePicker(
                   name: 'date',
                   inputType: InputType.date,
-                  decoration: _inputDecoration(
-                    'Select Date',
-                    icon: Icons.calendar_today,
+                  decoration: InputDecoration(
+                    prefixIcon: const Icon(
+                      Icons.calendar_today,
+                      color: Colors.grey,
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
+                    ),
+                    filled: true,
+                    fillColor: Colors.grey.shade50,
                   ),
                   validator: FormBuilderValidators.required(),
                   initialDate: DateTime.now(),
@@ -670,8 +936,9 @@ class _CreateSessionScreenState extends State<CreateSessionScreen> {
                 ),
               ],
 
-              const SizedBox(height: 20),
+              const SizedBox(height: 24),
               Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Expanded(
                     child: Column(
@@ -681,13 +948,7 @@ class _CreateSessionScreenState extends State<CreateSessionScreen> {
                         FormBuilderField<DateTime>(
                           name: 'startTime',
                           validator: FormBuilderValidators.required(),
-                          initialValue: DateTime(
-                            2024,
-                            1,
-                            1,
-                            9,
-                            0,
-                          ), // Default 9 AM
+                          initialValue: DateTime(2024, 1, 1, 9, 0),
                           builder: (FormFieldState<DateTime> field) {
                             return GestureDetector(
                               onTap: () {
@@ -719,23 +980,35 @@ class _CreateSessionScreenState extends State<CreateSessionScreen> {
                                   ),
                                 );
                               },
-                              child: InputDecorator(
-                                decoration: _inputDecoration(
-                                  'Select Time',
-                                  icon: Icons.access_time,
-                                ).copyWith(errorText: field.errorText),
-                                child: Text(
-                                  field.value != null
-                                      ? DateFormat(
-                                          'h:mm a',
-                                        ).format(field.value!)
-                                      : 'Select Time',
-                                  style: GoogleFonts.outfit(
-                                    fontSize: 16,
-                                    color: Theme.of(
-                                      context,
-                                    ).colorScheme.onSurface,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 14,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.grey.shade50,
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: Colors.grey.shade200,
                                   ),
+                                ),
+                                child: Row(
+                                  children: [
+                                    const Icon(
+                                      Icons.access_time,
+                                      color: Colors.grey,
+                                      size: 20,
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Text(
+                                      field.value != null
+                                          ? DateFormat(
+                                              'h:mm a',
+                                            ).format(field.value!)
+                                          : 'Select Time',
+                                      style: GoogleFonts.inter(fontSize: 16),
+                                    ),
+                                  ],
                                 ),
                               ),
                             );
@@ -744,29 +1017,21 @@ class _CreateSessionScreenState extends State<CreateSessionScreen> {
                       ],
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _buildLabel('Duration (min)'),
-                        FormBuilderDropdown<int>(
-                          name: 'duration',
-                          decoration: _inputDecoration('60 min'),
-                          initialValue: 60,
-                          items: [30, 45, 60, 90, 120, 180]
-                              .map(
-                                (t) => DropdownMenuItem(
-                                  value: t,
-                                  child: Text('$t min'),
-                                ),
-                              )
-                              .toList(),
-                        ),
-                      ],
-                    ),
-                  ),
                 ],
+              ),
+              const SizedBox(height: 24),
+              _buildLabel('Duration (min)'),
+              FormBuilderField<int>(
+                name: 'duration',
+                initialValue: 60,
+                builder: (field) {
+                  return ModernDurationSelector<int>(
+                    selectedValue: field.value,
+                    options: const [30, 45, 60, 90, 120],
+                    labelBuilder: (val) => '$val min',
+                    onSelected: (val) => field.didChange(val),
+                  );
+                },
               ),
               const SizedBox(height: 30),
               _buildNavigationButtons(),
@@ -788,39 +1053,71 @@ class _CreateSessionScreenState extends State<CreateSessionScreen> {
           const SizedBox(height: 16),
 
           _buildLabel('Max Capacity'),
-          FormBuilderSlider(
-            name: 'capacity',
-            min: 1,
-            max: 50,
-            divisions: 49,
-            initialValue: 18,
-            decoration: const InputDecoration(border: InputBorder.none),
-          ),
-
-          const SizedBox(height: 20),
-          _buildLabel('Pricing Model'),
-          FormBuilderRadioGroup<String>(
-            name: 'pricingModel',
-            decoration: const InputDecoration(border: InputBorder.none),
-            options: const [
-              FormBuilderFieldOption(
-                value: 'per-session',
-                child: Text('Per Session'),
-              ),
-              FormBuilderFieldOption(
-                value: 'full-series',
-                child: Text('Full Series Price'),
+          Row(
+            children: [
+              Expanded(
+                child: FormBuilderField<double>(
+                  name: 'capacity',
+                  initialValue: 18.0,
+                  builder: (field) {
+                    final val = field.value?.toInt() ?? 18;
+                    return Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        IconButton.filledTonal(
+                          onPressed: () {
+                            if (val > 1) field.didChange(val - 1.0);
+                          },
+                          icon: const Icon(Icons.remove),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                          child: Text(
+                            '$val Players',
+                            style: GoogleFonts.inter(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                        IconButton.filledTonal(
+                          onPressed: () {
+                            if (val < 50) field.didChange(val + 1.0);
+                          },
+                          icon: const Icon(Icons.add),
+                        ),
+                      ],
+                    );
+                  },
+                ),
               ),
             ],
           ),
 
-          const SizedBox(height: 12),
-          _buildLabel('Amount (USD)'),
-          FormBuilderTextField(
+          const SizedBox(height: 24),
+          _buildLabel('Pricing Model'),
+          FormBuilderField<String>(
+            name: 'pricingModel',
+            initialValue: 'per-session',
+            builder: (field) {
+              return ModernDurationSelector<String>(
+                selectedValue: field.value,
+                options: const ['per-session', 'full-series'],
+                labelBuilder: (val) =>
+                    val == 'per-session' ? 'Per Session' : 'Full Series',
+                onSelected: (val) => field.didChange(val),
+              );
+            },
+          ),
+
+          const SizedBox(height: 16),
+          ModernTextField(
             name: 'price',
+            labelText: 'Amount (USD)',
+            hintText: '0.00',
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            decoration: _inputDecoration('0.00', icon: Icons.attach_money),
             validator: FormBuilderValidators.numeric(),
+            prefixIcon: Icons.attach_money,
           ),
 
           const SizedBox(height: 30),
@@ -843,25 +1140,42 @@ class _CreateSessionScreenState extends State<CreateSessionScreen> {
           ),
 
           const SizedBox(height: 20),
+          const SizedBox(height: 20),
           _buildLabel('Cancellation Policy'),
-          FormBuilderDropdown<String>(
+          FormBuilderField<String>(
             name: 'cancellationPolicy',
-            decoration: _inputDecoration('Select Policy'),
             initialValue: 'flexible',
-            items: const [
-              DropdownMenuItem(
-                value: 'flexible',
-                child: Text('Flexible (24h refund)'),
-              ),
-              DropdownMenuItem(
-                value: 'moderate',
-                child: Text('Moderate (48h refund)'),
-              ),
-              DropdownMenuItem(
-                value: 'strict',
-                child: Text('Strict (No refund)'),
-              ),
-            ],
+            builder: (field) {
+              return Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade50,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.grey.shade200),
+                ),
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<String>(
+                    value: field.value,
+                    isExpanded: true,
+                    items: const [
+                      DropdownMenuItem(
+                        value: 'flexible',
+                        child: Text('Flexible (24h refund)'),
+                      ),
+                      DropdownMenuItem(
+                        value: 'moderate',
+                        child: Text('Moderate (48h refund)'),
+                      ),
+                      DropdownMenuItem(
+                        value: 'strict',
+                        child: Text('Strict (No refund)'),
+                      ),
+                    ],
+                    onChanged: (val) => field.didChange(val),
+                  ),
+                ),
+              );
+            },
           ),
           const SizedBox(height: 30),
           _buildNavigationButtons(),
@@ -872,63 +1186,41 @@ class _CreateSessionScreenState extends State<CreateSessionScreen> {
   }
 
   Widget _buildNavigationButtons() {
-    return Row(
-      children: [
-        if (_currentStep > 0)
-          Expanded(
-            child: OutlinedButton(
-              onPressed: _prevStep,
-              style: OutlinedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              child: const Text('Back'),
-            ),
-          )
-        else
-          Expanded(child: Container()), // Spacer
-
-        const SizedBox(width: 16),
-
-        Expanded(
-          flex: 2,
-          child: ElevatedButton(
-            onPressed: _isLoading ? null : _nextStep,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Theme.of(context).colorScheme.primary,
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-            child: _isLoading
-                ? const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(
-                      color: Colors.white,
-                      strokeWidth: 2,
-                    ),
-                  )
-                : Text(
-                    _currentStep == 2 ? 'Create Session' : 'Next Step',
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton(
+        onPressed: _isLoading ? null : _nextStep,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFFFF6B00),
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
           ),
         ),
-      ],
+        child: _isLoading
+            ? const SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(
+                  color: Colors.white,
+                  strokeWidth: 2,
+                ),
+              )
+            : Text(
+                _currentStep == 2 ? 'Create Session' : 'Next Step',
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+      ),
     );
   }
 
   Widget _buildSectionTitle(String title) {
     return Text(
       title,
-      style: GoogleFonts.outfit(
+      style: GoogleFonts.inter(
         fontSize: 18,
         fontWeight: FontWeight.bold,
         color: Theme.of(context).colorScheme.onSurface,
@@ -947,22 +1239,6 @@ class _CreateSessionScreenState extends State<CreateSessionScreen> {
           color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.8),
         ),
       ),
-    );
-  }
-
-  InputDecoration _inputDecoration(String hint, {IconData? icon}) {
-    return InputDecoration(
-      hintText: hint,
-      prefixIcon: icon != null
-          ? Icon(icon, size: 20, color: Colors.grey)
-          : null,
-      filled: true,
-      fillColor: Theme.of(context).cardColor,
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide.none,
-      ),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
     );
   }
 }

@@ -72,7 +72,7 @@ class _HorizontalWeekCalendarState extends State<HorizontalWeekCalendar> {
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           child: Text(
             _formatMonthYear(_selectedDate),
-            style: GoogleFonts.outfit(
+            style: GoogleFonts.inter(
               fontSize: 14,
               fontWeight: FontWeight.bold,
               color: AppPalette.navyPrimary,
@@ -146,7 +146,7 @@ class _HorizontalWeekCalendarState extends State<HorizontalWeekCalendar> {
                       const SizedBox(height: 8),
                       Text(
                         date.day.toString(),
-                        style: GoogleFonts.outfit(
+                        style: GoogleFonts.inter(
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
                           color: isSelected

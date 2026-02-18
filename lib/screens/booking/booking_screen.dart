@@ -81,7 +81,7 @@ class _BookingScreenState extends State<BookingScreen> {
         appBar: AppBar(
           title: Text(
             'Book Session',
-            style: GoogleFonts.outfit(
+            style: GoogleFonts.inter(
               fontWeight: FontWeight.bold,
               color: AppPalette.navyPrimary,
             ),
@@ -98,7 +98,7 @@ class _BookingScreenState extends State<BookingScreen> {
         appBar: AppBar(
           title: Text(
             'Book Session',
-            style: GoogleFonts.outfit(
+            style: GoogleFonts.inter(
               fontWeight: FontWeight.bold,
               color: AppPalette.navyPrimary,
             ),
@@ -119,7 +119,7 @@ class _BookingScreenState extends State<BookingScreen> {
       appBar: AppBar(
         title: Text(
           'Book Session',
-          style: GoogleFonts.outfit(
+          style: GoogleFonts.inter(
             fontWeight: FontWeight.bold,
             color: Theme.of(context).colorScheme.onSurface,
           ),
@@ -183,7 +183,7 @@ class _BookingScreenState extends State<BookingScreen> {
                       children: [
                         Text(
                           sessionTitle,
-                          style: GoogleFonts.outfit(
+                          style: GoogleFonts.inter(
                             fontWeight: FontWeight.bold,
                             fontSize: 18,
                             color: Theme.of(context).colorScheme.onSurface,
@@ -233,7 +233,7 @@ class _BookingScreenState extends State<BookingScreen> {
               children: [
                 Text(
                   'Select Dates',
-                  style: GoogleFonts.outfit(
+                  style: GoogleFonts.inter(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
                     color: Theme.of(context).colorScheme.onSurface,
@@ -359,7 +359,7 @@ class _BookingScreenState extends State<BookingScreen> {
                                       const SizedBox(height: 4),
                                       Text(
                                         DateFormat('d').format(date),
-                                        style: GoogleFonts.outfit(
+                                        style: GoogleFonts.inter(
                                           color: isSelected
                                               ? Colors.white
                                               : Theme.of(
@@ -411,7 +411,7 @@ class _BookingScreenState extends State<BookingScreen> {
                     Expanded(
                       child: Text(
                         '${_selectedDateIndices.length} session${_selectedDateIndices.length > 1 ? 's' : ''} selected',
-                        style: GoogleFonts.outfit(
+                        style: GoogleFonts.inter(
                           fontWeight: FontWeight.bold,
                           color: AppPalette.navyPrimary,
                           fontSize: 16,
@@ -420,7 +420,7 @@ class _BookingScreenState extends State<BookingScreen> {
                     ),
                     Text(
                       '\$${(_session!['pricing']['amount'] as num) * _selectedDateIndices.length}',
-                      style: GoogleFonts.outfit(
+                      style: GoogleFonts.inter(
                         fontWeight: FontWeight.bold,
                         color: AppPalette.navyPrimary,
                         fontSize: 18,
@@ -487,7 +487,7 @@ class _BookingScreenState extends State<BookingScreen> {
                   _selectedDateIndices.isEmpty
                       ? 'Select Dates to Continue'
                       : 'Book ${_selectedDateIndices.length} Session${_selectedDateIndices.length > 1 ? 's' : ''}',
-                  style: GoogleFonts.outfit(
+                  style: GoogleFonts.inter(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
                   ),

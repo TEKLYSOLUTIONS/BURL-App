@@ -138,7 +138,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   child: IconButton(
                     icon: Icon(
                       Icons.arrow_back,
-                      color: Theme.of(context).iconTheme.color,
+                      color: Theme.of(context).colorScheme.onSurface,
                     ),
                     padding: EdgeInsets.zero,
                     onPressed: () {
@@ -154,7 +154,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   child: Text(
                     'Profile',
                     textAlign: TextAlign.center,
-                    style: GoogleFonts.outfit(
+                    style: GoogleFonts.inter(
                       fontSize: 28,
                       fontWeight: FontWeight.bold,
                       color: Theme.of(context).colorScheme.onSurface,
@@ -162,7 +162,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   ),
                 ),
                 NotificationButton(
-                  iconColor: Theme.of(context).iconTheme.color,
+                  iconColor: Theme.of(context).colorScheme.onSurface,
                   backgroundColor: Theme.of(context).scaffoldBackgroundColor,
                 ),
               ],
@@ -219,7 +219,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                                   children: [
                                     Text(
                                       displayName,
-                                      style: GoogleFonts.outfit(
+                                      style: GoogleFonts.inter(
                                         fontSize: 18,
                                         fontWeight: FontWeight.bold,
                                         color: Theme.of(
@@ -304,7 +304,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                               ),
                             ),
                           ),
-                          onTap: () {},
+                          onTap: () {
+                            final role = _userData?['role'] as String?;
+                            if (role == 'coach') {
+                              context.push('/coach/subscription-plans');
+                            } else {
+                              context.push('/pro-upgrade');
+                            }
+                          },
                         ),
 
                         const SizedBox(height: 32),
@@ -407,7 +414,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                             ),
                             label: Text(
                               'Log Out',
-                              style: GoogleFonts.outfit(
+                              style: GoogleFonts.inter(
                                 color: Theme.of(context).colorScheme.error,
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold,
@@ -526,7 +533,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             children: [
               Text(
                 'Select Appearance',
-                style: GoogleFonts.outfit(
+                style: GoogleFonts.inter(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
                   color: Theme.of(context).colorScheme.onSurface,

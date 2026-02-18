@@ -66,7 +66,7 @@ class _GuardianProfileScreenState extends ConsumerState<GuardianProfileScreen> {
       appBar: AppBar(
         title: Text(
           'Profile',
-          style: GoogleFonts.outfit(
+          style: GoogleFonts.inter(
             color: Theme.of(context).colorScheme.onSurface,
             fontWeight: FontWeight.bold,
             fontSize: 24,
@@ -155,7 +155,7 @@ class _GuardianProfileScreenState extends ConsumerState<GuardianProfileScreen> {
                       children: [
                         Text(
                           _userName,
-                          style: GoogleFonts.outfit(
+                          style: GoogleFonts.inter(
                             fontSize: 20,
                             fontWeight: FontWeight.bold,
                             color: ref.watch(themeProvider) == ThemeMode.dark
@@ -324,7 +324,7 @@ class _GuardianProfileScreenState extends ConsumerState<GuardianProfileScreen> {
                 icon: const Icon(Icons.logout_rounded),
                 label: Text(
                   'Log Out',
-                  style: GoogleFonts.outfit(
+                  style: GoogleFonts.inter(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
                   ),
@@ -464,7 +464,7 @@ class _GuardianProfileScreenState extends ConsumerState<GuardianProfileScreen> {
             children: [
               Text(
                 'Select Appearance',
-                style: GoogleFonts.outfit(
+                style: GoogleFonts.inter(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
                   color: AppPalette.navyPrimary,

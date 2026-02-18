@@ -117,7 +117,8 @@ class _CoachAvailabilityScreenState extends State<CoachAvailabilityScreen> {
   // blocked dates
   final CalendarFormat _calendarFormat = CalendarFormat.month;
   DateTime _focusedDay = DateTime.now();
-  DateTime? _selectedDay = DateTime.now();
+  DateTime?
+  _selectedDay; // Initialize as null so no date is selected by default
 
   // 0 = Sunday, 1 = Monday, ... 6 = Saturday
   int _selectedDayIndex = 0;
@@ -138,7 +139,7 @@ class _CoachAvailabilityScreenState extends State<CoachAvailabilityScreen> {
   Widget _buildDayDetails() {
     final dataIndex = _getDataIndex(_selectedDayIndex);
     final dayName = _getDayName(_selectedDayIndex);
-    final isActive = _daySchedules[dataIndex]?.isNotEmpty ?? false;
+    final hasSlots = _daySchedules[dataIndex]?.isNotEmpty ?? false;
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -159,7 +160,7 @@ class _CoachAvailabilityScreenState extends State<CoachAvailabilityScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header: Day Name + Toggle
+          // Header: Day Name (Toggle Removed)
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -171,167 +172,143 @@ class _CoachAvailabilityScreenState extends State<CoachAvailabilityScreen> {
                   color: Theme.of(context).colorScheme.onSurface,
                 ),
               ),
-              Switch(
-                value: isActive,
-                activeTrackColor: AppPalette.navyPrimary,
-                onChanged: (val) {
-                  setState(() {
-                    if (val) {
-                      // Enable: Add default 9-5 slot
-                      _daySchedules[dataIndex] = [
-                        TimeInterval(start: '09:00 AM', end: '05:00 PM'),
-                      ];
-                    } else {
-                      // Disable: Clear slots
-                      _daySchedules[dataIndex] = [];
-                    }
-                  });
-                },
+              // Optional: Status Indicator text instead of toggle?
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
+                decoration: BoxDecoration(
+                  color: hasSlots
+                      ? AppPalette.orangeAccent.withValues(alpha: 0.15)
+                      : Theme.of(context).disabledColor.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  hasSlots ? 'Active' : 'Inactive',
+                  style: GoogleFonts.inter(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: hasSlots
+                        ? AppPalette.orangeAccent
+                        : Theme.of(context).disabledColor,
+                  ),
+                ),
               ),
             ],
           ),
 
-          if (isActive) ...[
-            const Divider(height: 32),
-            if (_daySchedules[dataIndex]!.isEmpty)
-              // Should not happen if isActive is true, but safe guard
-              Text(
-                'No availability slots added.',
-                style: GoogleFonts.inter(
-                  color: Colors.grey,
-                  fontStyle: FontStyle.italic,
-                ),
-              )
-            else
-              ...List.generate(_daySchedules[dataIndex]!.length, (slotIndex) {
-                final interval = _daySchedules[dataIndex]![slotIndex];
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 16),
-                  child: Row(
-                    children: [
-                      // Start Time
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Start',
-                              style: GoogleFonts.inter(
-                                fontSize: 12,
-                                color: Colors.grey,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            _buildTimeDropdown(interval.start, (val) {
-                              final startMin = _minutesFromTime(
-                                _parseTime(val),
-                              );
-                              final endMin = _minutesFromTime(
-                                _parseTime(interval.end),
-                              );
-                              setState(() {
-                                interval.start = val;
-                                if (startMin >= endMin) {
-                                  interval.end = _formatTime(
-                                    _timeFromMinutes(startMin + 60),
-                                  );
-                                }
-                              });
-                            }),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      // Arrow
-                      Padding(
-                        padding: const EdgeInsets.only(top: 16),
-                        child: Icon(
-                          Icons.arrow_forward_rounded,
-                          size: 16,
-                          color: Theme.of(context).disabledColor,
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      // End Time
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'End',
-                              style: GoogleFonts.inter(
-                                fontSize: 12,
-                                color: Colors.grey,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            _buildTimeDropdown(interval.end, (val) {
-                              final startMin = _minutesFromTime(
-                                _parseTime(interval.start),
-                              );
-                              final endMin = _minutesFromTime(_parseTime(val));
+          const Divider(height: 32),
 
-                              if (endMin <= startMin) {
-                                if (mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text(
-                                        'End time must be after start time',
-                                      ),
-                                    ),
-                                  );
-                                }
-                                return;
-                              }
-                              setState(() => interval.end = val);
-                            }),
-                          ],
-                        ),
-                      ),
-                      // Remove Button
-                      Padding(
-                        padding: const EdgeInsets.only(left: 8, top: 16),
-                        child: IconButton(
-                          icon: const Icon(
-                            Icons.remove_circle_outline,
-                            color: Colors.redAccent,
+          // Slots List or Placeholder
+          if (hasSlots)
+            ...List.generate(_daySchedules[dataIndex]!.length, (slotIndex) {
+              final interval = _daySchedules[dataIndex]![slotIndex];
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 16),
+                child: Row(
+                  children: [
+                    // Start Time
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'START',
+                            style: GoogleFonts.outfit(
+                              fontSize: 11,
+                              color: AppPalette.orangeAccent,
+                              fontWeight: FontWeight.w600,
+                              letterSpacing: 0.5,
+                            ),
                           ),
-                          onPressed: () {
+                          const SizedBox(height: 8),
+                          _buildTimeDropdown(interval.start, (val) {
+                            final startMin = _minutesFromTime(_parseTime(val));
+                            final endMin = _minutesFromTime(
+                              _parseTime(interval.end),
+                            );
                             setState(() {
-                              _daySchedules[dataIndex]!.removeAt(slotIndex);
+                              interval.start = val;
+                              if (startMin >= endMin) {
+                                interval.end = _formatTime(
+                                  _timeFromMinutes(startMin + 60),
+                                );
+                              }
                             });
-                          },
-                        ),
+                          }),
+                        ],
                       ),
-                    ],
-                  ),
-                );
-              }),
+                    ),
+                    const SizedBox(width: 16),
+                    // Arrow
+                    Padding(
+                      padding: const EdgeInsets.only(top: 20),
+                      child: Icon(
+                        Icons.arrow_forward_rounded,
+                        size: 20,
+                        color: AppPalette.orangeAccent.withValues(alpha: 0.5),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    // End Time
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'END',
+                            style: GoogleFonts.outfit(
+                              fontSize: 11,
+                              color: AppPalette.orangeAccent,
+                              fontWeight: FontWeight.w600,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          _buildTimeDropdown(interval.end, (val) {
+                            final startMin = _minutesFromTime(
+                              _parseTime(interval.start),
+                            );
+                            final endMin = _minutesFromTime(_parseTime(val));
 
-            const SizedBox(height: 8),
-            // Add Slot Button
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                onPressed: () {
-                  setState(() {
-                    _daySchedules[dataIndex]!.add(
-                      TimeInterval(start: '09:00 AM', end: '05:00 PM'),
-                    );
-                  });
-                },
-                icon: const Icon(Icons.add),
-                label: const Text('Add Time Slot'),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: AppPalette.navyPrimary,
-                  side: const BorderSide(color: AppPalette.navyPrimary),
-                  padding: const EdgeInsets.symmetric(vertical: 12),
+                            if (endMin <= startMin) {
+                              if (mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text(
+                                      'End time must be after start time',
+                                    ),
+                                  ),
+                                );
+                              }
+                              return;
+                            }
+                            setState(() => interval.end = val);
+                          }),
+                        ],
+                      ),
+                    ),
+                    // Remove Button
+                    Padding(
+                      padding: const EdgeInsets.only(left: 8, top: 16),
+                      child: IconButton(
+                        icon: const Icon(
+                          Icons.remove_circle_outline,
+                          color: Colors.redAccent,
+                        ),
+                        onPressed: () {
+                          setState(() {
+                            _daySchedules[dataIndex]!.removeAt(slotIndex);
+                          });
+                        },
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-            ),
-          ] else ...[
+              );
+            })
+          else
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 24),
               child: Center(
@@ -355,7 +332,54 @@ class _CoachAvailabilityScreenState extends State<CoachAvailabilityScreen> {
                 ),
               ),
             ),
-          ],
+
+          const SizedBox(height: 16),
+
+          // Add Slot Button (Always Visible)
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: () {
+                setState(() {
+                  final schedule = _daySchedules[dataIndex]!;
+                  String newStart = '09:00 AM';
+                  String newEnd = '05:00 PM';
+
+                  if (schedule.isNotEmpty) {
+                    final lastSlot = schedule.last;
+                    try {
+                      final lastEnd = _parseTime(lastSlot.end);
+                      final lastEndMinutes = _minutesFromTime(lastEnd);
+
+                      // Start next slot at end of last slot
+                      final startMinutes = lastEndMinutes;
+                      // End next slot 1 hour later, cap at 23:59 (1439 mins)
+                      final endMinutes = (startMinutes + 60).clamp(0, 1439);
+
+                      newStart = _formatTime(_timeFromMinutes(startMinutes));
+                      newEnd = _formatTime(_timeFromMinutes(endMinutes));
+                    } catch (e) {
+                      debugPrint('Error calculating dynamic time slot: $e');
+                    }
+                  }
+
+                  schedule.add(TimeInterval(start: newStart, end: newEnd));
+                });
+              },
+              icon: const Icon(Icons.add),
+              label: const Text('Add Time Slot'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppPalette.orangeAccent,
+                side: BorderSide(
+                  color: AppPalette.orangeAccent.withValues(alpha: 0.5),
+                ),
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -600,346 +624,395 @@ class _CoachAvailabilityScreenState extends State<CoachAvailabilityScreen> {
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return Scaffold(
-        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-        body: const Center(child: CircularProgressIndicator()),
+      return PopScope(
+        canPop: false,
+        onPopInvokedWithResult: (didPop, result) async {
+          if (didPop) return;
+          if (_isSaving) return;
+          await _saveAvailability();
+          if (context.mounted) {
+            Navigator.of(context).pop();
+          }
+        },
+        child: Scaffold(
+          backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+          body: const Center(child: CircularProgressIndicator()),
+        ),
       );
     }
 
-    return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      body: Column(
-        children: [
-          CoachAppBar(
-            backgroundColor: AppPalette.navyPrimary, // Unified Header Color
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const SizedBox(width: 40), // Balance the icon size
-                Expanded(
-                  child: Text(
-                    'Manage Availability',
-                    textAlign: TextAlign.center,
-                    style: GoogleFonts.outfit(
-                      fontSize: 24, // Consistent size
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white, // Always white on navy
-                    ),
-                  ),
-                ),
-                NotificationButton(
-                  iconColor: Colors.white,
-                  onTap: () => context.push('/coach/notifications'),
-                ),
-              ],
-            ),
-          ),
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
+        if (_isSaving) return;
+        await _saveAvailability();
+        if (context.mounted) {
+          Navigator.of(context).pop();
+        }
+      },
+      child: Scaffold(
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+        body: Column(
+          children: [
+            CoachAppBar(
+              backgroundColor: AppPalette.navyPrimary, // Unified Header Color
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  // Calendar Section (Moved to Top)
-                  Container(
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).cardColor,
-                      borderRadius: BorderRadius.circular(24),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Theme.of(
-                            context,
-                          ).shadowColor.withValues(alpha: 0.05),
-                          blurRadius: 10,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: TableCalendar(
-                      firstDay: DateTime.utc(2020, 10, 16),
-                      lastDay: DateTime.utc(2030, 3, 14),
-                      focusedDay: _focusedDay,
-                      calendarFormat: _calendarFormat,
-                      availableGestures: AvailableGestures.all,
-                      selectedDayPredicate: (day) {
-                        return isSameDay(_selectedDay, day);
+                  if (context.canPop())
+                    IconButton(
+                      icon: const Icon(Icons.arrow_back, color: Colors.white),
+                      onPressed: () async {
+                        if (_isSaving) return;
+                        await _saveAvailability();
+                        if (context.mounted) {
+                          context.pop();
+                        }
                       },
-                      onDaySelected: (selectedDay, focusedDay) {
-                        setState(() {
-                          _selectedDay = selectedDay;
-                          _focusedDay = focusedDay;
-                        });
-
-                        // Shortcut to add blocked date
-                        _showAddBlockedDateDialog(initialDate: selectedDay);
-                      },
-                      headerStyle: HeaderStyle(
-                        titleCentered: true,
-                        formatButtonVisible: false,
-                        titleTextStyle: GoogleFonts.outfit(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: Theme.of(context).colorScheme.onSurface,
-                        ),
-                        leftChevronIcon: Icon(
-                          Icons.chevron_left,
-                          color: Theme.of(context).colorScheme.onSurface,
-                        ),
-                        rightChevronIcon: Icon(
-                          Icons.chevron_right,
-                          color: Theme.of(context).colorScheme.onSurface,
-                        ),
-                      ),
-                      calendarStyle: CalendarStyle(
-                        outsideDaysVisible: false,
-                        defaultTextStyle: GoogleFonts.inter(
-                          fontWeight: FontWeight.w500,
-                          color: Theme.of(context).colorScheme.onSurface,
-                        ),
-                        weekendTextStyle: GoogleFonts.inter(
-                          fontWeight: FontWeight.w500,
-                          color: Theme.of(context).colorScheme.onSurface,
-                        ),
-                        todayDecoration: BoxDecoration(
-                          color: AppPalette.navyPrimary.withValues(alpha: 0.3),
-                          shape: BoxShape.circle,
-                        ),
-                        selectedDecoration: const BoxDecoration(
-                          color: AppPalette.navyPrimary,
-                          shape: BoxShape.circle,
-                        ),
-                        markerDecoration: BoxDecoration(
-                          color: Theme.of(context).colorScheme.error,
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                      calendarBuilders: CalendarBuilders(
-                        markerBuilder: (context, date, events) {
-                          // Format date key for override lookup
-                          final dateKey =
-                              "${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}";
-
-                          // Check if this specific date has an override
-                          final hasOverride = _dateOverrides.containsKey(
-                            dateKey,
-                          );
-
-                          if (hasOverride) {
-                            // Blue dot for date-specific override
-                            return Positioned(
-                              bottom: 1,
-                              child: Container(
-                                decoration: const BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: Colors.blue,
-                                ),
-                                width: 5.0,
-                                height: 5.0,
-                              ),
-                            );
-                          }
-
-                          // Check if this day of week has recurring availability
-                          final weekdayIndex = date.weekday - 1;
-                          final hasRecurring =
-                              _daySchedules[weekdayIndex]?.isNotEmpty ?? false;
-
-                          if (hasRecurring) {
-                            // Orange dot for recurring schedule
-                            return Positioned(
-                              bottom: 1,
-                              child: Container(
-                                decoration: const BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: AppPalette.orangeAccent,
-                                ),
-                                width: 5.0,
-                                height: 5.0,
-                              ),
-                            );
-                          }
-                          return null;
-                        },
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 32),
-
-                  // Recurring Schedule Section
-                  Text(
-                    'Weekly Schedule',
-                    style: GoogleFonts.outfit(
-                      color: Theme.of(context).colorScheme.onSurface,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Set your standard weekly availability.',
-                    style: GoogleFonts.inter(
-                      color: Theme.of(
-                        context,
-                      ).colorScheme.onSurface.withValues(alpha: 0.6),
-                      fontSize: 13,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  // Horizontal Day Selector
-                  SizedBox(
-                    height: 50,
-                    child: ListView.separated(
-                      scrollDirection: Axis.horizontal,
-                      itemCount: 7,
-                      separatorBuilder: (context, index) =>
-                          const SizedBox(width: 12),
-                      itemBuilder: (context, index) {
-                        // Mapping UI index (0=Sun) to Data index (0=Mon)
-                        // UI: Sun(0), Mon(1), Tue(2) ... Sat(6)
-                        // Data: Mon(0), Tue(1) ... Sat(5), Sun(6)
-                        final dataIndex = index == 0 ? 6 : index - 1;
-                        final dayLabel = [
-                          'S',
-                          'M',
-                          'T',
-                          'W',
-                          'T',
-                          'F',
-                          'S',
-                        ][index];
-                        final isSelected = _selectedDayIndex == index;
-                        final hasAvailability =
-                            _daySchedules[dataIndex]?.isNotEmpty ?? false;
-
-                        return GestureDetector(
-                          onTap: () =>
-                              setState(() => _selectedDayIndex = index),
-                          child: AnimatedContainer(
-                            duration: const Duration(milliseconds: 200),
-                            width: 44,
-                            height: 44,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: isSelected
-                                  ? AppPalette.navyPrimary
-                                  : (hasAvailability
-                                        ? AppPalette.orangeAccent.withValues(
-                                            alpha: 0.2,
-                                          )
-                                        : Theme.of(context).cardColor),
-                              border: Border.all(
-                                color: isSelected
-                                    ? AppPalette.navyPrimary
-                                    : (hasAvailability
-                                          ? AppPalette.orangeAccent
-                                          : Colors.grey.withValues(alpha: 0.3)),
-                                width: 2,
-                              ),
-                            ),
-                            alignment: Alignment.center,
-                            child: Text(
-                              dayLabel,
-                              style: GoogleFonts.outfit(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                                color: isSelected
-                                    ? Colors.white
-                                    : (hasAvailability
-                                          ? AppPalette.orangeAccent
-                                          : Colors.grey),
-                              ),
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-
-                  const SizedBox(height: 24),
-
-                  // Selected Day Details
-                  _buildDayDetails(),
-
-                  const SizedBox(height: 16),
-
-                  // Save Button
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: _isSaving ? null : _saveAvailability,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppPalette.secondary,
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      child: _isSaving
-                          ? const CircularProgressIndicator(color: Colors.white)
-                          : const Text(
-                              "Save Weekly Schedule",
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
-                              ),
-                            ),
-                    ),
-                  ),
-
-                  const SizedBox(height: 32),
-
-                  // Blocked Dates Section Header
-                  Text(
-                    'Blocked Dates',
-                    style: GoogleFonts.outfit(
-                      color: Theme.of(context).colorScheme.onSurface,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Add holidays or specific days you are unavailable.',
-                    style: GoogleFonts.inter(
-                      color: Theme.of(
-                        context,
-                      ).colorScheme.onSurface.withValues(alpha: 0.6),
-                      fontSize: 13,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-
-                  // Blocked Dates List
-                  if (_blockedDates.isEmpty)
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).cardColor,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: Theme.of(
-                            context,
-                          ).dividerColor.withValues(alpha: 0.1),
-                        ),
-                      ),
-                      child: Center(
-                        child: Text(
-                          'No blocked dates added yet.',
-                          style: GoogleFonts.inter(
-                            color: Theme.of(context).disabledColor,
-                          ),
-                        ),
-                      ),
                     )
                   else
-                    ..._blockedDates.map((blockedDate) {
-                      return Container(
-                        margin: const EdgeInsets.only(bottom: 12),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 12,
+                    const SizedBox(width: 40), // Balance the icon size
+                  Expanded(
+                    child: Text(
+                      'Manage Availability',
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.outfit(
+                        fontSize: 24, // Consistent size
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white, // Always white on navy
+                      ),
+                    ),
+                  ),
+                  NotificationButton(
+                    iconColor: Colors.white,
+                    onTap: () => context.push('/coach/notifications'),
+                  ),
+                ],
+              ),
+            ),
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // SECTION: Weekly Schedule (Always visible, but maybe disabled state if overriding?)
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Weekly Schedule',
+                          style: GoogleFonts.outfit(
+                            color: Theme.of(context).colorScheme.onSurface,
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Set your standard weekly availability.',
+                          style: GoogleFonts.inter(
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.onSurface.withValues(alpha: 0.6),
+                            fontSize: 13,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        // Horizontal Day Selector - Circular Buttons
+                        LayoutBuilder(
+                          builder: (context, constraints) {
+                            // Calculate dynamic size based on available width
+                            final availableWidth = constraints.maxWidth;
+                            final spacing = 10.0;
+                            final totalSpacing =
+                                spacing * 6; // 6 gaps between 7 items
+                            final circleSize =
+                                ((availableWidth - totalSpacing) / 7).clamp(
+                                  40.0,
+                                  56.0,
+                                );
+
+                            return SizedBox(
+                              height: circleSize,
+                              child: ListView.separated(
+                                scrollDirection: Axis.horizontal,
+                                itemCount: 7,
+                                separatorBuilder: (context, index) =>
+                                    SizedBox(width: spacing),
+                                itemBuilder: (context, index) {
+                                  // Mapping UI index (0=Sun) to Data index (0=Mon)
+                                  // UI: Sun(0), Mon(1), Tue(2) ... Sat(6)
+                                  // Data: Mon(0), Tue(1) ... Sat(5), Sun(6)
+                                  final dataIndex = index == 0 ? 6 : index - 1;
+                                  final isSelected = _selectedDayIndex == index;
+                                  final hasSlots =
+                                      _daySchedules[dataIndex]?.isNotEmpty ??
+                                      false;
+
+                                  return GestureDetector(
+                                    onTap: () {
+                                      setState(() {
+                                        _selectedDayIndex = index;
+                                        // If they click a weekly day, we exit specific date mode
+                                        _selectedDay = null;
+                                      });
+                                    },
+                                    child: Container(
+                                      width: circleSize,
+                                      height: circleSize,
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        color: isSelected
+                                            ? AppPalette.orangeAccent
+                                            : hasSlots
+                                            ? AppPalette.orangeAccent
+                                                  .withValues(alpha: 0.15)
+                                            : Theme.of(context).cardColor,
+                                        border: Border.all(
+                                          color: hasSlots || isSelected
+                                              ? AppPalette.orangeAccent
+                                              : Theme.of(context).dividerColor
+                                                    .withValues(alpha: 0.2),
+                                          width: isSelected ? 2 : 1,
+                                        ),
+                                        boxShadow: isSelected
+                                            ? [
+                                                BoxShadow(
+                                                  color: AppPalette.orangeAccent
+                                                      .withValues(alpha: 0.3),
+                                                  blurRadius: 8,
+                                                  offset: const Offset(0, 2),
+                                                ),
+                                              ]
+                                            : null,
+                                      ),
+                                      child: Center(
+                                        child: Text(
+                                          [
+                                            'S',
+                                            'M',
+                                            'T',
+                                            'W',
+                                            'T',
+                                            'F',
+                                            'S',
+                                          ][index],
+                                          style: GoogleFonts.outfit(
+                                            fontSize:
+                                                circleSize *
+                                                0.35, // Dynamic font size
+                                            fontWeight: FontWeight.bold,
+                                            color: isSelected
+                                                ? Colors.white
+                                                : hasSlots
+                                                ? AppPalette.orangeAccent
+                                                : Theme.of(
+                                                    context,
+                                                  ).disabledColor,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                            );
+                          },
+                        ),
+                        const SizedBox(height: 24),
+                        _buildDayDetails(),
+                      ],
+                    ),
+
+                    const SizedBox(height: 32),
+
+                    // Calendar Section (Moved Below Weekly Schedule)
+                    Text(
+                      'Calendar Overrides',
+                      style: GoogleFonts.outfit(
+                        color: Theme.of(context).colorScheme.onSurface,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Select a date to customize availability or block dates.',
+                      style: GoogleFonts.inter(
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.onSurface.withValues(alpha: 0.6),
+                        fontSize: 13,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).cardColor,
+                        borderRadius: BorderRadius.circular(24),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Theme.of(
+                              context,
+                            ).shadowColor.withValues(alpha: 0.05),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: TableCalendar(
+                        firstDay: DateTime.now(), // Disable past dates
+                        lastDay: DateTime.utc(2030, 3, 14),
+                        focusedDay: _focusedDay,
+                        calendarFormat: _calendarFormat,
+                        availableGestures: AvailableGestures.all,
+                        selectedDayPredicate: (day) {
+                          return isSameDay(_selectedDay, day);
+                        },
+                        onDaySelected: (selectedDay, focusedDay) {
+                          setState(() {
+                            _selectedDay = selectedDay;
+                            _focusedDay = focusedDay;
+                            // If selecting a calendar date, deselect the weekly toggle (visually)
+                          });
+                        },
+                        headerStyle: HeaderStyle(
+                          titleCentered: true,
+                          formatButtonVisible: false,
+                          titleTextStyle: GoogleFonts.outfit(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Theme.of(context).colorScheme.onSurface,
+                          ),
+                          leftChevronIcon: Icon(
+                            Icons.chevron_left,
+                            color: Theme.of(context).colorScheme.onSurface,
+                          ),
+                          rightChevronIcon: Icon(
+                            Icons.chevron_right,
+                            color: Theme.of(context).colorScheme.onSurface,
+                          ),
+                        ),
+                        calendarStyle: CalendarStyle(
+                          outsideDaysVisible: false,
+                          defaultTextStyle: GoogleFonts.inter(
+                            fontWeight: FontWeight.w500,
+                            color: Theme.of(context).colorScheme.onSurface,
+                          ),
+                          weekendTextStyle: GoogleFonts.inter(
+                            fontWeight: FontWeight.w500,
+                            color: Theme.of(context).colorScheme.onSurface,
+                          ),
+                          todayDecoration: BoxDecoration(
+                            color: AppPalette.orangeAccent.withValues(
+                              alpha: 0.3,
+                            ),
+                            shape: BoxShape.circle,
+                          ),
+                          selectedDecoration: const BoxDecoration(
+                            color: AppPalette.orangeAccent,
+                            shape: BoxShape.circle,
+                          ),
+                          markerDecoration: BoxDecoration(
+                            color: Theme.of(context).colorScheme.error,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        calendarBuilders: CalendarBuilders(
+                          markerBuilder: (context, date, events) {
+                            final dateKey =
+                                "${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}";
+                            final hasOverride = _dateOverrides.containsKey(
+                              dateKey,
+                            );
+
+                            final isSelected = isSameDay(date, _selectedDay);
+
+                            if (hasOverride) {
+                              return Positioned(
+                                bottom: 7,
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: isSelected
+                                        ? AppPalette.navyPrimary
+                                        : Colors.blue,
+                                  ),
+                                  width: 5.0,
+                                  height: 5.0,
+                                ),
+                              );
+                            }
+
+                            final weekdayIndex = _getDataIndex(
+                              date.weekday == 7 ? 0 : date.weekday,
+                            );
+                            final hasRecurring =
+                                _daySchedules[weekdayIndex]?.isNotEmpty ??
+                                false;
+
+                            if (hasRecurring) {
+                              return Positioned(
+                                bottom: 7,
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: isSelected
+                                        ? Colors.white
+                                        : AppPalette.orangeAccent,
+                                  ),
+                                  width: 5.0,
+                                  height: 5.0,
+                                ),
+                              );
+                            }
+                            return null;
+                          },
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+
+                    // SECTION: Specific Date Editor (Appears when date is selected)
+                    // Placed below calendar for logical flow: Click date -> See editor
+                    if (_selectedDay != null) ...[
+                      _buildDateOverrideEditor(),
+                      const SizedBox(height: 24),
+                      const Divider(),
+                      const SizedBox(height: 24),
+                    ],
+
+                    const SizedBox(height: 24),
+
+                    // Blocked Dates List (Keep at bottom)
+                    Text(
+                      'Blocked Dates List',
+
+                      style: GoogleFonts.outfit(
+                        color: Theme.of(context).colorScheme.onSurface,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Add holidays or specific days you are unavailable.',
+                      style: GoogleFonts.inter(
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.onSurface.withValues(alpha: 0.6),
+                        fontSize: 13,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Blocked Dates List
+                    if (_blockedDates.isEmpty)
+                      Container(
+                        padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
                           color: Theme.of(context).cardColor,
                           borderRadius: BorderRadius.circular(12),
@@ -948,120 +1021,499 @@ class _CoachAvailabilityScreenState extends State<CoachAvailabilityScreen> {
                               context,
                             ).dividerColor.withValues(alpha: 0.1),
                           ),
-                          boxShadow: [
-                            BoxShadow(
+                        ),
+                        child: Center(
+                          child: Text(
+                            'No blocked dates added yet.',
+                            style: GoogleFonts.inter(
+                              color: Theme.of(context).disabledColor,
+                            ),
+                          ),
+                        ),
+                      )
+                    else
+                      ..._blockedDates.map((blockedDate) {
+                        return Container(
+                          margin: const EdgeInsets.only(bottom: 12),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 12,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).cardColor,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
                               color: Theme.of(
                                 context,
-                              ).shadowColor.withValues(alpha: 0.02),
-                              blurRadius: 4,
-                              offset: const Offset(0, 2),
+                              ).dividerColor.withValues(alpha: 0.1),
                             ),
-                          ],
-                        ),
-                        child: Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                color: blockedDate.color.withValues(alpha: 0.1),
-                                shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(
+                                color: Theme.of(
+                                  context,
+                                ).shadowColor.withValues(alpha: 0.02),
+                                blurRadius: 4,
+                                offset: const Offset(0, 2),
                               ),
-                              child: Icon(
-                                blockedDate.icon,
-                                color: blockedDate.color,
-                                size: 20,
-                              ),
-                            ),
-                            const SizedBox(width: 16),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    blockedDate.title,
-                                    style: GoogleFonts.inter(
-                                      fontWeight: FontWeight.w600,
-                                      fontSize: 14,
-                                    ),
+                            ],
+                          ),
+                          child: Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: blockedDate.color.withValues(
+                                    alpha: 0.1,
                                   ),
-                                  Text(
-                                    '${_formatDateShort(blockedDate.start)} - ${_formatDateShort(blockedDate.end)}',
-                                    style: GoogleFonts.inter(
-                                      color: Theme.of(context).disabledColor,
-                                      fontSize: 12,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Icon(
+                                  blockedDate.icon,
+                                  color: blockedDate.color,
+                                  size: 20,
+                                ),
+                              ),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      blockedDate.title,
+                                      style: GoogleFonts.inter(
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 14,
+                                      ),
                                     ),
-                                  ),
-                                ],
+                                    Text(
+                                      '${_formatDateShort(blockedDate.start)} - ${_formatDateShort(blockedDate.end)}',
+                                      style: GoogleFonts.inter(
+                                        color: Theme.of(context).disabledColor,
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
-                            ),
-                            IconButton(
-                              icon: const Icon(
-                                Icons.delete_outline,
-                                color: Colors.grey,
-                              ),
-                              onPressed: () async {
-                                if (blockedDate.id != null) {
-                                  // Call API to remove
-                                  try {
-                                    await CoachService.removeBlockedDate(
-                                      blockedDate.id!,
-                                    );
-                                  } catch (e) {
-                                    if (context.mounted) {
-                                      ScaffoldMessenger.of(
-                                        context,
-                                      ).showSnackBar(
-                                        SnackBar(
-                                          content: Text('Failed to delete: $e'),
-                                        ),
+                              IconButton(
+                                icon: const Icon(
+                                  Icons.delete_outline,
+                                  color: Colors.grey,
+                                ),
+                                onPressed: () async {
+                                  if (blockedDate.id != null) {
+                                    // Call API to remove
+                                    try {
+                                      await CoachService.removeBlockedDate(
+                                        blockedDate.id!,
                                       );
+                                    } catch (e) {
+                                      if (context.mounted) {
+                                        ScaffoldMessenger.of(
+                                          context,
+                                        ).showSnackBar(
+                                          SnackBar(
+                                            content: Text(
+                                              'Failed to delete: $e',
+                                            ),
+                                          ),
+                                        );
+                                      }
+                                      return; // Don't remove from list if API failed
                                     }
-                                    return; // Don't remove from list if API failed
                                   }
-                                }
-                                setState(() {
-                                  _blockedDates.remove(blockedDate);
-                                });
-                              },
-                            ),
-                          ],
-                        ),
-                      );
-                    }),
+                                  setState(() {
+                                    _blockedDates.remove(blockedDate);
+                                  });
+                                },
+                              ),
+                            ],
+                          ),
+                        );
+                      }),
 
-                  const SizedBox(height: 16),
+                    const SizedBox(height: 16),
 
-                  // Add Blocked Date Button
-                  SizedBox(
-                    width: double.infinity,
-                    child: OutlinedButton.icon(
-                      onPressed: _showAddBlockedDateDialog,
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        side: BorderSide(color: AppPalette.navyPrimary),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+                    // Add Blocked Date Button
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: _showAddBlockedDateDialog,
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          side: BorderSide(color: AppPalette.navyPrimary),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
                         ),
-                      ),
-                      icon: Icon(Icons.add, color: AppPalette.navyPrimary),
-                      label: Text(
-                        "Add Blocked Date",
-                        style: TextStyle(
-                          color: AppPalette.navyPrimary,
-                          fontWeight: FontWeight.bold,
+                        icon: Icon(Icons.add, color: AppPalette.navyPrimary),
+                        label: Text(
+                          "Add Blocked Date",
+                          style: TextStyle(
+                            color: AppPalette.navyPrimary,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
                     ),
-                  ),
 
-                  const SizedBox(height: 50), // Bottom padding
-                ],
+                    const SizedBox(height: 50), // Bottom padding
+                  ],
+                ),
               ),
             ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // --- Helper Methods ---
+
+  /// Builds the editor for a specifically selected date (Override Mode)
+  Widget _buildDateOverrideEditor() {
+    if (_selectedDay == null) return const SizedBox.shrink();
+
+    final dateKey =
+        "${_selectedDay!.year}-${_selectedDay!.month.toString().padLeft(2, '0')}-${_selectedDay!.day.toString().padLeft(2, '0')}";
+    final formattedDate =
+        "${_fullDayNames[_getDataIndex(_selectedDay!.weekday == 7 ? 0 : _selectedDay!.weekday)]}, ${_selectedDay!.day}/${_selectedDay!.month}";
+
+    // Check statuses
+    final bool isBlocked = _blockedDates.any(
+      (bd) => isSameDay(bd.start, _selectedDay),
+    );
+    final bool hasOverride = _dateOverrides.containsKey(dateKey);
+
+    // Get schedule to display: Override -> or Default Recurring
+    List<TimeInterval> displaySchedule;
+    if (hasOverride) {
+      displaySchedule = _dateOverrides[dateKey]!;
+    } else {
+      // Fallback to recurring
+      final weekdayIndex = _getDataIndex(
+        _selectedDay!.weekday == 7 ? 0 : _selectedDay!.weekday,
+      ); // Map to 0-6 (Mon-Sun)
+      displaySchedule = _daySchedules[weekdayIndex] ?? [];
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardColor,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: AppPalette.navyPrimary, // Highlighted border
+          width: 2,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: AppPalette.navyPrimary.withValues(alpha: 0.1),
+            blurRadius: 15,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Edit for $formattedDate',
+                    style: GoogleFonts.outfit(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: AppPalette.navyPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  if (hasOverride)
+                    Text(
+                      'Custom Override Active',
+                      style: GoogleFonts.inter(
+                        fontSize: 12,
+                        color: Colors.blue,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    )
+                  else if (isBlocked)
+                    Text(
+                      'Date is Blocked',
+                      style: GoogleFonts.inter(
+                        fontSize: 12,
+                        color: Colors.red,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    )
+                  else
+                    Text(
+                      'Currently using default schedule.',
+                      style: GoogleFonts.inter(
+                        fontSize: 12,
+                        color: Colors.grey,
+                      ),
+                    ),
+                ],
+              ),
+              // Close / Done Button
+              IconButton(
+                onPressed: () {
+                  setState(() {
+                    _selectedDay = null; // Close editor
+                  });
+                },
+                icon: const Icon(Icons.close),
+                tooltip: 'Close Editor',
+              ),
+            ],
+          ),
+          const Divider(height: 24),
+
+          // Actions Row
+          Row(
+            children: [
+              if (hasOverride || isBlocked)
+                TextButton.icon(
+                  onPressed: () {
+                    setState(() {
+                      _dateOverrides.remove(dateKey);
+                      _blockedDates.removeWhere(
+                        (bd) => isSameDay(bd.start, _selectedDay),
+                      );
+                    });
+                  },
+                  icon: const Icon(Icons.restart_alt, size: 16),
+                  label: const Text('Reset to Default'),
+                  style: TextButton.styleFrom(foregroundColor: Colors.grey),
+                ),
+              const Spacer(),
+            ],
+          ),
+
+          const SizedBox(height: 16),
+
+          if (isBlocked) ...[
+            Center(
+              child: Column(
+                children: [
+                  const Icon(Icons.block, size: 40, color: Colors.redAccent),
+                  const SizedBox(height: 12),
+                  const Text('This date is blocked.'),
+                  TextButton(
+                    onPressed: () {
+                      setState(() {
+                        _blockedDates.removeWhere(
+                          (bd) => isSameDay(bd.start, _selectedDay),
+                        );
+                      });
+                    },
+                    child: const Text('Unblock Date'),
+                  ),
+                ],
+              ),
+            ),
+          ] else ...[
+            // Time Slots Editor (Operating on a COPY or directly on override)
+            ...List.generate(displaySchedule.length, (index) {
+              final interval = displaySchedule[index];
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 16),
+                child: Row(
+                  children: [
+                    // Start
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'START',
+                            style: GoogleFonts.outfit(
+                              fontSize: 11,
+                              color: AppPalette.orangeAccent,
+                              fontWeight: FontWeight.w600,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          _buildTimeDropdown(interval.start, (val) {
+                            _updateOverrideSlot(dateKey, index, start: val);
+                          }),
+                        ],
+                      ),
+                    ),
+                    const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 12),
+                      child: Padding(
+                        padding: EdgeInsets.only(top: 20),
+                        child: Icon(
+                          Icons.arrow_forward_rounded,
+                          size: 20,
+                          color: AppPalette.orangeAccent,
+                        ),
+                      ),
+                    ),
+                    // End
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'END',
+                            style: GoogleFonts.outfit(
+                              fontSize: 11,
+                              color: AppPalette.orangeAccent,
+                              fontWeight: FontWeight.w600,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          _buildTimeDropdown(interval.end, (val) {
+                            _updateOverrideSlot(dateKey, index, end: val);
+                          }),
+                        ],
+                      ),
+                    ),
+                    // Delete
+                    Padding(
+                      padding: const EdgeInsets.only(left: 8, top: 20),
+                      child: IconButton(
+                        icon: const Icon(
+                          Icons.remove_circle_outline,
+                          color: Colors.redAccent,
+                          size: 20,
+                        ),
+                        onPressed: () {
+                          _removeOverrideSlot(dateKey, index);
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }),
+
+            const SizedBox(height: 12),
+            OutlinedButton.icon(
+              onPressed: () {
+                _addOverrideSlot(dateKey);
+              },
+              icon: const Icon(Icons.add),
+              label: const Text('Add Slot for this Date'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppPalette.orangeAccent,
+                side: BorderSide(
+                  color: AppPalette.orangeAccent.withValues(alpha: 0.5),
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 12),
+            // Block Date Option
+            Center(
+              child: TextButton.icon(
+                onPressed: () {
+                  // Add to blocked dates
+                  setState(() {
+                    _dateOverrides.remove(
+                      dateKey,
+                    ); // Clear overrides if blocking
+                    _blockedDates.add(
+                      BlockedDate(
+                        title: 'Unavailable',
+                        start: _selectedDay!,
+                        end: _selectedDay!,
+                        color: Colors.red,
+                        icon: Icons.block,
+                      ),
+                    );
+                  });
+                },
+                icon: const Icon(Icons.block, size: 16, color: Colors.red),
+                label: const Text(
+                  'Block this Date',
+                  style: TextStyle(color: Colors.red),
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
     );
+  }
+
+  void _updateOverrideSlot(
+    String dateKey,
+    int index, {
+    String? start,
+    String? end,
+  }) {
+    // Ensure we are working on an override, not the default map reference
+    if (!_dateOverrides.containsKey(dateKey)) {
+      // Copy default to override first
+      final weekdayIndex = _getDataIndex(
+        _selectedDay!.weekday == 7 ? 0 : _selectedDay!.weekday,
+      );
+      final defaultSchedule = _daySchedules[weekdayIndex] ?? [];
+
+      // Deep copy
+      _dateOverrides[dateKey] = defaultSchedule
+          .map((ti) => TimeInterval(start: ti.start, end: ti.end))
+          .toList();
+    }
+
+    setState(() {
+      final schedule = _dateOverrides[dateKey]!;
+      if (index < schedule.length) {
+        if (start != null) schedule[index].start = start;
+        if (end != null) schedule[index].end = end;
+      }
+    });
+  }
+
+  void _removeOverrideSlot(String dateKey, int index) {
+    if (!_dateOverrides.containsKey(dateKey)) {
+      // Copy default to override first
+      final weekdayIndex = _getDataIndex(
+        _selectedDay!.weekday == 7 ? 0 : _selectedDay!.weekday,
+      );
+      final defaultSchedule = _daySchedules[weekdayIndex] ?? [];
+      _dateOverrides[dateKey] = defaultSchedule
+          .map((ti) => TimeInterval(start: ti.start, end: ti.end))
+          .toList();
+    }
+
+    setState(() {
+      if (_dateOverrides[dateKey]!.length > index) {
+        _dateOverrides[dateKey]!.removeAt(index);
+      }
+    });
+  }
+
+  void _addOverrideSlot(String dateKey) {
+    if (!_dateOverrides.containsKey(dateKey)) {
+      // If no override yet, we start with the default schedule
+      final weekdayIndex = _getDataIndex(
+        _selectedDay!.weekday == 7 ? 0 : _selectedDay!.weekday,
+      );
+      final defaultSchedule = _daySchedules[weekdayIndex] ?? [];
+      _dateOverrides[dateKey] = defaultSchedule
+          .map((ti) => TimeInterval(start: ti.start, end: ti.end))
+          .toList();
+    }
+
+    setState(() {
+      _dateOverrides[dateKey]!.add(
+        TimeInterval(start: '09:00 AM', end: '05:00 PM'),
+      );
+    });
   }
 
   // --- Helper Methods ---
@@ -1287,28 +1739,44 @@ class _CoachAvailabilityScreenState extends State<CoachAvailabilityScreen> {
         }
       },
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
         decoration: BoxDecoration(
-          color: Theme.of(
-            context,
-          ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
-          borderRadius: BorderRadius.circular(8),
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: AppPalette.divider.withValues(alpha: 0.3),
+            width: 1,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 4,
+              offset: const Offset(0, 2),
+            ),
+          ],
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(
-              value,
-              style: GoogleFonts.inter(
-                fontWeight: FontWeight.w600,
-                color: Theme.of(context).colorScheme.onSurface,
-                fontSize: 14,
+            Flexible(
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  value,
+                  style: GoogleFonts.outfit(
+                    fontWeight: FontWeight.w600,
+                    color: AppPalette.textPrimaryLight,
+                    fontSize: 14,
+                  ),
+                ),
               ),
             ),
+            const SizedBox(width: 4),
             Icon(
-              Icons.keyboard_arrow_down,
-              color: Theme.of(context).colorScheme.secondary,
-              size: 16,
+              Icons.keyboard_arrow_down_rounded,
+              color: AppPalette.orangeAccent,
+              size: 18,
             ),
           ],
         ),

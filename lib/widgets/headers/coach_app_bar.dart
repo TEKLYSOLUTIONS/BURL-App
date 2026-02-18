@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../config/palette.dart';
 
 class CoachAppBar extends StatelessWidget {
   final Widget child;
@@ -25,7 +26,7 @@ class CoachAppBar extends StatelessWidget {
         bottomPadding, // Standardized bottom padding
       ),
       decoration: BoxDecoration(
-        color: backgroundColor ?? Theme.of(context).colorScheme.primary,
+        color: backgroundColor ?? AppPalette.navyPrimary, // Navy Blue in both themes
         borderRadius: const BorderRadius.vertical(bottom: Radius.circular(24)),
       ),
       child: child,

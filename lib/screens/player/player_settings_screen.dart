@@ -74,7 +74,7 @@ class _PlayerProfileScreenState extends ConsumerState<PlayerProfileScreen> {
                   child: Text(
                     'Profile',
                     textAlign: TextAlign.center,
-                    style: GoogleFonts.outfit(
+                    style: GoogleFonts.inter(
                       fontSize: 24, // Matching Sessions screen font size
                       fontWeight: FontWeight.bold,
                       color: Theme.of(context).colorScheme.onSurface,
@@ -124,7 +124,7 @@ class _PlayerProfileScreenState extends ConsumerState<PlayerProfileScreen> {
                           children: [
                             Text(
                               _userName,
-                              style: GoogleFonts.outfit(
+                              style: GoogleFonts.inter(
                                 fontSize: 18,
                                 fontWeight: FontWeight.bold,
                                 color: Theme.of(context).colorScheme.onSurface,
@@ -262,7 +262,7 @@ class _PlayerProfileScreenState extends ConsumerState<PlayerProfileScreen> {
                       icon: const Icon(Icons.logout, color: Colors.red),
                       label: Text(
                         'Log Out',
-                        style: GoogleFonts.outfit(
+                        style: GoogleFonts.inter(
                           color: Colors.red,
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
@@ -312,7 +312,7 @@ class _PlayerProfileScreenState extends ConsumerState<PlayerProfileScreen> {
         children: [
           Text(
             title,
-            style: GoogleFonts.outfit(
+            style: GoogleFonts.inter(
               fontSize: 16,
               fontWeight: FontWeight.bold,
               color: AppPalette.textSecondaryLight,
@@ -375,7 +375,7 @@ class _PlayerProfileScreenState extends ConsumerState<PlayerProfileScreen> {
             children: [
               Text(
                 'Select Appearance',
-                style: GoogleFonts.outfit(
+                style: GoogleFonts.inter(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
                   color: Theme.of(context).colorScheme.onSurface,

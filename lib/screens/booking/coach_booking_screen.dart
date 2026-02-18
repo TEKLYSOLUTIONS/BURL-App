@@ -97,7 +97,7 @@ class _CoachBookingScreenState extends State<CoachBookingScreen> {
             AppBar(
               title: Text(
                 "Book Session",
-                style: GoogleFonts.outfit(
+                style: GoogleFonts.inter(
                   color: AppPalette.navyPrimary,
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
@@ -117,7 +117,7 @@ class _CoachBookingScreenState extends State<CoachBookingScreen> {
                     // Coach Info
                     Text(
                       "Book a session with ${widget.coachName}",
-                      style: GoogleFonts.outfit(
+                      style: GoogleFonts.inter(
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
                         color: AppPalette.navyPrimary,
@@ -190,7 +190,7 @@ class _CoachBookingScreenState extends State<CoachBookingScreen> {
                         headerStyle: HeaderStyle(
                           formatButtonVisible: false,
                           titleCentered: true,
-                          titleTextStyle: GoogleFonts.outfit(
+                          titleTextStyle: GoogleFonts.inter(
                             fontWeight: FontWeight.bold,
                             fontSize: 16,
                           ),
@@ -206,7 +206,7 @@ class _CoachBookingScreenState extends State<CoachBookingScreen> {
                     if (_selectedDay != null) ...[
                       Text(
                         "Available Slots (${DateFormat('MMM d').format(_selectedDay!)})",
-                        style: GoogleFonts.outfit(
+                        style: GoogleFonts.inter(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
                           color: AppPalette.navyPrimary,
@@ -304,7 +304,7 @@ class _CoachBookingScreenState extends State<CoachBookingScreen> {
                       ),
                       Text(
                         '\$${widget.hourlyRate.toStringAsFixed(0)}', // Assuming 1 hour for now
-                        style: GoogleFonts.outfit(
+                        style: GoogleFonts.inter(
                           fontWeight: FontWeight.bold,
                           fontSize: 24,
                           color: AppPalette.navyPrimary,
@@ -353,7 +353,7 @@ class _CoachBookingScreenState extends State<CoachBookingScreen> {
                       ),
                       child: Text(
                         'Continue', // "Confirm" or "Book"
-                        style: GoogleFonts.outfit(
+                        style: GoogleFonts.inter(
                           fontWeight: FontWeight.bold,
                           fontSize: 16,
                         ),

@@ -13,7 +13,7 @@ class ChangePasswordScreen extends StatelessWidget {
       appBar: AppBar(
         title: Text(
           'Change Password',
-          style: GoogleFonts.outfit(
+          style: GoogleFonts.inter(
             color: AppPalette.navyPrimary,
             fontWeight: FontWeight.bold,
           ),

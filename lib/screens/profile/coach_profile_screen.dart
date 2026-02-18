@@ -86,12 +86,18 @@ class _CoachProfileScreenState extends ConsumerState<CoachProfileScreen> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const SizedBox(width: 40),
+                  if (context.canPop())
+                    IconButton(
+                      icon: const Icon(Icons.arrow_back, color: Colors.white),
+                      onPressed: () => context.pop(),
+                    )
+                  else
+                    const SizedBox(width: 40),
                   Expanded(
                     child: Text(
                       'Settings',
                       textAlign: TextAlign.center,
-                      style: GoogleFonts.outfit(
+                      style: GoogleFonts.inter(
                         fontSize: 24,
                         fontWeight: FontWeight.bold,
                         color: Colors.white,
@@ -99,6 +105,8 @@ class _CoachProfileScreenState extends ConsumerState<CoachProfileScreen> {
                     ),
                   ),
                   NotificationButton(
+                    iconColor: Colors.white,
+                    backgroundColor: Colors.white.withValues(alpha: 0.1),
                     onTap: () => context.push('/coach/notifications'),
                   ),
                 ],
@@ -164,7 +172,7 @@ class _CoachProfileScreenState extends ConsumerState<CoachProfileScreen> {
                             children: [
                               Text(
                                 _userName,
-                                style: GoogleFonts.outfit(
+                                style: GoogleFonts.inter(
                                   fontSize: 18,
                                   fontWeight: FontWeight.bold,
                                   color:
@@ -409,7 +417,7 @@ class _CoachProfileScreenState extends ConsumerState<CoachProfileScreen> {
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(16),
                       ),
-                      textStyle: GoogleFonts.outfit(
+                      textStyle: GoogleFonts.inter(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
                       ),
@@ -480,7 +488,7 @@ class _CoachProfileScreenState extends ConsumerState<CoachProfileScreen> {
               Expanded(
                 child: Text(
                   title,
-                  style: GoogleFonts.outfit(
+                  style: GoogleFonts.inter(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
                     color: ref.watch(themeProvider) == ThemeMode.dark
@@ -521,7 +529,7 @@ class _CoachProfileScreenState extends ConsumerState<CoachProfileScreen> {
             children: [
               Text(
                 'Select Appearance',
-                style: GoogleFonts.outfit(
+                style: GoogleFonts.inter(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
                   color: Theme.of(context).colorScheme.onSurface,

@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'palette.dart';
 
+// App uses Inter font family with weights: 400 (regular), 500 (medium), 600 (semibold), 700 (bold)
+// Reference: https://fonts.google.com/specimen/Inter
+
 class AppTheme {
   // Light Theme (Standard: White BG, White/Light Cards, Dark Text)
   static ThemeData get lightTheme {
@@ -22,51 +25,51 @@ class AppTheme {
       ),
       scaffoldBackgroundColor: AppPalette.backgroundLight,
 
-      // Typography
+      // Typography - Using Inter Font
       textTheme: TextTheme(
-        displayLarge: GoogleFonts.plusJakartaSans(
+        displayLarge: GoogleFonts.inter(
           fontSize: 32,
-          fontWeight: FontWeight.bold,
+          fontWeight: FontWeight.bold, // 700
           color: AppPalette.navyPrimary,
         ),
-        displayMedium: GoogleFonts.plusJakartaSans(
+        displayMedium: GoogleFonts.inter(
           fontSize: 28,
-          fontWeight: FontWeight.bold,
+          fontWeight: FontWeight.bold, // 700
           color: AppPalette.navyPrimary,
         ),
-        displaySmall: GoogleFonts.plusJakartaSans(
+        displaySmall: GoogleFonts.inter(
           fontSize: 24,
-          fontWeight: FontWeight.w600,
+          fontWeight: FontWeight.w600, // 600
           color: AppPalette.navyPrimary,
         ),
-        headlineMedium: GoogleFonts.plusJakartaSans(
+        headlineMedium: GoogleFonts.inter(
           fontSize: 20,
-          fontWeight: FontWeight.w600,
+          fontWeight: FontWeight.w600, // 600
           color: AppPalette.navyPrimary,
         ),
-        titleLarge: GoogleFonts.plusJakartaSans(
+        titleLarge: GoogleFonts.inter(
           fontSize: 18,
-          fontWeight: FontWeight.w600,
+          fontWeight: FontWeight.w600, // 600
           color: AppPalette.navyPrimary, // Dark Text on White Cards
         ),
-        titleMedium: GoogleFonts.plusJakartaSans(
+        titleMedium: GoogleFonts.inter(
           fontSize: 16,
-          fontWeight: FontWeight.w500,
+          fontWeight: FontWeight.w500, // 500
           color: AppPalette.navyPrimary, // Dark Text on White Cards
         ),
-        bodyLarge: GoogleFonts.plusJakartaSans(
+        bodyLarge: GoogleFonts.inter(
           fontSize: 16,
-          fontWeight: FontWeight.normal,
+          fontWeight: FontWeight.normal, // 400
           color: AppPalette.navyPrimary,
         ),
-        bodyMedium: GoogleFonts.plusJakartaSans(
+        bodyMedium: GoogleFonts.inter(
           fontSize: 14,
-          fontWeight: FontWeight.normal,
+          fontWeight: FontWeight.normal, // 400
           color: AppPalette.navyPrimary,
         ),
-        labelLarge: GoogleFonts.plusJakartaSans(
+        labelLarge: GoogleFonts.inter(
           fontSize: 14,
-          fontWeight: FontWeight.w600,
+          fontWeight: FontWeight.w600, // 600
           color: AppPalette.white,
         ),
       ),
@@ -74,15 +77,15 @@ class AppTheme {
       // Component Themes
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          backgroundColor: AppPalette.navyPrimary, // Dark Buttons
+          backgroundColor: AppPalette.orangeAccent, // Orange Buttons
           foregroundColor: AppPalette.white,
           minimumSize: const Size(double.infinity, 56),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
-          textStyle: GoogleFonts.plusJakartaSans(
+          textStyle: GoogleFonts.inter(
             fontSize: 16,
-            fontWeight: FontWeight.w600,
+            fontWeight: FontWeight.w600, // 600
           ),
           elevation: 0,
         ),
@@ -90,17 +93,32 @@ class AppTheme {
 
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
-          foregroundColor: AppPalette.navyPrimary,
+          foregroundColor: AppPalette.orangeAccent,
           minimumSize: const Size(double.infinity, 56),
-          side: const BorderSide(color: AppPalette.navyPrimary, width: 1.5),
+          side: const BorderSide(color: AppPalette.orangeAccent, width: 1.5),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
-          textStyle: GoogleFonts.plusJakartaSans(
+          textStyle: GoogleFonts.inter(
             fontSize: 16,
-            fontWeight: FontWeight.w600,
+            fontWeight: FontWeight.w600, // 600
           ),
         ),
+      ),
+
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(
+          foregroundColor: AppPalette.orangeAccent,
+          textStyle: GoogleFonts.inter(
+            fontSize: 16,
+            fontWeight: FontWeight.w600, // 600
+          ),
+        ),
+      ),
+
+      floatingActionButtonTheme: const FloatingActionButtonThemeData(
+        backgroundColor: AppPalette.orangeAccent,
+        foregroundColor: AppPalette.white,
       ),
 
       inputDecorationTheme: InputDecorationTheme(
@@ -122,10 +140,10 @@ class AppTheme {
           horizontal: 16,
           vertical: 16,
         ),
-        labelStyle: GoogleFonts.plusJakartaSans(
+        labelStyle: GoogleFonts.inter(
           color: AppPalette.textSecondaryLight,
         ),
-        hintStyle: GoogleFonts.plusJakartaSans(color: AppPalette.textDisabled),
+        hintStyle: GoogleFonts.inter(color: AppPalette.textDisabled),
       ),
 
       cardTheme: CardThemeData(
@@ -140,21 +158,60 @@ class AppTheme {
         margin: EdgeInsets.zero,
       ),
 
+      checkboxTheme: CheckboxThemeData(
+        fillColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) {
+            return AppPalette.orangeAccent;
+          }
+          return null;
+        }),
+      ),
+
+      radioTheme: RadioThemeData(
+        fillColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) {
+            return AppPalette.orangeAccent;
+          }
+          return null;
+        }),
+      ),
+
+      switchTheme: SwitchThemeData(
+        thumbColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) {
+            return AppPalette.orangeAccent;
+          }
+          return null;
+        }),
+        trackColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) {
+            return AppPalette.orangeAccent.withValues(alpha: 0.5);
+          }
+          return null;
+        }),
+      ),
+
+      chipTheme: ChipThemeData(
+        selectedColor: AppPalette.orangeAccent,
+        checkmarkColor: AppPalette.white,
+        labelStyle: GoogleFonts.inter(fontSize: 14),
+      ),
+
       appBarTheme: AppBarTheme(
-        backgroundColor: AppPalette.backgroundLight,
+        backgroundColor: AppPalette.navyPrimary, // Navy Blue Header
         elevation: 0,
         centerTitle: true,
-        iconTheme: const IconThemeData(color: AppPalette.navyPrimary),
-        titleTextStyle: GoogleFonts.plusJakartaSans(
+        iconTheme: const IconThemeData(color: AppPalette.white),
+        titleTextStyle: GoogleFonts.inter(
           fontSize: 18,
-          fontWeight: FontWeight.w600,
-          color: AppPalette.navyPrimary,
+          fontWeight: FontWeight.w600, // 600
+          color: AppPalette.white,
         ),
       ),
 
       bottomNavigationBarTheme: const BottomNavigationBarThemeData(
         backgroundColor: AppPalette.white,
-        selectedItemColor: AppPalette.navyPrimary, // Dark Selected
+        selectedItemColor: AppPalette.orangeAccent, // Orange Selected
         unselectedItemColor: AppPalette.textDisabled,
         type: BottomNavigationBarType.fixed,
         elevation: 8,
@@ -183,50 +240,52 @@ class AppTheme {
       ),
       scaffoldBackgroundColor: AppPalette.backgroundDark,
 
-      // Typography (Dark Mode)
+      // Typography (Dark Mode) - Using Inter Font
       textTheme: TextTheme(
-        displayLarge: GoogleFonts.plusJakartaSans(
+        displayLarge: GoogleFonts.inter(
           color: AppPalette.white,
           fontSize: 32,
-          fontWeight: FontWeight.bold,
+          fontWeight: FontWeight.bold, // 700
         ),
-        displayMedium: GoogleFonts.plusJakartaSans(
+        displayMedium: GoogleFonts.inter(
           color: AppPalette.white,
           fontSize: 28,
-          fontWeight: FontWeight.bold,
+          fontWeight: FontWeight.bold, // 700
         ),
-        displaySmall: GoogleFonts.plusJakartaSans(
+        displaySmall: GoogleFonts.inter(
           color: AppPalette.white,
           fontSize: 24,
-          fontWeight: FontWeight.w600,
+          fontWeight: FontWeight.w600, // 600
         ),
-        headlineMedium: GoogleFonts.plusJakartaSans(
+        headlineMedium: GoogleFonts.inter(
           color: AppPalette.white,
           fontSize: 20,
-          fontWeight: FontWeight.w600,
+          fontWeight: FontWeight.w600, // 600
         ),
-        titleLarge: GoogleFonts.plusJakartaSans(
+        titleLarge: GoogleFonts.inter(
           color: AppPalette.white,
           fontSize: 18,
-          fontWeight: FontWeight.w600,
+          fontWeight: FontWeight.w600, // 600
         ),
-        titleMedium: GoogleFonts.plusJakartaSans(
+        titleMedium: GoogleFonts.inter(
           color: AppPalette.white,
           fontSize: 16,
-          fontWeight: FontWeight.w500,
+          fontWeight: FontWeight.w500, // 500
         ),
-        bodyLarge: GoogleFonts.plusJakartaSans(
+        bodyLarge: GoogleFonts.inter(
           color: AppPalette.white,
           fontSize: 16,
+          fontWeight: FontWeight.normal, // 400
         ),
-        bodyMedium: GoogleFonts.plusJakartaSans(
+        bodyMedium: GoogleFonts.inter(
           color: AppPalette.textSecondaryDark,
           fontSize: 14,
+          fontWeight: FontWeight.normal, // 400
         ),
-        labelLarge: GoogleFonts.plusJakartaSans(
+        labelLarge: GoogleFonts.inter(
           color: AppPalette.white,
           fontSize: 14,
-          fontWeight: FontWeight.w600,
+          fontWeight: FontWeight.w600, // 600
         ),
       ),
 
@@ -239,9 +298,9 @@ class AppTheme {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
-          textStyle: GoogleFonts.plusJakartaSans(
+          textStyle: GoogleFonts.inter(
             fontSize: 16,
-            fontWeight: FontWeight.w600,
+            fontWeight: FontWeight.w600, // 600
           ),
           elevation: 0,
         ),
@@ -249,17 +308,32 @@ class AppTheme {
 
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
-          foregroundColor: AppPalette.white,
-          side: const BorderSide(color: AppPalette.white),
+          foregroundColor: AppPalette.orangeAccent,
+          side: const BorderSide(color: AppPalette.orangeAccent, width: 1.5),
           minimumSize: const Size(double.infinity, 56),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
-          textStyle: GoogleFonts.plusJakartaSans(
+          textStyle: GoogleFonts.inter(
             fontSize: 16,
-            fontWeight: FontWeight.w600,
+            fontWeight: FontWeight.w600, // 600
           ),
         ),
+      ),
+
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(
+          foregroundColor: AppPalette.orangeAccent,
+          textStyle: GoogleFonts.inter(
+            fontSize: 16,
+            fontWeight: FontWeight.w600, // 600
+          ),
+        ),
+      ),
+
+      floatingActionButtonTheme: const FloatingActionButtonThemeData(
+        backgroundColor: AppPalette.orangeAccent,
+        foregroundColor: AppPalette.white,
       ),
 
       inputDecorationTheme: InputDecorationTheme(
@@ -280,10 +354,10 @@ class AppTheme {
             width: 2,
           ),
         ),
-        labelStyle: GoogleFonts.plusJakartaSans(
+        labelStyle: GoogleFonts.inter(
           color: AppPalette.textSecondaryDark,
         ),
-        hintStyle: GoogleFonts.plusJakartaSans(color: AppPalette.textDisabled),
+        hintStyle: GoogleFonts.inter(color: AppPalette.textDisabled),
       ),
 
       cardTheme: CardThemeData(
@@ -299,15 +373,54 @@ class AppTheme {
         margin: EdgeInsets.zero,
       ),
 
+      checkboxTheme: CheckboxThemeData(
+        fillColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) {
+            return AppPalette.orangeAccent;
+          }
+          return null;
+        }),
+      ),
+
+      radioTheme: RadioThemeData(
+        fillColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) {
+            return AppPalette.orangeAccent;
+          }
+          return null;
+        }),
+      ),
+
+      switchTheme: SwitchThemeData(
+        thumbColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) {
+            return AppPalette.orangeAccent;
+          }
+          return null;
+        }),
+        trackColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) {
+            return AppPalette.orangeAccent.withValues(alpha: 0.5);
+          }
+          return null;
+        }),
+      ),
+
+      chipTheme: ChipThemeData(
+        selectedColor: AppPalette.orangeAccent,
+        checkmarkColor: AppPalette.white,
+        labelStyle: GoogleFonts.inter(fontSize: 14),
+      ),
+
       appBarTheme: AppBarTheme(
-        backgroundColor: AppPalette.backgroundDark,
+        backgroundColor: AppPalette.navyPrimary, // Navy Blue Header
         elevation: 0,
         centerTitle: true,
         iconTheme: const IconThemeData(color: AppPalette.white),
-        titleTextStyle: GoogleFonts.plusJakartaSans(
+        titleTextStyle: GoogleFonts.inter(
           color: AppPalette.white,
           fontSize: 18,
-          fontWeight: FontWeight.w600,
+          fontWeight: FontWeight.w600, // 600
         ),
       ),
 
@@ -323,3 +436,4 @@ class AppTheme {
     );
   }
 }
+

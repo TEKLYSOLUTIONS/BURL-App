@@ -297,7 +297,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                   ),
                 Text(
                   'Notifications',
-                  style: GoogleFonts.outfit(
+                  style: GoogleFonts.inter(
                     color: Colors.white,
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
@@ -392,7 +392,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                                   const SizedBox(height: 16),
                                   Text(
                                     'No notifications yet',
-                                    style: GoogleFonts.outfit(
+                                    style: GoogleFonts.inter(
                                       fontSize: 18,
                                       color: Colors.grey[600],
                                       fontWeight: FontWeight.w500,

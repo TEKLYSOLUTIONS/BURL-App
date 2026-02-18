@@ -116,7 +116,7 @@ class _FullEarningsHistoryScreenState extends State<FullEarningsHistoryScreen> {
             child: avatarUrl.isEmpty
                 ? Text(
                     name.isNotEmpty ? name[0].toUpperCase() : '?',
-                    style: GoogleFonts.outfit(
+                    style: GoogleFonts.inter(
                       color: Theme.of(context).colorScheme.onSurface,
                       fontWeight: FontWeight.bold,
                     ),
@@ -130,7 +130,7 @@ class _FullEarningsHistoryScreenState extends State<FullEarningsHistoryScreen> {
               children: [
                 Text(
                   name,
-                  style: GoogleFonts.outfit(
+                  style: GoogleFonts.inter(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
                     color: Theme.of(context).colorScheme.onSurface,
@@ -176,7 +176,7 @@ class _FullEarningsHistoryScreenState extends State<FullEarningsHistoryScreen> {
           ),
           Text(
             amount,
-            style: GoogleFonts.outfit(
+            style: GoogleFonts.inter(
               fontSize: 16,
               fontWeight: FontWeight.bold,
               color: Theme.of(context).colorScheme.primary,
@@ -209,7 +209,7 @@ class _FullEarningsHistoryScreenState extends State<FullEarningsHistoryScreen> {
                     child: Text(
                       'Full Earnings History',
                       textAlign: TextAlign.center,
-                      style: GoogleFonts.outfit(
+                      style: GoogleFonts.inter(
                         fontSize: 24,
                         fontWeight: FontWeight.bold,
                         color: Theme.of(context).colorScheme.onPrimary,
@@ -247,7 +247,7 @@ class _FullEarningsHistoryScreenState extends State<FullEarningsHistoryScreen> {
                   child: Text(
                     'Full Earnings History',
                     textAlign: TextAlign.center,
-                    style: GoogleFonts.outfit(
+                    style: GoogleFonts.inter(
                       fontSize: 24,
                       fontWeight: FontWeight.bold,
                       color: Theme.of(context).colorScheme.onPrimary,
@@ -270,7 +270,7 @@ class _FullEarningsHistoryScreenState extends State<FullEarningsHistoryScreen> {
                   children: [
                     Text(
                       'All Earnings',
-                      style: GoogleFonts.outfit(
+                      style: GoogleFonts.inter(
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
                         color: Theme.of(context).colorScheme.onSurface,
@@ -350,7 +350,7 @@ class _FullEarningsHistoryScreenState extends State<FullEarningsHistoryScreen> {
                             ),
                             child: Text(
                               'Load More',
-                              style: GoogleFonts.outfit(
+                              style: GoogleFonts.inter(
                                 color: Colors.white,
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold,

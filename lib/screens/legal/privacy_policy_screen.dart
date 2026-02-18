@@ -41,7 +41,7 @@ class PrivacyPolicyScreen extends StatelessWidget {
                 Text(
                   'Privacy Policy',
                   textAlign: TextAlign.center,
-                  style: GoogleFonts.outfit(
+                  style: GoogleFonts.inter(
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
                     color: Theme.of(context).colorScheme.onSurface,

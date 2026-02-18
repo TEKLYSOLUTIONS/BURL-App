@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
 import '../../widgets/notification_button.dart';
+import '../../config/palette.dart';
 import '../../widgets/headers/coach_app_bar.dart';
 import 'tabs/group_sessions_tab.dart';
 import 'tabs/one_on_one_settings_tab.dart';
@@ -46,7 +47,7 @@ class _MySessionsScreenState extends State<MySessionsScreen> {
                   child: Text(
                     'Sessions',
                     textAlign: TextAlign.center,
-                    style: GoogleFonts.outfit(
+                    style: GoogleFonts.inter(
                       fontSize: 24,
                       fontWeight: FontWeight.bold,
                       color: Theme.of(context).colorScheme.primary,
@@ -77,19 +78,30 @@ class _MySessionsScreenState extends State<MySessionsScreen> {
         body: Column(
           children: [
             CoachAppBar(
-              backgroundColor: Theme.of(context).colorScheme.primary,
+              backgroundColor: AppPalette.navyPrimary,
               bottomPadding: 16,
               child: Column(
                 children: [
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const SizedBox(width: 40), // Balance Notification Button
+                      if (context.canPop())
+                        IconButton(
+                          icon: const Icon(
+                            Icons.arrow_back,
+                            color: Colors.white,
+                          ),
+                          onPressed: () => context.pop(),
+                        )
+                      else
+                        const SizedBox(
+                          width: 40,
+                        ), // Balance Notification Button
                       Expanded(
                         child: Text(
                           'My Sessions',
                           textAlign: TextAlign.center,
-                          style: GoogleFonts.outfit(
+                          style: GoogleFonts.inter(
                             fontSize: 24,
                             fontWeight: FontWeight.bold,
                             color: Colors.white,

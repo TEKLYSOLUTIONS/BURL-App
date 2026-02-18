@@ -72,7 +72,7 @@ class NotificationDetailScreen extends StatelessWidget {
                 ),
                 Text(
                   'Details',
-                  style: GoogleFonts.outfit(
+                  style: GoogleFonts.inter(
                     color: Colors.white,
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
@@ -173,7 +173,7 @@ class NotificationDetailScreen extends StatelessWidget {
                         // Title
                         Text(
                           title,
-                          style: GoogleFonts.outfit(
+                          style: GoogleFonts.inter(
                             fontSize: 20,
                             fontWeight: FontWeight.bold,
                             color: Theme.of(context).colorScheme.onSurface,
