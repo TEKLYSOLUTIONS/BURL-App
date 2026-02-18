@@ -335,7 +335,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
                 ),
               ),
               Text(
-                '\$${total.toStringAsFixed(2)}',
+                '\$ ${total.toStringAsFixed(2)}',
                 style: GoogleFonts.inter(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,

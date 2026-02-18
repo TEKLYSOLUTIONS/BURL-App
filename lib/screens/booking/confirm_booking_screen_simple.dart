@@ -491,7 +491,7 @@ class _ConfirmBookingScreenSimpleState
                             ),
                           ),
                           Text(
-                            '\$${_totalAmount.toStringAsFixed(2)}',
+                            '\$ ${_totalAmount.toStringAsFixed(2)}',
                             style: GoogleFonts.inter(
                               fontSize: 16,
                               fontWeight: FontWeight.bold,
@@ -812,7 +812,7 @@ class _ConfirmBookingScreenSimpleState
                 ),
               ),
               Text(
-                '\$${_totalAmount.toStringAsFixed(2)}',
+                '\$ ${_totalAmount.toStringAsFixed(2)}',
                 style: GoogleFonts.inter(
                   fontSize: 22,
                   fontWeight: FontWeight.bold,
@@ -835,7 +835,7 @@ class _ConfirmBookingScreenSimpleState
           style: GoogleFonts.inter(fontSize: 14, color: Colors.grey[600]),
         ),
         Text(
-          '\$${amount.toStringAsFixed(2)}',
+          '\$ ${amount.toStringAsFixed(2)}',
           style: GoogleFonts.inter(
             fontSize: 14,
             fontWeight: FontWeight.w500,

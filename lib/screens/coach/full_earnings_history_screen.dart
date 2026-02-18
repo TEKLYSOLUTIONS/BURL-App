@@ -7,6 +7,7 @@ import '../../widgets/headers/coach_app_bar.dart';
 
 import '../../services/earnings_service.dart';
 import '../../config/palette.dart';
+import '../../utils/currency_helper.dart';
 
 class FullEarningsHistoryScreen extends StatefulWidget {
   const FullEarningsHistoryScreen({super.key});
@@ -23,11 +24,26 @@ class _FullEarningsHistoryScreenState extends State<FullEarningsHistoryScreen> {
   int _currentPage = 1;
   final int _limit = 20;
   bool _isLoadingMore = false;
+  String _userCurrency = CurrencyHelper.defaultCurrency;
 
   @override
   void initState() {
     super.initState();
+    _loadUserCurrency();
     _loadEarningsHistory();
+  }
+
+  Future<void> _loadUserCurrency() async {
+    try {
+      final currency = await CurrencyHelper.loadUserCurrency();
+      if (mounted) {
+        setState(() {
+          _userCurrency = currency;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading user currency: $e');
+    }
   }
 
   Future<void> _loadEarningsHistory({bool loadMore = false}) async {
@@ -310,7 +326,7 @@ class _FullEarningsHistoryScreenState extends State<FullEarningsHistoryScreen> {
                               : playerName,
                           detail:
                               '${earning['sessionTitle'] ?? 'Session'} • ${sessionDate != null ? DateFormat('MMM d, yyyy').format(sessionDate) : 'Unknown date'}',
-                          amount: '+${EarningsService.formatCurrency(amount)}',
+                          amount: '+${EarningsService.formatCurrency(amount, currency: _userCurrency)}',
                           isCompleted:
                               status == 'confirmed' || status == 'paid',
                           statusText: status == 'pending'

@@ -7,6 +7,7 @@ class ModernTextField extends StatelessWidget {
   final String? hintText;
   final String? labelText;
   final IconData? prefixIcon;
+  final String? prefixText;
   final Widget? suffixIcon;
   final String? Function(String?)? validator;
   final TextInputType keyboardType;
@@ -23,6 +24,7 @@ class ModernTextField extends StatelessWidget {
     this.hintText,
     this.labelText,
     this.prefixIcon,
+    this.prefixText,
     this.suffixIcon,
     this.validator,
     this.keyboardType = TextInputType.text,
@@ -73,6 +75,11 @@ class ModernTextField extends StatelessWidget {
               hintStyle: GoogleFonts.inter(
                 color: Colors.grey.shade400,
                 fontSize: 15,
+              ),
+              prefixText: prefixText,
+              prefixStyle: GoogleFonts.inter(
+                color: Colors.grey.shade600,
+                fontSize: 16,
               ),
               prefixIcon: prefixIcon != null
                   ? Icon(prefixIcon, color: Colors.grey.shade400, size: 22)

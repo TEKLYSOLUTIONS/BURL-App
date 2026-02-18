@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'api_service.dart';
+import '../utils/currency_helper.dart';
 
 class EarningsService {
   /// Get coach's total earnings
@@ -156,27 +157,9 @@ class EarningsService {
   }
 
   /// Helper method to format currency
-  static String formatCurrency(double amount, {String currency = 'USD'}) {
-    final symbol = _getCurrencySymbol(currency);
-    return '$symbol${amount.toStringAsFixed(2)}';
-  }
-
-  /// Get currency symbol
-  static String _getCurrencySymbol(String currency) {
-    switch (currency.toUpperCase()) {
-      case 'USD':
-        return '\$';
-      case 'GBP':
-        return '£';
-      case 'EUR':
-        return '€';
-      case 'INR':
-        return '₹';
-      case 'AUD':
-        return 'A\$';
-      default:
-        return '\$';
-    }
+  static String formatCurrency(double amount, {String currency = CurrencyHelper.defaultCurrency}) {
+    final symbol = CurrencyHelper.getCurrencySymbol(currency);
+    return '$symbol ${amount.toStringAsFixed(2)}';
   }
 
   /// Calculate percentage with sign

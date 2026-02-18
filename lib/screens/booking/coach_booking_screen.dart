@@ -303,7 +303,7 @@ class _CoachBookingScreenState extends State<CoachBookingScreen> {
                         ),
                       ),
                       Text(
-                        '\$${widget.hourlyRate.toStringAsFixed(0)}', // Assuming 1 hour for now
+                        '\$ ${widget.hourlyRate.toStringAsFixed(0)}', // Assuming 1 hour for now
                         style: GoogleFonts.inter(
                           fontWeight: FontWeight.bold,
                           fontSize: 24,

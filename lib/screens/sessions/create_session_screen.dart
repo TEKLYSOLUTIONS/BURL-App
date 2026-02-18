@@ -9,6 +9,7 @@ import 'package:table_calendar/table_calendar.dart'; // Import TableCalendar
 import 'package:google_maps_flutter/google_maps_flutter.dart'; // Import Google Maps
 import '../../services/session_service.dart';
 import '../../utils/location_search_delegate.dart';
+import '../../utils/currency_helper.dart';
 import '../../screens/common/location_picker_screen.dart'; // Import Location Picker
 import '../../widgets/modern_text_field.dart';
 import '../../widgets/modern_duration_selector.dart';
@@ -27,6 +28,7 @@ class _CreateSessionScreenState extends State<CreateSessionScreen> {
   final _formKey = GlobalKey<FormBuilderState>();
   int _currentStep = 0;
   bool _isLoading = false;
+  String _userCurrency = CurrencyHelper.defaultCurrency; // User's currency from location
 
   // Calendar State
   DateTime _focusedDay = DateTime.now();
@@ -39,6 +41,20 @@ class _CreateSessionScreenState extends State<CreateSessionScreen> {
   void initState() {
     super.initState();
     _initialValues = _mapSessionToForm(widget.sessionToEdit);
+    _loadUserCurrency();
+  }
+
+  Future<void> _loadUserCurrency() async {
+    try {
+      final currency = await CurrencyHelper.loadUserCurrency();
+      if (mounted) {
+        setState(() {
+          _userCurrency = currency;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading user currency: $e');
+    }
   }
 
   Map<String, dynamic> _mapSessionToForm(Map<String, dynamic>? session) {
@@ -177,8 +193,20 @@ class _CreateSessionScreenState extends State<CreateSessionScreen> {
           );
         }
 
-        // Add all selected dates to selectedDays list
-        for (var date in _selectedDates) {
+        // Filter out any past dates as a safety net
+        final today = DateTime.now();
+        final todayDate = DateTime(today.year, today.month, today.day);
+        final validDates = _selectedDates.where((d) {
+          final day = DateTime(d.year, d.month, d.day);
+          return !day.isBefore(todayDate);
+        }).toList();
+
+        if (validDates.isEmpty) {
+          throw Exception("All selected dates are in the past. Please select future dates.");
+        }
+
+        // Add all valid selected dates to selectedDays list
+        for (var date in validDates) {
           selectedDays.add(DateFormat('yyyy-MM-dd').format(date));
         }
 
@@ -194,6 +222,14 @@ class _CreateSessionScreenState extends State<CreateSessionScreen> {
         final date = formData['date'] as DateTime?;
         if (date == null) {
           throw Exception("Date is required for one-time sessions");
+        }
+
+        // Prevent past dates
+        final today = DateTime.now();
+        final selectedDate = DateTime(date.year, date.month, date.day);
+        final todayDate = DateTime(today.year, today.month, today.day);
+        if (selectedDate.isBefore(todayDate)) {
+          throw Exception("Cannot create a session in the past. Please select today or a future date.");
         }
 
         selectedDays.add(DateFormat('yyyy-MM-dd').format(date));
@@ -227,7 +263,7 @@ class _CreateSessionScreenState extends State<CreateSessionScreen> {
           'model': formData['pricingModel'],
           'amount':
               double.tryParse(formData['price']?.toString() ?? '0') ?? 0.0,
-          'currency': 'USD',
+          'currency': _userCurrency,
           'pricePerPerson': true,
         },
         enrollmentSettings: {
@@ -932,6 +968,8 @@ class _CreateSessionScreenState extends State<CreateSessionScreen> {
                   ),
                   validator: FormBuilderValidators.required(),
                   initialDate: DateTime.now(),
+                  firstDate: DateTime.now(),
+                  lastDate: DateTime.now().add(const Duration(days: 365)),
                   format: DateFormat('EEE, MMM d, yyyy'),
                 ),
               ],
@@ -1113,11 +1151,11 @@ class _CreateSessionScreenState extends State<CreateSessionScreen> {
           const SizedBox(height: 16),
           ModernTextField(
             name: 'price',
-            labelText: 'Amount (USD)',
+            labelText: 'Amount (${CurrencyHelper.getCurrencySymbol(_userCurrency)})',
             hintText: '0.00',
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
             validator: FormBuilderValidators.numeric(),
-            prefixIcon: Icons.attach_money,
+            prefixText: CurrencyHelper.getCurrencySymbol(_userCurrency),
           ),
 
           const SizedBox(height: 30),

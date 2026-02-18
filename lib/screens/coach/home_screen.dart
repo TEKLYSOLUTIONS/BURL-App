@@ -13,7 +13,7 @@ import '../../services/session_service.dart'; // Import SessionService
 import '../../services/earnings_service.dart'; // Import EarningsService
 import '../../utils/date_time_utils.dart';
 import '../../utils/responsive.dart'; // Import Responsive utility
-
+import '../../utils/currency_helper.dart';
 import '../../utils/session_utils.dart'; // Import SessionUtils
 import '../../navigation/app_router.dart';
 
@@ -32,7 +32,7 @@ class _CoachHomeScreenState extends State<CoachHomeScreen> with RouteAware {
   // Dashboard data
   int _todaySessionsCount = 0;
   double _totalEarnings = 0.0;
-  String _currency = 'USD'; // Default currency
+  String _currency = CurrencyHelper.defaultCurrency; // Default currency
   int _todayStudentsCount = 0;
   List<dynamic> _todaysSessions = [];
 
@@ -40,6 +40,7 @@ class _CoachHomeScreenState extends State<CoachHomeScreen> with RouteAware {
   void initState() {
     super.initState();
     _loadUserData();
+    _loadUserCurrency();
     _loadDashboardData();
   }
 
@@ -114,6 +115,19 @@ class _CoachHomeScreenState extends State<CoachHomeScreen> with RouteAware {
     }
   }
 
+  Future<void> _loadUserCurrency() async {
+    try {
+      final currency = await CurrencyHelper.loadUserCurrency();
+      if (mounted) {
+        setState(() {
+          _currency = currency;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading user currency: $e');
+    }
+  }
+
   Future<void> _loadDashboardData() async {
     setState(() => _isLoading = true);
 
@@ -133,7 +147,7 @@ class _CoachHomeScreenState extends State<CoachHomeScreen> with RouteAware {
           _todaySessionsCount = todaySummary?['sessions'] ?? 0;
           // _todayEarnings removed
           _totalEarnings = (stats?['totalEarnings'] ?? 0).toDouble();
-          _currency = stats?['currency'] ?? 'USD'; // Fetch currency
+          // Currency now loaded from profile location
           _todayStudentsCount = todaySummary?['students'] ?? 0;
 
           _todaysSessions = todaySessionsResponse['sessions'] as List<dynamic>;

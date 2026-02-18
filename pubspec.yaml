@@ -1,7 +1,7 @@
 name: cricketcoachflutter
 description: "A Multi-Sport Coaching Platform mobile app."
 publish_to: 'none'
-version: 1.0.0+1
+version: 1.0.0+2
 
 environment:
   sdk: '>=3.10.4 <4.0.0'
@@ -51,6 +51,7 @@ dependencies:
   shared_preferences: ^2.2.2
   flutter_stripe: ^12.2.0
   flutter_rating_bar: ^4.0.1
+  package_info_plus: ^8.0.0
 
 dev_dependencies:
   flutter_test:

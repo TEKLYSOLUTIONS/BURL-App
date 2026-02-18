@@ -419,7 +419,7 @@ class _BookingScreenState extends State<BookingScreen> {
                       ),
                     ),
                     Text(
-                      '\$${(_session!['pricing']['amount'] as num) * _selectedDateIndices.length}',
+                      '\$ ${(_session!['pricing']['amount'] as num) * _selectedDateIndices.length}',
                       style: GoogleFonts.inter(
                         fontWeight: FontWeight.bold,
                         color: AppPalette.navyPrimary,

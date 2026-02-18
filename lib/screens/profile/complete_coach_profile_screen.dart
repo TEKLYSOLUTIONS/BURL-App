@@ -3,23 +3,28 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
 import 'dart:async';
+import 'dart:io';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../config/palette.dart';
 import '../../services/profile_service.dart';
 import '../../services/auth_service.dart';
 import '../../services/places_service.dart';
+import '../../services/storage_service.dart';
+import '../../providers/theme_provider.dart';
+import '../../utils/currency_helper.dart';
 
-class CompleteCoachProfileScreen extends StatefulWidget {
+class CompleteCoachProfileScreen extends ConsumerStatefulWidget {
   final Map<String, dynamic>? profileData;
 
   const CompleteCoachProfileScreen({super.key, this.profileData});
 
   @override
-  State<CompleteCoachProfileScreen> createState() =>
+  ConsumerState<CompleteCoachProfileScreen> createState() =>
       _CompleteCoachProfileScreenState();
 }
 
 class _CompleteCoachProfileScreenState
-    extends State<CompleteCoachProfileScreen> {
+    extends ConsumerState<CompleteCoachProfileScreen> {
   int _currentStep = 0;
   final List<GlobalKey<FormState>> _formKeys = [
     GlobalKey<FormState>(),
@@ -53,6 +58,10 @@ class _CompleteCoachProfileScreenState
 
   bool _isLoading = false;
   bool _isSaving = false;
+  String? _profileImageUrl;
+  String? _userId;
+  String? _country; // Store country extracted from location
+  String? _userCurrency; // Store detected currency
 
   // Autocomplete State
   List<PlacePrediction> _predictions = [];
@@ -123,12 +132,20 @@ class _CompleteCoachProfileScreenState
     _nameController.text = data['fullName'] ?? '';
     _emailController.text = data['email'] ?? '';
     _phoneController.text = data['phone'] ?? data['phoneNumber'] ?? '';
+    _profileImageUrl = data['profileUrl'] ?? data['profilePhotoUrl'];
+    _userId = data['_id'] ?? data['id'];
 
     // Coach profile data
     if (data['coachProfile'] != null) {
       final coachProfile = data['coachProfile'];
 
       _cityController.text = coachProfile['city'] ?? '';
+      
+      // Extract country and currency from location
+      final city = coachProfile['city'] ?? '';
+      _country = coachProfile['country'] ?? CurrencyHelper.extractCountry(city);
+      _userCurrency = coachProfile['currency'] ?? CurrencyHelper.getCurrencyFromLocation(city);
+      
       _coachTitleController.text = coachProfile['coachTitle'] ?? '';
       _bioController.text = coachProfile['aboutMe'] ?? '';
       _experienceController.text =
@@ -219,6 +236,8 @@ class _CompleteCoachProfileScreenState
         'email': _emailController.text.trim(),
         'phone': _phoneController.text.trim(),
         'city': _cityController.text.trim(),
+        'country': _country,
+        'currency': _userCurrency ?? CurrencyHelper.defaultCurrency,
         'hourlyRate': 0, // Default to 0
         'sessionDuration': 60, // Default to 60
         'coachTitle': _coachTitleController.text.trim(),
@@ -266,66 +285,135 @@ class _CompleteCoachProfileScreenState
     }
   }
 
+  Future<void> _changeProfilePhoto() async {
+    if (_userId == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('User ID not found. Please try again.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+      return;
+    }
+
+    try {
+      final pickedFile = await StorageService.showImageSourceSheet(context);
+      if (pickedFile == null) return;
+
+      setState(() {
+        _isSaving = true;
+      });
+
+      final imageUrl = await StorageService.uploadProfilePicture(
+        userId: _userId!,
+        imageFile: File(pickedFile.path),
+      );
+
+      setState(() {
+        _profileImageUrl = imageUrl;
+        _isSaving = false;
+      });
+
+      // Update profile with new photo URL
+      await ProfileService.updateProfile({'profileUrl': imageUrl});
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Profile photo updated successfully!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      setState(() {
+        _isSaving = false;
+      });
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error uploading photo: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    
     if (_isLoading) {
       return Scaffold(
-        backgroundColor: AppPalette.backgroundLight,
+        backgroundColor: theme.scaffoldBackgroundColor,
         body: const Center(child: CircularProgressIndicator()),
       );
     }
 
     return Scaffold(
-      backgroundColor: AppPalette.backgroundLight,
+      backgroundColor: theme.scaffoldBackgroundColor,
       body: Column(
         children: [
           _buildCustomHeader(),
+          _buildCustomStepper(),
           Expanded(
-            child: Column(
-              children: [
-                _buildCustomStepper(),
-                Expanded(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 24,
-                      vertical: 16,
-                    ),
-                    child: _buildStepContent(_currentStep),
-                  ),
-                ),
-              ],
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 24,
+                vertical: 16,
+              ),
+              child: Column(
+                children: [
+                  _buildStepContent(_currentStep),
+                  const SizedBox(height: 24),
+                  _buildContinueButton(),
+                  const SizedBox(height: 24),
+                ],
+              ),
             ),
           ),
-          _buildBottomBar(),
         ],
       ),
     );
   }
 
   Widget _buildProfilePhotoSection() {
+    final theme = Theme.of(context);
     return Center(
       child: Column(
         children: [
           Stack(
             children: [
-              const CircleAvatar(
+              CircleAvatar(
                 radius: 50,
-                backgroundColor: AppPalette.navyPrimary,
-                child: Icon(Icons.person, size: 50, color: Colors.white),
+                backgroundColor: theme.colorScheme.primary,
+                backgroundImage: _profileImageUrl != null && _profileImageUrl!.isNotEmpty
+                    ? NetworkImage(_profileImageUrl!)
+                    : null,
+                child: _profileImageUrl == null || _profileImageUrl!.isEmpty
+                    ? const Icon(Icons.person, size: 50, color: Colors.white)
+                    : null,
               ),
               Positioned(
                 bottom: 0,
                 right: 0,
-                child: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: const BoxDecoration(
-                    color: Colors.orange,
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.camera_alt,
-                    size: 20,
-                    color: Colors.white,
+                child: GestureDetector(
+                  onTap: _changeProfilePhoto,
+                  child: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: AppPalette.orangeAccent,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.camera_alt,
+                      size: 20,
+                      color: Colors.white,
+                    ),
                   ),
                 ),
               ),
@@ -333,15 +421,11 @@ class _CompleteCoachProfileScreenState
           ),
           const SizedBox(height: 12),
           TextButton(
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Photo upload coming soon!')),
-              );
-            },
+            onPressed: _changeProfilePhoto,
             child: Text(
               'Change Profile Photo',
               style: GoogleFonts.inter(
-                color: Colors.orange,
+                color: AppPalette.orangeAccent,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -364,6 +448,9 @@ class _CompleteCoachProfileScreenState
     FocusNode? focusNode,
     void Function(String)? onChanged,
   }) {
+    final theme = Theme.of(context);
+    final isDark = ref.watch(themeProvider) == ThemeMode.dark;
+    
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -375,7 +462,7 @@ class _CompleteCoachProfileScreenState
                 style: GoogleFonts.inter(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
-                  color: AppPalette.textPrimaryLight,
+                  color: theme.textTheme.bodyLarge?.color,
                 ),
               ),
             ),
@@ -385,7 +472,7 @@ class _CompleteCoachProfileScreenState
                 '(Optional)',
                 style: GoogleFonts.inter(
                   fontSize: 12,
-                  color: AppPalette.textSecondaryLight,
+                  color: theme.textTheme.bodySmall?.color,
                 ),
               ),
             ],
@@ -400,11 +487,15 @@ class _CompleteCoachProfileScreenState
           validator: validator,
           focusNode: focusNode,
           onChanged: onChanged,
+          style: TextStyle(color: theme.textTheme.bodyLarge?.color),
           decoration: InputDecoration(
             hintText: hint,
-            prefixIcon: Icon(icon, color: AppPalette.navyPrimary),
+            hintStyle: TextStyle(color: theme.textTheme.bodySmall?.color),
+            prefixIcon: Icon(icon, color: theme.colorScheme.primary),
             filled: true,
-            fillColor: Colors.grey[100],
+            fillColor: isDark 
+                ? Colors.white.withValues(alpha: 0.05)
+                : Colors.grey[100],
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
               borderSide: BorderSide.none,
@@ -415,8 +506,8 @@ class _CompleteCoachProfileScreenState
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(
-                color: AppPalette.navyPrimary,
+              borderSide: BorderSide(
+                color: theme.colorScheme.primary,
                 width: 1.5,
               ),
             ),
@@ -433,6 +524,9 @@ class _CompleteCoachProfileScreenState
     required void Function(String?) onChanged,
     required IconData icon,
   }) {
+    final theme = Theme.of(context);
+    final isDark = ref.watch(themeProvider) == ThemeMode.dark;
+    
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -441,26 +535,32 @@ class _CompleteCoachProfileScreenState
           style: GoogleFonts.inter(
             fontSize: 14,
             fontWeight: FontWeight.w600,
-            color: AppPalette.textPrimaryLight,
+            color: theme.textTheme.bodyLarge?.color,
           ),
         ),
         const SizedBox(height: 8),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 12),
           decoration: BoxDecoration(
-            color: Colors.grey[100],
+            color: isDark 
+                ? Colors.white.withValues(alpha: 0.05)
+                : Colors.grey[100],
             borderRadius: BorderRadius.circular(12),
           ),
           child: DropdownButtonHideUnderline(
             child: DropdownButton<String>(
               value: value,
               isExpanded: true,
-              icon: const Icon(Icons.keyboard_arrow_down, color: Colors.orange),
-              hint: const Text('Select...'),
+              icon: Icon(Icons.keyboard_arrow_down, color: AppPalette.orangeAccent),
+              hint: Text('Select...', style: TextStyle(color: theme.textTheme.bodySmall?.color)),
+              dropdownColor: theme.cardColor,
               items: items.map((String item) {
                 return DropdownMenuItem<String>(
                   value: item,
-                  child: Text(item.toUpperCase(), style: GoogleFonts.inter()),
+                  child: Text(
+                    item.toUpperCase(), 
+                    style: GoogleFonts.inter(color: theme.textTheme.bodyLarge?.color),
+                  ),
                 );
               }).toList(),
               onChanged: onChanged,
@@ -477,6 +577,9 @@ class _CompleteCoachProfileScreenState
     required List<String> selectedOptions,
     required void Function(List<String>) onChanged,
   }) {
+    final theme = Theme.of(context);
+    final isDark = ref.watch(themeProvider) == ThemeMode.dark;
+    
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -485,7 +588,7 @@ class _CompleteCoachProfileScreenState
           style: GoogleFonts.inter(
             fontSize: 16,
             fontWeight: FontWeight.w600,
-            color: AppPalette.navyPrimary,
+            color: theme.textTheme.bodyLarge?.color,
           ),
         ),
         const SizedBox(height: 12),
@@ -511,11 +614,17 @@ class _CompleteCoachProfileScreenState
                 ),
                 decoration: BoxDecoration(
                   color: isSelected
-                      ? Colors.orange.withValues(alpha: 0.1)
-                      : Colors.white,
+                      ? AppPalette.orangeAccent.withValues(alpha: 0.1)
+                      : isDark 
+                          ? Colors.white.withValues(alpha: 0.05)
+                          : Colors.white,
                   borderRadius: BorderRadius.circular(24),
                   border: Border.all(
-                    color: isSelected ? Colors.orange : Colors.grey[300]!,
+                    color: isSelected 
+                        ? AppPalette.orangeAccent 
+                        : isDark 
+                            ? Colors.white.withValues(alpha: 0.2)
+                            : Colors.grey[300]!,
                     width: 1.5,
                   ),
                 ),
@@ -527,12 +636,14 @@ class _CompleteCoachProfileScreenState
                       style: GoogleFonts.inter(
                         fontSize: 14,
                         fontWeight: FontWeight.w500,
-                        color: isSelected ? Colors.orange : Colors.grey[700],
+                        color: isSelected 
+                            ? AppPalette.orangeAccent 
+                            : theme.textTheme.bodyLarge?.color,
                       ),
                     ),
                     if (isSelected) ...[
                       const SizedBox(width: 6),
-                      const Icon(Icons.check, size: 16, color: Colors.orange),
+                      Icon(Icons.check, size: 16, color: AppPalette.orangeAccent),
                     ],
                   ],
                 ),
@@ -700,6 +811,13 @@ class _CompleteCoachProfileScreenState
   void _onPredictionSelected(PlacePrediction prediction) {
     _removeOverlay();
     _cityController.text = prediction.description;
+    
+    // Extract country and currency from selected location
+    setState(() {
+      _country = CurrencyHelper.extractCountry(prediction.description);
+      _userCurrency = CurrencyHelper.getCurrencyFromLocation(prediction.description);
+    });
+    
     _cityFocus.unfocus();
   }
 
@@ -935,28 +1053,34 @@ class _CompleteCoachProfileScreenState
     return Container(
       padding: EdgeInsets.only(
         top: MediaQuery.of(context).padding.top + 16,
-        bottom: 16,
-        left: 16,
-        right: 16,
+        bottom: 24,
+        left: 24,
+        right: 24,
       ),
-      color: const Color(0xFF0F172A), // Dark Navy
+      decoration: BoxDecoration(
+        color: AppPalette.navyPrimary,
+        borderRadius: const BorderRadius.vertical(
+          bottom: Radius.circular(32),
+        ),
+      ),
       child: Row(
         children: [
           IconButton(
             onPressed: () => context.pop(),
             icon: const Icon(Icons.arrow_back, color: Colors.white),
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(),
           ),
-          const SizedBox(width: 16),
-          Text(
-            'Edit Profile',
-            style: GoogleFonts.inter(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
+          Expanded(
+            child: Text(
+              'Profile',
+              textAlign: TextAlign.center,
+              style: GoogleFonts.inter(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
             ),
           ),
+          const SizedBox(width: 48), // Balance the back button
         ],
       ),
     );
@@ -964,143 +1088,85 @@ class _CompleteCoachProfileScreenState
 
   Widget _buildCustomStepper() {
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 32),
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(bottom: Radius.circular(24)),
-      ),
+      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          _buildStepIndicator(0, 'PERSONAL'),
-          _buildStepConnector(0),
-          _buildStepIndicator(1, 'PROFESSIONAL'),
-          _buildStepConnector(1),
-          _buildStepIndicator(2, 'SKILLS'),
+          _buildMinimalStepIndicator(0),
+          _buildMinimalStepIndicator(1),
+          _buildMinimalStepIndicator(2),
         ],
       ),
     );
   }
 
-  Widget _buildStepIndicator(int stepIndex, String label) {
+  Widget _buildMinimalStepIndicator(int stepIndex) {
     final bool isActive = _currentStep == stepIndex;
     final bool isCompleted = _currentStep > stepIndex;
 
-    return Column(
-      children: [
-        AnimatedContainer(
-          duration: const Duration(milliseconds: 300),
-          width: 32,
-          height: 32,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: isCompleted
-                ? const Color(0xFF0F172A) // Dark Navy
-                : isActive
-                ? Colors.orange
-                : Colors.grey[300],
-          ),
-          child: Center(
-            child: isCompleted
-                ? const Icon(Icons.check, color: Colors.white, size: 16)
-                : Text(
-                    '${stepIndex + 1}',
-                    style: GoogleFonts.inter(
-                      color: isActive ? Colors.white : Colors.grey[600],
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-          ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          label,
-          style: GoogleFonts.inter(
-            fontSize: 10,
-            fontWeight: FontWeight.bold,
-            color: isActive || isCompleted
-                ? const Color(0xFF64748B)
-                : Colors.grey[400],
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildStepConnector(int stepIndex) {
-    final bool isCompleted = _currentStep > stepIndex;
-    return Expanded(
-      child: Container(
-        height: 2,
-        margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 20),
-        color: isCompleted ? const Color(0xFF0F172A) : Colors.grey[300],
-      ),
-    );
-  }
-
-  Widget _buildBottomBar() {
-    final isLastStep = _currentStep == 2;
     return Container(
-      padding: const EdgeInsets.all(24),
+      margin: const EdgeInsets.symmetric(horizontal: 4),
+      width: isActive ? 32 : 8,
+      height: 8,
       decoration: BoxDecoration(
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, -5),
-          ),
-        ],
+        borderRadius: BorderRadius.circular(4),
+        color: isCompleted || isActive
+            ? AppPalette.orangeAccent
+            : Colors.grey[300],
       ),
-      child: SizedBox(
-        width: double.infinity,
-        child: ElevatedButton(
-          onPressed: _isSaving
-              ? null
-              : () {
-                  if (_formKeys[_currentStep].currentState!.validate()) {
-                    if (isLastStep) {
-                      _saveChanges();
-                    } else {
-                      setState(() => _currentStep += 1);
-                    }
+    );
+  }
+
+  Widget _buildContinueButton() {
+    final isLastStep = _currentStep == 2;
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton(
+        onPressed: _isSaving
+            ? null
+            : () {
+                if (_formKeys[_currentStep].currentState!.validate()) {
+                  if (isLastStep) {
+                    _saveChanges();
+                  } else {
+                    setState(() => _currentStep += 1);
                   }
-                },
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.orange,
-            padding: const EdgeInsets.symmetric(vertical: 16),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-            elevation: 0,
+                }
+              },
+        style: ElevatedButton.styleFrom(
+          backgroundColor: AppPalette.orangeAccent,
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
           ),
-          child: _isSaving
-              ? const SizedBox(
-                  height: 20,
-                  width: 20,
-                  child: CircularProgressIndicator(
-                    color: Colors.white,
-                    strokeWidth: 2,
-                  ),
-                )
-              : Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      isLastStep ? 'Finish Profile' : 'Continue',
-                      style: GoogleFonts.inter(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                    ),
-                    if (isLastStep) ...[
-                      const SizedBox(width: 8),
-                      const Icon(Icons.check, color: Colors.white, size: 20),
-                    ],
-                  ],
-                ),
+          elevation: 0,
         ),
+        child: _isSaving
+            ? const SizedBox(
+                height: 20,
+                width: 20,
+                child: CircularProgressIndicator(
+                  color: Colors.white,
+                  strokeWidth: 2,
+                ),
+              )
+            : Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    isLastStep ? 'Finish Profile' : 'Continue',
+                    style: GoogleFonts.inter(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                  if (isLastStep) ...[
+                    const SizedBox(width: 8),
+                    const Icon(Icons.check, color: Colors.white, size: 20),
+                  ],
+                ],
+              ),
       ),
     );
   }

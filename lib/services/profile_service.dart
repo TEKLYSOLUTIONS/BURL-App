@@ -71,18 +71,22 @@ class ProfileService {
     }
   }
 
-  /// Update profile image (mock implementation)
+  /// Update profile image
   ///
-  /// In a real app, this would upload the image file to cloud storage
-  /// For now, it returns a mock URL
-  static Future<String> updateProfileImage() async {
+  /// [imageUrl] - The Firebase Storage URL of the uploaded image
+  /// Returns the updated profile data
+  static Future<Map<String, dynamic>> updateProfileImage(
+    String imageUrl,
+  ) async {
     try {
-      final response = await ApiService.put('users/profile/image', {});
+      final response = await ApiService.put('users/profile', {
+        'profileImage': imageUrl,
+      });
 
       final data = json.decode(response.body);
 
       if (response.statusCode == 200) {
-        return data['imageUrl'];
+        return data['user'];
       } else {
         throw Exception(data['message'] ?? 'Failed to update profile image');
       }

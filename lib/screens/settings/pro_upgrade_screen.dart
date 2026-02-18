@@ -6,6 +6,9 @@ import '../../config/palette.dart';
 
 import '../../models/subscription_plan.dart';
 import '../../services/subscription_service.dart';
+import '../../services/profile_service.dart';
+import '../../utils/currency_helper.dart';
+import 'subscription_payment_screen.dart';
 
 class ProUpgradeScreen extends StatefulWidget {
   const ProUpgradeScreen({super.key});
@@ -15,17 +18,84 @@ class ProUpgradeScreen extends StatefulWidget {
 }
 
 class _ProUpgradeScreenState extends State<ProUpgradeScreen> {
-  bool _isAnnual = false;
   bool _isLoading = true; // Start loading true
-  final TextEditingController _promoController = TextEditingController();
   final _subscriptionService = SubscriptionService();
   List<SubscriptionPlan> _plans = [];
   String? _error;
+  final PageController _pageController = PageController();
+  int _currentPlanIndex = 0;
+  String _userCurrency = CurrencyHelper.defaultCurrency; // User's preferred currency
+  String? _userLocation;
+  bool _isAnnualSelected = true; // Track monthly vs annual selection (default to annual for discount)
+  String? _userId;
+  String _currentUserPlan = 'free'; // Actual plan from user's profile
+  String _subscriptionStatus = 'inactive'; // Actual subscription status
 
   @override
   void initState() {
     super.initState();
+    _fetchUserCurrency();
     _fetchPlans();
+  }
+
+  // Navigate to the payment screen for the currently selected plan
+  void _goToPayment() {
+    final currentPlan =
+        _proPlans.isNotEmpty && _currentPlanIndex < _proPlans.length
+            ? _proPlans[_currentPlanIndex]
+            : null;
+    if (currentPlan == null) return;
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => SubscriptionPaymentScreen(
+          plan: currentPlan,
+          isAnnual: _isAnnualSelected,
+          currency: _userCurrency,
+          userId: _userId,
+        ),
+      ),
+    );
+  }
+
+  Future<void> _fetchUserCurrency() async {
+    try {
+      final profile = await ProfileService.getProfile();
+      
+      // Store userId
+      _userId = profile['_id'] ?? profile['id'];
+      
+      // Try to get currency and plan info from profile
+      String? currency;
+      if (profile['coachProfile'] != null) {
+        currency = profile['coachProfile']['currency'];
+        _userLocation = profile['coachProfile']['city'];
+        final planField = profile['coachProfile']['plan'] as String?;
+        final sub = profile['coachProfile']['subscription'] as Map<String, dynamic>?;
+        if (planField != null) _currentUserPlan = planField;
+        if (sub != null) _subscriptionStatus = sub['status'] as String? ?? 'inactive';
+      } else if (profile['playerProfile'] != null) {
+        currency = profile['playerProfile']['currency'];
+        _userLocation = profile['playerProfile']['city'];
+      }
+      
+      // If currency not in profile, detect from location
+      if (currency == null && _userLocation != null) {
+        currency = CurrencyHelper.getCurrencyFromLocation(_userLocation);
+      }
+      
+      if (mounted) {
+        setState(() {
+          _userCurrency = currency ?? CurrencyHelper.defaultCurrency;
+        });
+      }
+    } catch (e) {
+      // Use default currency if profile fetch fails
+      if (mounted) {
+        setState(() {
+          _userCurrency = CurrencyHelper.defaultCurrency;
+        });
+      }
+    }
   }
 
   Future<void> _fetchPlans() async {
@@ -49,47 +119,38 @@ class _ProUpgradeScreenState extends State<ProUpgradeScreen> {
 
   @override
   void dispose() {
-    _promoController.dispose();
+    _pageController.dispose();
     super.dispose();
   }
 
-  void _handleSubscription() async {
-    setState(() => _isLoading = true);
-
-    // Simulate API call
-    await Future.delayed(const Duration(seconds: 2));
-
-    if (mounted) {
-      setState(() => _isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Free trial activated! Welcome to Pro.',
-            style: GoogleFonts.inter(color: Colors.white),
-          ),
-          backgroundColor: const Color(0xFF22C55E),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-      context.pop(); // Go back to profile
+  List<SubscriptionPlan> get _proPlans {
+    final proPlans = _plans.where((p) => p.isPro).toList();
+    
+    // Prefer plans in user's currency, but show all if none match
+    final matchingCurrencyPlans = proPlans
+        .where((p) => p.currency.toUpperCase() == _userCurrency.toUpperCase())
+        .toList();
+    
+    if (matchingCurrencyPlans.isNotEmpty) {
+      return matchingCurrencyPlans;
     }
+    
+    // If no plans match user's currency, return all pro plans
+    return proPlans;
   }
 
-  void _applyPromoCode() {
-    if (_promoController.text.isEmpty) return;
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          'Promo code "${_promoController.text}" applied!',
-          style: GoogleFonts.inter(color: Colors.white),
-        ),
-        backgroundColor: AppPalette.navyPrimary,
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
-    _promoController.clear();
+  int _calculateAnnualPrice(int monthlyPrice) {
+    // Calculate annual price (monthly * 12) with 20% discount
+    return (monthlyPrice * 12 * 0.8).round();
   }
+
+  int _calculateSavings(int monthlyPrice) {
+    final fullAnnual = monthlyPrice * 12;
+    final discountedAnnual = _calculateAnnualPrice(monthlyPrice);
+    return fullAnnual - discountedAnnual;
+  }
+
+  void _handleSubscription() => _goToPayment();
 
   @override
   Widget build(BuildContext context) {
@@ -135,6 +196,45 @@ class _ProUpgradeScreenState extends State<ProUpgradeScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
+                        // Currency Info Banner
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 12,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppPalette.navyPrimary.withValues(alpha: 0.05),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: AppPalette.navyPrimary.withValues(alpha: 0.1),
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.info_outline,
+                                size: 18,
+                                color: AppPalette.navyPrimary,
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  _userLocation != null
+                                      ? 'Prices shown in ${CurrencyHelper.getCurrencyName(_userCurrency)} based on your location: $_userLocation'
+                                      : 'Prices shown in ${CurrencyHelper.getCurrencyName(_userCurrency)}',
+                                  style: GoogleFonts.inter(
+                                    fontSize: 12,
+                                    color: AppPalette.navyPrimary,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ).animate().fadeIn(duration: 300.ms),
+
+                        const SizedBox(height: 24),
+
                         // 1. Free Plan Container
                         _buildFreePlanCard()
                             .animate()
@@ -143,75 +243,97 @@ class _ProUpgradeScreenState extends State<ProUpgradeScreen> {
 
                         const SizedBox(height: 24),
 
-                        // 2. Toggle for Monthly / Annual
-                        Center(
-                          child: Container(
-                            padding: const EdgeInsets.all(4),
-                            decoration: BoxDecoration(
-                              color: Colors.grey[100],
-                              borderRadius: BorderRadius.circular(30),
+                        // 2. Swipeable Pro Plan Cards
+                        if (_proPlans.isNotEmpty) ...[
+                          SizedBox(
+                            height: 620,
+                            child: PageView.builder(
+                              controller: _pageController,
+                              onPageChanged: (index) {
+                                setState(() {
+                                  _currentPlanIndex = index;
+                                });
+                              },
+                              itemCount: _proPlans.length,
+                              itemBuilder: (context, index) {
+                                return Padding(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                                  child: _buildProPlanCard(_proPlans[index]),
+                                );
+                              },
                             ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                _buildToggleOption('Monthly', !_isAnnual),
-                                _buildToggleOption(
-                                  'Annual (Save 20%)',
-                                  _isAnnual,
+                          ).animate().fadeIn(delay: 200.ms).slideY(begin: 0.1),
+                          const SizedBox(height: 16),
+                          // Page Indicator
+                          if (_proPlans.length > 1)
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: List.generate(
+                                _proPlans.length,
+                                (index) => Container(
+                                  margin: const EdgeInsets.symmetric(horizontal: 4),
+                                  width: _currentPlanIndex == index ? 24 : 8,
+                                  height: 8,
+                                  decoration: BoxDecoration(
+                                    color: _currentPlanIndex == index
+                                        ? AppPalette.navyPrimary
+                                        : Colors.grey[300],
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
                                 ),
-                              ],
+                              ),
+                            ).animate().fadeIn(delay: 250.ms),
+                        ],
+                        
+                        // Show message if no premium plans
+                        if (_proPlans.isEmpty)
+                          Container(
+                            height: 200,
+                            alignment: Alignment.center,
+                            child: Text(
+                              'No premium plans available',
+                              style: GoogleFonts.inter(
+                                fontSize: 16,
+                                color: Colors.grey[600],
+                              ),
                             ),
                           ),
-                        ).animate().fadeIn(delay: 100.ms),
-
-                        const SizedBox(height: 24),
-
-                        // 3. Pro Plan Card
-                        _buildProPlanCard()
-                            .animate()
-                            .fadeIn(delay: 200.ms)
-                            .slideY(begin: 0.1),
 
                         const SizedBox(height: 24),
 
                         // 4. Trial Banner
-                        Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFFF7D20), // Vibrant Orange
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              const Icon(
-                                Icons.card_giftcard,
-                                color: Colors.white,
-                              ),
-                              const SizedBox(width: 8),
-                              Text(
-                                '7-day free trial included',
-                                style: GoogleFonts.inter(
+                        if (_plans.any((p) => p.isPro && p.trialPeriodDays > 0))
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFFF7D20), // Vibrant Orange
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const Icon(
+                                  Icons.card_giftcard,
                                   color: Colors.white,
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
                                 ),
-                              ),
-                            ],
-                          ),
-                        ).animate().fadeIn(delay: 300.ms),
+                                const SizedBox(width: 8),
+                                Text(
+                                  '${_plans.firstWhere((p) => p.isPro && p.trialPeriodDays > 0).trialPeriodDays}-day free trial included',
+                                  style: GoogleFonts.inter(
+                                    color: Colors.white,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ).animate().fadeIn(delay: 300.ms),
 
-                        const SizedBox(height: 32),
+                        if (_plans.any((p) => p.isPro && p.trialPeriodDays > 0))
+                          const SizedBox(height: 32),
 
-                        // 5. Promo Code Section
-                        _buildPromoCodeSection().animate().fadeIn(
-                          delay: 400.ms,
-                        ),
-
-                        const SizedBox(height: 40),
-
-                        // 6. Start Free Trial CTA
+                        // 5. Start Free Trial CTA
                         SizedBox(
                           height: 56,
                           child: ElevatedButton(
@@ -237,7 +359,9 @@ class _ProUpgradeScreenState extends State<ProUpgradeScreen> {
                                     mainAxisAlignment: MainAxisAlignment.center,
                                     children: [
                                       Text(
-                                        'Start Free Trial',
+                                        _isAnnualSelected
+                                            ? 'Start Annual Trial'
+                                            : 'Start Monthly Trial',
                                         style: GoogleFonts.inter(
                                           fontSize: 18,
                                           fontWeight: FontWeight.bold,
@@ -262,6 +386,17 @@ class _ProUpgradeScreenState extends State<ProUpgradeScreen> {
                           style: GoogleFonts.inter(
                             fontSize: 12,
                             color: Colors.grey[500],
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+
+                        Text(
+                          'Have a promo code? You can apply it on the next step.',
+                          textAlign: TextAlign.center,
+                          style: GoogleFonts.inter(
+                            fontSize: 12,
+                            color: AppPalette.orangeAccent,
+                            fontWeight: FontWeight.w500,
                           ),
                         ),
                         const SizedBox(height: 40),
@@ -316,6 +451,14 @@ class _ProUpgradeScreenState extends State<ProUpgradeScreen> {
   }
 
   Widget _buildFreePlanCard() {
+    // Find the free plan from the fetched plans
+    final freePlan = _plans.isEmpty
+        ? null
+        : _plans.firstWhere(
+            (p) => p.tier.toLowerCase() == 'free' || p.price == 0,
+            orElse: () => _plans.first,
+          );
+
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -337,94 +480,61 @@ class _ProUpgradeScreenState extends State<ProUpgradeScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'Free Plan',
+                freePlan?.name ?? 'Free Plan',
                 style: GoogleFonts.inter(
                   fontSize: 22,
                   fontWeight: FontWeight.bold,
                   color: AppPalette.navyPrimary,
                 ),
               ),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 4,
-                ),
-                decoration: BoxDecoration(
-                  color: Colors.grey[100],
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Text(
-                  'Current',
-                  style: GoogleFonts.inter(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.grey[600],
+              // Only show "Current" when user is actually on the free plan
+              if (_subscriptionStatus != 'active' && _subscriptionStatus != 'trial')
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[100],
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text(
+                    'Current',
+                    style: GoogleFonts.inter(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.grey[600],
+                    ),
                   ),
                 ),
-              ),
             ],
           ),
           const SizedBox(height: 8),
           Text(
-            'Basic tools to get you started.',
+            freePlan?.description ?? 'Basic tools to get you started.',
             style: GoogleFonts.inter(fontSize: 14, color: Colors.grey[600]),
           ),
           const SizedBox(height: 16),
-          _buildFeatureItem('Manage up to 5 players', isPro: false),
-          _buildFeatureItem('Create 3 sessions/week', isPro: false),
-          _buildFeatureItem('Basic Profile', isPro: false),
+          if (freePlan != null && freePlan.features.isNotEmpty)
+            ...freePlan.features.map(
+              (f) => _buildFeatureItem(f.name, isPro: false),
+            )
+          else ...[
+            _buildFeatureItem('Manage up to 5 players', isPro: false),
+            _buildFeatureItem('Create 3 sessions/week', isPro: false),
+            _buildFeatureItem('Basic Profile', isPro: false),
+          ],
         ],
       ),
     );
   }
 
-  Widget _buildToggleOption(String text, bool isSelected) {
-    return GestureDetector(
-      onTap: () {
-        setState(() {
-          _isAnnual = text.contains('Annual');
-        });
-      },
-      child: AnimatedContainer(
-        duration: 200.ms,
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-        decoration: BoxDecoration(
-          color: isSelected ? AppPalette.navyPrimary : Colors.transparent,
-          borderRadius: BorderRadius.circular(25),
-        ),
-        child: Text(
-          text,
-          style: GoogleFonts.inter(
-            fontWeight: FontWeight.w600,
-            fontSize: 14,
-            color: isSelected ? Colors.white : Colors.grey[600],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildProPlanCard() {
-    // Find the pro plan for the selected interval
-    final proPlan = _plans.firstWhere(
-      (p) => p.isPro && p.interval == (_isAnnual ? 'year' : 'month'),
-      orElse: () => SubscriptionPlan(
-        id: 'placeholder',
-        planId: 'pro',
-        name: 'Pro Plan',
-        price: _isAnnual ? 190 : 20,
-        currency: 'GBP',
-        interval: _isAnnual ? 'year' : 'month',
-        tier: 'Premium',
-        trialPeriodDays: 7,
-        features: [],
-        isPopular: true,
-      ), // Fallback or handle null
-    );
-
-    // Calculate savings if annual
-    // Assuming we have both monthly and annual plans to compare, or just hardcode logic
-    // For now, let's just use the fetched price.
+  Widget _buildProPlanCard(SubscriptionPlan plan) {
+    // Assume plan.price is monthly price, calculate annual
+    final monthlyPrice = plan.price;
+    final annualPrice = _calculateAnnualPrice(monthlyPrice);
+    final savings = _calculateSavings(monthlyPrice);
+    final savingsPercent = 20; // 20% discount on annual
 
     return Container(
       padding: const EdgeInsets.all(24),
@@ -445,28 +555,58 @@ class _ProUpgradeScreenState extends State<ProUpgradeScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    proPlan.name,
-                    style: GoogleFonts.inter(
-                      fontSize: 28,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      plan.name,
+                      style: GoogleFonts.inter(
+                        fontSize: 28,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    proPlan.description ?? 'Unlock your potential',
-                    style: GoogleFonts.inter(
-                      fontSize: 14,
-                      color: Colors.white.withValues(alpha: 0.7),
+                    const SizedBox(height: 4),
+                    Text(
+                      plan.description ?? 'Unlock your potential',
+                      style: GoogleFonts.inter(
+                        fontSize: 14,
+                        color: Colors.white.withValues(alpha: 0.7),
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-              if (proPlan.isPopular)
+              if (_currentUserPlan == plan.planId &&
+                  (_subscriptionStatus == 'active' || _subscriptionStatus == 'trial'))
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF22C55E),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.check_circle, color: Colors.white, size: 13),
+                      const SizedBox(width: 4),
+                      Text(
+                        'ACTIVE',
+                        style: GoogleFonts.inter(
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                          letterSpacing: 1,
+                        ),
+                      ),
+                    ],
+                  ),
+                )
+              else if (plan.isPopular)
                 Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 12,
@@ -489,64 +629,238 @@ class _ProUpgradeScreenState extends State<ProUpgradeScreen> {
             ],
           ),
           const SizedBox(height: 24),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                '£${proPlan.price}', // Assuming currency symbol matches
-                style: GoogleFonts.inter(
-                  fontSize: 42,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                  height: 1,
+          // Monthly Price
+          GestureDetector(
+            onTap: () {
+              setState(() {
+                _isAnnualSelected = false;
+              });
+            },
+            child: Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: !_isAnnualSelected
+                    ? Colors.white.withValues(alpha: 0.2)
+                    : Colors.white.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: !_isAnnualSelected
+                      ? Colors.white.withValues(alpha: 0.5)
+                      : Colors.white.withValues(alpha: 0.2),
+                  width: !_isAnnualSelected ? 2 : 1,
                 ),
               ),
-              const SizedBox(width: 8),
-              Padding(
-                padding: const EdgeInsets.only(bottom: 6),
-                child: Text(
-                  _isAnnual ? 'per year' : 'per month',
-                  style: GoogleFonts.inter(
-                    fontSize: 14,
-                    color: Colors.white.withValues(alpha: 0.7),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Monthly',
+                        style: GoogleFonts.inter(
+                          fontSize: 12,
+                          color: Colors.white.withValues(alpha: 0.7),
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Text(
+                            '${_getCurrencySymbol(plan.currency)} $monthlyPrice',
+                            style: GoogleFonts.inter(
+                              fontSize: 32,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                              height: 1,
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 4),
+                            child: Text(
+                              '/mo',
+                              style: GoogleFonts.inter(
+                                fontSize: 14,
+                                color: Colors.white.withValues(alpha: 0.7),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
-                ),
-              ),
-            ],
-          ),
-          if (_isAnnual) ...[
-            const SizedBox(height: 4),
-            // We can calculate savings dynamically if we find the monthly plan too
-            // For now, let's just show text if we have it, or static text
-            Text(
-              'Save 20% paying annually', // Simplified for now
-              style: GoogleFonts.inter(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: const Color(0xFF22C55E), // Green
+                  if (!_isAnnualSelected)
+                    Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.check,
+                        color: Color(0xFF0F253E),
+                        size: 16,
+                      ),
+                    ),
+                ],
               ),
             ),
-          ],
-          const SizedBox(height: 24),
+          ),
+          const SizedBox(height: 12),
+          // Annual Price
+          GestureDetector(
+            onTap: () {
+              setState(() {
+                _isAnnualSelected = true;
+              });
+            },
+            child: Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: _isAnnualSelected
+                    ? const Color(0xFF22C55E).withValues(alpha: 0.2)
+                    : const Color(0xFF22C55E).withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: _isAnnualSelected
+                      ? const Color(0xFF22C55E).withValues(alpha: 0.7)
+                      : const Color(0xFF22C55E).withValues(alpha: 0.4),
+                  width: _isAnnualSelected ? 2 : 2,
+                ),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Text(
+                            'Annual',
+                            style: GoogleFonts.inter(
+                              fontSize: 12,
+                              color: Colors.white.withValues(alpha: 0.7),
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF22C55E),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              'Save $savingsPercent%',
+                              style: GoogleFonts.inter(
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Text(
+                            '${_getCurrencySymbol(plan.currency)} $annualPrice',
+                            style: GoogleFonts.inter(
+                              fontSize: 32,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                              height: 1,
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 4),
+                            child: Text(
+                              '/yr',
+                              style: GoogleFonts.inter(
+                                fontSize: 14,
+                                color: Colors.white.withValues(alpha: 0.7),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Save ${_getCurrencySymbol(plan.currency)} $savings/year',
+                        style: GoogleFonts.inter(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: const Color(0xFF22C55E),
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (_isAnnualSelected)
+                    Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: const BoxDecoration(
+                        color: Color(0xFF22C55E),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.check,
+                        color: Colors.white,
+                        size: 16,
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 20),
           const Divider(color: Colors.white12),
-          const SizedBox(height: 24),
-          // Features
-          if (proPlan.features.isNotEmpty)
-            ...proPlan.features.map(
-              (f) => _buildFeatureItem(f.name, isPro: true),
-            )
-          else ...[
-            _buildFeatureItem('Unlimited bookings', isPro: true),
-            _buildFeatureItem('Weekly payouts', isPro: true),
-          ],
+          const SizedBox(height: 20),
+          // Features - Scrollable Section
+          Expanded(
+            child: SingleChildScrollView(
+              physics: const BouncingScrollPhysics(),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (plan.features.isNotEmpty)
+                    ...plan.features.map(
+                      (f) => _buildFeatureItem(f.name, isPro: true, highlight: f.highlight),
+                    )
+                  else
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      child: Text(
+                        'Premium features included',
+                        style: GoogleFonts.inter(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.white70,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildFeatureItem(String text, {required bool isPro}) {
+  Widget _buildFeatureItem(String text, {required bool isPro, bool highlight = false}) {
     // Pro features: Green circle check, white text
     // Free features: Grey/Blue circle check, dark text
+    // Highlighted features: Orange accent
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
       child: Row(
@@ -555,7 +869,7 @@ class _ProUpgradeScreenState extends State<ProUpgradeScreen> {
             padding: const EdgeInsets.all(4),
             decoration: BoxDecoration(
               color: isPro
-                  ? const Color(0xFF22C55E)
+                  ? (highlight ? AppPalette.orangeAccent : const Color(0xFF22C55E))
                   : AppPalette.navyPrimary.withValues(alpha: 0.1),
               shape: BoxShape.circle,
             ),
@@ -566,12 +880,16 @@ class _ProUpgradeScreenState extends State<ProUpgradeScreen> {
             ),
           ),
           const SizedBox(width: 12),
-          Text(
-            text,
-            style: GoogleFonts.inter(
-              fontSize: 15,
-              fontWeight: FontWeight.w500,
-              color: isPro ? Colors.white : AppPalette.textPrimaryLight,
+          Expanded(
+            child: Text(
+              text,
+              style: GoogleFonts.inter(
+                fontSize: 15,
+                fontWeight: highlight ? FontWeight.w700 : FontWeight.w500,
+                color: isPro
+                    ? (highlight ? AppPalette.orangeAccent : Colors.white)
+                    : AppPalette.textPrimaryLight,
+              ),
             ),
           ),
         ],
@@ -579,103 +897,7 @@ class _ProUpgradeScreenState extends State<ProUpgradeScreen> {
     );
   }
 
-  Widget _buildPromoCodeSection() {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: Colors.grey[300]!,
-          style: BorderStyle.none, // Can't do dashed easily with border
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            offset: const Offset(0, 4),
-            blurRadius: 12,
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              const Icon(
-                Icons.confirmation_number_outlined,
-                color: Color(0xFFFF7D20),
-                size: 20,
-              ),
-              const SizedBox(width: 8),
-              Text(
-                "Have a promo code?",
-                style: GoogleFonts.inter(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: AppPalette.navyPrimary,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Container(
-            decoration: BoxDecoration(
-              color: Colors.grey[50],
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.grey[200]!),
-            ),
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _promoController,
-                    decoration: InputDecoration(
-                      hintText: 'ENTER CODE',
-                      hintStyle: GoogleFonts.inter(
-                        fontSize: 14,
-                        color: Colors.grey[400],
-                        letterSpacing: 1,
-                      ),
-                      border: InputBorder.none,
-                      icon: Icon(
-                        Icons.airplane_ticket_outlined,
-                        color: Colors.grey[400],
-                        size: 20,
-                      ),
-                    ),
-                    style: GoogleFonts.inter(
-                      fontWeight: FontWeight.w600,
-                      color: AppPalette.navyPrimary,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: _applyPromoCode,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppPalette.navyPrimary,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                padding: const EdgeInsets.symmetric(vertical: 14),
-              ),
-              child: Text(
-                'Apply Code',
-                style: GoogleFonts.inter(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
+  String _getCurrencySymbol(String currency) {
+    return CurrencyHelper.getCurrencySymbol(currency);
   }
 }

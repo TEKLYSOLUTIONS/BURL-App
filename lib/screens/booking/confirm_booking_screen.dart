@@ -506,7 +506,7 @@ class _ConfirmBookingScreenState extends State<ConfirmBookingScreen> {
                                 ),
                               ),
                               Text(
-                                '\$${_totalAmount.toStringAsFixed(2)}',
+                                '\$ ${_totalAmount.toStringAsFixed(2)}',
                                 style: GoogleFonts.inter(
                                   fontSize: 24,
                                   fontWeight: FontWeight.bold,
@@ -864,7 +864,7 @@ class _ConfirmBookingScreenState extends State<ConfirmBookingScreen> {
                             ),
                           ),
                           Text(
-                            '\$${_totalAmount.toStringAsFixed(2)}',
+                            '\$ ${_totalAmount.toStringAsFixed(2)}',
                             style: GoogleFonts.inter(
                               fontSize: 20,
                               fontWeight: FontWeight.bold,
@@ -896,7 +896,7 @@ class _ConfirmBookingScreenState extends State<ConfirmBookingScreen> {
           ),
         ),
         Text(
-          '\$${amount.toStringAsFixed(2)}',
+          '\$ ${amount.toStringAsFixed(2)}',
           style: GoogleFonts.inter(
             fontSize: 15,
             fontWeight: FontWeight.w600,

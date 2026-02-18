@@ -9,6 +9,7 @@ import '../../widgets/headers/coach_app_bar.dart';
 
 import '../../services/earnings_service.dart';
 import '../../config/palette.dart';
+import '../../utils/currency_helper.dart';
 
 class EarningHistoryScreen extends StatefulWidget {
   const EarningHistoryScreen({super.key});
@@ -23,6 +24,7 @@ class _EarningHistoryScreenState extends State<EarningHistoryScreen> {
   Map<String, dynamic> _summaryData = {};
   List<Map<String, dynamic>> _periodData = [];
   List<Map<String, dynamic>> _recentActivity = [];
+  String _currency = CurrencyHelper.defaultCurrency;
 
   @override
   void initState() {
@@ -36,8 +38,9 @@ class _EarningHistoryScreenState extends State<EarningHistoryScreen> {
     });
 
     try {
-      // Load all earnings data in parallel
+      // Load currency and all earnings data in parallel
       final results = await Future.wait([
+        CurrencyHelper.loadUserCurrency(),
         EarningsService.getEarningsSummary(),
         EarningsService.getEarningsByPeriod(
           type: _selectedPeriod.toLowerCase(),
@@ -45,9 +48,10 @@ class _EarningHistoryScreenState extends State<EarningHistoryScreen> {
       ]);
 
       setState(() {
-        _summaryData = results[0];
+        _currency = results[0] as String;
+        _summaryData = results[1] as Map<String, dynamic>;
         _periodData = List<Map<String, dynamic>>.from(
-          results[1]['earnings'] ?? [],
+          (results[2] as Map<String, dynamic>)['earnings'] ?? [],
         );
         _recentActivity = List<Map<String, dynamic>>.from(
           _summaryData['recentActivity'] ?? [],
@@ -292,7 +296,7 @@ class _EarningHistoryScreenState extends State<EarningHistoryScreen> {
                           ),
                           const SizedBox(height: 8),
                           Text(
-                            EarningsService.formatCurrency(totalBalance),
+                            EarningsService.formatCurrency(totalBalance, currency: _currency),
                             style: GoogleFonts.inter(
                               color: Colors.white,
                               fontSize: 40,
@@ -388,7 +392,7 @@ class _EarningHistoryScreenState extends State<EarningHistoryScreen> {
                             ),
                             const SizedBox(height: 4),
                             Text(
-                              EarningsService.formatCurrency(currentMonthTotal),
+                              EarningsService.formatCurrency(currentMonthTotal, currency: _currency),
                               style: GoogleFonts.inter(
                                 color: Theme.of(context).colorScheme.onSurface,
                                 fontSize: 24,
@@ -414,7 +418,7 @@ class _EarningHistoryScreenState extends State<EarningHistoryScreen> {
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Text(
-                              '${changeAmount >= 0 ? '+ ' : ''}${EarningsService.formatCurrency(changeAmount)} vs last month',
+                              '${changeAmount >= 0 ? '+ ' : ''}${EarningsService.formatCurrency(changeAmount, currency: _currency)} vs last month',
                               style: GoogleFonts.inter(
                                 color: changeAmount >= 0
                                     ? AppPalette.successGreen
@@ -531,7 +535,7 @@ class _EarningHistoryScreenState extends State<EarningHistoryScreen> {
                               : playerName,
                           detail:
                               '${activity['sessionTitle'] ?? 'Session'} • ${sessionDate != null ? DateFormat('MMM d').format(sessionDate) : 'Unknown date'}',
-                          amount: '+${EarningsService.formatCurrency(amount)}',
+                          amount: '+${EarningsService.formatCurrency(amount, currency: _currency)}',
                           isCompleted:
                               status == 'confirmed' || status == 'paid',
                           statusText: status == 'pending'

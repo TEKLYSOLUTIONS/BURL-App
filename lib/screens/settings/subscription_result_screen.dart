@@ -6,37 +6,37 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../config/palette.dart';
 
-class BookingSuccessScreen extends StatelessWidget {
-  final Map<String, dynamic> bookingDetails;
+class SubscriptionResultScreen extends StatelessWidget {
+  final bool success;
+  final String planName;
+  final String billingCycle;
+  final String totalPaid;
+  final String currency;
+  final String? promoCode;
+  final double promoDiscount;
+  final String? errorMessage;
+  final int trialDays;
 
-  const BookingSuccessScreen({super.key, this.bookingDetails = const {}});
+  const SubscriptionResultScreen({
+    super.key,
+    required this.success,
+    required this.planName,
+    required this.billingCycle,
+    required this.totalPaid,
+    required this.currency,
+    this.promoCode,
+    this.promoDiscount = 0.0,
+    this.errorMessage,
+    this.trialDays = 0,
+  });
+
+  String get _confirmationCode {
+    final ts = DateTime.now().millisecondsSinceEpoch.toString();
+    return '#SUB-${ts.substring(ts.length - 8).toUpperCase()}';
+  }
 
   @override
   Widget build(BuildContext context) {
-    final coachName = bookingDetails['coachName'] ?? 'Coach';
-    final dateStr = bookingDetails['date'] ?? 'Date TBD';
-    final timeStr = bookingDetails['time'] ?? 'Time TBD';
-    final location = bookingDetails['location'] ?? 'Location TBD';
-    final sessionType = bookingDetails['sessionType'] ?? 'Session';
-    final paymentMethod = bookingDetails['paymentMethod'] ?? 'Test Booking';
-
-    // Get session title
-    final session = bookingDetails['session'];
-    final sessionTitle = session is Map<String, dynamic>
-        ? (session['title'] ?? 'Cricket Coaching')
-        : 'Cricket Coaching';
-
-    // Get real total and confirmation code
-    final totalPaid = bookingDetails['totalPaid'];
-    final totalStr = totalPaid is num
-        ? '\$ ${totalPaid.toStringAsFixed(2)}'
-        : '\$ 62.50';
-
-    final rawCode = bookingDetails['confirmationCode'] ?? '';
-    final confirmationCode = rawCode.toString().length > 8
-        ? '#${rawCode.toString().substring(rawCode.toString().length - 8).toUpperCase()}'
-        : '#TRX-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}';
-
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FE),
       appBar: AppBar(
@@ -44,7 +44,7 @@ class BookingSuccessScreen extends StatelessWidget {
         elevation: 0,
         centerTitle: true,
         title: Text(
-          'Confirmation',
+          success ? 'Subscription Confirmed' : 'Payment Failed',
           style: GoogleFonts.inter(
             color: AppPalette.navyPrimary,
             fontWeight: FontWeight.bold,
@@ -55,12 +55,6 @@ class BookingSuccessScreen extends StatelessWidget {
           icon: const Icon(Icons.close, color: AppPalette.navyPrimary),
           onPressed: () => _navigateHome(context),
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.more_vert, color: AppPalette.orangeAccent),
-            onPressed: () {},
-          ),
-        ],
       ),
       body: SafeArea(
         child: Column(
@@ -72,28 +66,37 @@ class BookingSuccessScreen extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     const SizedBox(height: 20),
-                    // Success Icon
+
+                    // ─── Status Icon ────────────────────────────────────────
                     Container(
-                      width: 80,
-                      height: 80,
+                      width: 86,
+                      height: 86,
                       decoration: BoxDecoration(
-                        color: const Color(0xFF22C55E).withValues(alpha: 0.12),
+                        color: success
+                            ? const Color(0xFF22C55E).withValues(alpha: 0.12)
+                            : Colors.red.withValues(alpha: 0.10),
                         shape: BoxShape.circle,
                       ),
-                      child: const Icon(
-                        Icons.check_circle_rounded,
-                        color: Color(0xFF22C55E),
-                        size: 50,
+                      child: Icon(
+                        success
+                            ? Icons.check_circle_rounded
+                            : Icons.cancel_rounded,
+                        color: success
+                            ? const Color(0xFF22C55E)
+                            : Colors.red.shade400,
+                        size: 52,
                       ),
-                    ).animate().scale(
-                      duration: 400.ms,
-                      curve: Curves.easeOutBack,
-                    ),
+                    )
+                        .animate()
+                        .scale(
+                          duration: 420.ms,
+                          curve: Curves.easeOutBack,
+                        ),
 
                     const SizedBox(height: 24),
 
                     Text(
-                      'Booking Confirmed!',
+                      success ? 'You\'re now Pro!' : 'Payment Failed',
                       style: GoogleFonts.inter(
                         fontSize: 28,
                         fontWeight: FontWeight.bold,
@@ -104,7 +107,12 @@ class BookingSuccessScreen extends StatelessWidget {
                     const SizedBox(height: 10),
 
                     Text(
-                      'You\'re all set! Your spot on the court is reserved.',
+                      success
+                          ? (trialDays > 0
+                              ? 'Your $trialDays-day free trial has started. Enjoy all Pro features!'
+                              : 'Your $planName subscription is now active. Unlock your potential!')
+                          : (errorMessage ??
+                              'Something went wrong with your payment. Please try again.'),
                       textAlign: TextAlign.center,
                       style: GoogleFonts.inter(
                         fontSize: 15,
@@ -115,7 +123,7 @@ class BookingSuccessScreen extends StatelessWidget {
 
                     const SizedBox(height: 32),
 
-                    // Booking Card
+                    // ─── Subscription Card ───────────────────────────────────
                     Container(
                       width: double.infinity,
                       decoration: BoxDecoration(
@@ -136,22 +144,22 @@ class BookingSuccessScreen extends StatelessWidget {
                             padding: const EdgeInsets.all(20),
                             child: Column(
                               children: [
-                                // Coach + session info
+                                // Plan + badge row
                                 Row(
                                   children: [
-                                    CircleAvatar(
-                                      radius: 24,
-                                      backgroundColor: AppPalette.navyPrimary
-                                          .withValues(alpha: 0.1),
-                                      child: Text(
-                                        coachName.isNotEmpty
-                                            ? coachName[0].toUpperCase()
-                                            : 'C',
-                                        style: GoogleFonts.inter(
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 18,
-                                          color: AppPalette.navyPrimary,
-                                        ),
+                                    Container(
+                                      padding: const EdgeInsets.all(12),
+                                      decoration: BoxDecoration(
+                                        color: success
+                                            ? AppPalette.navyPrimary
+                                            : Colors.grey.shade400,
+                                        borderRadius:
+                                            BorderRadius.circular(12),
+                                      ),
+                                      child: const Icon(
+                                        Icons.workspace_premium,
+                                        color: Colors.white,
+                                        size: 22,
                                       ),
                                     ),
                                     const SizedBox(width: 14),
@@ -162,50 +170,45 @@ class BookingSuccessScreen extends StatelessWidget {
                                         children: [
                                           Container(
                                             padding: const EdgeInsets.symmetric(
-                                              horizontal: 8,
-                                              vertical: 3,
-                                            ),
+                                                horizontal: 8, vertical: 3),
                                             decoration: BoxDecoration(
-                                              color: AppPalette.orangeAccent
-                                                  .withValues(alpha: 0.1),
+                                              color: success
+                                                  ? AppPalette.orangeAccent
+                                                      .withValues(alpha: 0.1)
+                                                  : Colors.red
+                                                      .withValues(alpha: 0.1),
                                               borderRadius:
                                                   BorderRadius.circular(6),
                                             ),
                                             child: Text(
-                                              'UPCOMING SESSION',
+                                              success
+                                                  ? 'ACTIVE SUBSCRIPTION'
+                                                  : 'PAYMENT FAILED',
                                               style: GoogleFonts.inter(
                                                 fontSize: 9,
                                                 fontWeight: FontWeight.bold,
-                                                color: AppPalette.orangeAccent,
+                                                color: success
+                                                    ? AppPalette.orangeAccent
+                                                    : Colors.red.shade400,
                                                 letterSpacing: 1,
                                               ),
                                             ),
                                           ),
                                           const SizedBox(height: 4),
                                           Text(
-                                            sessionTitle,
+                                            planName,
                                             style: GoogleFonts.inter(
-                                              fontSize: 16,
+                                              fontSize: 17,
                                               fontWeight: FontWeight.bold,
                                               color: AppPalette.navyPrimary,
                                             ),
                                           ),
-                                          Row(
-                                            children: [
-                                              Icon(
-                                                Icons.person_outline,
-                                                size: 13,
-                                                color: Colors.grey[500],
-                                              ),
-                                              const SizedBox(width: 4),
-                                              Text(
-                                                'Coach $coachName',
-                                                style: GoogleFonts.inter(
-                                                  fontSize: 12,
-                                                  color: Colors.grey[600],
-                                                ),
-                                              ),
-                                            ],
+                                          Text(
+                                            billingCycle,
+                                            style: GoogleFonts.inter(
+                                              fontSize: 12,
+                                              color: Colors.grey[500],
+                                            ),
                                           ),
                                         ],
                                       ),
@@ -214,31 +217,33 @@ class BookingSuccessScreen extends StatelessWidget {
                                 ),
 
                                 const SizedBox(height: 18),
-                                Divider(color: Colors.grey.shade200, height: 1),
+                                Divider(
+                                    color: Colors.grey.shade200, height: 1),
                                 const SizedBox(height: 18),
 
-                                // Date & Time + Location
+                                // Billing + promo detail columns
                                 Row(
                                   children: [
                                     Expanded(
                                       child: _buildDetailColumn(
-                                        Icons.calendar_today_rounded,
-                                        'DATE & TIME',
-                                        dateStr,
-                                        timeStr,
+                                        Icons.calendar_month_rounded,
+                                        'BILLING',
+                                        billingCycle,
+                                        success ? 'Auto-renews' : '—',
                                       ),
                                     ),
                                     Container(
-                                      width: 1,
-                                      height: 50,
-                                      color: Colors.grey.shade200,
-                                    ),
+                                        width: 1,
+                                        height: 50,
+                                        color: Colors.grey.shade200),
                                     Expanded(
                                       child: _buildDetailColumn(
-                                        Icons.location_on_rounded,
-                                        'LOCATION',
-                                        location,
-                                        sessionType,
+                                        Icons.local_offer_rounded,
+                                        'PROMO',
+                                        promoCode ?? 'None applied',
+                                        promoCode != null
+                                            ? '-$currency ${promoDiscount.toStringAsFixed(2)} off'
+                                            : '—',
                                       ),
                                     ),
                                   ],
@@ -247,37 +252,36 @@ class BookingSuccessScreen extends StatelessWidget {
                             ),
                           ),
 
-                          // Total Paid section
+                          // ─── Total Paid ──────────────────────────────────
                           Container(
                             padding: const EdgeInsets.symmetric(
-                              horizontal: 20,
-                              vertical: 14,
-                            ),
+                                horizontal: 20, vertical: 14),
                             decoration: BoxDecoration(
                               color: const Color(0xFFF8F9FE),
                               border: Border(
-                                top: BorderSide(color: Colors.grey.shade200),
-                              ),
+                                  top: BorderSide(
+                                      color: Colors.grey.shade200)),
                               borderRadius: const BorderRadius.only(
                                 bottomLeft: Radius.circular(20),
                                 bottomRight: Radius.circular(20),
                               ),
                             ),
                             child: Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              mainAxisAlignment:
+                                  MainAxisAlignment.spaceBetween,
                               children: [
                                 Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.start,
                                   children: [
                                     Text(
-                                      'Total Paid',
+                                      success ? 'Total Paid' : 'Amount',
                                       style: GoogleFonts.inter(
-                                        fontSize: 12,
-                                        color: Colors.grey[500],
-                                      ),
+                                          fontSize: 12,
+                                          color: Colors.grey[500]),
                                     ),
                                     Text(
-                                      totalStr,
+                                      totalPaid,
                                       style: GoogleFonts.inter(
                                         fontSize: 22,
                                         fontWeight: FontWeight.bold,
@@ -288,25 +292,22 @@ class BookingSuccessScreen extends StatelessWidget {
                                 ),
                                 Container(
                                   padding: const EdgeInsets.symmetric(
-                                    horizontal: 12,
-                                    vertical: 8,
-                                  ),
+                                      horizontal: 12, vertical: 8),
                                   decoration: BoxDecoration(
                                     border: Border.all(
-                                      color: Colors.grey.shade300,
-                                    ),
+                                        color: Colors.grey.shade300),
                                     borderRadius: BorderRadius.circular(8),
                                   ),
                                   child: Row(
                                     children: [
-                                      const Icon(
-                                        Icons.credit_card,
+                                      Icon(
+                                        Icons.developer_mode,
                                         size: 16,
-                                        color: AppPalette.navyPrimary,
+                                        color: Colors.purple.shade400,
                                       ),
                                       const SizedBox(width: 6),
                                       Text(
-                                        paymentMethod,
+                                        'Test Payment',
                                         style: GoogleFonts.inter(
                                           fontWeight: FontWeight.w600,
                                           fontSize: 13,
@@ -325,56 +326,93 @@ class BookingSuccessScreen extends StatelessWidget {
 
                     const SizedBox(height: 28),
 
-                    // Confirmation Code
-                    Text(
-                      'CONFIRMATION CODE',
-                      style: GoogleFonts.inter(
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.grey[500],
-                        letterSpacing: 1,
+                    // ─── Confirmation code (success only) ───────────────────
+                    if (success) ...[
+                      Text(
+                        'CONFIRMATION CODE',
+                        style: GoogleFonts.inter(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.grey[500],
+                          letterSpacing: 1,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 8),
-                    GestureDetector(
-                      onTap: () {
-                        Clipboard.setData(
-                          ClipboardData(text: confirmationCode),
-                        );
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Confirmation code copied!'),
-                            duration: Duration(seconds: 2),
-                          ),
-                        );
-                      },
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            confirmationCode,
-                            style: GoogleFonts.inter(
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                              color: AppPalette.navyPrimary,
+                      const SizedBox(height: 8),
+                      GestureDetector(
+                        onTap: () {
+                          Clipboard.setData(
+                              ClipboardData(text: _confirmationCode));
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Confirmation code copied!'),
+                              duration: Duration(seconds: 2),
                             ),
-                          ),
-                          const SizedBox(width: 8),
-                          Icon(
-                            Icons.copy_rounded,
-                            size: 17,
-                            color: AppPalette.orangeAccent,
-                          ),
-                        ],
+                          );
+                        },
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              _confirmationCode,
+                              style: GoogleFonts.inter(
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                                color: AppPalette.navyPrimary,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            const Icon(Icons.copy_rounded,
+                                size: 17,
+                                color: AppPalette.orangeAccent),
+                          ],
+                        ),
                       ),
-                    ),
+                      const SizedBox(height: 12),
+                      Text(
+                        'Tap to copy',
+                        style: GoogleFonts.inter(
+                            fontSize: 12, color: Colors.grey[400]),
+                      ),
+                    ],
+
+                    // ─── Trial info pill (success + trial) ──────────────────
+                    if (success && trialDays > 0) ...[
+                      const SizedBox(height: 24),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 20, vertical: 14),
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFFFF7D20), Color(0xFFFF9A56)],
+                          ),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(Icons.card_giftcard,
+                                color: Colors.white),
+                            const SizedBox(width: 10),
+                            Text(
+                              '$trialDays-day free trial — no charge today',
+                              style: GoogleFonts.inter(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ).animate().fadeIn(delay: 600.ms),
+                    ],
+
                     const SizedBox(height: 32),
                   ],
                 ),
               ),
             ),
 
-            // Bottom buttons
+            // ─── Bottom Buttons ─────────────────────────────────────────────
             Container(
               padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
               decoration: BoxDecoration(
@@ -393,23 +431,22 @@ class BookingSuccessScreen extends StatelessWidget {
                     width: double.infinity,
                     height: 52,
                     child: ElevatedButton(
-                      onPressed: () {
-                        _navigateToBookings(context);
-                      },
+                      onPressed: () => success
+                          ? _navigateToSettings(context)
+                          : _retryPayment(context),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: AppPalette.orangeAccent,
+                        backgroundColor: success
+                            ? AppPalette.orangeAccent
+                            : Colors.red.shade400,
                         foregroundColor: Colors.white,
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
-                        ),
+                            borderRadius: BorderRadius.circular(14)),
                         elevation: 0,
                       ),
                       child: Text(
-                        'View Booking Details',
+                        success ? 'View My Subscription' : 'Try Again',
                         style: GoogleFonts.inter(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
+                            fontSize: 16, fontWeight: FontWeight.bold),
                       ),
                     ),
                   ).animate().fadeIn(delay: 600.ms),
@@ -423,15 +460,12 @@ class BookingSuccessScreen extends StatelessWidget {
                         foregroundColor: AppPalette.navyPrimary,
                         side: BorderSide(color: Colors.grey.shade300),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
-                        ),
+                            borderRadius: BorderRadius.circular(14)),
                       ),
                       child: Text(
                         'Back to Home',
                         style: GoogleFonts.inter(
-                          fontSize: 15,
-                          fontWeight: FontWeight.bold,
-                        ),
+                            fontSize: 15, fontWeight: FontWeight.bold),
                       ),
                     ),
                   ).animate().fadeIn(delay: 700.ms),
@@ -443,6 +477,8 @@ class BookingSuccessScreen extends StatelessWidget {
       ),
     );
   }
+
+  // ─── Helpers ────────────────────────────────────────────────────────────────
 
   Widget _buildDetailColumn(
     IconData icon,
@@ -478,10 +514,13 @@ class BookingSuccessScreen extends StatelessWidget {
               fontWeight: FontWeight.w600,
               color: AppPalette.navyPrimary,
             ),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
           ),
           Text(
             line2,
-            style: GoogleFonts.inter(fontSize: 11, color: Colors.grey[500]),
+            style: GoogleFonts.inter(
+                fontSize: 11, color: Colors.grey[500]),
           ),
         ],
       ),
@@ -490,17 +529,20 @@ class BookingSuccessScreen extends StatelessWidget {
 
   Future<void> _navigateHome(BuildContext context) async {
     final prefs = await SharedPreferences.getInstance();
-    final role = prefs.getString('user_role') ?? 'player';
+    final role = prefs.getString('user_role') ?? 'coach';
     if (context.mounted) {
       context.go('/$role/home');
     }
   }
 
-  Future<void> _navigateToBookings(BuildContext context) async {
-    final prefs = await SharedPreferences.getInstance();
-    final role = prefs.getString('user_role') ?? 'player';
+  Future<void> _navigateToSettings(BuildContext context) async {
     if (context.mounted) {
-      context.go('/$role/sessions');
+      context.go('/settings');
     }
+  }
+
+  void _retryPayment(BuildContext context) {
+    // Pop back to the payment screen so user can try again
+    Navigator.of(context).pop();
   }
 }

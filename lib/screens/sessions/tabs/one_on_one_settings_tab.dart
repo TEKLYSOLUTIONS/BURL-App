@@ -3,6 +3,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_form_builder/flutter_form_builder.dart';
 import 'package:form_builder_validators/form_builder_validators.dart';
 import '../../../services/coach_service.dart';
+import '../../../services/profile_service.dart';
+import '../../../utils/currency_helper.dart';
 import '../../../widgets/modern_text_field.dart';
 import '../../../widgets/modern_duration_selector.dart';
 
@@ -27,7 +29,7 @@ class _OneOnOneSettingsTabState extends State<OneOnOneSettingsTab> {
 
   String _cancellationPolicy = 'flexible';
   bool _autoAccept = true;
-  String _currency = 'USD';
+  String _currency = CurrencyHelper.defaultCurrency;
 
   @override
   void initState() {
@@ -44,15 +46,27 @@ class _OneOnOneSettingsTabState extends State<OneOnOneSettingsTab> {
   Future<void> _loadSettings() async {
     setState(() => _isLoading = true);
     try {
-      final data = await CoachService.getSessionSettings();
+      final results = await Future.wait([
+        CoachService.getSessionSettings(),
+        CurrencyHelper.loadUserCurrency(),
+      ]);
+
+      final data = results[0] as Map<String, dynamic>;
+      final detectedCurrency = results[1] as String;
       final defaultPricing = data['defaultPricing'] ?? {};
       final bookingSettings = data['bookingSettings'] ?? {};
+
+      // Use saved pricing currency only if it's not the USD default
+      final savedCurrency = defaultPricing['currency'] as String?;
+      final currency = (savedCurrency != null && savedCurrency.isNotEmpty && savedCurrency != 'USD')
+          ? savedCurrency
+          : detectedCurrency;
 
       setState(() {
         _hourlyRateController.text = (defaultPricing['hourlyRate'] ?? 0)
             .toString();
         _sessionDuration = (defaultPricing['sessionDuration'] ?? 60).toInt();
-        _currency = defaultPricing['currency'] ?? 'USD';
+        _currency = currency;
 
         _bufferTime = (bookingSettings['bufferTime'] ?? 15).toInt();
         _minAdvance = (bookingSettings['minAdvanceBookingHours'] ?? 24).toInt();
@@ -94,6 +108,8 @@ class _OneOnOneSettingsTabState extends State<OneOnOneSettingsTab> {
       };
 
       await CoachService.updateSessionSettings(settingsData);
+      // Also persist currency to top-level profile field so it's readable everywhere
+      await ProfileService.updateProfile({'currency': _currency});
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -145,7 +161,7 @@ class _OneOnOneSettingsTabState extends State<OneOnOneSettingsTab> {
                           controller: _hourlyRateController,
                           labelText: 'Rate',
                           hintText: '0',
-                          prefixIcon: Icons.attach_money,
+                          prefixText: CurrencyHelper.getCurrencySymbol(_currency),
                           keyboardType: const TextInputType.numberWithOptions(
                             decimal: true,
                           ),

@@ -79,6 +79,99 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     return '';
   }
 
+  String? _getProfileImageUrl() {
+    // Check userData first
+    if (_userData != null && _userData!['profileImage'] != null) {
+      return _userData!['profileImage'] as String?;
+    }
+
+    // Check profile data (coach/player specific)
+    if (_profileData != null) {
+      if (_profileData!['profilePhoto'] != null) {
+        return _profileData!['profilePhoto'] as String?;
+      }
+      // Check coach profile
+      if (_userData?['role'] == 'coach' &&
+          _profileData!['coachProfile'] != null) {
+        return _profileData!['coachProfile']['profilePhoto'] as String?;
+      }
+      // Check player profile
+      if (_userData?['role'] == 'player' &&
+          _profileData!['playerProfile'] != null) {
+        return _profileData!['playerProfile']['profilePhoto'] as String?;
+      }
+    }
+
+    return null;
+  }
+
+  void _showProfilePicturePreview() {
+    final imageUrl = _getProfileImageUrl();
+
+    if (imageUrl == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No profile picture available'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: Stack(
+          children: [
+            Center(
+              child: Container(
+                constraints: BoxConstraints(
+                  maxWidth: MediaQuery.of(context).size.width * 0.9,
+                  maxHeight: MediaQuery.of(context).size.height * 0.7,
+                ),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.3),
+                      blurRadius: 20,
+                    ),
+                  ],
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(20),
+                  child: Image.network(
+                    imageUrl,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) {
+                      return Container(
+                        color: Colors.grey[300],
+                        child: Icon(
+                          Icons.person,
+                          size: 100,
+                          color: Colors.grey[600],
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ),
+            ),
+            Positioned(
+              top: 40,
+              right: 20,
+              child: IconButton(
+                icon: const Icon(Icons.close, color: Colors.white, size: 30),
+                onPressed: () => Navigator.pop(context),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     debugPrint(
@@ -179,10 +272,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         Container(
                           padding: const EdgeInsets.all(20),
                           decoration: BoxDecoration(
-                            color:
-                                Theme.of(context).brightness == Brightness.dark
-                                ? const Color(0xFF2C3E50).withValues(alpha: 0.3)
-                                : Colors.white.withValues(alpha: 0.7),
+                            color: Theme.of(context).cardColor,
                             borderRadius: BorderRadius.circular(20),
                             boxShadow: [
                               BoxShadow(
@@ -196,21 +286,62 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                           ),
                           child: Row(
                             children: [
-                              CircleAvatar(
-                                radius: 30,
-                                backgroundColor: Theme.of(
-                                  context,
-                                ).colorScheme.primary,
-                                child: Text(
-                                  displayName.isNotEmpty
-                                      ? displayName[0].toUpperCase()
-                                      : 'U',
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 24,
-                                    fontWeight: FontWeight.bold,
+                              Stack(
+                                children: [
+                                  GestureDetector(
+                                    onTap: _showProfilePicturePreview,
+                                    child: CircleAvatar(
+                                      radius: 30,
+                                      backgroundImage: _getProfileImageUrl() != null
+                                          ? NetworkImage(_getProfileImageUrl()!)
+                                          : null,
+                                      backgroundColor:
+                                          _getProfileImageUrl() == null
+                                              ? Theme.of(context)
+                                                  .colorScheme
+                                                  .primary
+                                              : Colors.transparent,
+                                      child: _getProfileImageUrl() == null
+                                          ? Text(
+                                              displayName.isNotEmpty
+                                                  ? displayName[0].toUpperCase()
+                                                  : 'U',
+                                              style: const TextStyle(
+                                                color: Colors.white,
+                                                fontSize: 24,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            )
+                                          : null,
+                                    ),
                                   ),
-                                ),
+                                  Positioned(
+                                    bottom: 0,
+                                    right: 0,
+                                    child: GestureDetector(
+                                      onTap: () {
+                                        // Navigate to edit profile screen
+                                        context.push('/edit-profile');
+                                      },
+                                      child: Container(
+                                        padding: const EdgeInsets.all(6),
+                                        decoration: BoxDecoration(
+                                          color: AppPalette.orangeAccent,
+                                          shape: BoxShape.circle,
+                                          border: Border.all(
+                                            color: Colors.white,
+                                            width: 2,
+                                          ),
+                                        ),
+                                        child: const Icon(
+                                          Icons.edit,
+                                          size: 14,
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
                               const SizedBox(width: 16),
                               Expanded(
@@ -467,9 +598,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }) {
     return Container(
       decoration: BoxDecoration(
-        color: Theme.of(context).brightness == Brightness.dark
-            ? const Color(0xFF2C3E50).withValues(alpha: 0.3)
-            : Colors.white.withValues(alpha: 0.7),
+        color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
