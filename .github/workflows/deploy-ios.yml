@@ -57,26 +57,18 @@ jobs:
         run: flutter pub get
 
       # 3. Build IPA
-      - name: Install CocoaPods dependencies
-        run: |
-          cd ios
-          pod install
-
-      - name: Build and Archive IPA
-        run: |
-          cd ios
-          xcodebuild -workspace Runner.xcworkspace -scheme Runner -configuration Release -destination 'generic/platform=iOS' archive -archivePath Runner.xcarchive -allowProvisioningUpdates PROVISIONING_PROFILE_SPECIFIER="Burl_AppStore_Profile" DEVELOPMENT_TEAM="BGYRZ2L6NY" CODE_SIGN_STYLE="Manual" CODE_SIGN_IDENTITY="iPhone Distribution"
-          xcodebuild -exportArchive -archivePath Runner.xcarchive -exportOptionsPlist ExportOptions.plist -exportPath ./build/ios/ipa
+      - name: Build IPA
+        run: flutter build ipa --release --export-options-plist=ios/ExportOptions.plist
 
       # 4. Verify IPA Existence
       - name: List Build Directory
-        run: ls -R ios/build/
+        run: ls build/ios/ipa/
 
       # 5. Upload to TestFlight
       - name: Upload to TestFlight
         uses: apple-actions/upload-testflight-build@v1
         with:
-          app-path: ios/build/ios/ipa/cricketcoachflutter.ipa
+          app-path: build/ios/ipa/cricketcoachflutter.ipa
           issuer-id: ${{ secrets.APPSTORE_ISSUER_ID }}
           api-key-id: ${{ secrets.APPSTORE_API_KEY_ID }}
           api-private-key: ${{ secrets.APPSTORE_API_PRIVATE_KEY }}
