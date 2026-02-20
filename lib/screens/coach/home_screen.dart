@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import '../../config/palette.dart';
 
@@ -11,6 +12,8 @@ import '../../services/auth_service.dart';
 import '../../services/dashboard_service.dart';
 import '../../services/session_service.dart'; // Import SessionService
 import '../../services/earnings_service.dart'; // Import EarningsService
+import '../../services/profile_service.dart';
+import '../../services/storage_service.dart';
 import '../../utils/date_time_utils.dart';
 import '../../utils/responsive.dart'; // Import Responsive utility
 import '../../utils/currency_helper.dart';
@@ -26,6 +29,9 @@ class CoachHomeScreen extends StatefulWidget {
 
 class _CoachHomeScreenState extends State<CoachHomeScreen> with RouteAware {
   String _userName = 'Coach';
+  String? _profileImageUrl;
+  String? _userId;
+  bool _isUploadingImage = false;
   bool _isLoading = true;
   DateTime _selectedDate = DateTime.now(); // Track selected date
 
@@ -62,6 +68,7 @@ class _CoachHomeScreenState extends State<CoachHomeScreen> with RouteAware {
   @override
   void didPopNext() {
     // Refresh data when returning to this screen
+    _loadUserData();
     _loadDashboardData();
     // Also reload sessions for the selected date if it's not today
     if (!_isToday(_selectedDate)) {
@@ -106,11 +113,56 @@ class _CoachHomeScreenState extends State<CoachHomeScreen> with RouteAware {
 
   Future<void> _loadUserData() async {
     final name = await AuthService.getUserName();
-    if (name != null) {
+    if (name != null && mounted) {
+      setState(() => _userName = name.split(' ').first);
+    }
+    try {
+      final profile = await ProfileService.getProfile();
       if (mounted) {
         setState(() {
-          _userName = name.split(' ').first;
+          _userId = profile['_id'] ?? profile['id'];
+          _profileImageUrl = profile['coachProfile']?['profilePhoto'] ??
+              profile['profileImage'] ??
+              profile['profileUrl'];
         });
+      }
+    } catch (e) {
+      debugPrint('Error loading profile image: $e');
+    }
+  }
+
+  Future<void> _changeProfilePhoto() async {
+    if (_userId == null) return;
+    try {
+      final pickedFile = await StorageService.showImageSourceSheet(context);
+      if (pickedFile == null) return;
+      setState(() => _isUploadingImage = true);
+      final imageUrl = await StorageService.uploadProfilePicture(
+        userId: _userId!,
+        imageFile: File(pickedFile.path),
+      );
+      await ProfileService.updateProfile({'profileImage': imageUrl});
+      if (mounted) {
+        setState(() {
+          _profileImageUrl = imageUrl;
+          _isUploadingImage = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Profile photo updated successfully!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isUploadingImage = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error uploading photo: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
       }
     }
   }
@@ -180,14 +232,55 @@ class _CoachHomeScreenState extends State<CoachHomeScreen> with RouteAware {
               children: [
                 Row(
                   children: [
-                    CircleAvatar(
-                      radius: context.responsive.circularSize(
-                        20,
-                        min: 18,
-                        max: 24,
-                      ),
-                      backgroundImage: const NetworkImage(
-                        'https://i.pravatar.cc/150?img=11',
+                    GestureDetector(
+                      onTap: _changeProfilePhoto,
+                      child: Stack(
+                        children: [
+                          CircleAvatar(
+                            radius: context.responsive.circularSize(
+                              20,
+                              min: 18,
+                              max: 24,
+                            ),
+                            backgroundColor: AppPalette.navyPrimary,
+                            backgroundImage: _profileImageUrl != null &&
+                                    _profileImageUrl!.isNotEmpty
+                                ? NetworkImage(_profileImageUrl!)
+                                : null,
+                            child: _profileImageUrl == null ||
+                                    _profileImageUrl!.isEmpty
+                                ? Text(
+                                    _userName.isNotEmpty
+                                        ? _userName[0].toUpperCase()
+                                        : 'C',
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  )
+                                : null,
+                          ),
+                          if (_isUploadingImage)
+                            Positioned.fill(
+                              child: CircleAvatar(
+                                radius: context.responsive.circularSize(
+                                  20,
+                                  min: 18,
+                                  max: 24,
+                                ),
+                                backgroundColor:
+                                    Colors.black.withValues(alpha: 0.4),
+                                child: const SizedBox(
+                                  width: 14,
+                                  height: 14,
+                                  child: CircularProgressIndicator(
+                                    color: Colors.white,
+                                    strokeWidth: 2,
+                                  ),
+                                ),
+                              ),
+                            ),
+                        ],
                       ),
                     ),
                     SizedBox(width: context.spacing.sm),

@@ -117,8 +117,8 @@ class _CoachAvailabilityScreenState extends State<CoachAvailabilityScreen> {
   // blocked dates
   final CalendarFormat _calendarFormat = CalendarFormat.month;
   DateTime _focusedDay = DateTime.now();
-  DateTime?
-  _selectedDay; // Initialize as null so no date is selected by default
+  // Initialize to today so the override editor is always visible at startup
+  DateTime? _selectedDay = DateTime.now();
 
   // 0 = Sunday, 1 = Monday, ... 6 = Saturday
   int _selectedDayIndex = 0;
@@ -141,7 +141,9 @@ class _CoachAvailabilityScreenState extends State<CoachAvailabilityScreen> {
     final dayName = _getDayName(_selectedDayIndex);
     final hasSlots = _daySchedules[dataIndex]?.isNotEmpty ?? false;
 
-    return Container(
+    return ConstrainedBox(
+      constraints: const BoxConstraints(minHeight: 280),
+      child: Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Theme.of(context).cardColor,
@@ -382,7 +384,8 @@ class _CoachAvailabilityScreenState extends State<CoachAvailabilityScreen> {
           ),
         ],
       ),
-    );
+    ),  // end ConstrainedBox child Container
+    );  // end ConstrainedBox
   }
 
   List<BlockedDate> _blockedDates = [];
@@ -394,6 +397,13 @@ class _CoachAvailabilityScreenState extends State<CoachAvailabilityScreen> {
   void initState() {
     super.initState();
     _loadAvailability();
+  }
+
+  @override
+  void deactivate() {
+    // Auto-save when navigating away via bottom nav bar or any other nav
+    _saveAvailability(silent: true);
+    super.deactivate();
   }
 
   Future<void> _loadAvailability() async {
@@ -558,7 +568,9 @@ class _CoachAvailabilityScreenState extends State<CoachAvailabilityScreen> {
 
   // ... (keeping existing imports and class definitions)
 
-  Future<void> _saveAvailability() async {
+  /// [silent] – when true, suppresses the success snackbar (used for auto-saves).
+  Future<void> _saveAvailability({bool silent = false}) async {
+    if (!mounted) return;
     setState(() => _isSaving = true);
 
     try {
@@ -598,9 +610,10 @@ class _CoachAvailabilityScreenState extends State<CoachAvailabilityScreen> {
 
       await CoachService.updateCoachAvailability(availabilityData);
 
+      if (!mounted) return;
       setState(() => _isSaving = false);
 
-      if (mounted) {
+      if (!silent && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Availability saved successfully!'),
@@ -609,6 +622,7 @@ class _CoachAvailabilityScreenState extends State<CoachAvailabilityScreen> {
         );
       }
     } catch (e) {
+      if (!mounted) return;
       setState(() => _isSaving = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -922,6 +936,109 @@ class _CoachAvailabilityScreenState extends State<CoachAvailabilityScreen> {
                           ),
                         ),
                         calendarBuilders: CalendarBuilders(
+                          // Paint blocked date cells with a red background
+                          defaultBuilder: (context, date, _) {
+                            final isBlocked = _isDateBlocked(date);
+                            if (!isBlocked) return null;
+                            return Container(
+                              margin: const EdgeInsets.all(5.0),
+                              decoration: BoxDecoration(
+                                color: Colors.red.withValues(alpha: 0.15),
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: Colors.redAccent,
+                                  width: 1.2,
+                                ),
+                              ),
+                              child: Center(
+                                child: Text(
+                                  '${date.day}',
+                                  style: GoogleFonts.inter(
+                                    color: Colors.redAccent,
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ),
+                            );
+                          },
+                          // Disabled (past) days — still show red if blocked
+                          disabledBuilder: (context, date, _) {
+                            final isBlocked = _isDateBlocked(date);
+                            if (!isBlocked) return null;
+                            return Container(
+                              margin: const EdgeInsets.all(5.0),
+                              decoration: BoxDecoration(
+                                color: Colors.red.withValues(alpha: 0.10),
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: Colors.redAccent.withValues(alpha: 0.5),
+                                  width: 1.2,
+                                ),
+                              ),
+                              child: Center(
+                                child: Text(
+                                  '${date.day}',
+                                  style: GoogleFonts.inter(
+                                    color: Colors.redAccent.withValues(alpha: 0.6),
+                                    fontWeight: FontWeight.w500,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ),
+                            );
+                          },
+                          // Blocked + selected → keep red but inverted
+                          selectedBuilder: (context, date, _) {
+                            final isBlocked = _isDateBlocked(date);
+                            return Container(
+                              margin: const EdgeInsets.all(5.0),
+                              decoration: BoxDecoration(
+                                color: isBlocked
+                                    ? Colors.redAccent
+                                    : AppPalette.orangeAccent,
+                                shape: BoxShape.circle,
+                              ),
+                              child: Center(
+                                child: Text(
+                                  '${date.day}',
+                                  style: GoogleFonts.inter(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ),
+                            );
+                          },
+                          // Blocked + today → red ring
+                          todayBuilder: (context, date, _) {
+                            final isBlocked = _isDateBlocked(date);
+                            return Container(
+                              margin: const EdgeInsets.all(5.0),
+                              decoration: BoxDecoration(
+                                color: isBlocked
+                                    ? Colors.red.withValues(alpha: 0.15)
+                                    : AppPalette.orangeAccent.withValues(alpha: 0.3),
+                                shape: BoxShape.circle,
+                                border: isBlocked
+                                    ? Border.all(color: Colors.redAccent, width: 1.2)
+                                    : null,
+                              ),
+                              child: Center(
+                                child: Text(
+                                  '${date.day}',
+                                  style: GoogleFonts.inter(
+                                    color: isBlocked
+                                        ? Colors.redAccent
+                                        : Theme.of(context).colorScheme.onSurface,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ),
+                            );
+                          },
                           markerBuilder: (context, date, events) {
                             final dateKey =
                                 "${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}";
@@ -930,6 +1047,12 @@ class _CoachAvailabilityScreenState extends State<CoachAvailabilityScreen> {
                             );
 
                             final isSelected = isSameDay(date, _selectedDay);
+
+                            // Check if this date is blocked
+                            final isBlocked = _isDateBlocked(date);
+
+                            // Blocked dates show via defaultBuilder cell color; skip dot marker
+                            if (isBlocked) return null;
 
                             if (hasOverride) {
                               return Positioned(
@@ -976,14 +1099,11 @@ class _CoachAvailabilityScreenState extends State<CoachAvailabilityScreen> {
                     ),
                     const SizedBox(height: 24),
 
-                    // SECTION: Specific Date Editor (Appears when date is selected)
-                    // Placed below calendar for logical flow: Click date -> See editor
-                    if (_selectedDay != null) ...[
-                      _buildDateOverrideEditor(),
-                      const SizedBox(height: 24),
-                      const Divider(),
-                      const SizedBox(height: 24),
-                    ],
+                    // SECTION: Date Override Editor (Always visible)
+                    _buildDateOverrideEditor(),
+                    const SizedBox(height: 24),
+                    const Divider(),
+                    const SizedBox(height: 24),
 
                     const SizedBox(height: 24),
 
@@ -1172,7 +1292,38 @@ class _CoachAvailabilityScreenState extends State<CoachAvailabilityScreen> {
 
   /// Builds the editor for a specifically selected date (Override Mode)
   Widget _buildDateOverrideEditor() {
-    if (_selectedDay == null) return const SizedBox.shrink();
+    if (_selectedDay == null) {
+      // Fallback: should not normally occur since _selectedDay defaults to today
+      return Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: Theme.of(context).cardColor,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: Theme.of(context).dividerColor.withValues(alpha: 0.2),
+          ),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              Icons.touch_app_outlined,
+              color: Theme.of(context).disabledColor.withValues(alpha: 0.5),
+              size: 32,
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Text(
+                'Tap a date on the calendar above to customize availability or block that day.',
+                style: GoogleFonts.inter(
+                  color: Theme.of(context).disabledColor,
+                  fontSize: 13,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
 
     final dateKey =
         "${_selectedDay!.year}-${_selectedDay!.month.toString().padLeft(2, '0')}-${_selectedDay!.day.toString().padLeft(2, '0')}";
@@ -1180,9 +1331,7 @@ class _CoachAvailabilityScreenState extends State<CoachAvailabilityScreen> {
         "${_fullDayNames[_getDataIndex(_selectedDay!.weekday == 7 ? 0 : _selectedDay!.weekday)]}, ${_selectedDay!.day}/${_selectedDay!.month}";
 
     // Check statuses
-    final bool isBlocked = _blockedDates.any(
-      (bd) => isSameDay(bd.start, _selectedDay),
-    );
+    final bool isBlocked = _isDateBlocked(_selectedDay!);
     final bool hasOverride = _dateOverrides.containsKey(dateKey);
 
     // Get schedule to display: Override -> or Default Recurring
@@ -1202,10 +1351,6 @@ class _CoachAvailabilityScreenState extends State<CoachAvailabilityScreen> {
       decoration: BoxDecoration(
         color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: AppPalette.navyPrimary, // Highlighted border
-          width: 2,
-        ),
         boxShadow: [
           BoxShadow(
             color: AppPalette.navyPrimary.withValues(alpha: 0.1),
@@ -1260,16 +1405,7 @@ class _CoachAvailabilityScreenState extends State<CoachAvailabilityScreen> {
                     ),
                 ],
               ),
-              // Close / Done Button
-              IconButton(
-                onPressed: () {
-                  setState(() {
-                    _selectedDay = null; // Close editor
-                  });
-                },
-                icon: const Icon(Icons.close),
-                tooltip: 'Close Editor',
-              ),
+
             ],
           ),
           const Divider(height: 24),
@@ -1417,29 +1553,34 @@ class _CoachAvailabilityScreenState extends State<CoachAvailabilityScreen> {
 
             const SizedBox(height: 12),
             // Block Date Option
-            Center(
-              child: TextButton.icon(
-                onPressed: () {
-                  // Add to blocked dates
-                  setState(() {
-                    _dateOverrides.remove(
-                      dateKey,
-                    ); // Clear overrides if blocking
-                    _blockedDates.add(
-                      BlockedDate(
-                        title: 'Unavailable',
-                        start: _selectedDay!,
-                        end: _selectedDay!,
-                        color: Colors.red,
-                        icon: Icons.block,
-                      ),
-                    );
-                  });
+            const SizedBox(height: 16),
+            // Save Changes Button
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: _isSaving ? null : () async {
+                  await _saveAvailability();
                 },
-                icon: const Icon(Icons.block, size: 16, color: Colors.red),
-                label: const Text(
-                  'Block this Date',
-                  style: TextStyle(color: Colors.red),
+                icon: _isSaving
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : const Icon(Icons.save_outlined, color: Colors.white),
+                label: Text(
+                  _isSaving ? 'Saving...' : 'Save Changes',
+                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppPalette.orangeAccent,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
               ),
             ),
@@ -1457,25 +1598,49 @@ class _CoachAvailabilityScreenState extends State<CoachAvailabilityScreen> {
   }) {
     // Ensure we are working on an override, not the default map reference
     if (!_dateOverrides.containsKey(dateKey)) {
-      // Copy default to override first
       final weekdayIndex = _getDataIndex(
         _selectedDay!.weekday == 7 ? 0 : _selectedDay!.weekday,
       );
       final defaultSchedule = _daySchedules[weekdayIndex] ?? [];
-
-      // Deep copy
       _dateOverrides[dateKey] = defaultSchedule
           .map((ti) => TimeInterval(start: ti.start, end: ti.end))
           .toList();
     }
 
-    setState(() {
-      final schedule = _dateOverrides[dateKey]!;
-      if (index < schedule.length) {
-        if (start != null) schedule[index].start = start;
-        if (end != null) schedule[index].end = end;
+    final schedule = _dateOverrides[dateKey]!;
+    if (index >= schedule.length) return;
+
+    // Save old values in case we need to revert
+    final oldStart = schedule[index].start;
+    final oldEnd = schedule[index].end;
+
+    // Apply the proposed change
+    if (start != null) schedule[index].start = start;
+    if (end != null) schedule[index].end = end;
+
+    // Validate: end > start and no overlaps
+    final error = _validateSlots(schedule);
+    if (error != null) {
+      // Revert to previous values
+      schedule[index].start = oldStart;
+      schedule[index].end = oldEnd;
+      if (mounted) {
+        ScaffoldMessenger.of(context).clearSnackBars();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(error),
+            backgroundColor: Colors.redAccent,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
       }
-    });
+      return;
+    }
+
+    setState(() {});
+
+    // Auto-save time changes immediately
+    _saveAvailability(silent: true);
   }
 
   void _removeOverrideSlot(String dateKey, int index) {
@@ -1495,11 +1660,13 @@ class _CoachAvailabilityScreenState extends State<CoachAvailabilityScreen> {
         _dateOverrides[dateKey]!.removeAt(index);
       }
     });
+
+    // Auto-save so the removal persists immediately
+    _saveAvailability(silent: true);
   }
 
   void _addOverrideSlot(String dateKey) {
     if (!_dateOverrides.containsKey(dateKey)) {
-      // If no override yet, we start with the default schedule
       final weekdayIndex = _getDataIndex(
         _selectedDay!.weekday == 7 ? 0 : _selectedDay!.weekday,
       );
@@ -1509,14 +1676,99 @@ class _CoachAvailabilityScreenState extends State<CoachAvailabilityScreen> {
           .toList();
     }
 
+    final schedule = _dateOverrides[dateKey]!;
+
+    // Default new slot if schedule is empty
+    String newStart = '09:00 AM';
+    String newEnd = '10:00 AM';
+
+    if (schedule.isNotEmpty) {
+      try {
+        // Sort by start time and walk through gaps to find a free 60-min window
+        final sortedSlots = List<TimeInterval>.from(schedule)
+          ..sort((a, b) => a.startMinutes.compareTo(b.startMinutes));
+
+        bool found = false;
+        // Try placing after each existing slot end
+        for (final slot in sortedSlots) {
+          final candidateStart = slot.endMinutes;
+          final candidateEnd = candidateStart + 60;
+          if (candidateEnd > 1440) continue;
+
+          final candidate = TimeInterval(
+            start: _formatTime(_timeFromMinutes(candidateStart)),
+            end: _formatTime(_timeFromMinutes(candidateEnd)),
+          );
+          if (_validateSlots([...schedule, candidate]) == null) {
+            newStart = candidate.start;
+            newEnd = candidate.end;
+            found = true;
+            break;
+          }
+        }
+
+        if (!found) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).clearSnackBars();
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('No available gap to add a new slot. All time is occupied.'),
+                backgroundColor: Colors.redAccent,
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
+          }
+          return;
+        }
+      } catch (e) {
+        debugPrint('Error calculating next override slot: $e');
+      }
+    }
+
     setState(() {
-      _dateOverrides[dateKey]!.add(
-        TimeInterval(start: '09:00 AM', end: '05:00 PM'),
-      );
+      schedule.add(TimeInterval(start: newStart, end: newEnd));
     });
+
+    // Auto-save so the override persists immediately
+    _saveAvailability(silent: true);
   }
 
   // --- Helper Methods ---
+
+  /// Robustly checks whether a calendar [date] falls within any blocked range.
+  /// Normalises both sides to local midnight to avoid UTC/local mismatches.
+  bool _isDateBlocked(DateTime date) {
+    final normalised = DateTime(date.year, date.month, date.day);
+    return _blockedDates.any((bd) {
+      final local = bd.start.toLocal();
+      final localEnd = bd.end.toLocal();
+      final start = DateTime(local.year, local.month, local.day);
+      final end = DateTime(localEnd.year, localEnd.month, localEnd.day);
+      return !normalised.isBefore(start) && !normalised.isAfter(end);
+    });
+  }
+
+  /// Returns null if all slots are valid (end > start, no overlaps).
+  /// Returns an error message string if validation fails.
+  String? _validateSlots(List<TimeInterval> slots) {
+    for (int i = 0; i < slots.length; i++) {
+      final aStart = slots[i].startMinutes;
+      final aEnd = slots[i].endMinutes;
+      if (aEnd <= aStart) {
+        return 'End time must be after start time for each slot.';
+      }
+      for (int j = 0; j < slots.length; j++) {
+        if (i == j) continue;
+        final bStart = slots[j].startMinutes;
+        final bEnd = slots[j].endMinutes;
+        // Overlap when A starts before B ends AND A ends after B starts
+        if (aStart < bEnd && aEnd > bStart) {
+          return 'Time slots cannot overlap. Please choose a different time.';
+        }
+      }
+    }
+    return null;
+  }
 
   void _showAddBlockedDateDialog({DateTime? initialDate}) {
     final titleController = TextEditingController();

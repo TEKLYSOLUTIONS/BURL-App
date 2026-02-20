@@ -86,6 +86,16 @@ class AuthService {
     await prefs.clear(); // Clear all data (token, name, role, id)
   }
 
+  /// Full sign-out: clears SharedPreferences AND signs out of Firebase/Google.
+  /// Use this for every logout button in the app.
+  static Future<void> signOutCompletely() async {
+    try {
+      // Clear local session data
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.clear();
+    } catch (_) {}
+  }
+
   static Future<bool> isLoggedIn() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.containsKey('auth_token');

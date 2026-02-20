@@ -6,6 +6,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../config/palette.dart';
 import '../../services/profile_service.dart';
+import '../../services/auth_service.dart';
 import '../../providers/theme_provider.dart';
 
 class PlayerProfileScreen extends ConsumerStatefulWidget {
@@ -256,8 +257,9 @@ class _PlayerProfileScreenState extends ConsumerState<PlayerProfileScreen> {
                   SizedBox(
                     width: double.infinity,
                     child: TextButton.icon(
-                      onPressed: () {
-                        context.go('/login');
+                      onPressed: () async {
+                        await AuthService.signOutCompletely();
+                        if (context.mounted) context.go('/welcome');
                       },
                       icon: const Icon(Icons.logout, color: Colors.red),
                       label: Text(

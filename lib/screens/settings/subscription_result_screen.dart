@@ -537,7 +537,7 @@ class SubscriptionResultScreen extends StatelessWidget {
 
   Future<void> _navigateToSettings(BuildContext context) async {
     if (context.mounted) {
-      context.go('/settings');
+      context.go('/coach/profile');
     }
   }
 

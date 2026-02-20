@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../config/palette.dart';
+import '../../services/auth_service.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
@@ -206,7 +207,10 @@ class ProfileScreen extends ConsumerWidget {
                     icon: Icons.logout,
                     label: 'Log Out',
                     color: AppPalette.error,
-                    onTap: () => context.go('/welcome'),
+                    onTap: () async {
+                      await AuthService.signOutCompletely();
+                      if (context.mounted) context.go('/welcome');
+                    },
                   ),
                 ],
               ),

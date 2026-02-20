@@ -6,6 +6,8 @@ import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math';
+import 'package:crypto/crypto.dart';
 
 import '../config/api_config.dart';
 
@@ -46,8 +48,17 @@ class FirebaseAuthService {
       // Update display name
       await userCredential.user?.updateDisplayName(fullName);
 
-      // Send email verification
-      await userCredential.user?.sendEmailVerification();
+      // Send email verification with custom action code settings
+      final actionCodeSettings = ActionCodeSettings(
+        url:
+            'https://burl-ad60f.firebaseapp.com/finishSignUp?email=${userCredential.user?.email ?? email}',
+        handleCodeInApp: true,
+        iOSBundleId: 'com.burlcoachbookingapp.app',
+        androidPackageName: 'com.burlcoachbookingapp.app',
+        androidInstallApp: true,
+        androidMinimumVersion: '12',
+      );
+      await userCredential.user?.sendEmailVerification(actionCodeSettings);
       debugPrint('✉️ Verification email sent to: $email');
 
       // Store user data in Firebase custom claims for first login
@@ -125,6 +136,12 @@ class FirebaseAuthService {
       final GoogleSignInAuthentication googleAuth =
           await googleUser.authentication;
 
+      if (googleAuth.accessToken == null && googleAuth.idToken == null) {
+        throw Exception(
+          'Google Sign-In failed: could not obtain authentication tokens.',
+        );
+      }
+
       // Create a new credential
       final credential = GoogleAuthProvider.credential(
         accessToken: googleAuth.accessToken,
@@ -148,9 +165,13 @@ class FirebaseAuthService {
 
       // Ensure user exists in MongoDB
       await _ensureMongoDBUser(
-        fullName: userCredential.user?.displayName ?? 'Google User',
+        fullName:
+            userCredential.user?.displayName ??
+            googleUser.displayName ??
+            'Google User',
         role: role ?? 'player',
-        email: userCredential.user?.email ?? '',
+        email:
+            userCredential.user?.email ?? googleUser.email,
       );
 
       // Check if profile is complete
@@ -177,36 +198,48 @@ class FirebaseAuthService {
         throw Exception('Apple Sign-In is only available on iOS and macOS');
       }
 
+      // Generate a secure nonce to prevent replay attacks
+      final rawNonce = _generateNonce();
+      final nonce = _sha256ofString(rawNonce);
+
       // Request Apple ID credential
       final appleCredential = await SignInWithApple.getAppleIDCredential(
         scopes: [
           AppleIDAuthorizationScopes.email,
           AppleIDAuthorizationScopes.fullName,
         ],
+        nonce: nonce,
       );
 
-      // Create Firebase credential
+      // Create Firebase credential with nonce
       final oAuthProvider = OAuthProvider('apple.com');
       final credential = oAuthProvider.credential(
         idToken: appleCredential.identityToken,
-        accessToken: appleCredential.authorizationCode,
+        rawNonce: rawNonce,
       );
 
       // Sign in to Firebase
       final userCredential = await _auth.signInWithCredential(credential);
 
-      // Get full name
-      String fullName = 'Apple User';
-      if (appleCredential.givenName != null &&
-          appleCredential.familyName != null) {
-        fullName = '${appleCredential.givenName} ${appleCredential.familyName}';
+      // Get full name — Apple only provides name on FIRST login
+      String fullName = userCredential.user?.displayName ?? 'Apple User';
+      if (appleCredential.givenName != null || appleCredential.familyName != null) {
+        fullName = [appleCredential.givenName, appleCredential.familyName]
+            .where((n) => n != null && n.isNotEmpty)
+            .join(' ');
+        // Persist name to Firebase (Apple only sends it once)
+        if (fullName.isNotEmpty) {
+          await userCredential.user?.updateDisplayName(fullName);
+        }
       }
+
+      final email = userCredential.user?.email ?? appleCredential.email ?? '';
 
       // Ensure user exists in MongoDB
       await _ensureMongoDBUser(
-        fullName: fullName,
+        fullName: fullName.isNotEmpty ? fullName : 'Apple User',
         role: role ?? 'player',
-        email: userCredential.user?.email ?? '',
+        email: email,
       );
 
       // Check if profile is complete
@@ -223,6 +256,22 @@ class FirebaseAuthService {
     } catch (e) {
       throw _handleAuthException(e);
     }
+  }
+
+  /// Generates a cryptographically secure random nonce string
+  String _generateNonce([int length = 32]) {
+    const charset =
+        '0123456789ABCDEFGHIJKLMNOPQRSTUVXYZabcdefghijklmnopqrstuvwxyz-._';
+    final random = Random.secure();
+    return List.generate(length, (_) => charset[random.nextInt(charset.length)])
+        .join();
+  }
+
+  /// Returns the SHA256 hash of the given string
+  String _sha256ofString(String input) {
+    final bytes = utf8.encode(input);
+    final digest = sha256.convert(bytes);
+    return digest.toString();
   }
 
   // Resend verification email

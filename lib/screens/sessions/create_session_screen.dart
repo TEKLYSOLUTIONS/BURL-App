@@ -7,6 +7,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:go_router/go_router.dart';
 import 'package:table_calendar/table_calendar.dart'; // Import TableCalendar
 import 'package:google_maps_flutter/google_maps_flutter.dart'; // Import Google Maps
+import '../../config/palette.dart';
 import '../../services/session_service.dart';
 import '../../utils/location_search_delegate.dart';
 import '../../utils/currency_helper.dart';
@@ -876,6 +877,63 @@ class _CreateSessionScreenState extends State<CreateSessionScreen> {
                       formatButtonVisible: false,
                       titleCentered: true,
                     ),
+                    calendarStyle: CalendarStyle(
+                      selectedDecoration: const BoxDecoration(
+                        color: AppPalette.orangeAccent,
+                        shape: BoxShape.circle,
+                      ),
+                      todayDecoration: BoxDecoration(
+                        color: AppPalette.orangeAccent.withValues(alpha: 0.3),
+                        shape: BoxShape.circle,
+                      ),
+                      selectedTextStyle: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      todayTextStyle: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    calendarBuilders: CalendarBuilders(
+                      // Explicitly render selected days in orange so today's
+                      // highlight never overrides the selection colour.
+                      selectedBuilder: (context, day, focusedDay) {
+                        return Container(
+                          margin: const EdgeInsets.all(4),
+                          decoration: const BoxDecoration(
+                            color: AppPalette.orangeAccent,
+                            shape: BoxShape.circle,
+                          ),
+                          alignment: Alignment.center,
+                          child: Text(
+                            '${day.day}',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        );
+                      },
+                      // Keep today styled consistently when not selected
+                      todayBuilder: (context, day, focusedDay) {
+                        return Container(
+                          margin: const EdgeInsets.all(4),
+                          decoration: BoxDecoration(
+                            color: AppPalette.orangeAccent.withValues(alpha: 0.3),
+                            shape: BoxShape.circle,
+                          ),
+                          alignment: Alignment.center,
+                          child: Text(
+                            '${day.day}',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
                     onDaySelected: (selectedDay, focusedDay) {
                       setState(() {
                         _focusedDay = focusedDay;
@@ -933,9 +991,17 @@ class _CreateSessionScreenState extends State<CreateSessionScreen> {
                             return Chip(
                               label: Text(
                                 DateFormat('MMM d').format(date),
-                                style: const TextStyle(fontSize: 12),
                               ),
-                              deleteIcon: const Icon(Icons.close, size: 14),
+                              labelStyle: GoogleFonts.inter(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: AppPalette.navyPrimary,
+                              ),
+                              backgroundColor: AppPalette.orangeAccent.withValues(alpha: 0.12),
+                              side: BorderSide(
+                                color: AppPalette.orangeAccent.withValues(alpha: 0.4),
+                              ),
+                              deleteIcon: const Icon(Icons.close, size: 14, color: AppPalette.navyPrimary),
                               onDeleted: () {
                                 setState(() {
                                   _selectedDates.remove(date);

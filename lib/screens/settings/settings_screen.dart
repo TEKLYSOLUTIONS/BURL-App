@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../widgets/notification_button.dart';
 
 import '../../services/profile_service.dart';
+import '../../services/auth_service.dart';
 import '../../providers/theme_provider.dart';
 import '../../config/palette.dart';
 
@@ -532,12 +532,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                           width: double.infinity,
                           child: TextButton.icon(
                             onPressed: () async {
-                              final prefs =
-                                  await SharedPreferences.getInstance();
-                              await prefs.remove('token');
-                              if (context.mounted) {
-                                context.go('/login');
-                              }
+                              await AuthService.signOutCompletely();
+                              if (context.mounted) context.go('/welcome');
                             },
                             icon: Icon(
                               Icons.logout,

@@ -10,6 +10,7 @@ import '../../services/profile_service.dart';
 import '../../services/auth_service.dart';
 import '../../services/places_service.dart';
 import '../../services/storage_service.dart';
+import '../../services/notification_service.dart';
 import '../../providers/theme_provider.dart';
 import '../../utils/currency_helper.dart';
 
@@ -132,7 +133,10 @@ class _CompleteCoachProfileScreenState
     _nameController.text = data['fullName'] ?? '';
     _emailController.text = data['email'] ?? '';
     _phoneController.text = data['phone'] ?? data['phoneNumber'] ?? '';
-    _profileImageUrl = data['profileUrl'] ?? data['profilePhotoUrl'];
+    _profileImageUrl = data['coachProfile']?['profilePhoto'] ??
+        data['profileImage'] ??
+        data['profileUrl'] ??
+        data['profilePhotoUrl'];
     _userId = data['_id'] ?? data['id'];
 
     // Coach profile data
@@ -260,6 +264,13 @@ class _CompleteCoachProfileScreenState
         updatedUser['role'] ?? 'coach',
       );
 
+      // Dismiss profile completion notification now that profile is saved
+      try {
+        await NotificationService.markAllAsRead();
+      } catch (e) {
+        debugPrint('Could not clear notifications: $e');
+      }
+
       setState(() => _isSaving = false);
 
       if (mounted) {
@@ -333,10 +344,22 @@ class _CompleteCoachProfileScreenState
       });
       
       if (mounted) {
+        String errorMessage = 'Error uploading photo.';
+        final errStr = e.toString().toLowerCase();
+        if (errStr.contains('object-not-found') || errStr.contains('not-found')) {
+          errorMessage = 'Storage path not found. Please check Firebase Storage is enabled.';
+        } else if (errStr.contains('unauthorized') || errStr.contains('permission')) {
+          errorMessage = 'Permission denied. Please check Firebase Storage rules.';
+        } else if (errStr.contains('network') || errStr.contains('socket')) {
+          errorMessage = 'Network error. Please check your connection and try again.';
+        } else {
+          errorMessage = 'Upload failed: ${e.toString()}';
+        }
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error uploading photo: $e'),
+            content: Text(errorMessage),
             backgroundColor: Colors.red,
+            duration: const Duration(seconds: 5),
           ),
         );
       }

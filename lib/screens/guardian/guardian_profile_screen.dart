@@ -5,6 +5,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import '../../config/palette.dart';
 import '../../widgets/notification_button.dart';
 import '../../services/profile_service.dart';
+import '../../services/auth_service.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../providers/theme_provider.dart';
@@ -316,7 +317,10 @@ class _GuardianProfileScreenState extends ConsumerState<GuardianProfileScreen> {
                 border: Border.all(color: Colors.red.withValues(alpha: 0.1)),
               ),
               child: TextButton.icon(
-                onPressed: () => context.go('/welcome'),
+                onPressed: () async {
+                  await AuthService.signOutCompletely();
+                  if (context.mounted) context.go('/welcome');
+                },
                 style: TextButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   foregroundColor: Colors.red,

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../config/palette.dart';
 
@@ -40,9 +41,25 @@ class _SplashScreenState extends State<SplashScreen>
 
     _controller.forward();
 
-    // Navigate after splash
-    Future.delayed(const Duration(seconds: 3), () {
-      if (mounted) {
+    // Navigate after splash — check if already logged in
+    Future.delayed(const Duration(seconds: 3), () async {
+      if (!mounted) return;
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('auth_token');
+      final role  = prefs.getString('user_role');
+      if (!mounted) return;
+      if (token != null && token.isNotEmpty && role != null) {
+        switch (role) {
+          case 'coach':
+            context.go('/coach/home');
+            break;
+          case 'guardian':
+            context.go('/guardian/home');
+            break;
+          default:
+            context.go('/player/home');
+        }
+      } else {
         context.go('/welcome');
       }
     });

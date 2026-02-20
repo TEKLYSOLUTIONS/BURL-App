@@ -22,7 +22,6 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
   final _subscriptionService = SubscriptionService();
   bool _isLoading = true;
   List<SubscriptionPlan> _plans = [];
-  String? _error;
 
   @override
   void initState() {
@@ -30,19 +29,73 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
     _fetchPlans();
   }
 
+  static List<SubscriptionPlan> get _fallbackPlans {
+    List<SubscriptionFeature> features(List<Map<String, dynamic>> feats) =>
+        feats.map((f) => SubscriptionFeature(name: f['name'] as String, included: f['included'] as bool, highlight: (f['highlight'] as bool?) ?? false)).toList();
+
+    return [
+      SubscriptionPlan(id: 'basic-m', planId: 'basic-monthly', name: 'Basic', description: 'Perfect for coaches just getting started', price: 0, currency: 'GBP', interval: 'month', tier: 'Basic', trialPeriodDays: 0, isPopular: false, features: features([
+        {'name': 'Up to 5 active sessions', 'included': true, 'highlight': false},
+        {'name': '1 player profile', 'included': true, 'highlight': false},
+        {'name': 'Basic availability management', 'included': true, 'highlight': false},
+        {'name': 'Advanced analytics', 'included': false, 'highlight': false},
+        {'name': 'Priority support', 'included': false, 'highlight': false},
+      ])),
+      SubscriptionPlan(id: 'premium-m', planId: 'premium-monthly', name: 'Premium', description: 'For coaches growing their business', price: 20, currency: 'GBP', interval: 'month', tier: 'Premium', trialPeriodDays: 7, isPopular: true, features: features([
+        {'name': 'Unlimited active sessions', 'included': true, 'highlight': false},
+        {'name': 'Unlimited player profiles', 'included': true, 'highlight': false},
+        {'name': 'Advanced availability management', 'included': true, 'highlight': false},
+        {'name': 'Advanced analytics & reports', 'included': true, 'highlight': true},
+        {'name': 'Priority support', 'included': true, 'highlight': true},
+      ])),
+      SubscriptionPlan(id: 'enterprise-m', planId: 'enterprise-monthly', name: 'Enterprise', description: 'For academies & professional organisations', price: 50, currency: 'GBP', interval: 'month', tier: 'Enterprise', trialPeriodDays: 14, isPopular: false, features: features([
+        {'name': 'Unlimited active sessions', 'included': true, 'highlight': false},
+        {'name': 'Unlimited player profiles', 'included': true, 'highlight': false},
+        {'name': 'Advanced availability management', 'included': true, 'highlight': false},
+        {'name': 'Advanced analytics & reports', 'included': true, 'highlight': false},
+        {'name': 'Dedicated account manager', 'included': true, 'highlight': true},
+        {'name': 'Custom branding & white label', 'included': true, 'highlight': true},
+      ])),
+      SubscriptionPlan(id: 'basic-y', planId: 'basic-yearly', name: 'Basic', description: 'Perfect for coaches just getting started', price: 0, currency: 'GBP', interval: 'year', tier: 'Basic', trialPeriodDays: 0, isPopular: false, features: features([
+        {'name': 'Up to 5 active sessions', 'included': true, 'highlight': false},
+        {'name': '1 player profile', 'included': true, 'highlight': false},
+        {'name': 'Basic availability management', 'included': true, 'highlight': false},
+        {'name': 'Advanced analytics', 'included': false, 'highlight': false},
+        {'name': 'Priority support', 'included': false, 'highlight': false},
+      ])),
+      SubscriptionPlan(id: 'premium-y', planId: 'premium-yearly', name: 'Premium', description: 'For coaches growing their business', price: 192, currency: 'GBP', interval: 'year', tier: 'Premium', trialPeriodDays: 7, isPopular: true, features: features([
+        {'name': 'Unlimited active sessions', 'included': true, 'highlight': false},
+        {'name': 'Unlimited player profiles', 'included': true, 'highlight': false},
+        {'name': 'Advanced availability management', 'included': true, 'highlight': false},
+        {'name': 'Advanced analytics & reports', 'included': true, 'highlight': true},
+        {'name': 'Priority support', 'included': true, 'highlight': true},
+      ])),
+      SubscriptionPlan(id: 'enterprise-y', planId: 'enterprise-yearly', name: 'Enterprise', description: 'For academies & professional organisations', price: 480, currency: 'GBP', interval: 'year', tier: 'Enterprise', trialPeriodDays: 14, isPopular: false, features: features([
+        {'name': 'Unlimited active sessions', 'included': true, 'highlight': false},
+        {'name': 'Unlimited player profiles', 'included': true, 'highlight': false},
+        {'name': 'Advanced availability management', 'included': true, 'highlight': false},
+        {'name': 'Advanced analytics & reports', 'included': true, 'highlight': false},
+        {'name': 'Dedicated account manager', 'included': true, 'highlight': true},
+        {'name': 'Custom branding & white label', 'included': true, 'highlight': true},
+      ])),
+    ];
+  }
+
   Future<void> _fetchPlans() async {
     try {
       final plans = await _subscriptionService.getPlans();
       if (mounted) {
         setState(() {
-          _plans = plans;
+          // Use fallback plans if API returns empty list
+          _plans = plans.isEmpty ? _fallbackPlans : plans;
           _isLoading = false;
         });
       }
     } catch (e) {
+      // On error, show fallback plans instead of an error screen
       if (mounted) {
         setState(() {
-          _error = e.toString();
+          _plans = _fallbackPlans;
           _isLoading = false;
         });
       }
@@ -102,30 +155,7 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
           Expanded(
             child: _isLoading
                 ? const Center(child: CircularProgressIndicator())
-                : _error != null
-                    ? Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text(
-                              'Error loading plans',
-                              style: GoogleFonts.inter(fontSize: 18),
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              _error!,
-                              style: GoogleFonts.inter(fontSize: 14, color: Colors.red),
-                              textAlign: TextAlign.center,
-                            ),
-                            const SizedBox(height: 16),
-                            ElevatedButton(
-                              onPressed: _fetchPlans,
-                              child: const Text('Retry'),
-                            ),
-                          ],
-                        ),
-                      )
-                    : SingleChildScrollView(
+                : SingleChildScrollView(
                 padding: const EdgeInsets.all(24),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.center,

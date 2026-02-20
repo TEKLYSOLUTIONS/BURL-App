@@ -10,6 +10,7 @@ import '../../widgets/headers/coach_app_bar.dart';
 import '../settings/change_password_screen.dart';
 
 import '../../services/profile_service.dart';
+import '../../services/auth_service.dart';
 import '../../services/storage_service.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -84,7 +85,11 @@ class _CoachProfileScreenState extends ConsumerState<CoachProfileScreen> {
 
   String? _getProfileImageUrl() {
     if (_profileData == null) return null;
-    return _profileData!['profileUrl'] ?? _profileData!['profilePhotoUrl'];
+    // coachProfile.profilePhoto is the canonical storage location
+    return _profileData!['coachProfile']?['profilePhoto'] ??
+        _profileData!['profileImage'] ??
+        _profileData!['profileUrl'] ??
+        _profileData!['profilePhotoUrl'];
   }
 
   void _showProfilePicturePreview() {
@@ -158,7 +163,7 @@ class _CoachProfileScreenState extends ConsumerState<CoachProfileScreen> {
       );
 
       // Update profile with new photo URL
-      await ProfileService.updateProfile({'profileUrl': imageUrl});
+      await ProfileService.updateProfile({'profileImage': imageUrl});
 
       // Refresh profile data
       await _fetchProfile();
@@ -529,8 +534,9 @@ class _CoachProfileScreenState extends ConsumerState<CoachProfileScreen> {
 
                   // Logout Button
                   OutlinedButton.icon(
-                    onPressed: () {
-                      context.go('/welcome');
+                    onPressed: () async {
+                      await AuthService.signOutCompletely();
+                      if (context.mounted) context.go('/welcome');
                     },
                     icon: const Icon(Icons.logout, color: Colors.red),
                     label: const Text('Log Out'),
@@ -554,13 +560,13 @@ class _CoachProfileScreenState extends ConsumerState<CoachProfileScreen> {
 
                   const SizedBox(height: 24),
                   Text(
-                    _appVersion.isNotEmpty ? _appVersion : 'Version 1.0.0 (Build 2)',
+                    _appVersion.isNotEmpty ? _appVersion : 'Version 1.0.0 (Build 3)',
                     style: GoogleFonts.inter(
                       fontSize: 12,
                       color: Colors.grey[400],
                     ),
                   ),
-                  const SizedBox(height: 80),
+                  const SizedBox(height: 24),
                 ],
               ),
             ),
