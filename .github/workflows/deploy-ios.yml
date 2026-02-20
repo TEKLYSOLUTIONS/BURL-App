@@ -16,7 +16,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Select Xcode 16.2
-        run: sudo xcode-select -s /Applications/Xcode_16.2.app
+        run: sudo xcode-select -s /Applications/Xcode_16.2.app/Contents/Developer
 
       # 1. Setup Environment
       - name: Install Apple Certificate and Provisioning Profile
