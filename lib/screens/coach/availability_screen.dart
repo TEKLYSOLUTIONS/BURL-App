@@ -105,13 +105,13 @@ class _CoachAvailabilityScreenState extends State<CoachAvailabilityScreen> {
 
   // Store time intervals for each day (7 days)
   final Map<int, List<TimeInterval>> _daySchedules = {
-    0: [TimeInterval(start: '09:00 AM', end: '05:00 PM')], // Monday
-    1: [TimeInterval(start: '09:00 AM', end: '05:00 PM')], // Tuesday
-    2: [TimeInterval(start: '09:00 AM', end: '05:00 PM')], // Wednesday
-    3: [TimeInterval(start: '09:00 AM', end: '05:00 PM')], // Thursday
-    4: [TimeInterval(start: '09:00 AM', end: '05:00 PM')], // Friday
-    5: [], // Saturday - empty by default
-    6: [], // Sunday - empty by default
+    0: [], // Monday
+    1: [], // Tuesday
+    2: [], // Wednesday
+    3: [], // Thursday
+    4: [], // Friday
+    5: [], // Saturday
+    6: [], // Sunday
   };
 
   // blocked dates
