@@ -35,16 +35,26 @@ jobs:
           echo -n "$BUILD_CERTIFICATE_BASE64" | base64 --decode -o $CERTIFICATE_PATH
           echo -n "$BUILD_PROVISION_PROFILE_BASE64" | base64 --decode -o $PP_PATH
 
+          # Verify files were decoded
+          echo "Certificate size: $(wc -c < $CERTIFICATE_PATH) bytes"
+          echo "Provisioning profile size: $(wc -c < $PP_PATH) bytes"
+          if [ ! -s $CERTIFICATE_PATH ]; then echo "ERROR: Certificate file is empty - check IOS_DISTRIBUTION_CERTIFICATE secret"; exit 1; fi
+          if [ ! -s $PP_PATH ]; then echo "ERROR: Provisioning profile is empty - check IOS_PROVISIONING_PROFILE secret"; exit 1; fi
+
           # Create temporary keychain
           security create-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
           security set-keychain-settings -lut 21600 $KEYCHAIN_PATH
           security unlock-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
 
           # Import certificate to keychain
-          security import $CERTIFICATE_PATH -P "$P12_PASSWORD" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
+          security import $CERTIFICATE_PATH -P "$P12_PASSWORD" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH || { echo "ERROR: Certificate import failed - check P12_PASSWORD secret"; exit 1; }
           security list-keychain -d user -s $KEYCHAIN_PATH
           security default-keychain -s $KEYCHAIN_PATH
           security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+
+          # Verify certificate is visible to codesign
+          echo "Available signing identities:"
+          security find-identity -v -p codesigning
 
           # Apply provisioning profile
           mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
