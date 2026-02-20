@@ -295,7 +295,7 @@ class _BookingScreenState extends State<BookingScreen> {
                     child: ListView.separated(
                       scrollDirection: Axis.horizontal,
                       itemCount: _availableDates.length,
-                      separatorBuilder: (_, _) => const SizedBox(width: 12),
+                      separatorBuilder: (_, __) => const SizedBox(width: 12),
                       itemBuilder: (context, index) {
                         final date = _availableDates[index];
                         final isSelected = _selectedDateIndices.contains(index);

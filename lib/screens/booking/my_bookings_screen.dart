@@ -197,7 +197,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
     return ListView.separated(
       padding: const EdgeInsets.all(16),
       itemCount: bookings.length,
-      separatorBuilder: (_, _) => const SizedBox(height: 16),
+      separatorBuilder: (_, __) => const SizedBox(height: 16),
       itemBuilder: (context, index) {
         final booking = bookings[index];
         return _buildBookingCard(booking, isUpcoming: isUpcoming);

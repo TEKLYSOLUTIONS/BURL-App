@@ -533,7 +533,7 @@ class _ConfirmBookingScreenSimpleState
                 radius: 26,
                 backgroundImage: NetworkImage(coachImage),
                 backgroundColor: Colors.grey[200],
-                onBackgroundImageError: (_, _) {},
+                onBackgroundImageError: (_, __) {},
               ),
               const SizedBox(width: 14),
               Expanded(
