@@ -9,11 +9,14 @@ on:
 jobs:
   build_ios:
     name: Build and Deploy iOS
-    runs-on: macos-latest
+    runs-on: macos-15
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Select Xcode 16.2
+        run: sudo xcode-select -s /Applications/Xcode_16.2.app
 
       # 1. Setup Environment
       - name: Install Apple Certificate and Provisioning Profile
