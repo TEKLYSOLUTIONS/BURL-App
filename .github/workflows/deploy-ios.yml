@@ -65,7 +65,7 @@ jobs:
       - name: Build and Archive IPA
         run: |
           cd ios
-          xcodebuild -workspace Runner.xcworkspace -scheme Runner -configuration Release archive -archivePath Runner.xcarchive -allowProvisioningUpdates PROVISIONING_PROFILE_SPECIFIER="Burl_AppStore_Profile" DEVELOPMENT_TEAM="BGYRZ2L6NY" CODE_SIGN_STYLE="Manual" CODE_SIGN_IDENTITY="iPhone Distribution"
+          xcodebuild -workspace Runner.xcworkspace -scheme Runner -configuration Release -destination 'generic/platform=iOS' archive -archivePath Runner.xcarchive -allowProvisioningUpdates PROVISIONING_PROFILE_SPECIFIER="Burl_AppStore_Profile" DEVELOPMENT_TEAM="BGYRZ2L6NY" CODE_SIGN_STYLE="Manual" CODE_SIGN_IDENTITY="iPhone Distribution"
           xcodebuild -exportArchive -archivePath Runner.xcarchive -exportOptionsPlist ExportOptions.plist -exportPath ./build/ios/ipa
 
       # 4. Verify IPA Existence
