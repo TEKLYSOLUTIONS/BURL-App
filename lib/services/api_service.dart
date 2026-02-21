@@ -1,12 +1,36 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../config/api_config.dart';
 
 class ApiService {
   static Future<Map<String, String>> _getHeaders() async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString('auth_token');
+    String? token;
+
+    // First try to get a fresh token from Firebase (if logged in via Firebase/Apple/Google)
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        // getIdToken() automatically refreshes the token if it has expired
+        token = await user.getIdToken();
+
+        // Save the fresh token to SharedPreferences
+        if (token != null) {
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setString('auth_token', token);
+        }
+      }
+    } catch (_) {
+      // Ignore firebase auth errors here, fallback to SharedPreferences
+    }
+
+    // Fallback to SharedPreferences if Firebase token is unavailable
+    if (token == null) {
+      final prefs = await SharedPreferences.getInstance();
+      token = prefs.getString('auth_token');
+    }
+
     return {
       'Content-Type': 'application/json',
       if (token != null) 'Authorization': 'Bearer $token',

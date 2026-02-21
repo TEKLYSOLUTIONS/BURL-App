@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../../config/palette.dart';
-
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
 
@@ -46,7 +44,7 @@ class _SplashScreenState extends State<SplashScreen>
       if (!mounted) return;
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('auth_token');
-      final role  = prefs.getString('user_role');
+      final role = prefs.getString('user_role');
       if (!mounted) return;
       if (token != null && token.isNotEmpty && role != null) {
         switch (role) {
@@ -74,7 +72,8 @@ class _SplashScreenState extends State<SplashScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppPalette.backgroundLight, // Pearl white
+      backgroundColor: Theme.of(context)
+          .scaffoldBackgroundColor, // Adapts to Light/Dark Mode
       body: Center(
         child: FadeTransition(
           opacity: _fadeAnimation,
