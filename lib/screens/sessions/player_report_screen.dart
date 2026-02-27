@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../config/palette.dart';
 import '../../utils/date_time_utils.dart';
 import '../../services/session_service.dart';
+import '../../widgets/headers/coach_app_bar.dart';
 
 class PlayerReportScreen extends StatefulWidget {
   final String sessionId;
@@ -24,6 +25,10 @@ class _PlayerReportScreenState extends State<PlayerReportScreen> {
   bool _isSaving = false;
   Map<String, dynamic>? _session;
   Map<String, dynamic>? _playerData;
+
+  double _technicalRating = 0;
+  double _physicalRating = 0;
+  double _mentalRating = 0;
 
   // Controllers for the 5-section report
   final TextEditingController _primaryFocusController = TextEditingController();
@@ -93,6 +98,12 @@ class _PlayerReportScreenState extends State<PlayerReportScreen> {
           _playerData = playerAssignment['player'];
 
           if (report != null) {
+            _technicalRating =
+                (report['technicalRating'] as num?)?.toDouble() ?? 0;
+            _physicalRating =
+                (report['physicalRating'] as num?)?.toDouble() ?? 0;
+            _mentalRating = (report['mentalRating'] as num?)?.toDouble() ?? 0;
+
             _primaryFocusController.text =
                 report['primaryFocus'] as String? ?? '';
 
@@ -139,6 +150,9 @@ class _PlayerReportScreenState extends State<PlayerReportScreen> {
 
     try {
       final reportData = {
+        'technicalRating': _technicalRating,
+        'physicalRating': _physicalRating,
+        'mentalRating': _mentalRating,
         'primaryFocus': _primaryFocusController.text.trim(),
         'technicalWins': _technicalWinsController.text.trim(),
         'progress': _progressController.text.trim(),
@@ -154,7 +168,7 @@ class _PlayerReportScreenState extends State<PlayerReportScreen> {
       await SessionService.updatePlayerReport(
         widget.sessionId,
         widget.playerId,
-        reportData,
+        {'report': reportData},
       );
 
       if (mounted) {
@@ -227,22 +241,53 @@ class _PlayerReportScreenState extends State<PlayerReportScreen> {
     );
   }
 
-  Widget _buildSectionHeader(String title, IconData icon) {
+  Widget _buildStarRating(
+      String label, double value, ValueChanged<double> onChanged) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: GoogleFonts.inter(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            color: Theme.of(context).colorScheme.onSurface,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: List.generate(5, (index) {
+            return GestureDetector(
+              onTap: () => onChanged(index + 1.0),
+              child: Padding(
+                padding: const EdgeInsets.only(right: 8.0),
+                child: Icon(
+                  index < value
+                      ? Icons.star_rounded
+                      : Icons.star_outline_rounded,
+                  color: Colors.amber,
+                  size: 32,
+                ),
+              ),
+            );
+          }),
+        ),
+        const SizedBox(height: 20),
+      ],
+    );
+  }
+
+  Widget _buildSectionHeader(String title) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16, top: 8),
-      child: Row(
-        children: [
-          Icon(icon, color: AppPalette.orangeAccent, size: 22),
-          const SizedBox(width: 8),
-          Text(
-            title,
-            style: GoogleFonts.inter(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: Theme.of(context).colorScheme.onSurface,
-            ),
-          ),
-        ],
+      child: Text(
+        title,
+        style: GoogleFonts.inter(
+          fontSize: 18,
+          fontWeight: FontWeight.bold,
+          color: Theme.of(context).colorScheme.onSurface,
+        ),
       ),
     );
   }
@@ -252,11 +297,30 @@ class _PlayerReportScreenState extends State<PlayerReportScreen> {
     if (_isLoading || _session == null || _playerData == null) {
       return Scaffold(
         backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-        appBar: AppBar(
-          backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-          elevation: 0,
+        body: Column(
+          children: [
+            CoachAppBar(
+              child: Row(
+                children: [
+                  const SizedBox(width: 36),
+                  Expanded(
+                    child: Text(
+                      'Detailed Session Report',
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.inter(
+                        color: Colors.white,
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 36),
+                ],
+              ),
+            ),
+            const Expanded(child: Center(child: CircularProgressIndicator())),
+          ],
         ),
-        body: const Center(child: CircularProgressIndicator()),
       );
     }
 
@@ -268,315 +332,362 @@ class _PlayerReportScreenState extends State<PlayerReportScreen> {
 
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      appBar: AppBar(
-        leading: IconButton(
-          icon: Icon(Icons.close_rounded,
-              color: Theme.of(context).colorScheme.onSurface),
-          onPressed: () => context.pop(),
-        ),
-        title: Text(
-          'Detailed Session Report',
-          style: GoogleFonts.inter(
-            color: Theme.of(context).colorScheme.onSurface,
-            fontWeight: FontWeight.bold,
-            fontSize: 18,
-          ),
-        ),
-        centerTitle: true,
-        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-        elevation: 0,
-      ),
-      body: SafeArea(
-        child: Column(
-          children: [
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Player Info Card
-                    Text(
-                      'PLAYER',
-                      style: GoogleFonts.inter(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: AppPalette.textSecondaryLight,
-                        letterSpacing: 1.2,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Container(
-                      padding: const EdgeInsets.all(12),
+      body: Column(
+        children: [
+          CoachAppBar(
+            child: Row(
+              children: [
+                if (Navigator.of(context).canPop())
+                  InkWell(
+                    onTap: () => context.pop(),
+                    borderRadius: BorderRadius.circular(20),
+                    child: Container(
+                      padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: Theme.of(context).cardColor,
-                        borderRadius: BorderRadius.circular(12),
-                        border:
-                            Border.all(color: Theme.of(context).dividerColor),
+                        color: Colors.white.withValues(alpha: 0.1),
+                        shape: BoxShape.circle,
                       ),
-                      child: Row(
-                        children: [
-                          CircleAvatar(
-                            radius: 20,
-                            backgroundColor: AppPalette.navyPrimary,
-                            child: _playerData!['profilePhoto'] != null &&
-                                    _playerData!['profilePhoto']
-                                        .toString()
-                                        .isNotEmpty
-                                ? ClipRRect(
-                                    borderRadius: BorderRadius.circular(20),
-                                    child: Image.network(
-                                      _playerData!['profilePhoto'],
-                                      width: 40,
-                                      height: 40,
-                                      fit: BoxFit.cover,
-                                    ),
-                                  )
-                                : const Icon(Icons.person,
-                                    color: Colors.white, size: 20),
+                      child: const Icon(Icons.arrow_back,
+                          color: Colors.white, size: 20),
+                    ),
+                  )
+                else
+                  const SizedBox(width: 36),
+                Expanded(
+                  child: Text(
+                    'Detailed Session Report',
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.inter(
+                      color: Colors.white,
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 36),
+              ],
+            ),
+          ),
+          Expanded(
+            child: Column(
+              children: [
+                Expanded(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.all(24),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Player Info Card
+                        Text(
+                          'PLAYER',
+                          style: GoogleFonts.inter(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: AppPalette.textSecondaryLight,
+                            letterSpacing: 1.2,
                           ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+                        ),
+                        const SizedBox(height: 8),
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).cardColor,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                                color: Theme.of(context).dividerColor),
+                          ),
+                          child: Row(
+                            children: [
+                              CircleAvatar(
+                                radius: 20,
+                                backgroundColor: AppPalette.navyPrimary,
+                                child: _playerData!['profilePhoto'] != null &&
+                                        _playerData!['profilePhoto']
+                                            .toString()
+                                            .isNotEmpty
+                                    ? ClipRRect(
+                                        borderRadius: BorderRadius.circular(20),
+                                        child: Image.network(
+                                          _playerData!['profilePhoto'],
+                                          width: 40,
+                                          height: 40,
+                                          fit: BoxFit.cover,
+                                        ),
+                                      )
+                                    : const Icon(Icons.person,
+                                        color: Colors.white, size: 20),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      _playerData!['fullName'] as String,
+                                      style: GoogleFonts.inter(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .onSurface,
+                                      ),
+                                    ),
+                                    Text(
+                                      'Player',
+                                      style: GoogleFonts.inter(
+                                        fontSize: 12,
+                                        color: AppPalette.textSecondaryLight,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        const SizedBox(height: 24),
+
+                        // Session Info Card
+                        Text(
+                          'SESSION',
+                          style: GoogleFonts.inter(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: AppPalette.textSecondaryLight,
+                            letterSpacing: 1.2,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).cardColor,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                                color: Theme.of(context).dividerColor),
+                          ),
+                          child: Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: AppPalette.orangeAccent
+                                      .withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: const Icon(Icons.event_note_rounded,
+                                    color: AppPalette.orangeAccent, size: 20),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      _session!['title'] as String,
+                                      style: GoogleFonts.inter(
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.w600,
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .onSurface,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    Builder(builder: (context) {
+                                      int duration = 0;
+                                      if (firstTimeSlot != null &&
+                                          firstTimeSlot['durationMinutes'] !=
+                                              null) {
+                                        duration = int.tryParse(
+                                                firstTimeSlot['durationMinutes']
+                                                    .toString()) ??
+                                            0;
+                                      }
+                                      return Text(
+                                        '${DateTimeUtils.formatSessionDate(startTime)} • ${DateTimeUtils.formatTimeFromDateTime(startTime)} (${DateTimeUtils.formatDuration(duration)})',
+                                        style: GoogleFonts.inter(
+                                          fontSize: 12,
+                                          color: AppPalette.textSecondaryLight,
+                                        ),
+                                      );
+                                    }),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        const SizedBox(height: 32),
+
+                        Text(
+                          'Please provide constructive feedback below. Fields left empty will be omitted from the final report visible to the player.',
+                          style: GoogleFonts.inter(
+                            fontSize: 13,
+                            color:
+                                Theme.of(context).colorScheme.onSurfaceVariant,
+                            fontStyle: FontStyle.italic,
+                          ),
+                        ),
+
+                        const SizedBox(height: 24),
+
+                        // 0. Performance Ratings
+                        _buildSectionHeader('Performance Ratings'),
+                        _buildStarRating(
+                          'Technical Skills',
+                          _technicalRating,
+                          (val) => setState(() => _technicalRating = val),
+                        ),
+                        _buildStarRating(
+                          'Physical Effort',
+                          _physicalRating,
+                          (val) => setState(() => _physicalRating = val),
+                        ),
+                        _buildStarRating(
+                          'Mental Focus & Attitude',
+                          _mentalRating,
+                          (val) => setState(() => _mentalRating = val),
+                        ),
+
+                        // 1. Session Overview
+                        _buildSectionHeader('Session Overview'),
+                        _buildTextField(
+                          'Primary Focus',
+                          'E.g. Playing spin bowling, fast bowling run-up...',
+                          _primaryFocusController,
+                          maxLines: 2,
+                        ),
+
+                        // 2. Strengths & Positives
+                        _buildSectionHeader('Strengths & Positives'),
+                        _buildTextField(
+                          'Technical Wins',
+                          'Highlight specific techniques they executed well...',
+                          _technicalWinsController,
+                        ),
+                        _buildTextField(
+                          'Progress',
+                          'Note any improvements made since their last session...',
+                          _progressController,
+                        ),
+                        _buildTextField(
+                          'Intangibles',
+                          'Attitude, focus, work ethic, or stamina...',
+                          _intangiblesController,
+                        ),
+
+                        // 3. Areas for Improvement
+                        _buildSectionHeader('Areas for Improvement'),
+                        _buildTextField(
+                          'Technical Flaws',
+                          'Specific mechanics to fix...',
+                          _technicalFlawsController,
+                        ),
+                        _buildTextField(
+                          'Tactical & Mental Aspects',
+                          'Shot selection, reading the bowler, concentration...',
+                          _tacticalMentalController,
+                        ),
+
+                        // 4. Action Plan & Homework
+                        _buildSectionHeader('Action Plan & Homework'),
+                        _buildTextField(
+                          'Specific Drills',
+                          'Drills they can do on their own or with a friend...',
+                          _specificDrillsController,
+                        ),
+                        _buildTextField(
+                          'Fitness & Conditioning',
+                          'Physical work that might help their specific issues...',
+                          _fitnessConditioningController,
+                        ),
+
+                        // 5. Looking Ahead
+                        _buildSectionHeader('Looking Ahead'),
+                        _buildTextField(
+                          'Goal for Next Session',
+                          'Briefly outline what you plan to tackle next time...',
+                          _goalForNextSessionController,
+                          maxLines: 2,
+                        ),
+                        _buildTextField(
+                          'Closing Encouragement',
+                          'A brief, supportive note to keep them motivated...',
+                          _closingEncouragementController,
+                          maxLines: 2,
+                        ),
+
+                        const SizedBox(height: 100), // padding for bottom bar
+                      ],
+                    ),
+                  ),
+                ),
+
+                // Bottom Sticky Button
+                Container(
+                  padding: EdgeInsets.fromLTRB(
+                    24,
+                    16,
+                    24,
+                    MediaQuery.of(context).padding.bottom + 16,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).scaffoldBackgroundColor,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.05),
+                        blurRadius: 10,
+                        offset: const Offset(0, -5),
+                      ),
+                    ],
+                  ),
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: _isSaving ? null : _saveReport,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppPalette.orangeAccent,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: _isSaving
+                          ? const SizedBox(
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(
+                                color: AppPalette.white,
+                                strokeWidth: 2,
+                              ),
+                            )
+                          : Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
                               children: [
                                 Text(
-                                  _playerData!['fullName'] as String,
+                                  'Send Detailed Report',
                                   style: GoogleFonts.inter(
                                     fontSize: 16,
                                     fontWeight: FontWeight.bold,
-                                    color:
-                                        Theme.of(context).colorScheme.onSurface,
+                                    color: AppPalette.white,
                                   ),
                                 ),
-                                Text(
-                                  'Player',
-                                  style: GoogleFonts.inter(
-                                    fontSize: 12,
-                                    color: AppPalette.textSecondaryLight,
-                                  ),
-                                ),
+                                const SizedBox(width: 8),
+                                const Icon(Icons.send_rounded,
+                                    color: AppPalette.white, size: 18),
                               ],
                             ),
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    const SizedBox(height: 24),
-
-                    // Session Info Card
-                    Text(
-                      'SESSION',
-                      style: GoogleFonts.inter(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: AppPalette.textSecondaryLight,
-                        letterSpacing: 1.2,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).cardColor,
-                        borderRadius: BorderRadius.circular(12),
-                        border:
-                            Border.all(color: Theme.of(context).dividerColor),
-                      ),
-                      child: Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: AppPalette.orangeAccent
-                                  .withValues(alpha: 0.1),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: const Icon(Icons.event_note_rounded,
-                                color: AppPalette.orangeAccent, size: 20),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  _session!['title'] as String,
-                                  style: GoogleFonts.inter(
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.w600,
-                                    color:
-                                        Theme.of(context).colorScheme.onSurface,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                                Text(
-                                  '${DateTimeUtils.formatSessionDate(startTime)} • ${DateTimeUtils.formatTimeFromDateTime(startTime)}',
-                                  style: GoogleFonts.inter(
-                                    fontSize: 12,
-                                    color: AppPalette.textSecondaryLight,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    const SizedBox(height: 32),
-
-                    Text(
-                      'Please provide constructive feedback below. Fields left empty will be omitted from the final report visible to the player.',
-                      style: GoogleFonts.inter(
-                        fontSize: 13,
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        fontStyle: FontStyle.italic,
-                      ),
-                    ),
-
-                    const SizedBox(height: 24),
-
-                    // 1. Session Overview
-                    _buildSectionHeader(
-                        '1. Session Overview', Icons.flag_rounded),
-                    _buildTextField(
-                      'Primary Focus',
-                      'E.g. Playing spin bowling, fast bowling run-up...',
-                      _primaryFocusController,
-                      maxLines: 2,
-                    ),
-
-                    // 2. Strengths & Positives
-                    _buildSectionHeader(
-                        '2. Strengths & Positives', Icons.thumb_up_rounded),
-                    _buildTextField(
-                      'Technical Wins',
-                      'Highlight specific techniques they executed well...',
-                      _technicalWinsController,
-                    ),
-                    _buildTextField(
-                      'Progress',
-                      'Note any improvements made since their last session...',
-                      _progressController,
-                    ),
-                    _buildTextField(
-                      'Intangibles',
-                      'Attitude, focus, work ethic, or stamina...',
-                      _intangiblesController,
-                    ),
-
-                    // 3. Areas for Improvement
-                    _buildSectionHeader(
-                        '3. Areas for Improvement', Icons.build_rounded),
-                    _buildTextField(
-                      'Technical Flaws',
-                      'Specific mechanics to fix...',
-                      _technicalFlawsController,
-                    ),
-                    _buildTextField(
-                      'Tactical & Mental Aspects',
-                      'Shot selection, reading the bowler, concentration...',
-                      _tacticalMentalController,
-                    ),
-
-                    // 4. Action Plan & Homework
-                    _buildSectionHeader(
-                        '4. Action Plan & Homework', Icons.assignment_rounded),
-                    _buildTextField(
-                      'Specific Drills',
-                      'Drills they can do on their own or with a friend...',
-                      _specificDrillsController,
-                    ),
-                    _buildTextField(
-                      'Fitness & Conditioning',
-                      'Physical work that might help their specific issues...',
-                      _fitnessConditioningController,
-                    ),
-
-                    // 5. Looking Ahead
-                    _buildSectionHeader(
-                        '5. Looking Ahead', Icons.rocket_launch_rounded),
-                    _buildTextField(
-                      'Goal for Next Session',
-                      'Briefly outline what you plan to tackle next time...',
-                      _goalForNextSessionController,
-                      maxLines: 2,
-                    ),
-                    _buildTextField(
-                      'Closing Encouragement',
-                      'A brief, supportive note to keep them motivated...',
-                      _closingEncouragementController,
-                      maxLines: 2,
-                    ),
-
-                    const SizedBox(height: 100), // padding for bottom bar
-                  ],
-                ),
-              ),
-            ),
-
-            // Bottom Sticky Button
-            Container(
-              padding: EdgeInsets.fromLTRB(
-                24,
-                16,
-                24,
-                MediaQuery.of(context).padding.bottom + 16,
-              ),
-              decoration: BoxDecoration(
-                color: Theme.of(context).scaffoldBackgroundColor,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.05),
-                    blurRadius: 10,
-                    offset: const Offset(0, -5),
-                  ),
-                ],
-              ),
-              child: SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: _isSaving ? null : _saveReport,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppPalette.orangeAccent,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
                     ),
                   ),
-                  child: _isSaving
-                      ? const SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(
-                            color: AppPalette.white,
-                            strokeWidth: 2,
-                          ),
-                        )
-                      : Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text(
-                              'Send Detailed Report',
-                              style: GoogleFonts.inter(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                                color: AppPalette.white,
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            const Icon(Icons.send_rounded,
-                                color: AppPalette.white, size: 18),
-                          ],
-                        ),
                 ),
-              ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

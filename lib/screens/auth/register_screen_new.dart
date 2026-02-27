@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+
 import '../../config/palette.dart';
 import '../../services/firebase_auth_service.dart';
 import '../../widgets/app_buttons.dart';
@@ -65,12 +65,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
       debugPrint('✅ Firebase registration successful');
 
-      // Store email and role in SharedPreferences for first login
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('pending_email', _emailController.text.trim());
-      await prefs.setString('pending_role', widget.role ?? 'player');
-      debugPrint('📦 Stored pending registration data');
-
       if (mounted) {
         _showSnackBar(
           'Registration successful! Please check your email to verify your account.',
@@ -78,7 +72,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
         await Future.delayed(const Duration(seconds: 2));
         if (mounted) {
-          context.go('/login', extra: {'role': widget.role ?? 'player'});
+          context.go('/login');
         }
       }
     } catch (e) {
@@ -392,7 +386,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 // Sign up button
                 PrimaryButton(
                   text: 'Sign Up',
-                  onPressed: _handleRegister,
+                  onPressed: _agreedToTerms ? _handleRegister : null,
                   isLoading: _isLoading,
                 ),
 

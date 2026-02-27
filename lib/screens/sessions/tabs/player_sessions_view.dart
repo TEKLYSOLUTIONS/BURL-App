@@ -376,8 +376,9 @@ class _PlayerSessionsViewState extends State<PlayerSessionsView>
                   onTap: () async {
                     final sessionId = session['_id'] as String?;
                     if (sessionId != null && sessionId.isNotEmpty) {
+                      final dateParam = occurrenceDate.toIso8601String();
                       final result = await context.push(
-                        '/guardian/session-details/$sessionId',
+                        '/guardian/session-details/$sessionId?date=$dateParam',
                       );
                       if (result == true) _fetchSessions();
                     }

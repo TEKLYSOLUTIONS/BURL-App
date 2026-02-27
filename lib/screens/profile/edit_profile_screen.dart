@@ -7,6 +7,7 @@ import '../../config/palette.dart';
 import '../../services/profile_service.dart';
 import '../../services/auth_service.dart';
 import '../../services/storage_service.dart';
+import '../../utils/country_codes.dart';
 
 class EditProfileScreen extends StatefulWidget {
   final Map<String, dynamic>? profileData;
@@ -23,6 +24,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
   final TextEditingController _bioController = TextEditingController();
+  final GlobalKey _phoneFieldKey = GlobalKey();
+
+  String _selectedCountryCode = '+1'; // Default to +1
 
   bool _isLoading = false;
   bool _isSaving = false;
@@ -49,7 +53,23 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     _profileImageUrl = data['profileImage'];
     _nameController.text = data['fullName'] ?? '';
     _emailController.text = data['email'] ?? '';
-    _phoneController.text = data['phone'] ?? data['phoneNumber'] ?? '';
+
+    final fullPhone = data['phone'] ?? data['phoneNumber'] ?? '';
+    if (fullPhone.isNotEmpty && fullPhone.contains(' ')) {
+      final parts = fullPhone.split(' ');
+      if (parts.length > 1) {
+        _selectedCountryCode = parts.first;
+        _phoneController.text = parts.sublist(1).join(' ');
+      } else {
+        _phoneController.text = fullPhone;
+        _selectedCountryCode = '+1';
+      }
+    } else {
+      _phoneController.text = fullPhone;
+      if (fullPhone.isNotEmpty && fullPhone.startsWith('+')) {
+        // Fallback logic if there's no space but we have a plus. For now keep simple
+      }
+    }
 
     // Get role-specific data
     String bio = '';
@@ -105,10 +125,13 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     });
 
     try {
+      final String fullPhone =
+          '$_selectedCountryCode ${_phoneController.text.trim()}';
+
       final updateData = {
         'fullName': _nameController.text.trim(),
         'email': _emailController.text.trim(),
-        'phone': _phoneController.text.trim(),
+        'phone': fullPhone,
       };
 
       // Add role-specific fields
@@ -222,8 +245,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           children: [
             Container(
               padding: EdgeInsets.only(
-                top: MediaQuery.of(context).padding.top + 20,
-                bottom: 24,
+                top: MediaQuery.of(context).padding.top + 10,
+                bottom: 16,
                 left: 24,
                 right: 24,
               ),
@@ -281,8 +304,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           // Rounded Header Container
           Container(
             padding: EdgeInsets.only(
-              top: MediaQuery.of(context).padding.top + 20,
-              bottom: 24,
+              top: MediaQuery.of(context).padding.top + 10,
+              bottom: 16,
               left: 24,
               right: 24,
             ),
@@ -475,13 +498,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       validator: (value) => null,
                     ),
                     const SizedBox(height: 16),
-                    _buildTextField(
-                      "Phone Number",
-                      _phoneController,
-                      icon: Icons.phone_outlined,
-                      keyboardType: TextInputType.phone,
-                      validator: null, // Optional field
-                    ),
+                    _buildPhoneField(),
 
                     const SizedBox(height: 32),
                   ],
@@ -536,6 +553,210 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildPhoneField() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final labelColor = Theme.of(context).colorScheme.onSurface;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          "Phone Number",
+          style: GoogleFonts.inter(
+            fontWeight: FontWeight.w600,
+            color: labelColor.withValues(alpha: 0.8),
+            fontSize: 14,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Container(
+          key: _phoneFieldKey,
+          decoration: BoxDecoration(
+            color: Theme.of(context).cardColor,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: Theme.of(context).dividerColor.withValues(alpha: 0.1),
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Theme.of(context).shadowColor.withValues(alpha: 0.03),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              // Country Code Autocomplete
+              SizedBox(
+                width: 105,
+                child: Autocomplete<Map<String, String>>(
+                  initialValue: TextEditingValue(text: _selectedCountryCode),
+                  displayStringForOption: (option) => option['code']!,
+                  optionsBuilder: (TextEditingValue textEditingValue) {
+                    if (textEditingValue.text.isEmpty) {
+                      return worldCountryCodes;
+                    }
+                    final query = textEditingValue.text.toLowerCase();
+                    return worldCountryCodes
+                        .where((Map<String, String> option) {
+                      return option['code']!.toLowerCase().contains(query) ||
+                          option['name']!.toLowerCase().contains(query);
+                    });
+                  },
+                  onSelected: (Map<String, String> selection) {
+                    setState(() {
+                      _selectedCountryCode = selection['code']!;
+                    });
+                  },
+                  fieldViewBuilder:
+                      (context, controller, focusNode, onEditingComplete) {
+                    if (controller.text.isEmpty &&
+                        _selectedCountryCode.isNotEmpty) {
+                      controller.text = _selectedCountryCode;
+                    }
+                    return TextField(
+                      controller: controller,
+                      focusNode: focusNode,
+                      style: GoogleFonts.inter(
+                        color: labelColor,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
+                      decoration: InputDecoration(
+                        border: InputBorder.none,
+                        isDense: true,
+                        fillColor: Colors.transparent,
+                        filled: true,
+                        contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 14, vertical: 16),
+                        suffixIconColor:
+                            isDark ? Colors.white54 : Colors.grey[600],
+                        suffixIconConstraints:
+                            const BoxConstraints(minWidth: 24, minHeight: 24),
+                        suffixIcon: const Icon(Icons.arrow_drop_down, size: 20),
+                      ),
+                      onChanged: (val) => _selectedCountryCode = val,
+                      keyboardType: TextInputType.phone,
+                    );
+                  },
+                  optionsViewBuilder: (context, onSelected, options) {
+                    final box = _phoneFieldKey.currentContext
+                        ?.findRenderObject() as RenderBox?;
+                    final fieldWidth = box?.size.width ??
+                        (MediaQuery.of(context).size.width - 48);
+                    return Align(
+                      alignment: Alignment.topLeft,
+                      child: OverflowBox(
+                        maxWidth: fieldWidth,
+                        alignment: Alignment.topLeft,
+                        child: Material(
+                          elevation: 4,
+                          borderRadius: BorderRadius.circular(12),
+                          color:
+                              isDark ? AppPalette.elevatedDark : Colors.white,
+                          child: Container(
+                            width: fieldWidth,
+                            constraints: const BoxConstraints(maxHeight: 260),
+                            clipBehavior: Clip.antiAlias,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: Theme.of(context)
+                                    .dividerColor
+                                    .withValues(alpha: 0.1),
+                              ),
+                            ),
+                            child: ListView.separated(
+                              padding: EdgeInsets.zero,
+                              shrinkWrap: true,
+                              itemCount: options.length,
+                              separatorBuilder: (context, index) => Divider(
+                                height: 1,
+                                color: Theme.of(context)
+                                    .dividerColor
+                                    .withValues(alpha: 0.1),
+                              ),
+                              itemBuilder: (context, index) {
+                                final option = options.elementAt(index);
+                                return InkWell(
+                                  onTap: () => onSelected(option),
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 16, vertical: 14),
+                                    child: Row(
+                                      children: [
+                                        Text(
+                                          option['code']!,
+                                          style: GoogleFonts.inter(
+                                            color: labelColor,
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 14,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 12),
+                                        Flexible(
+                                          child: Text(
+                                            option['name']!,
+                                            style: GoogleFonts.inter(
+                                              color: labelColor,
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+              // Vertical Divider
+              Container(
+                width: 1,
+                height: 28,
+                color: Theme.of(context).dividerColor.withValues(alpha: 0.1),
+              ),
+              // Phone Number Input
+              Expanded(
+                child: TextFormField(
+                  controller: _phoneController,
+                  keyboardType: TextInputType.phone,
+                  style: GoogleFonts.inter(
+                    color: labelColor,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
+                  decoration: InputDecoration(
+                    border: InputBorder.none,
+                    isDense: true,
+                    fillColor: Colors.transparent,
+                    filled: true,
+                    contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 14, vertical: 16),
+                    hintText: 'Phone number',
+                    hintStyle: GoogleFonts.inter(
+                      fontSize: 14,
+                      color: labelColor.withValues(alpha: 0.3),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 

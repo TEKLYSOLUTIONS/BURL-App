@@ -693,8 +693,11 @@ class _CoachDetailsScreenState extends State<CoachDetailsScreen>
 
                                         return InkWell(
                                           onTap: () {
+                                            final dateParam = startTime != null
+                                                ? '?date=${startTime.toIso8601String()}'
+                                                : '';
                                             context.push(
-                                              '/session-details/${session['_id']}',
+                                              '/session-details/${session['_id']}$dateParam',
                                             );
                                           },
                                           borderRadius:

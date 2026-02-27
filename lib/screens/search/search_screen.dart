@@ -355,13 +355,16 @@ class _SearchScreenState extends State<SearchScreen> {
                                               .uri
                                               .toString()
                                               .startsWith('/guardian');
+                                          final dateParam = startTime != null
+                                              ? '?date=${startTime.toIso8601String()}'
+                                              : '';
                                           if (isGuardian) {
                                             context.push(
-                                              '/guardian/session-details/${session['_id']}',
+                                              '/guardian/session-details/${session['_id']}$dateParam',
                                             );
                                           } else {
                                             context.push(
-                                              '/session-details/${session['_id']}',
+                                              '/session-details/${session['_id']}$dateParam',
                                             );
                                           }
                                         },

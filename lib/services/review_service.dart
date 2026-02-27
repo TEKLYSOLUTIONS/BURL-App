@@ -29,6 +29,26 @@ class ReviewService {
     }
   }
 
+  // Get reviews for the currently authenticated coach
+  static Future<Map<String, dynamic>> getMyCoachReviews({
+    int page = 1,
+    int limit = 20,
+  }) async {
+    try {
+      final response = await ApiService.get(
+        'reviews/my-reviews?page=$page&limit=$limit',
+      );
+      final data = json.decode(response.body);
+      if (response.statusCode == 200) {
+        return data;
+      } else {
+        throw Exception(data['message'] ?? 'Failed to fetch your reviews');
+      }
+    } catch (e) {
+      rethrow;
+    }
+  }
+
   // Get reviews for a coach
   static Future<Map<String, dynamic>> getCoachReviews(
     String coachId, {

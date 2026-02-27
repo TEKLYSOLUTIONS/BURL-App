@@ -15,6 +15,7 @@ import '../../services/storage_service.dart';
 import '../../services/notification_service.dart';
 import '../../providers/theme_provider.dart';
 import '../../utils/currency_helper.dart';
+import '../../utils/country_codes.dart';
 
 class CompleteCoachProfileScreen extends ConsumerStatefulWidget {
   final Map<String, dynamic>? profileData;
@@ -40,6 +41,12 @@ class _CompleteCoachProfileScreenState
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
   final TextEditingController _cityController = TextEditingController();
+  final GlobalKey _phoneFieldKey = GlobalKey();
+
+  // Page Controller for Swiping
+  final PageController _pageController = PageController();
+
+  String _selectedCountryCode = '+1'; // Default to +1
 
   // Cricket Coach Controllers
   final TextEditingController _coachTitleController = TextEditingController();
@@ -198,7 +205,15 @@ class _CompleteCoachProfileScreenState
         });
       }
     } catch (e) {
-      debugPrint('geolocation error: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+                'Could not detect location automatically. Please enter manually.'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      }
     } finally {
       if (mounted) setState(() => _isDetectingLocation = false);
     }
@@ -208,7 +223,21 @@ class _CompleteCoachProfileScreenState
     // Basic info
     _nameController.text = data['fullName'] ?? '';
     _emailController.text = data['email'] ?? '';
-    _phoneController.text = data['phone'] ?? data['phoneNumber'] ?? '';
+
+    final fullPhone = data['phone'] ?? data['phoneNumber'] ?? '';
+    if (fullPhone.isNotEmpty && fullPhone.contains(' ')) {
+      final parts = fullPhone.split(' ');
+      if (parts.length > 1) {
+        _selectedCountryCode = parts.first;
+        _phoneController.text = parts.sublist(1).join(' ');
+      } else {
+        _phoneController.text = fullPhone;
+        _selectedCountryCode = '+1';
+      }
+    } else {
+      _phoneController.text = fullPhone;
+    }
+
     _profileImageUrl = data['coachProfile']?['profilePhoto'] ??
         data['profileImage'] ??
         data['profileUrl'] ??
@@ -302,6 +331,7 @@ class _CompleteCoachProfileScreenState
     _experienceController.dispose();
     _philosophyController.dispose();
     _playingCareerController.dispose();
+    _pageController.dispose();
 
     super.dispose();
   }
@@ -311,10 +341,13 @@ class _CompleteCoachProfileScreenState
     setState(() => _isSaving = true);
 
     try {
+      final String fullPhone =
+          '$_selectedCountryCode ${_phoneController.text.trim()}';
+
       final updateData = {
         'fullName': _nameController.text.trim(),
         'email': _emailController.text.trim(),
-        'phone': _phoneController.text.trim(),
+        'phone': fullPhone,
         'city': _cityController.text.trim(),
         'country': _country,
         'currency': _userCurrency ?? CurrencyHelper.defaultCurrency,
@@ -465,21 +498,35 @@ class _CompleteCoachProfileScreenState
           _buildCustomHeader(),
           _buildCustomStepper(),
           Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 24,
-                vertical: 16,
-              ),
-              child: Column(
-                children: [
-                  _buildStepContent(_currentStep),
-                  const SizedBox(height: 24),
-                  _buildContinueButton(),
-                  const SizedBox(height: 24),
-                ],
-              ),
+            child: PageView(
+              controller: _pageController,
+              onPageChanged: (index) {
+                setState(() => _currentStep = index);
+              },
+              children: [
+                _buildFormPage(0),
+                _buildFormPage(1),
+                _buildFormPage(2),
+              ],
             ),
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFormPage(int stepIndex) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.symmetric(
+        horizontal: 24,
+        vertical: 16,
+      ),
+      child: Column(
+        children: [
+          _buildStepContent(stepIndex),
+          const SizedBox(height: 24),
+          _buildContinueButton(stepIndex),
+          const SizedBox(height: 24),
         ],
       ),
     );
@@ -620,6 +667,194 @@ class _CompleteCoachProfileScreenState
                 width: 1.5,
               ),
             ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPhoneField() {
+    final theme = Theme.of(context);
+    final isDark = ref.watch(themeProvider) == ThemeMode.dark;
+    final labelColor = theme.textTheme.bodyLarge?.color ?? Colors.black;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          "Phone Number *",
+          style: GoogleFonts.inter(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            color: labelColor,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Container(
+          key: _phoneFieldKey,
+          decoration: BoxDecoration(
+            color: isDark
+                ? Colors.white.withValues(alpha: 0.05)
+                : Colors.grey[100],
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Row(
+            children: [
+              // Country Code Autocomplete
+              SizedBox(
+                width: 105,
+                child: Autocomplete<Map<String, String>>(
+                  initialValue: TextEditingValue(text: _selectedCountryCode),
+                  displayStringForOption: (option) => option['code']!,
+                  optionsBuilder: (TextEditingValue textEditingValue) {
+                    if (textEditingValue.text.isEmpty) {
+                      return worldCountryCodes;
+                    }
+                    final query = textEditingValue.text.toLowerCase();
+                    return worldCountryCodes
+                        .where((Map<String, String> option) {
+                      return option['code']!.toLowerCase().contains(query) ||
+                          option['name']!.toLowerCase().contains(query);
+                    });
+                  },
+                  onSelected: (Map<String, String> selection) {
+                    setState(() {
+                      _selectedCountryCode = selection['code']!;
+                    });
+                  },
+                  fieldViewBuilder:
+                      (context, controller, focusNode, onEditingComplete) {
+                    if (controller.text.isEmpty &&
+                        _selectedCountryCode.isNotEmpty) {
+                      controller.text = _selectedCountryCode;
+                    }
+                    return TextField(
+                      controller: controller,
+                      focusNode: focusNode,
+                      style: GoogleFonts.inter(
+                        color: labelColor,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
+                      decoration: InputDecoration(
+                        border: InputBorder.none,
+                        isDense: true,
+                        fillColor: Colors.transparent,
+                        filled: true,
+                        contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 14, vertical: 16),
+                        suffixIconColor:
+                            isDark ? Colors.white54 : Colors.grey[600],
+                        suffixIconConstraints:
+                            const BoxConstraints(minWidth: 24, minHeight: 24),
+                        suffixIcon: const Icon(Icons.arrow_drop_down, size: 20),
+                      ),
+                      onChanged: (val) => _selectedCountryCode = val,
+                      keyboardType: TextInputType.phone,
+                    );
+                  },
+                  optionsViewBuilder: (context, onSelected, options) {
+                    final box = _phoneFieldKey.currentContext
+                        ?.findRenderObject() as RenderBox?;
+                    final fieldWidth = box?.size.width ??
+                        (MediaQuery.of(context).size.width - 48);
+                    return Align(
+                      alignment: Alignment.topLeft,
+                      child: OverflowBox(
+                        maxWidth: fieldWidth,
+                        alignment: Alignment.topLeft,
+                        child: Material(
+                          elevation: 8,
+                          borderRadius: BorderRadius.circular(12),
+                          color:
+                              isDark ? const Color(0xFF1E293B) : Colors.white,
+                          child: Container(
+                            width: fieldWidth,
+                            constraints: const BoxConstraints(maxHeight: 260),
+                            clipBehavior: Clip.antiAlias,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: ListView.separated(
+                              padding: EdgeInsets.zero,
+                              shrinkWrap: true,
+                              itemCount: options.length,
+                              separatorBuilder: (context, index) => Divider(
+                                height: 1,
+                                color:
+                                    isDark ? Colors.white24 : Colors.grey[200],
+                              ),
+                              itemBuilder: (context, index) {
+                                final option = options.elementAt(index);
+                                return InkWell(
+                                  onTap: () => onSelected(option),
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 16, vertical: 14),
+                                    child: Row(
+                                      children: [
+                                        Text(
+                                          option['code']!,
+                                          style: GoogleFonts.inter(
+                                            color: labelColor,
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 14,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 12),
+                                        Flexible(
+                                          child: Text(
+                                            option['name']!,
+                                            style: GoogleFonts.inter(
+                                              color: labelColor,
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+              // Vertical Divider
+              Container(
+                width: 1,
+                height: 28,
+                color: isDark ? Colors.white24 : Colors.grey[300],
+              ),
+              // Phone Number Input
+              Expanded(
+                child: TextFormField(
+                  controller: _phoneController,
+                  keyboardType: TextInputType.phone,
+                  style: TextStyle(color: labelColor),
+                  validator: (value) =>
+                      value?.isEmpty ?? true ? 'Phone is required' : null,
+                  decoration: InputDecoration(
+                    border: InputBorder.none,
+                    isDense: true,
+                    fillColor: Colors.transparent,
+                    filled: true,
+                    contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 14, vertical: 16),
+                    hintText: '1 234 567 8900',
+                    hintStyle: TextStyle(
+                      color: isDark ? Colors.grey[500] : Colors.grey[400],
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ],
@@ -1101,15 +1336,7 @@ class _CompleteCoachProfileScreenState
                     value?.isEmpty ?? true ? 'Email is required' : null,
               ),
               const SizedBox(height: 16),
-              _buildTextField(
-                controller: _phoneController,
-                label: 'Phone Number *',
-                hint: '+1 234 567 8900',
-                icon: Icons.phone_outlined,
-                keyboardType: TextInputType.phone,
-                validator: (value) =>
-                    value?.isEmpty ?? true ? 'Phone is required' : null,
-              ),
+              _buildPhoneField(),
               const SizedBox(height: 16),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -1300,8 +1527,8 @@ class _CompleteCoachProfileScreenState
   Widget _buildCustomHeader() {
     return Container(
       padding: EdgeInsets.only(
-        top: MediaQuery.of(context).padding.top + 16,
-        bottom: 24,
+        top: MediaQuery.of(context).padding.top + 10,
+        bottom: 16,
         left: 24,
         right: 24,
       ),
@@ -1365,19 +1592,22 @@ class _CompleteCoachProfileScreenState
     );
   }
 
-  Widget _buildContinueButton() {
-    final isLastStep = _currentStep == 2;
+  Widget _buildContinueButton(int stepIndex) {
+    final isLastStep = stepIndex == 2;
     return SizedBox(
       width: double.infinity,
       child: ElevatedButton(
         onPressed: _isSaving
             ? null
             : () {
-                if (_formKeys[_currentStep].currentState!.validate()) {
+                if (_formKeys[stepIndex].currentState!.validate()) {
                   if (isLastStep) {
                     _saveChanges();
                   } else {
-                    setState(() => _currentStep += 1);
+                    _pageController.nextPage(
+                      duration: const Duration(milliseconds: 300),
+                      curve: Curves.easeInOut,
+                    );
                   }
                 }
               },
@@ -1389,7 +1619,7 @@ class _CompleteCoachProfileScreenState
           ),
           elevation: 0,
         ),
-        child: _isSaving
+        child: _isSaving && isLastStep
             ? const SizedBox(
                 height: 20,
                 width: 20,

@@ -1345,6 +1345,7 @@ class _CreateSessionScreenState extends State<CreateSessionScreen> {
             initialValue: true,
             decoration: const InputDecoration(border: InputBorder.none),
           ),
+          const SizedBox(height: 8),
           FormBuilderSwitch(
             name: 'allowWaitlist',
             title: const Text('Allow Waitlist'),

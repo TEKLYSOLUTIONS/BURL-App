@@ -279,7 +279,10 @@ class _CalendarTabState extends State<CalendarTab> {
               );
             } else {
               // Navigate to session details
-              context.push('/session-details/${event['data']['_id']}');
+              final dateParam =
+                  (event['startTime'] as DateTime).toIso8601String();
+              context.push(
+                  '/coach/session-details/${event['data']['_id']}?date=$dateParam');
             }
           },
           child: Container(

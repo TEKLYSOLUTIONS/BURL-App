@@ -12,13 +12,17 @@ import '../../services/profile_service.dart';
 import '../../services/session_service.dart';
 import '../../utils/date_time_utils.dart';
 import '../../widgets/headers/coach_app_bar.dart';
-import '../../widgets/navigation/coach_bottom_bar.dart';
 import 'create_session_screen.dart';
 
 class SessionDetailsScreen extends StatefulWidget {
   final String sessionId;
+  final String? occurrenceDate;
 
-  const SessionDetailsScreen({super.key, required this.sessionId});
+  const SessionDetailsScreen({
+    super.key,
+    required this.sessionId,
+    this.occurrenceDate,
+  });
 
   @override
   State<SessionDetailsScreen> createState() => _SessionDetailsScreenState();
@@ -294,7 +298,30 @@ class _SessionDetailsScreenState extends State<SessionDetailsScreen> {
     // Parse time early to check for completed status
     final timeSlots =
         (_session!['timeSlots'] as List?)?.cast<Map<String, dynamic>>() ?? [];
-    final firstTimeSlot = timeSlots.isNotEmpty ? timeSlots[0] : null;
+
+    Map<String, dynamic>? firstTimeSlot;
+
+    if (widget.occurrenceDate != null && timeSlots.isNotEmpty) {
+      try {
+        final targetDate = DateTime.parse(widget.occurrenceDate!).toLocal();
+        for (final slot in timeSlots) {
+          if (slot['startTime'] != null) {
+            final slotDate =
+                DateTime.parse(slot['startTime'].toString()).toLocal();
+            if (slotDate.year == targetDate.year &&
+                slotDate.month == targetDate.month &&
+                slotDate.day == targetDate.day) {
+              firstTimeSlot = slot;
+              break;
+            }
+          }
+        }
+      } catch (e) {
+        debugPrint('Error parsing occurrenceDate: $e');
+      }
+    }
+
+    firstTimeSlot ??= timeSlots.isNotEmpty ? timeSlots[0] : null;
 
     DateTime startTime = DateTime.now();
     if (firstTimeSlot != null && firstTimeSlot['startTime'] != null) {
@@ -313,7 +340,6 @@ class _SessionDetailsScreenState extends State<SessionDetailsScreen> {
     if (isCoach) {
       return Scaffold(
         backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-        bottomNavigationBar: const CoachBottomBar(),
         body: Column(
           children: [
             CoachAppBar(
@@ -512,7 +538,23 @@ class _SessionDetailsScreenState extends State<SessionDetailsScreen> {
       duration = int.tryParse(firstTimeSlot['durationMinutes'].toString()) ?? 0;
     }
 
-    final assignedPlayers = (_session!['assignedPlayers'] as List?) ?? [];
+    final rawAssignedPlayers = (_session!['assignedPlayers'] as List?) ?? [];
+    final List<dynamic> assignedPlayers = [];
+    final Set<String> seenPlayerIds = {};
+    for (var pData in rawAssignedPlayers) {
+      bool added = false;
+      if (pData is Map && pData['player'] is Map) {
+        final playerId = pData['player']['_id']?.toString();
+        if (playerId != null && playerId.isNotEmpty) {
+          if (!seenPlayerIds.contains(playerId)) {
+            seenPlayerIds.add(playerId);
+            assignedPlayers.add(pData);
+          }
+          added = true;
+        }
+      }
+      if (!added) assignedPlayers.add(pData);
+    }
 
     // Handle coach data - backend might send it as 'coach' or 'createdBy'
     Map<String, dynamic>? coach;
@@ -589,17 +631,16 @@ class _SessionDetailsScreenState extends State<SessionDetailsScreen> {
           const SizedBox(height: 20),
 
           // Stats Row
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.start,
-              children: [
-                _buildQuickStat(
+          Row(
+            children: [
+              Expanded(
+                child: _buildQuickStat(
                   Icons.timer_outlined,
                   DateTimeUtils.formatDuration(duration),
                 ),
-                const SizedBox(width: 24),
-                _buildQuickStat(
+              ),
+              Expanded(
+                child: _buildQuickStat(
                   Icons.people_outline,
                   () {
                     final cap = _session!['capacity'];
@@ -619,8 +660,9 @@ class _SessionDetailsScreenState extends State<SessionDetailsScreen> {
                     return '$cap Capacity';
                   }(),
                 ),
-                const SizedBox(width: 24),
-                _buildQuickStat(
+              ),
+              Expanded(
+                child: _buildQuickStat(
                   Icons.payments_outlined,
                   () {
                     final pricing = _session!['pricing'];
@@ -632,10 +674,11 @@ class _SessionDetailsScreenState extends State<SessionDetailsScreen> {
                     return '$currency $amount $suffix';
                   }(),
                 ),
-                const SizedBox(width: 24),
-                _buildQuickStat(Icons.sports_cricket, 'Cricket'),
-              ],
-            ),
+              ),
+              Expanded(
+                child: _buildQuickStat(Icons.sports_cricket, 'Cricket'),
+              ),
+            ],
           ),
 
           const SizedBox(height: 32),
@@ -995,7 +1038,9 @@ class _SessionDetailsScreenState extends State<SessionDetailsScreen> {
                               ),
                       style: OutlinedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 16),
-                        side: const BorderSide(color: AppPalette.navyPrimary),
+                        side: BorderSide(
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
@@ -1005,7 +1050,7 @@ class _SessionDetailsScreenState extends State<SessionDetailsScreen> {
                         style: GoogleFonts.inter(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
-                          color: AppPalette.navyPrimary,
+                          color: Theme.of(context).colorScheme.primary,
                         ),
                       ),
                     ),
@@ -1232,6 +1277,7 @@ class _SessionDetailsScreenState extends State<SessionDetailsScreen> {
         const SizedBox(height: 8),
         Text(
           label,
+          textAlign: TextAlign.center,
           style: GoogleFonts.inter(
             fontSize: 12,
             fontWeight: FontWeight.w600,

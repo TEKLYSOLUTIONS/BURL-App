@@ -1087,7 +1087,20 @@ class _UpNextCard extends StatelessWidget {
                   onTap: () {
                     final sessionId = session['_id']?.toString();
                     if (sessionId != null && sessionId.isNotEmpty) {
-                      context.push('/guardian/session-details/$sessionId');
+                      String dateParam = '';
+                      if (session['timeSlots'] != null &&
+                          (session['timeSlots'] as List).isNotEmpty) {
+                        final slotStart = session['timeSlots'][0]['startTime'];
+                        if (slotStart != null) {
+                          final dt = DateTime.tryParse(slotStart.toString())
+                              ?.toLocal();
+                          if (dt != null) {
+                            dateParam = '?date=${dt.toIso8601String()}';
+                          }
+                        }
+                      }
+                      context.push(
+                          '/guardian/session-details/$sessionId$dateParam');
                     }
                   },
                   child: Container(

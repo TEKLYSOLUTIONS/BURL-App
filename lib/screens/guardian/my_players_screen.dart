@@ -14,16 +14,43 @@ class MyPlayersScreen extends StatefulWidget {
   State<MyPlayersScreen> createState() => _MyPlayersScreenState();
 }
 
-class _MyPlayersScreenState extends State<MyPlayersScreen> {
+class _MyPlayersScreenState extends State<MyPlayersScreen>
+    with WidgetsBindingObserver {
   final _guardianService = GuardianService();
   List<dynamic> _players = [];
   bool _isLoading = true;
   String? _error;
 
+  bool _initialised = false;
+
   @override
   void initState() {
     super.initState();
-    _fetchPlayers();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Fetch on first build AND on every time the route becomes active again
+    // (e.g. popping back from edit-player or player-details)
+    if (!_initialised || !_isLoading) {
+      _initialised = true;
+      _fetchPlayers();
+    }
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _fetchPlayers();
+    }
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
   }
 
   Future<void> _fetchPlayers() async {
@@ -179,9 +206,6 @@ class _PlayerCard extends StatelessWidget {
     final String fullName = playerData['fullName'] ?? 'Unknown Player';
     final String role = playerData['role'] ?? 'Athlete';
 
-    // Using mock logic for status just for display
-    final bool isGameDay = index == 0;
-
     return Container(
       decoration: BoxDecoration(
         color: Theme.of(context).cardColor,
@@ -211,29 +235,22 @@ class _PlayerCard extends StatelessWidget {
                   children: [
                     CircleAvatar(
                       radius: 32,
-                      backgroundImage: avatarUrl != null
-                          ? NetworkImage(avatarUrl)
-                          : const AssetImage(
-                              'assets/images/user_placeholder_soccer.png',
-                            ) as ImageProvider,
                       backgroundColor: Theme.of(
                         context,
                       ).colorScheme.surfaceContainerHighest,
+                      backgroundImage:
+                          avatarUrl != null ? NetworkImage(avatarUrl) : null,
+                      child: avatarUrl == null
+                          ? Icon(
+                              Icons.person,
+                              size: 40,
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurface
+                                  .withValues(alpha: 0.5),
+                            )
+                          : null,
                     ),
-                    if (isGameDay) // Mock indicator
-                      Positioned(
-                        bottom: 0,
-                        right: 0,
-                        child: Container(
-                          width: 14,
-                          height: 14,
-                          decoration: BoxDecoration(
-                            color: Colors.green,
-                            shape: BoxShape.circle,
-                            border: Border.all(color: Colors.white, width: 2),
-                          ),
-                        ),
-                      ),
                   ],
                 ),
                 const SizedBox(width: 16),

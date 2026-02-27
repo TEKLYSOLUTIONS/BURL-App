@@ -46,24 +46,9 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _isLoading = true);
 
     try {
-      // First, try local authentication (for existing MongoDB users)
       debugPrint('🔐 Attempting login for: ${_emailController.text.trim()}');
-      try {
-        final localSuccess = await _tryLocalLogin();
 
-        if (localSuccess) {
-          debugPrint('✅ Local authentication successful');
-          if (!mounted) return;
-          _navigateToHome();
-          return;
-        }
-      } catch (e) {
-        // Local auth failed, proceed to Firebase
-        debugPrint('⚠️ Local auth failed: ${e.toString()}');
-      }
-
-      // If local auth fails (for any other reason like network error, etc), try Firebase authentication (for new users)
-      debugPrint('🔄 Local auth failed, trying Firebase...');
+      // ── Fast path: Firebase auth (covers 99% of users) ──────────────────
       try {
         await _authService.signIn(
           email: _emailController.text.trim(),
@@ -72,23 +57,34 @@ class _LoginScreenState extends State<LoginScreen> {
 
         debugPrint('✅ Firebase authentication successful');
 
-        // Get Firebase ID token and save it
-        final firebaseToken = await _authService.getIdToken();
-        if (firebaseToken != null) {
-          final prefs = await SharedPreferences.getInstance();
-          await prefs.setString('auth_token', firebaseToken);
-          debugPrint('💾 Firebase token saved to SharedPreferences');
+        // Role is already in SharedPrefs from _checkProfileCompletion()
+        // inside signIn() — no extra network call needed.
+        final prefs = await SharedPreferences.getInstance();
+        final role = prefs.getString('user_role');
+        if (mounted && role != null) {
+          setState(() => _userRole = role);
         }
-
-        // Fetch user profile from backend to get actual role
-        await _fetchUserProfile();
 
         if (!mounted) return;
         _navigateToHome();
-      } catch (firebaseError) {
-        debugPrint('❌ Firebase auth also failed: $firebaseError');
-        // firebaseError is already a friendly string from _handleAuthException
-        rethrow;
+        return;
+      } on Exception catch (firebaseError) {
+        final msg = firebaseError.toString();
+        // If Firebase says "invalid credential" it's a real error — stop here.
+        // Only fall through to local auth if Firebase has no account at all.
+        if (!msg.contains('No user found') && !msg.contains('user-not-found')) {
+          rethrow;
+        }
+        debugPrint('⚠️ No Firebase account, trying local auth...');
+      }
+
+      // ── Slow/rare path: local-only MongoDB users ─────────────────────────
+      final localSuccess = await _tryLocalLogin();
+      if (localSuccess) {
+        if (!mounted) return;
+        _navigateToHome();
+      } else {
+        throw Exception('Invalid email or password.');
       }
     } catch (e) {
       if (!mounted) return;

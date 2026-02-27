@@ -144,6 +144,12 @@ class ProfileScreen extends ConsumerWidget {
                       onTap: () =>
                           context.push('/coach/reports/${playerId ?? '1'}'),
                     ),
+                  if (isCoachView)
+                    _ProfileMenuItem(
+                      icon: Icons.star_rounded,
+                      label: 'My Reviews',
+                      onTap: () => context.push('/coach/my-reviews'),
+                    ),
                   _ProfileMenuItem(
                     icon: Icons.history,
                     label: 'Booking History',

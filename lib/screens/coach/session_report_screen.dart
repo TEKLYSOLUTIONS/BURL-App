@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
 import '../../services/session_service.dart';
 import '../../utils/date_time_utils.dart';
+import '../../widgets/headers/coach_app_bar.dart';
 
 class SessionReportScreen extends StatefulWidget {
   final String sessionId;
@@ -51,15 +52,74 @@ class _SessionReportScreenState extends State<SessionReportScreen> {
   Widget build(BuildContext context) {
     if (_isLoading) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Session Report')),
-        body: const Center(child: CircularProgressIndicator()),
+        body: Column(
+          children: [
+            CoachAppBar(
+              child: Row(
+                children: [
+                  const SizedBox(width: 36),
+                  Expanded(
+                    child: Text(
+                      'Session Report',
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.inter(
+                        color: Colors.white,
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 36),
+                ],
+              ),
+            ),
+            const Expanded(child: Center(child: CircularProgressIndicator())),
+          ],
+        ),
       );
     }
 
     if (_session == null) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Session Report')),
-        body: const Center(child: Text('Session not found')),
+        body: Column(
+          children: [
+            CoachAppBar(
+              child: Row(
+                children: [
+                  if (Navigator.of(context).canPop())
+                    InkWell(
+                      onTap: () => context.pop(),
+                      borderRadius: BorderRadius.circular(20),
+                      child: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.1),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.arrow_back,
+                            color: Colors.white, size: 20),
+                      ),
+                    )
+                  else
+                    const SizedBox(width: 36),
+                  Expanded(
+                    child: Text(
+                      'Session Report',
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.inter(
+                        color: Colors.white,
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 36),
+                ],
+              ),
+            ),
+            const Expanded(child: Center(child: Text('Session not found'))),
+          ],
+        ),
       );
     }
 
@@ -75,289 +135,413 @@ class _SessionReportScreenState extends State<SessionReportScreen> {
 
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      appBar: AppBar(
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.close),
-          onPressed: () => context.pop(),
-        ),
-        title: Text(
-          'Session Report',
-          style: GoogleFonts.inter(
-            fontWeight: FontWeight.bold,
-            fontSize: 20,
-          ),
-        ),
-        centerTitle: true,
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Session Header Card
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: Theme.of(context).cardColor,
-                borderRadius: BorderRadius.circular(20),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.05),
-                    blurRadius: 10,
-                    offset: const Offset(0, 4),
+      body: Column(
+        children: [
+          CoachAppBar(
+            child: Row(
+              children: [
+                if (Navigator.of(context).canPop())
+                  InkWell(
+                    onTap: () => context.pop(),
+                    borderRadius: BorderRadius.circular(20),
+                    child: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.arrow_back,
+                          color: Colors.white, size: 20),
+                    ),
+                  )
+                else
+                  const SizedBox(width: 36),
+                Expanded(
+                  child: Text(
+                    'Session Report',
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.inter(
+                      color: Colors.white,
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
-                ],
-              ),
+                ),
+                const SizedBox(width: 36),
+              ],
+            ),
+          ),
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(24),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    _session!['title']?.toString() ?? 'Untitled Session',
-                    style: GoogleFonts.inter(
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                      color: Theme.of(context).colorScheme.onSurface,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    DateTimeUtils.formatSessionDate(startTime),
-                    style: GoogleFonts.inter(
-                      fontSize: 14,
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      _buildStatBadge(
-                        context,
-                        'Present',
-                        presentCount.toString(),
-                        Colors.green,
-                      ),
-                      const SizedBox(width: 12),
-                      _buildStatBadge(
-                        context,
-                        'Absent',
-                        (assignedPlayers.length - presentCount).toString(),
-                        Colors.red,
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 32),
-
-            // Session Notes
-            _buildSectionLabel('SESSION NOTES'),
-            const SizedBox(height: 12),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: Theme.of(context).cardColor,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: Theme.of(context).dividerColor.withValues(alpha: 0.5),
-                ),
-              ),
-              child: Text(
-                (_session!['sessionNotes'] != null &&
-                        _session!['sessionNotes'].toString().isNotEmpty)
-                    ? _session!['sessionNotes'].toString()
-                    : 'No notes added for this session.',
-                style: GoogleFonts.inter(
-                  fontSize: 15,
-                  height: 1.5,
-                  color: Theme.of(context).colorScheme.onSurface,
-                  fontStyle: (_session!['sessionNotes'] == null ||
-                          _session!['sessionNotes'].toString().isEmpty)
-                      ? FontStyle.italic
-                      : FontStyle.normal,
-                ),
-              ),
-            ),
-
-            const SizedBox(height: 32),
-
-            // Player Feedback
-            _buildSectionLabel('PLAYER FEEDBACK (${assignedPlayers.length})'),
-            const SizedBox(height: 12),
-            ListView.separated(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: assignedPlayers.length,
-              separatorBuilder: (context, index) => const SizedBox(height: 12),
-              itemBuilder: (context, index) {
-                final playerData = assignedPlayers[index];
-                final player = (playerData['player'] is Map)
-                    ? Map<String, dynamic>.from(playerData['player'])
-                    : <String, dynamic>{};
-                final attended = playerData['attended'] as bool? ?? false;
-                final note = playerData['note'] as String? ?? '';
-                final report = playerData['report'] as Map<String, dynamic>?;
-
-                bool hasReport = false;
-                if (report != null) {
-                  // Check if at least one field is filled
-                  final focus = report['primaryFocus'] as String? ?? '';
-                  final wins = report['technicalWins'] as String? ?? '';
-                  final drills = report['specificDrills'] as String? ?? '';
-                  if (focus.isNotEmpty ||
-                      wins.isNotEmpty ||
-                      drills.isNotEmpty) {
-                    hasReport = true;
-                  }
-                }
-
-                return Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).cardColor,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: attended
-                          ? Colors.green.withValues(alpha: 0.3)
-                          : Colors.red.withValues(alpha: 0.3),
-                    ),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          CircleAvatar(
-                            radius: 16,
-                            backgroundImage: NetworkImage(
-                              player['profilePhoto']?.toString() ??
-                                  'https://i.pravatar.cc/150',
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Text(
-                              player['fullName']?.toString() ?? 'Player',
-                              style: GoogleFonts.inter(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
-                              ),
-                            ),
-                          ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 4,
-                            ),
-                            decoration: BoxDecoration(
-                              color: attended
-                                  ? Colors.green.withValues(alpha: 0.1)
-                                  : Colors.red.withValues(alpha: 0.1),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Text(
-                              attended ? 'Present' : 'Absent',
-                              style: GoogleFonts.inter(
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
-                                color: attended ? Colors.green : Colors.red,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      if (note.isNotEmpty) ...[
-                        const SizedBox(height: 12),
-                        Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: Theme.of(context)
-                                .colorScheme
-                                .surfaceContainerHighest
-                                .withValues(alpha: 0.5),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Text(
-                            note,
-                            style: GoogleFonts.inter(
-                              fontSize: 14,
-                              fontStyle: FontStyle.italic,
-                              color: Theme.of(
-                                context,
-                              ).colorScheme.onSurfaceVariant,
-                            ),
-                          ),
+                  // Session Header Card
+                  Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).cardColor,
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.05),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
                         ),
                       ],
-                      const SizedBox(height: 12),
-                      const Divider(),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          if (report != null && hasReport)
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          _session!['title']?.toString() ?? 'Untitled Session',
+                          style: GoogleFonts.inter(
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                            color: Theme.of(context).colorScheme.onSurface,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          DateTimeUtils.formatSessionDate(startTime),
+                          style: GoogleFonts.inter(
+                            fontSize: 14,
+                            color:
+                                Theme.of(context).colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        Row(
+                          children: [
+                            _buildStatBadge(
+                              context,
+                              'Present',
+                              presentCount.toString(),
+                              Colors.green,
+                            ),
+                            const SizedBox(width: 12),
+                            _buildStatBadge(
+                              context,
+                              'Absent',
+                              (assignedPlayers.length - presentCount)
+                                  .toString(),
+                              Colors.red,
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 32),
+
+                  // Session Notes
+                  _buildSectionLabel('SESSION NOTES'),
+                  const SizedBox(height: 12),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).cardColor,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: Theme.of(context)
+                            .dividerColor
+                            .withValues(alpha: 0.5),
+                      ),
+                    ),
+                    child: Text(
+                      (_session!['sessionNotes'] != null &&
+                              _session!['sessionNotes'].toString().isNotEmpty)
+                          ? _session!['sessionNotes'].toString()
+                          : 'No notes added for this session.',
+                      style: GoogleFonts.inter(
+                        fontSize: 15,
+                        height: 1.5,
+                        color: Theme.of(context).colorScheme.onSurface,
+                        fontStyle: (_session!['sessionNotes'] == null ||
+                                _session!['sessionNotes'].toString().isEmpty)
+                            ? FontStyle.italic
+                            : FontStyle.normal,
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 32),
+
+                  // Player Feedback
+                  _buildSectionLabel(
+                      'PLAYER FEEDBACK (${assignedPlayers.length})'),
+                  const SizedBox(height: 12),
+                  ListView.separated(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: assignedPlayers.length,
+                    separatorBuilder: (context, index) =>
+                        const SizedBox(height: 12),
+                    itemBuilder: (context, index) {
+                      final playerData = assignedPlayers[index];
+                      final player = (playerData['player'] is Map)
+                          ? Map<String, dynamic>.from(playerData['player'])
+                          : <String, dynamic>{};
+                      final attended = playerData['attended'] as bool? ?? false;
+                      final note = playerData['note'] as String? ?? '';
+                      final report =
+                          playerData['report'] as Map<String, dynamic>?;
+
+                      bool hasReport = false;
+                      if (report != null) {
+                        // Check if at least one field is filled
+                        final focus = report['primaryFocus'] as String? ?? '';
+                        final wins = report['technicalWins'] as String? ?? '';
+                        final drills =
+                            report['specificDrills'] as String? ?? '';
+                        if (focus.isNotEmpty ||
+                            wins.isNotEmpty ||
+                            drills.isNotEmpty) {
+                          hasReport = true;
+                        }
+                      }
+
+                      return Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).cardColor,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: attended
+                                ? Colors.green.withValues(alpha: 0.3)
+                                : Colors.red.withValues(alpha: 0.3),
+                          ),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
                             Row(
                               children: [
-                                const Icon(Icons.check_circle_rounded,
-                                    color: Colors.green, size: 20),
-                                const SizedBox(width: 4),
-                                Text(
-                                  'Report submitted',
-                                  style: GoogleFonts.inter(
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.green,
+                                CircleAvatar(
+                                  radius: 16,
+                                  backgroundImage: NetworkImage(
+                                    player['profilePhoto']?.toString() ??
+                                        'https://i.pravatar.cc/150',
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Text(
+                                    player['fullName']?.toString() ?? 'Player',
+                                    style: GoogleFonts.inter(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 16,
+                                    ),
+                                  ),
+                                ),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 4,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: attended
+                                        ? Colors.green.withValues(alpha: 0.1)
+                                        : Colors.red.withValues(alpha: 0.1),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Text(
+                                    attended ? 'Present' : 'Absent',
+                                    style: GoogleFonts.inter(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
+                                      color:
+                                          attended ? Colors.green : Colors.red,
+                                    ),
                                   ),
                                 ),
                               ],
-                            )
-                          else
-                            Text(
-                              'No report yet',
-                              style: GoogleFonts.inter(
-                                color: Theme.of(context)
-                                    .colorScheme
-                                    .onSurfaceVariant,
-                                fontStyle: FontStyle.italic,
-                                fontSize: 13,
+                            ),
+                            if (note.isNotEmpty) ...[
+                              const SizedBox(height: 12),
+                              Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .surfaceContainerHighest
+                                      .withValues(alpha: 0.5),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(
+                                  note,
+                                  style: GoogleFonts.inter(
+                                    fontSize: 14,
+                                    fontStyle: FontStyle.italic,
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.onSurfaceVariant,
+                                  ),
+                                ),
                               ),
-                            ),
-                          TextButton.icon(
-                            onPressed: () async {
-                              final result = await context.push(
-                                  '/coach/player-report/${widget.sessionId}/${player['_id']}');
-                              if (result == true) {
-                                _fetchSessionDetails(); // Reload data after returning true
-                              }
-                            },
-                            icon: Icon(
-                              report != null
-                                  ? Icons.edit_note_rounded
-                                  : Icons.add_chart_rounded,
-                              size: 18,
-                              color: Theme.of(context).colorScheme.primary,
-                            ),
-                            label: Text(
-                              report != null ? 'Edit Report' : 'Evaluate',
-                              style: GoogleFonts.inter(
-                                fontWeight: FontWeight.bold,
-                                color: Theme.of(context).colorScheme.primary,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                );
-              },
-            ),
+                            ],
+                            const SizedBox(height: 12),
+                            const Divider(height: 1),
+                            const SizedBox(height: 12),
 
-            const SizedBox(height: 40),
-          ],
-        ),
+                            // ── Report summary (only when report exists) ─────────
+                            if (hasReport) ...[
+                              Row(
+                                children: [
+                                  _buildMiniRating(
+                                    context,
+                                    'Tech',
+                                    (report!['technicalRating'] as num?)
+                                            ?.toDouble() ??
+                                        0,
+                                    Colors.blue,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  _buildMiniRating(
+                                    context,
+                                    'Phy',
+                                    (report['physicalRating'] as num?)
+                                            ?.toDouble() ??
+                                        0,
+                                    Colors.green,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  _buildMiniRating(
+                                    context,
+                                    'Mental',
+                                    (report['mentalRating'] as num?)
+                                            ?.toDouble() ??
+                                        0,
+                                    Colors.purple,
+                                  ),
+                                ],
+                              ),
+                              if ((report['primaryFocus'] as String? ?? '')
+                                  .isNotEmpty) ...[
+                                const SizedBox(height: 8),
+                                Text(
+                                  '"${report['primaryFocus']}"',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: GoogleFonts.inter(
+                                    fontSize: 12,
+                                    fontStyle: FontStyle.italic,
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onSurfaceVariant,
+                                  ),
+                                ),
+                              ],
+                              const SizedBox(height: 8),
+                            ],
+
+                            // ── Action row ───────────────────────────────────────
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                if (hasReport)
+                                  Row(
+                                    children: [
+                                      const Icon(Icons.check_circle_rounded,
+                                          color: Colors.green, size: 18),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        'Report submitted',
+                                        style: GoogleFonts.inter(
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: 13,
+                                          color: Colors.green,
+                                        ),
+                                      ),
+                                    ],
+                                  )
+                                else
+                                  Text(
+                                    'No report yet',
+                                    style: GoogleFonts.inter(
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .onSurfaceVariant,
+                                      fontStyle: FontStyle.italic,
+                                      fontSize: 13,
+                                    ),
+                                  ),
+
+                                // Add / Edit button
+                                TextButton.icon(
+                                  onPressed: () async {
+                                    final result = await context.push(
+                                        '/coach/player-report/${widget.sessionId}/${player['_id']}');
+                                    if (result == true) {
+                                      _fetchSessionDetails();
+                                    }
+                                  },
+                                  icon: Icon(
+                                    hasReport
+                                        ? Icons.edit_note_rounded
+                                        : Icons.add_chart_rounded,
+                                    size: 18,
+                                    color: hasReport
+                                        ? Theme.of(context).colorScheme.primary
+                                        : Colors.orange,
+                                  ),
+                                  label: Text(
+                                    hasReport ? 'Edit Report' : 'Add Report',
+                                    style: GoogleFonts.inter(
+                                      fontWeight: FontWeight.bold,
+                                      color: hasReport
+                                          ? Theme.of(context)
+                                              .colorScheme
+                                              .primary
+                                          : Colors.orange,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+
+                  const SizedBox(height: 40),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMiniRating(
+      BuildContext context, String label, double value, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.star_rounded, color: color, size: 13),
+          const SizedBox(width: 3),
+          Text(
+            '$label ${value.toStringAsFixed(0)}/5',
+            style: GoogleFonts.inter(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: color,
+            ),
+          ),
+        ],
       ),
     );
   }

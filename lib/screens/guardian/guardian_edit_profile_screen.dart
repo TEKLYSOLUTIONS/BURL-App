@@ -4,10 +4,15 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'dart:io';
 import 'package:http/http.dart' as http;
+import 'package:geolocator/geolocator.dart';
+import 'package:geocoding/geocoding.dart';
+
 import '../../config/palette.dart';
 import '../../services/profile_service.dart';
 import '../../services/guardian_service.dart';
+import '../../services/storage_service.dart';
 import '../../utils/country_codes.dart';
 
 // ── Google Places API Key (same as AndroidManifest)
@@ -40,11 +45,15 @@ class _GuardianEditProfileScreenState extends State<GuardianEditProfileScreen> {
   // Map / location state
   LatLng? _selectedLocation;
   GoogleMapController? _mapController;
+  bool _isDetectingLocation = false;
 
   // Places autocomplete state
   List<Map<String, dynamic>> _suggestions = [];
   bool _showSuggestions = false;
   bool _fetchingSuggestions = false;
+
+  String? _profileImageUrl;
+  String? _userId;
 
   @override
   void initState() {
@@ -96,6 +105,11 @@ class _GuardianEditProfileScreenState extends State<GuardianEditProfileScreen> {
       }
     }
     _phoneController.text = phone;
+
+    _profileImageUrl =
+        data['profileUrl'] ?? data['profilePhoto'] ?? data['profileImage'];
+    _userId = data['_id'] ?? data['id'];
+
     final guardianProfile = data['guardianProfile'] as Map<String, dynamic>?;
     if (guardianProfile != null) {
       _addressController.text = guardianProfile['address'] ?? '';
@@ -253,6 +267,121 @@ class _GuardianEditProfileScreenState extends State<GuardianEditProfileScreen> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
     );
+  }
+
+  Future<void> _changeProfilePhoto() async {
+    if (_userId == null) {
+      if (mounted) {
+        _showSnack('User ID not found. Please try again.', isError: true);
+      }
+      return;
+    }
+
+    try {
+      final pickedFile = await StorageService.showImageSourceSheet(context);
+      if (pickedFile == null) return;
+
+      setState(() => _isSaving = true);
+
+      final imageUrl = await StorageService.uploadProfilePicture(
+        userId: _userId!,
+        imageFile: File(pickedFile.path),
+      );
+
+      setState(() {
+        _profileImageUrl = imageUrl;
+        _isSaving = false;
+      });
+
+      await ProfileService.updateProfile({'profileUrl': imageUrl});
+
+      if (mounted) {
+        _showSnack('Profile photo updated successfully!', isError: false);
+      }
+    } catch (e) {
+      setState(() => _isSaving = false);
+      if (mounted) _showSnack('Error uploading photo: $e', isError: true);
+    }
+  }
+
+  Future<void> _autoDetectLocation() async {
+    if (!mounted) return;
+    setState(() => _isDetectingLocation = true);
+    try {
+      final serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        if (mounted) setState(() => _isDetectingLocation = false);
+        return;
+      }
+
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied ||
+            permission == LocationPermission.deniedForever) {
+          if (mounted) setState(() => _isDetectingLocation = false);
+          return;
+        }
+      }
+      if (permission == LocationPermission.deniedForever) {
+        if (mounted) setState(() => _isDetectingLocation = false);
+        return;
+      }
+
+      final position = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.low,
+          timeLimit: Duration(seconds: 10),
+        ),
+      );
+
+      final placemarks = await placemarkFromCoordinates(
+        position.latitude,
+        position.longitude,
+      );
+
+      if (placemarks.isNotEmpty && mounted) {
+        final placemark = placemarks.first;
+        final addressParts = <String>[];
+        if (placemark.street?.isNotEmpty == true) {
+          addressParts.add(placemark.street!);
+        }
+        if (placemark.locality?.isNotEmpty == true) {
+          addressParts.add(placemark.locality!);
+        }
+        if (placemark.administrativeArea?.isNotEmpty == true) {
+          addressParts.add(placemark.administrativeArea!);
+        }
+        if (placemark.country?.isNotEmpty == true) {
+          addressParts.add(placemark.country!);
+        }
+
+        final city = addressParts.join(', ');
+
+        setState(() {
+          if (city.isNotEmpty) {
+            _addressController.removeListener(_onAddressChanged);
+            _addressController.text = city;
+            _addressController.addListener(_onAddressChanged);
+          }
+        });
+
+        // Also move the map
+        final latlng = LatLng(position.latitude, position.longitude);
+        setState(() => _selectedLocation = latlng);
+        _mapController?.animateCamera(
+          CameraUpdate.newLatLngZoom(latlng, 15),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        _showSnack(
+            'Could not detect location automatically. Please enter manually.',
+            isError: true);
+      }
+    } finally {
+      if (mounted) setState(() => _isDetectingLocation = false);
+    }
   }
 
   // ── Build ─────────────────────────────────────────────────────────────────
@@ -435,6 +564,41 @@ class _GuardianEditProfileScreenState extends State<GuardianEditProfileScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            // Home Address label is already added above this widget
+            // Add an auto-detect location button here
+            TextButton.icon(
+              onPressed: _isDetectingLocation ? null : _autoDetectLocation,
+              icon: _isDetectingLocation
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: AppPalette.orangeAccent,
+                      ),
+                    )
+                  : const Icon(Icons.my_location,
+                      size: 18, color: AppPalette.orangeAccent),
+              label: Text(
+                'Auto-detect location',
+                style: GoogleFonts.inter(
+                  color: AppPalette.orangeAccent,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              style: TextButton.styleFrom(
+                padding: EdgeInsets.zero,
+                minimumSize: Size.zero,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
         // Address text field
         Container(
           decoration: BoxDecoration(
@@ -639,36 +803,54 @@ class _GuardianEditProfileScreenState extends State<GuardianEditProfileScreen> {
 
   Widget _buildAvatar(bool isDark) {
     return Center(
-      child: Stack(
-        children: [
-          Container(
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              border: Border.all(color: AppPalette.orangeAccent, width: 3),
-            ),
-            child: const CircleAvatar(
-              radius: 55,
-              backgroundImage: NetworkImage('https://i.pravatar.cc/150?img=11'),
-            ),
-          ),
-          Positioned(
-            bottom: 2,
-            right: 4,
-            child: Container(
-              padding: const EdgeInsets.all(7),
+      child: GestureDetector(
+        onTap: _changeProfilePhoto,
+        child: Stack(
+          children: [
+            Container(
               decoration: BoxDecoration(
-                color: AppPalette.orangeAccent,
                 shape: BoxShape.circle,
-                border: Border.all(
-                  color: isDark ? AppPalette.backgroundDark : Colors.white,
-                  width: 2,
-                ),
+                border: Border.all(color: AppPalette.orangeAccent, width: 3),
               ),
-              child:
-                  const Icon(Icons.camera_alt, color: Colors.white, size: 18),
+              child: CircleAvatar(
+                radius: 55,
+                backgroundColor:
+                    Theme.of(context).colorScheme.surfaceContainerHighest,
+                backgroundImage:
+                    _profileImageUrl != null && _profileImageUrl!.isNotEmpty
+                        ? NetworkImage(_profileImageUrl!)
+                        : null,
+                child: _profileImageUrl == null || _profileImageUrl!.isEmpty
+                    ? Icon(
+                        Icons.person,
+                        size: 60,
+                        color: Theme.of(context)
+                            .colorScheme
+                            .onSurface
+                            .withValues(alpha: 0.5),
+                      )
+                    : null,
+              ),
             ),
-          ),
-        ],
+            Positioned(
+              bottom: 2,
+              right: 4,
+              child: Container(
+                padding: const EdgeInsets.all(7),
+                decoration: BoxDecoration(
+                  color: AppPalette.orangeAccent,
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: isDark ? AppPalette.backgroundDark : Colors.white,
+                    width: 2,
+                  ),
+                ),
+                child:
+                    const Icon(Icons.camera_alt, color: Colors.white, size: 18),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -748,8 +930,10 @@ class _GuardianEditProfileScreenState extends State<GuardianEditProfileScreen> {
                       decoration: InputDecoration(
                         border: InputBorder.none,
                         isDense: true,
+                        fillColor: Colors.transparent,
+                        filled: true,
                         contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 14, vertical: 14),
+                            horizontal: 14, vertical: 16),
                         suffixIconColor:
                             isDark ? Colors.white54 : Colors.grey[600],
                         suffixIconConstraints:
@@ -777,8 +961,7 @@ class _GuardianEditProfileScreenState extends State<GuardianEditProfileScreen> {
                               isDark ? AppPalette.elevatedDark : Colors.white,
                           child: Container(
                             width: fieldWidth,
-                            constraints:
-                                const BoxConstraints(maxHeight: 260),
+                            constraints: const BoxConstraints(maxHeight: 260),
                             clipBehavior: Clip.antiAlias,
                             decoration: BoxDecoration(
                               borderRadius: BorderRadius.circular(12),
@@ -851,8 +1034,10 @@ class _GuardianEditProfileScreenState extends State<GuardianEditProfileScreen> {
                   decoration: InputDecoration(
                     border: InputBorder.none,
                     isDense: true,
+                    fillColor: Colors.transparent,
+                    filled: true,
                     contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 14, vertical: 14),
+                        horizontal: 14, vertical: 16),
                     hintText: 'Phone number',
                     hintStyle: GoogleFonts.inter(
                       fontSize: 14,

@@ -35,8 +35,13 @@ class _HorizontalWeekCalendarState extends State<HorizontalWeekCalendar> {
 
   void _generateDates() {
     // Generate dates: 2 weeks back, 4 weeks forward
+    // Strip time so every date in the list is midnight-local.
+    // If we used DateTime.now() with time intact (e.g., 16:45 IST),
+    // adding 1 day gives "Feb 28 16:45 IST", whose .day is still 28 locally
+    // but its UTC representation can land on the wrong calendar day.
     final now = DateTime.now();
-    final start = now.subtract(const Duration(days: 14));
+    final today = DateTime(now.year, now.month, now.day); // midnight local
+    final start = today.subtract(const Duration(days: 14));
     for (int i = 0; i < 45; i++) {
       _dates.add(start.add(Duration(days: i)));
     }

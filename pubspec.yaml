@@ -76,3 +76,9 @@ flutter:
 dependency_overrides:
   intl: any
   http: ^1.2.0
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/images/burl_icon_app_front.jpeg"
+  min_sdk_android: 21

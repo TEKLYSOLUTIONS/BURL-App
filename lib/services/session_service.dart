@@ -122,8 +122,17 @@ class SessionService {
       }
 
       if (date != null) {
-        queryParams['date'] =
-            "${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}";
+        // Build start/end of the selected LOCAL day in UTC ISO format.
+        // Using just 'YYYY-MM-DD' causes the backend to parse it as UTC midnight,
+        // which shifts the boundaries by the user's UTC offset (e.g., IST = +5:30
+        // means a 9AM IST slot is stored as 03:30 UTC — it falls on the PREVIOUS
+        // UTC day). Instead we send the local day's boundaries as UTC timestamps.
+        final localMidnight = DateTime(date.year, date.month, date.day);
+        final localEndOfDay =
+            DateTime(date.year, date.month, date.day, 23, 59, 59, 999);
+        // Convert to UTC then format as ISO string
+        queryParams['startDate'] = localMidnight.toUtc().toIso8601String();
+        queryParams['endDate'] = localEndOfDay.toUtc().toIso8601String();
       }
 
       final queryString = queryParams.entries
@@ -355,6 +364,28 @@ class SessionService {
       }
     } catch (e) {
       debugPrint('Error starting session: $e');
+      rethrow;
+    }
+  }
+
+  /// Get all session reports for a specific player
+  static Future<List<dynamic>> getPlayerSessionReports(String playerId) async {
+    try {
+      final httpResponse = await ApiService.get(
+        'sessions/player-reports/$playerId',
+      );
+      final responseData =
+          json.decode(httpResponse.body) as Map<String, dynamic>;
+
+      if (httpResponse.statusCode == 200) {
+        return (responseData['data'] as List<dynamic>?) ?? [];
+      } else {
+        throw Exception(
+          responseData['message'] ?? 'Failed to fetch player reports',
+        );
+      }
+    } catch (e) {
+      debugPrint('Error fetching player session reports: $e');
       rethrow;
     }
   }

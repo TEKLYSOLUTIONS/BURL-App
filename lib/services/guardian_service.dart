@@ -149,18 +149,24 @@ class GuardianService {
     required String battingStyle,
     required String bowlingStyle,
     required String medicalIssues,
+    String? profilePhoto,
   }) async {
     try {
       debugPrint('🔄 Updating player: $playerId');
 
-      final response = await ApiService.put('guardian/player/$playerId', {
+      final body = {
         'fullName': fullName,
         'age': age,
         'role': role,
         'battingStyle': battingStyle,
         'bowlingStyle': bowlingStyle,
         'medicalIssues': medicalIssues,
-      });
+      };
+      if (profilePhoto != null) {
+        body['profilePhoto'] = profilePhoto;
+      }
+
+      final response = await ApiService.put('guardian/player/$playerId', body);
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);

@@ -41,11 +41,13 @@ import '../screens/guardian/guardian_profile_screen.dart'; // New Import
 import '../screens/guardian/coach_details_screen.dart'; // New Import
 import '../screens/coach/students_screen.dart';
 import '../screens/coach/earning_history_screen.dart';
+import '../screens/coach/coach_reviews_screen.dart';
 import '../screens/coach/availability_screen.dart';
 import '../screens/coach/session_report_screen.dart';
 import '../screens/coach/subscription_plans_screen.dart';
 import '../screens/settings/settings_screen.dart';
 import '../screens/player/player_reports_screen.dart';
+import '../screens/sessions/player_report_screen.dart'; // Added player report screen
 import '../screens/player/player_settings_screen.dart';
 import '../screens/notifications/notifications_screen.dart';
 import '../screens/notifications/notification_detail_screen.dart';
@@ -118,8 +120,10 @@ class AppRouter {
       GoRoute(
         path: '/session-details/:id',
         parentNavigatorKey: _rootNavigatorKey,
-        builder: (context, state) =>
-            SessionDetailsScreen(sessionId: state.pathParameters['id'] ?? ''),
+        builder: (context, state) => SessionDetailsScreen(
+          sessionId: state.pathParameters['id'] ?? '',
+          occurrenceDate: state.uri.queryParameters['date'],
+        ),
       ),
 
       GoRoute(
@@ -189,13 +193,6 @@ class AppRouter {
       ),
 
       GoRoute(
-        path: '/coach/session-report/:id',
-        parentNavigatorKey: _rootNavigatorKey,
-        builder: (context, state) =>
-            SessionReportScreen(sessionId: state.pathParameters['id'] ?? ''),
-      ),
-
-      GoRoute(
         path: '/player-reports/:id',
         builder: (context, state) =>
             PlayerReportsScreen(playerId: state.pathParameters['id'] ?? '1'),
@@ -228,6 +225,10 @@ class AppRouter {
             builder: (context, state) => const EarningHistoryScreen(),
           ),
           GoRoute(
+            path: '/coach/my-reviews',
+            builder: (context, state) => const CoachReviewsScreen(),
+          ),
+          GoRoute(
             path: '/coach/profile',
             builder: (context, state) => const CoachProfileScreen(coachId: '1'),
           ),
@@ -242,6 +243,25 @@ class AppRouter {
           GoRoute(
             path: '/coach/bookings',
             builder: (context, state) => const CoachBookingsScreen(),
+          ),
+          GoRoute(
+            path: '/coach/session-details/:id',
+            builder: (context, state) => SessionDetailsScreen(
+              sessionId: state.pathParameters['id'] ?? '',
+              occurrenceDate: state.uri.queryParameters['date'],
+            ),
+          ),
+          GoRoute(
+            path: '/coach/session-report/:id',
+            builder: (context, state) => SessionReportScreen(
+                sessionId: state.pathParameters['id'] ?? ''),
+          ),
+          GoRoute(
+            path: '/coach/player-report/:sessionId/:playerId',
+            builder: (context, state) => PlayerReportScreen(
+              sessionId: state.pathParameters['sessionId']!,
+              playerId: state.pathParameters['playerId']!,
+            ),
           ),
           GoRoute(
             path: '/coach/subscription-plans',

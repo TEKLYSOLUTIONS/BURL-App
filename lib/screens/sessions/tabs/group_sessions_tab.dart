@@ -171,13 +171,26 @@ class _GroupSessionsTabState extends State<GroupSessionsTab>
   }
 
   Widget _buildCoachSessionCard(Map<String, dynamic> session, int index) {
-    // Extract first time slot for display
-    final timeSlots = session['timeSlots'] as List? ?? [];
-    if (timeSlots.isEmpty) return const SizedBox.shrink();
+    // Use displaySlot sent by backend — this is the CORRECT occurrence to show
+    // (next future slot for upcoming, most recent past slot for past).
+    // Fall back to timeSlots[0] only if backend didn't provide it.
+    final Map<String, dynamic>? displaySlot =
+        session['displaySlot'] as Map<String, dynamic>? ??
+            (session['timeSlots'] as List? ?? [])
+                .cast<Map<String, dynamic>>()
+                .firstOrNull;
 
-    final timeSlot = timeSlots[0];
-    final startTime = DateTime.parse(timeSlot['startTime'] as String).toLocal();
-    final duration = timeSlot['durationMinutes'] as int;
+    if (displaySlot == null) return const SizedBox.shrink();
+
+    final startTime =
+        DateTime.parse(displaySlot['startTime'] as String).toLocal();
+    final duration = displaySlot['durationMinutes'] as int? ?? 60;
+
+    // isFinished comes from backend; fallback to time-based check
+    final bool isFinished = session['isFinished'] as bool? ??
+        DateTime.parse(displaySlot['endTime'] as String)
+            .toLocal()
+            .isBefore(DateTime.now());
 
     // Theme-aware colors
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -211,32 +224,75 @@ class _GroupSessionsTabState extends State<GroupSessionsTab>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
-                  ),
-                  decoration: BoxDecoration(
-                    color: locationTagColor,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    session['location'] as String,
-                    style: GoogleFonts.inter(
-                      fontWeight: FontWeight.w600,
-                      color: locationTextColor,
-                      fontSize: 12,
+                // Location tag + Finished badge row
+                Row(
+                  children: [
+                    Flexible(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: locationTagColor,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          session['location'] as String? ?? 'TBD',
+                          style: GoogleFonts.inter(
+                            fontWeight: FontWeight.w600,
+                            color: locationTextColor,
+                            fontSize: 12,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
                     ),
-                  ),
+                    if (isFinished) ...[
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.green.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.check_circle_outline,
+                              size: 12,
+                              color: Colors.green.shade700,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              'Finished',
+                              style: GoogleFonts.inter(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.green.shade700,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
                 const SizedBox(height: 12),
                 Text(
-                  session['title'] as String,
+                  session['title'] as String? ?? 'Untitled',
                   style: GoogleFonts.inter(
                     fontWeight: FontWeight.bold,
                     fontSize: 18,
                     color: Theme.of(context).textTheme.bodyLarge?.color,
                   ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 8),
                 Row(
@@ -281,45 +337,95 @@ class _GroupSessionsTabState extends State<GroupSessionsTab>
                   ],
                 ),
                 const SizedBox(height: 16),
-                InkWell(
-                  onTap: () async {
-                    final result = await context.push(
-                      '/session-details/${session['_id']}',
-                    );
-                    if (result == true) _fetchSessions();
-                  },
-                  borderRadius: BorderRadius.circular(8),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 10,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Theme.of(
-                        context,
-                      ).dividerColor.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          'View Plan',
-                          style: GoogleFonts.inter(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                            color: primaryColor,
+                // Action buttons row
+                Row(
+                  children: [
+                    // Start button — only for upcoming (not yet finished)
+                    if (!isFinished) ...[
+                      InkWell(
+                        onTap: () => context.push(
+                          '/session-attendance/${session['_id']}',
+                        ),
+                        borderRadius: BorderRadius.circular(8),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 10,
+                          ),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFF6B35),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(
+                                Icons.play_arrow_rounded,
+                                size: 16,
+                                color: Colors.white,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                'Start',
+                                style: GoogleFonts.inter(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                        const SizedBox(width: 6),
-                        Icon(
-                          Icons.arrow_forward_rounded,
-                          size: 16,
-                          color: primaryColor,
+                      ),
+                      const SizedBox(width: 8),
+                    ],
+                    // Details / View Plan button
+                    Flexible(
+                      child: InkWell(
+                        onTap: () async {
+                          final dateParam = startTime.toIso8601String();
+                          final result = await context.push(
+                            '/coach/session-details/${session['_id']}?date=$dateParam',
+                          );
+                          if (result == true) _fetchSessions();
+                        },
+                        borderRadius: BorderRadius.circular(8),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 10,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Theme.of(
+                              context,
+                            ).dividerColor.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                isFinished ? 'Details' : 'View Plan',
+                                style: GoogleFonts.inter(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                  color: primaryColor,
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              Icon(
+                                isFinished
+                                    ? Icons.check_circle_outline
+                                    : Icons.arrow_forward_rounded,
+                                size: 16,
+                                color: primaryColor,
+                              ),
+                            ],
+                          ),
                         ),
-                      ],
+                      ),
                     ),
-                  ),
+                  ],
                 ),
               ],
             ),
