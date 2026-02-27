@@ -12,6 +12,9 @@ class NotificationDetailScreen extends StatelessWidget {
   final IconData? iconData;
   final Color? iconColor;
   final Color? iconBg;
+  final String? actionButton;
+  final String? actionUrl;
+  final Map<String, dynamic>? metadata;
 
   const NotificationDetailScreen({
     super.key,
@@ -22,6 +25,9 @@ class NotificationDetailScreen extends StatelessWidget {
     this.iconData,
     this.iconColor,
     this.iconBg,
+    this.actionButton,
+    this.actionUrl,
+    this.metadata,
   });
 
   @override
@@ -41,9 +47,8 @@ class NotificationDetailScreen extends StatelessWidget {
               30,
             ),
             decoration: BoxDecoration(
-              color: isDark
-                  ? AppPalette.surfaceGlassDark
-                  : AppPalette.navyPrimary,
+              color:
+                  isDark ? AppPalette.surfaceGlassDark : AppPalette.navyPrimary,
               borderRadius: const BorderRadius.vertical(
                 bottom: Radius.circular(30),
               ),
@@ -117,8 +122,7 @@ class NotificationDetailScreen extends StatelessWidget {
                               Container(
                                 padding: const EdgeInsets.all(12),
                                 decoration: BoxDecoration(
-                                  color:
-                                      iconBg ??
+                                  color: iconBg ??
                                       Theme.of(
                                         context,
                                       ).colorScheme.surfaceContainerHighest,
@@ -126,8 +130,7 @@ class NotificationDetailScreen extends StatelessWidget {
                                 ),
                                 child: Icon(
                                   iconData ?? Icons.notifications,
-                                  color:
-                                      iconColor ??
+                                  color: iconColor ??
                                       Theme.of(
                                         context,
                                       ).colorScheme.onSurfaceVariant,
@@ -193,6 +196,55 @@ class NotificationDetailScreen extends StatelessWidget {
                             height: 1.6,
                           ),
                         ),
+                        if (actionButton != null) ...[
+                          const SizedBox(height: 32),
+                          SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton(
+                              onPressed: () {
+                                if (actionUrl != null) {
+                                  if (actionUrl == '/add-review' &&
+                                      metadata != null) {
+                                    final sessionData = {
+                                      'id': metadata!['sessionId'],
+                                      'title': metadata!['sessionTitle'],
+                                      'coach': {
+                                        'id': metadata!['coachId'],
+                                        'fullName': metadata!['coachName'],
+                                      }
+                                    };
+                                    context.push('/add-review',
+                                        extra: sessionData);
+                                  } else {
+                                    context.push(actionUrl!);
+                                  }
+                                }
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: isDark
+                                    ? AppPalette.orangeAccent
+                                        .withValues(alpha: 0.1)
+                                    : Colors.orange[50],
+                                foregroundColor: isDark
+                                    ? AppPalette.orangeAccent
+                                    : Colors.orange[800],
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 16),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                elevation: 0,
+                              ),
+                              child: Text(
+                                actionButton!,
+                                style: GoogleFonts.inter(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
                       ],
                     ),
                   ).animate().fadeIn().slideY(begin: 0.1),

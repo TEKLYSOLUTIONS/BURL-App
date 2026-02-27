@@ -74,44 +74,41 @@ class _SplashScreenState extends State<SplashScreen>
     return Scaffold(
       backgroundColor: Theme.of(context)
           .scaffoldBackgroundColor, // Adapts to Light/Dark Mode
-      body: Center(
-        child: FadeTransition(
-          opacity: _fadeAnimation,
-          child: ScaleTransition(
-            scale: _scaleAnimation,
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
+      body: FadeTransition(
+        opacity: _fadeAnimation,
+        child: ScaleTransition(
+          scale: _scaleAnimation,
+          child: SizedBox.expand(
+            child: Stack(
+              fit: StackFit.expand,
               children: [
-                // Burl Logo
-                Image.asset(
-                  'assets/images/logo_burl.png',
-                  width: 350,
-                  height: 350,
-                  fit: BoxFit.contain,
+                // Full Screen Background
+                DecoratedBox(
+                  decoration: BoxDecoration(
+                    image: DecorationImage(
+                      image: AssetImage(
+                        Theme.of(context).brightness == Brightness.dark
+                            ? 'assets/images/burl_splash_dark.png'
+                            : 'assets/images/burl_splash_light.png',
+                      ),
+                      fit: BoxFit.cover,
+                    ),
+                  ),
                 ),
-
-                // const SizedBox(height: 40),
-
-                // // Tagline
-                // Text(
-                //   'Master Your Game',
-                //   style: GoogleFonts.inter(
-                //     color: AppPalette.textSecondaryLight,
-                //     fontSize: 16,
-                //     fontWeight: FontWeight.w500,
-                //     letterSpacing: 1.5,
-                //   ),
-                // ),
-                const SizedBox(height: 60),
-
-                // Loading Indicator
-                SizedBox(
-                  width: 40,
-                  height: 40,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 3,
-                    valueColor: AlwaysStoppedAnimation<Color>(
-                      Theme.of(context).colorScheme.primary,
+                // Loading Spinner at the bottom
+                Align(
+                  alignment: Alignment.bottomCenter,
+                  child: Padding(
+                    padding: const EdgeInsets.only(bottom: 60.0),
+                    child: SizedBox(
+                      width: 40,
+                      height: 40,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 3,
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          Theme.of(context).colorScheme.primary,
+                        ),
+                      ),
                     ),
                   ),
                 ),

@@ -3,6 +3,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
 import '../../config/palette.dart';
 import '../../services/guardian_service.dart';
+import '../../services/storage_service.dart';
+import 'dart:io';
 
 class AddPlayerScreen extends StatefulWidget {
   const AddPlayerScreen({super.key});
@@ -47,6 +49,8 @@ class _AddPlayerScreenState extends State<AddPlayerScreen> {
     'None',
   ];
 
+  File? _pickedImage;
+
   @override
   void dispose() {
     _nameController.dispose();
@@ -77,6 +81,16 @@ class _AddPlayerScreenState extends State<AddPlayerScreen> {
     setState(() => _isLoading = true);
 
     try {
+      // 1. Upload image if selected
+      String? finalImageUrl;
+      if (_pickedImage != null) {
+        final tempId = 'new_player_${DateTime.now().millisecondsSinceEpoch}';
+        finalImageUrl = await StorageService.uploadProfilePicture(
+          userId: tempId,
+          imageFile: _pickedImage!,
+        );
+      }
+
       await _guardianService.addPlayer(
         fullName: _nameController.text.trim(),
         age: _ageController.text.trim(),
@@ -85,6 +99,7 @@ class _AddPlayerScreenState extends State<AddPlayerScreen> {
         bowlingStyle: _selectedBowlingStyle,
         jerseyNumber: _jerseyController.text.trim(),
         teamName: _teamController.text.trim(),
+        profilePhoto: finalImageUrl,
       );
 
       // Notify other screens (like Home) to refresh their data
@@ -110,6 +125,15 @@ class _AddPlayerScreenState extends State<AddPlayerScreen> {
       );
     } finally {
       if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _pickImage() async {
+    final pickedFile = await StorageService.showImageSourceSheet(context);
+    if (pickedFile != null) {
+      setState(() {
+        _pickedImage = File(pickedFile.path);
+      });
     }
   }
 
@@ -183,44 +207,51 @@ class _AddPlayerScreenState extends State<AddPlayerScreen> {
             children: [
               // Avatar (Placeholder)
               Center(
-                child: Stack(
-                  children: [
-                    Container(
-                      width: 100,
-                      height: 100,
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).cardColor,
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: Theme.of(context).dividerColor,
-                          width: 2,
-                        ),
-                      ),
-                      child: Icon(
-                        Icons.person,
-                        size: 50,
-                        color: Theme.of(
-                          context,
-                        ).colorScheme.onSurface.withValues(alpha: 0.3),
-                      ),
-                    ),
-                    Positioned(
-                      bottom: 0,
-                      right: 0,
-                      child: Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: const BoxDecoration(
-                          color: AppPalette.orangeAccent,
+                child: GestureDetector(
+                  onTap: _pickImage,
+                  child: Stack(
+                    children: [
+                      Container(
+                        width: 100,
+                        height: 100,
+                        clipBehavior: Clip.antiAlias,
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).cardColor,
                           shape: BoxShape.circle,
+                          border: Border.all(
+                            color: Theme.of(context).dividerColor,
+                            width: 2,
+                          ),
                         ),
-                        child: const Icon(
-                          Icons.camera_alt,
-                          color: Colors.white,
-                          size: 20,
+                        child: _pickedImage != null
+                            ? Image.file(_pickedImage!, fit: BoxFit.cover)
+                            : Icon(
+                                Icons.person,
+                                size: 60,
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .onSurface
+                                    .withValues(alpha: 0.3),
+                              ),
+                      ),
+                      Positioned(
+                        bottom: 0,
+                        right: 0,
+                        child: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: const BoxDecoration(
+                            color: AppPalette.orangeAccent,
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.camera_alt,
+                            color: Colors.white,
+                            size: 20,
+                          ),
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
               const SizedBox(height: 32),

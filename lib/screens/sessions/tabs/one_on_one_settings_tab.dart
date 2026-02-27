@@ -7,6 +7,7 @@ import '../../../services/profile_service.dart';
 import '../../../utils/currency_helper.dart';
 import '../../../widgets/modern_text_field.dart';
 import '../../../widgets/modern_duration_selector.dart';
+import '../../../config/palette.dart';
 
 class OneOnOneSettingsTab extends StatefulWidget {
   const OneOnOneSettingsTab({super.key});
@@ -58,13 +59,15 @@ class _OneOnOneSettingsTabState extends State<OneOnOneSettingsTab> {
 
       // Use saved pricing currency only if it's not the USD default
       final savedCurrency = defaultPricing['currency'] as String?;
-      final currency = (savedCurrency != null && savedCurrency.isNotEmpty && savedCurrency != 'USD')
+      final currency = (savedCurrency != null &&
+              savedCurrency.isNotEmpty &&
+              savedCurrency != 'USD')
           ? savedCurrency
           : detectedCurrency;
 
       setState(() {
-        _hourlyRateController.text = (defaultPricing['hourlyRate'] ?? 0)
-            .toString();
+        _hourlyRateController.text =
+            (defaultPricing['hourlyRate'] ?? 0).toString();
         _sessionDuration = (defaultPricing['sessionDuration'] ?? 60).toInt();
         _currency = currency;
 
@@ -161,7 +164,8 @@ class _OneOnOneSettingsTabState extends State<OneOnOneSettingsTab> {
                           controller: _hourlyRateController,
                           labelText: 'Rate',
                           hintText: '0',
-                          prefixText: CurrencyHelper.getCurrencySymbol(_currency),
+                          prefixText:
+                              CurrencyHelper.getCurrencySymbol(_currency),
                           keyboardType: const TextInputType.numberWithOptions(
                             decimal: true,
                           ),
@@ -179,17 +183,22 @@ class _OneOnOneSettingsTabState extends State<OneOnOneSettingsTab> {
                               style: GoogleFonts.inter(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w600,
-                                color: Colors.black87,
+                                color: Theme.of(context).colorScheme.onSurface,
                               ),
                             ),
                             const SizedBox(height: 8),
                             Expanded(
                               child: Container(
                                 decoration: BoxDecoration(
-                                  color: Colors.grey.shade50,
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .surfaceContainerHighest
+                                      .withValues(alpha: 0.5),
                                   borderRadius: BorderRadius.circular(12),
                                   border: Border.all(
-                                    color: Colors.grey.shade200,
+                                    color: Theme.of(context)
+                                        .dividerColor
+                                        .withValues(alpha: 0.1),
                                   ),
                                 ),
                                 child: PopupMenuButton<int>(
@@ -198,7 +207,7 @@ class _OneOnOneSettingsTabState extends State<OneOnOneSettingsTab> {
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(12),
                                   ),
-                                  color: Colors.white,
+                                  color: Theme.of(context).cardColor,
                                   elevation: 4,
                                   constraints: const BoxConstraints(
                                     minWidth: 150,
@@ -213,12 +222,17 @@ class _OneOnOneSettingsTabState extends State<OneOnOneSettingsTab> {
                                           '$_sessionDuration min',
                                           style: GoogleFonts.inter(
                                             fontSize: 16,
-                                            color: Colors.black87,
+                                            color: Theme.of(context)
+                                                .colorScheme
+                                                .onSurface,
                                           ),
                                         ),
                                         Icon(
                                           Icons.keyboard_arrow_down_rounded,
-                                          color: Colors.grey.shade400,
+                                          color: Theme.of(context)
+                                              .colorScheme
+                                              .onSurface
+                                              .withValues(alpha: 0.5),
                                           size: 22,
                                         ),
                                       ],
@@ -234,6 +248,9 @@ class _OneOnOneSettingsTabState extends State<OneOnOneSettingsTab> {
                                           '$value min',
                                           style: GoogleFonts.inter(
                                             fontSize: 15,
+                                            color: Theme.of(context)
+                                                .colorScheme
+                                                .onSurface,
                                           ),
                                         ),
                                       );
@@ -253,7 +270,6 @@ class _OneOnOneSettingsTabState extends State<OneOnOneSettingsTab> {
                 ),
               ],
             ),
-
             const SizedBox(height: 24),
             _buildSectionTitle('Booking Rules'),
             const SizedBox(height: 16),
@@ -267,7 +283,6 @@ class _OneOnOneSettingsTabState extends State<OneOnOneSettingsTab> {
                   onSelected: (val) => setState(() => _bufferTime = val),
                 ),
                 const SizedBox(height: 24),
-
                 _buildLabel('Min Advance Booking'),
                 ModernDurationSelector<int>(
                   selectedValue: _minAdvance,
@@ -276,7 +291,6 @@ class _OneOnOneSettingsTabState extends State<OneOnOneSettingsTab> {
                   onSelected: (val) => setState(() => _minAdvance = val),
                 ),
                 const SizedBox(height: 24),
-
                 _buildLabel('Max Advance Booking'),
                 ModernDurationSelector<int>(
                   selectedValue: _maxAdvance,
@@ -285,19 +299,32 @@ class _OneOnOneSettingsTabState extends State<OneOnOneSettingsTab> {
                   onSelected: (val) => setState(() => _maxAdvance = val),
                 ),
                 const SizedBox(height: 24),
-
                 _buildLabel('Cancellation Policy'),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   decoration: BoxDecoration(
-                    color: Colors.grey.shade50,
+                    color: Theme.of(context)
+                        .colorScheme
+                        .surfaceContainerHighest
+                        .withValues(alpha: 0.5),
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.grey.shade200),
+                    border: Border.all(
+                        color: Theme.of(context)
+                            .dividerColor
+                            .withValues(alpha: 0.1)),
                   ),
                   child: DropdownButtonHideUnderline(
                     child: DropdownButton<String>(
                       value: _cancellationPolicy,
                       isExpanded: true,
+                      dropdownColor: Theme.of(context).cardColor,
+                      style: GoogleFonts.inter(
+                          color: Theme.of(context).colorScheme.onSurface,
+                          fontSize: 16),
+                      iconEnabledColor: Theme.of(context)
+                          .colorScheme
+                          .onSurface
+                          .withValues(alpha: 0.5),
                       items: const [
                         DropdownMenuItem(
                           value: 'flexible',
@@ -321,7 +348,6 @@ class _OneOnOneSettingsTabState extends State<OneOnOneSettingsTab> {
                   ),
                 ),
                 const SizedBox(height: 24),
-
                 SwitchListTile(
                   title: Text(
                     'Auto-Accept Bookings',
@@ -337,7 +363,6 @@ class _OneOnOneSettingsTabState extends State<OneOnOneSettingsTab> {
                 ),
               ],
             ),
-
             const SizedBox(height: 32),
             SizedBox(
               width: double.infinity,
@@ -345,7 +370,7 @@ class _OneOnOneSettingsTabState extends State<OneOnOneSettingsTab> {
               child: ElevatedButton(
                 onPressed: _isSaving ? null : _saveSettings,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Theme.of(context).primaryColor,
+                  backgroundColor: AppPalette.orangeAccent,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
@@ -381,7 +406,11 @@ class _OneOnOneSettingsTabState extends State<OneOnOneSettingsTab> {
   Widget _buildSectionTitle(String title) {
     return Text(
       title,
-      style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.bold),
+      style: GoogleFonts.inter(
+        fontSize: 18,
+        fontWeight: FontWeight.bold,
+        color: Theme.of(context).colorScheme.onSurface,
+      ),
     );
   }
 
@@ -393,7 +422,7 @@ class _OneOnOneSettingsTabState extends State<OneOnOneSettingsTab> {
         style: GoogleFonts.inter(
           fontSize: 14,
           fontWeight: FontWeight.w600,
-          color: Colors.black87,
+          color: Theme.of(context).colorScheme.onSurface,
         ),
       ),
     );
@@ -403,15 +432,18 @@ class _OneOnOneSettingsTabState extends State<OneOnOneSettingsTab> {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
+            color: Theme.of(context).shadowColor.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
         ],
+        border: Border.all(
+          color: Theme.of(context).dividerColor.withValues(alpha: 0.1),
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

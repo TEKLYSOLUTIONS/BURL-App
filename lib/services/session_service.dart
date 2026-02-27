@@ -34,12 +34,11 @@ class SessionService {
     String skillLevel = 'All Levels',
     List<String> ageGroups = const [],
     Map<String, dynamic>?
-    recurringPattern, // {startDate, endDate, daysOfWeek, ...}
+        recurringPattern, // {startDate, endDate, daysOfWeek, ...}
     Map<String, dynamic>? pricing, // {model, amount, currency}
     Map<String, dynamic>? enrollmentSettings,
     String? cancellationPolicy,
     List<String> equipmentRequired = const [],
-
     List<Map<String, dynamic>> explicitTimeSlots = const [],
     List<String> participants = const [],
     // Legacy support (to be removed or mapped to pricing)
@@ -68,8 +67,7 @@ class SessionService {
         'enrollmentSettings': enrollmentSettings,
         'cancellationPolicy': cancellationPolicy,
         'equipmentRequired': equipmentRequired,
-        'pricing':
-            pricing ??
+        'pricing': pricing ??
             {
               'amount': priceAmount,
               'currency': 'USD',
@@ -124,8 +122,17 @@ class SessionService {
       }
 
       if (date != null) {
-        queryParams['date'] =
-            "${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}";
+        // Build start/end of the selected LOCAL day in UTC ISO format.
+        // Using just 'YYYY-MM-DD' causes the backend to parse it as UTC midnight,
+        // which shifts the boundaries by the user's UTC offset (e.g., IST = +5:30
+        // means a 9AM IST slot is stored as 03:30 UTC — it falls on the PREVIOUS
+        // UTC day). Instead we send the local day's boundaries as UTC timestamps.
+        final localMidnight = DateTime(date.year, date.month, date.day);
+        final localEndOfDay =
+            DateTime(date.year, date.month, date.day, 23, 59, 59, 999);
+        // Convert to UTC then format as ISO string
+        queryParams['startDate'] = localMidnight.toUtc().toIso8601String();
+        queryParams['endDate'] = localEndOfDay.toUtc().toIso8601String();
       }
 
       final queryString = queryParams.entries
@@ -311,6 +318,34 @@ class SessionService {
     }
   }
 
+  /// Update player report for a session
+  static Future<Map<String, dynamic>> updatePlayerReport(
+    String sessionId,
+    String playerId,
+    Map<String, dynamic> reportData,
+  ) async {
+    try {
+      final httpResponse = await ApiService.put(
+        'sessions/$sessionId/players/$playerId/report',
+        reportData,
+      );
+      final responseData =
+          json.decode(httpResponse.body) as Map<String, dynamic>;
+
+      if (responseData['status'] == 'success') {
+        debugPrint('Player report updated: $playerId');
+        return responseData['data'] as Map<String, dynamic>;
+      } else {
+        throw Exception(
+          responseData['message'] ?? 'Failed to update player report',
+        );
+      }
+    } catch (e) {
+      debugPrint('Error updating player report: $e');
+      rethrow;
+    }
+  }
+
   /// Start a session (mark as in-progress)
   static Future<Map<String, dynamic>> startSession(String sessionId) async {
     try {
@@ -329,6 +364,28 @@ class SessionService {
       }
     } catch (e) {
       debugPrint('Error starting session: $e');
+      rethrow;
+    }
+  }
+
+  /// Get all session reports for a specific player
+  static Future<List<dynamic>> getPlayerSessionReports(String playerId) async {
+    try {
+      final httpResponse = await ApiService.get(
+        'sessions/player-reports/$playerId',
+      );
+      final responseData =
+          json.decode(httpResponse.body) as Map<String, dynamic>;
+
+      if (httpResponse.statusCode == 200) {
+        return (responseData['data'] as List<dynamic>?) ?? [];
+      } else {
+        throw Exception(
+          responseData['message'] ?? 'Failed to fetch player reports',
+        );
+      }
+    } catch (e) {
+      debugPrint('Error fetching player session reports: $e');
       rethrow;
     }
   }

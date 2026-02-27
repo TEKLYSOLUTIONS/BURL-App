@@ -11,7 +11,8 @@ class BookingService {
   /// [promoCode] - Optional promo code for discount
   static Future<Map<String, dynamic>> createBooking({
     required String sessionId,
-    required String occurrenceDate,
+    String? occurrenceDate,
+    List<String>? occurrenceDates,
     required String paymentMethod,
     String? promoCode,
     String? playerId,
@@ -19,7 +20,8 @@ class BookingService {
     try {
       final response = await ApiService.post('bookings', {
         'sessionId': sessionId,
-        'occurrenceDate': occurrenceDate,
+        if (occurrenceDate != null) 'occurrenceDate': occurrenceDate,
+        if (occurrenceDates != null) 'occurrenceDates': occurrenceDates,
         'paymentMethod': paymentMethod,
         if (promoCode != null && promoCode.isNotEmpty) 'promoCode': promoCode,
         if (playerId != null && playerId.isNotEmpty) 'playerId': playerId,
@@ -48,7 +50,7 @@ class BookingService {
     try {
       final response = await ApiService.post('bookings/private', {
         'coachId': coachId,
-        'startTime': startTime.toIso8601String(),
+        'startTime': startTime.toUtc().toIso8601String(),
         'durationMinutes': durationMinutes,
         'paymentMethod': paymentMethod,
         if (promoCode != null && promoCode.isNotEmpty) 'promoCode': promoCode,
@@ -61,7 +63,8 @@ class BookingService {
         return data['bookings'] != null &&
                 data['bookings'] is List &&
                 (data['bookings'] as List).isNotEmpty
-            ? data['bookings'][0] // Return first booking for compatibility, or change return type?
+            ? data['bookings'][
+                0] // Return first booking for compatibility, or change return type?
             : data['booking'] ?? {}; // Fallback
       } else {
         throw Exception(data['message'] ?? 'Failed to create private booking');

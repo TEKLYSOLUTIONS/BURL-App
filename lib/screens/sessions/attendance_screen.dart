@@ -183,7 +183,24 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       );
     }
 
-    final assignedPlayers = _session!['assignedPlayers'] as List? ?? [];
+    final rawAssignedPlayers = _session!['assignedPlayers'] as List? ?? [];
+    final List<dynamic> assignedPlayers = [];
+    final Set<String> seenPlayerIds = {};
+    for (var pData in rawAssignedPlayers) {
+      bool added = false;
+      if (pData is Map && pData['player'] is Map) {
+        final playerId = pData['player']['_id']?.toString();
+        if (playerId != null && playerId.isNotEmpty) {
+          if (!seenPlayerIds.contains(playerId)) {
+            seenPlayerIds.add(playerId);
+            assignedPlayers.add(pData);
+          }
+          added = true;
+        }
+      }
+      if (!added) assignedPlayers.add(pData);
+    }
+
     final timeSlots = _session!['timeSlots'] as List? ?? [];
     final firstTimeSlot = timeSlots.isNotEmpty ? timeSlots[0] : null;
     final startTime = firstTimeSlot != null
@@ -441,30 +458,37 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                                     ),
                                   ),
                                 ],
-
                                 SizedBox(height: context.spacing.sm),
 
-                                // Note Input
-                                TextField(
-                                  controller: _noteControllers[playerId],
-                                  decoration: InputDecoration(
-                                    hintText: 'Add note for this student...',
-                                    hintStyle: GoogleFonts.inter(fontSize: 13),
-                                    filled: true,
-                                    fillColor: Theme.of(
-                                      context,
-                                    ).colorScheme.surfaceContainerHighest,
-                                    border: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                      borderSide: BorderSide.none,
+                                // Add Report Button
+                                SizedBox(
+                                  width: double.infinity,
+                                  child: OutlinedButton.icon(
+                                    onPressed: () {
+                                      context.push(
+                                        '/coach/player-report/${widget.sessionId}/$playerId',
+                                      );
+                                    },
+                                    icon: const Icon(Icons.analytics_outlined,
+                                        size: 18),
+                                    label: Text(
+                                      'Add Progress Report',
+                                      style: GoogleFonts.inter(
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 13,
+                                      ),
                                     ),
-                                    contentPadding: EdgeInsets.symmetric(
-                                      horizontal: context.spacing.md,
-                                      vertical: context.spacing.sm,
+                                    style: OutlinedButton.styleFrom(
+                                      foregroundColor: AppPalette.orangeAccent,
+                                      side: const BorderSide(
+                                          color: AppPalette.orangeAccent),
+                                      padding: const EdgeInsets.symmetric(
+                                          vertical: 10),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
                                     ),
                                   ),
-                                  style: GoogleFonts.inter(fontSize: 14),
-                                  maxLines: 2,
                                 ),
                               ],
                             ),

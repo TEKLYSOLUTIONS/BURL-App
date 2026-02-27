@@ -58,8 +58,7 @@ class AppTextField extends StatelessWidget {
             : null,
         suffixIcon: suffixIcon,
         filled: true,
-        fillColor:
-            fillColor ??
+        fillColor: fillColor ??
             Theme.of(context).inputDecorationTheme.fillColor ??
             Theme.of(context).cardColor,
 
@@ -186,8 +185,7 @@ class EmailTextField extends StatelessWidget {
       prefixIcon: Icons.email_outlined,
       keyboardType: TextInputType.emailAddress,
       enabled: enabled,
-      validator:
-          validator ??
+      validator: validator ??
           (value) {
             if (value == null || value.isEmpty) {
               return 'Email is required';

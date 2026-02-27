@@ -41,11 +41,13 @@ import '../screens/guardian/guardian_profile_screen.dart'; // New Import
 import '../screens/guardian/coach_details_screen.dart'; // New Import
 import '../screens/coach/students_screen.dart';
 import '../screens/coach/earning_history_screen.dart';
+import '../screens/coach/coach_reviews_screen.dart';
 import '../screens/coach/availability_screen.dart';
 import '../screens/coach/session_report_screen.dart';
 import '../screens/coach/subscription_plans_screen.dart';
 import '../screens/settings/settings_screen.dart';
 import '../screens/player/player_reports_screen.dart';
+import '../screens/sessions/player_report_screen.dart'; // Added player report screen
 import '../screens/player/player_settings_screen.dart';
 import '../screens/notifications/notifications_screen.dart';
 import '../screens/notifications/notification_detail_screen.dart';
@@ -56,6 +58,7 @@ import '../screens/profile/complete_coach_profile_screen.dart';
 import '../screens/profile/change_password_screen.dart';
 import '../screens/profile/payment_methods_screen.dart';
 import '../screens/legal/terms_of_service_screen.dart';
+import '../screens/reviews/add_review_screen.dart'; // New Import
 
 // Placeholder screens for other tabs
 class PlaceholderScreen extends StatelessWidget {
@@ -117,8 +120,10 @@ class AppRouter {
       GoRoute(
         path: '/session-details/:id',
         parentNavigatorKey: _rootNavigatorKey,
-        builder: (context, state) =>
-            SessionDetailsScreen(sessionId: state.pathParameters['id'] ?? ''),
+        builder: (context, state) => SessionDetailsScreen(
+          sessionId: state.pathParameters['id'] ?? '',
+          occurrenceDate: state.uri.queryParameters['date'],
+        ),
       ),
 
       GoRoute(
@@ -138,10 +143,21 @@ class AppRouter {
           return ConfirmPrivateBookingScreen(
             coachId: extra['coachId'],
             coachName: extra['coachName'],
+            coachImageUrl: extra['coachImageUrl'],
             startTime: extra['startTime'],
             durationMinutes: extra['durationMinutes'],
             price: extra['price'],
+            cancellationPolicy: extra['cancellationPolicy'] ?? 'flexible',
           );
+        },
+      ),
+
+      GoRoute(
+        path: '/add-review',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) {
+          final sessionData = state.extra as Map<String, dynamic>? ?? {};
+          return AddReviewScreen(sessionData: sessionData);
         },
       ),
 
@@ -163,7 +179,10 @@ class AppRouter {
           return CoachBookingScreen(
             coachId: coachId,
             coachName: extra['coachName'] ?? 'Coach',
+            coachImageUrl: extra['coachImageUrl'],
             hourlyRate: extra['hourlyRate'] ?? 60.0,
+            sessionDuration: extra['sessionDuration'] ?? 60,
+            cancellationPolicy: extra['cancellationPolicy'] ?? 'flexible',
           );
         },
       ),
@@ -171,38 +190,6 @@ class AppRouter {
       GoRoute(
         path: '/settings',
         builder: (context, state) => const SettingsScreen(),
-      ),
-
-      GoRoute(
-        path: '/coach/session-report/:id',
-        parentNavigatorKey: _rootNavigatorKey,
-        builder: (context, state) =>
-            SessionReportScreen(sessionId: state.pathParameters['id'] ?? ''),
-      ),
-
-      GoRoute(
-        path: '/guardian/add-player',
-        parentNavigatorKey: _rootNavigatorKey,
-        builder: (context, state) => const AddPlayerScreen(),
-      ),
-
-      GoRoute(
-        path: '/guardian/player-details/:id',
-        builder: (context, state) {
-          final isCoach = state.uri.queryParameters['isCoach'] == 'true';
-          return PlayerDetailsScreen(
-            playerId: state.pathParameters['id'] ?? '1',
-            isCoachView: isCoach,
-          );
-        },
-      ),
-
-      GoRoute(
-        path: '/guardian/edit-player',
-        builder: (context, state) {
-          final playerData = state.extra as Map<String, dynamic>?;
-          return EditPlayerScreen(playerData: playerData);
-        },
       ),
 
       GoRoute(
@@ -238,6 +225,10 @@ class AppRouter {
             builder: (context, state) => const EarningHistoryScreen(),
           ),
           GoRoute(
+            path: '/coach/my-reviews',
+            builder: (context, state) => const CoachReviewsScreen(),
+          ),
+          GoRoute(
             path: '/coach/profile',
             builder: (context, state) => const CoachProfileScreen(coachId: '1'),
           ),
@@ -252,6 +243,25 @@ class AppRouter {
           GoRoute(
             path: '/coach/bookings',
             builder: (context, state) => const CoachBookingsScreen(),
+          ),
+          GoRoute(
+            path: '/coach/session-details/:id',
+            builder: (context, state) => SessionDetailsScreen(
+              sessionId: state.pathParameters['id'] ?? '',
+              occurrenceDate: state.uri.queryParameters['date'],
+            ),
+          ),
+          GoRoute(
+            path: '/coach/session-report/:id',
+            builder: (context, state) => SessionReportScreen(
+                sessionId: state.pathParameters['id'] ?? ''),
+          ),
+          GoRoute(
+            path: '/coach/player-report/:sessionId/:playerId',
+            builder: (context, state) => PlayerReportScreen(
+              sessionId: state.pathParameters['sessionId']!,
+              playerId: state.pathParameters['playerId']!,
+            ),
           ),
           GoRoute(
             path: '/coach/subscription-plans',
@@ -388,6 +398,115 @@ class AppRouter {
           GoRoute(
             path: '/guardian/notifications',
             builder: (context, state) => const NotificationsScreen(),
+          ),
+          GoRoute(
+            path: '/guardian/add-player',
+            builder: (context, state) => const AddPlayerScreen(),
+          ),
+          GoRoute(
+            path: '/guardian/player-details/:id',
+            builder: (context, state) {
+              final isCoach = state.uri.queryParameters['isCoach'] == 'true';
+              return PlayerDetailsScreen(
+                playerId: state.pathParameters['id'] ?? '1',
+                isCoachView: isCoach,
+              );
+            },
+          ),
+          GoRoute(
+            path: '/guardian/edit-player',
+            builder: (context, state) {
+              final playerData = state.extra as Map<String, dynamic>?;
+              return EditPlayerScreen(playerData: playerData);
+            },
+          ),
+          GoRoute(
+            path: '/guardian/session-details/:id',
+            builder: (context, state) => SessionDetailsScreen(
+                sessionId: state.pathParameters['id'] ?? ''),
+          ),
+          GoRoute(
+            path: '/guardian/coach-details/:id',
+            builder: (context, state) =>
+                CoachDetailsScreen(coachId: state.pathParameters['id'] ?? '1'),
+          ),
+          GoRoute(
+            path: '/guardian/coach/:id/book',
+            builder: (context, state) {
+              final coachId = state.pathParameters['id']!;
+              final extra = state.extra as Map<String, dynamic>? ?? {};
+              return CoachBookingScreen(
+                coachId: coachId,
+                coachName: extra['coachName'] ?? 'Coach',
+                coachImageUrl: extra['coachImageUrl'],
+                hourlyRate: extra['hourlyRate'] ?? 60.0,
+                sessionDuration: extra['sessionDuration'] ?? 60,
+                cancellationPolicy: extra['cancellationPolicy'] ?? 'flexible',
+              );
+            },
+          ),
+          GoRoute(
+            path: '/guardian/booking/confirm-private',
+            builder: (context, state) {
+              final extra = state.extra as Map<String, dynamic>? ?? {};
+              return ConfirmPrivateBookingScreen(
+                coachId: extra['coachId'],
+                coachName: extra['coachName'],
+                coachImageUrl: extra['coachImageUrl'],
+                startTime: extra['startTime'],
+                durationMinutes: extra['durationMinutes'],
+                price: extra['price'],
+                cancellationPolicy: extra['cancellationPolicy'] ?? 'flexible',
+              );
+            },
+          ),
+          GoRoute(
+            path: '/guardian/booking/:sessionId',
+            builder: (context, state) {
+              final sessionId = state.pathParameters['sessionId']!;
+              return BookingScreen(sessionId: sessionId);
+            },
+          ),
+          GoRoute(
+            path: '/guardian/confirm-booking',
+            builder: (context, state) {
+              final extra = state.extra as Map<String, dynamic>? ?? {};
+              return ConfirmBookingScreenSimple(bookingDetails: extra);
+            },
+          ),
+          GoRoute(
+            path: '/guardian/booking-success',
+            builder: (context, state) {
+              final extra = state.extra as Map<String, dynamic>? ?? {};
+              return BookingSuccessScreen(bookingDetails: extra);
+            },
+          ),
+          GoRoute(
+            path: '/guardian/change-password',
+            builder: (context, state) => const ChangePasswordScreen(),
+          ),
+          GoRoute(
+            path: '/guardian/payment-methods',
+            builder: (context, state) => const PaymentMethodsScreen(),
+          ),
+          GoRoute(
+            path: '/guardian/help-center',
+            builder: (context, state) => const HelpCenterScreen(),
+          ),
+          GoRoute(
+            path: '/guardian/privacy-policy',
+            builder: (context, state) => const PrivacyPolicyScreen(),
+          ),
+          GoRoute(
+            path: '/guardian/terms-of-service',
+            builder: (context, state) => const TermsOfServiceScreen(),
+          ),
+          GoRoute(
+            path: '/guardian/edit-profile',
+            builder: (context, state) {
+              final profileData = state.extra as Map<String, dynamic>?;
+              return GuardianEditProfileScreen(profileData: profileData);
+            },
           ),
         ],
       ),

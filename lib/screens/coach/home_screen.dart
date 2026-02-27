@@ -410,16 +410,19 @@ class _CoachHomeScreenState extends State<CoachHomeScreen> with RouteAware {
                               // (populated for selected date by _loadSessionsForDate)
                               if (_todaysSessions.isEmpty)
                                 Container(
+                                  width: double.infinity,
                                   padding: EdgeInsets.all(
-                                    context.spacing.sectionSpacing,
+                                    context.spacing.lg,
                                   ),
                                   decoration: BoxDecoration(
                                     color: Theme.of(context).cardColor,
                                     borderRadius: BorderRadius.circular(
-                                      context.responsive.radius(16),
+                                      context.responsive.radius(24),
                                     ),
                                     border: Border.all(
-                                      color: Theme.of(context).dividerColor,
+                                      color: Theme.of(context)
+                                          .dividerColor
+                                          .withValues(alpha: 0.1),
                                     ),
                                   ),
                                   child: Center(
@@ -427,21 +430,21 @@ class _CoachHomeScreenState extends State<CoachHomeScreen> with RouteAware {
                                       children: [
                                         Icon(
                                           Icons.event_busy,
-                                          size: context.responsive.iconSize(48),
+                                          size: context.responsive.iconSize(32),
                                           color: Theme.of(
                                             context,
                                           ).disabledColor,
                                         ),
-                                        SizedBox(height: context.spacing.md),
+                                        SizedBox(height: context.spacing.sm),
                                         Text(
                                           _isToday(_selectedDate)
                                               ? 'No sessions today'
                                               : 'No sessions scheduled',
                                           style: GoogleFonts.inter(
                                             color: Theme.of(context)
-                                                .colorScheme
-                                                .onSurface
-                                                .withValues(alpha: 0.5),
+                                                .textTheme
+                                                .bodyMedium
+                                                ?.color,
                                             fontSize: context.text.bodySmall,
                                             fontWeight: FontWeight.w500,
                                           ),
@@ -506,32 +509,42 @@ class _CoachHomeScreenState extends State<CoachHomeScreen> with RouteAware {
             style: GoogleFonts.inter(
               fontSize: context.text.caption,
               fontWeight: FontWeight.w600,
-              color: AppPalette.textSecondaryLight,
+              color: Theme.of(context)
+                  .colorScheme
+                  .onSurface
+                  .withValues(alpha: 0.6),
               letterSpacing: 1.2,
             ),
           ),
           SizedBox(height: context.spacing.lg),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              _buildSummaryItem(
-                _todaySessionsCount.toString(),
-                'Sessions',
-                onTap: () => context.push('/coach/sessions'),
+              Expanded(
+                child: _buildSummaryItem(
+                  _todaySessionsCount.toString(),
+                  'Sessions',
+                  onTap: () => context.push('/coach/sessions'),
+                ),
               ),
-              _buildSummaryItem(
-                // Removed hardcoded currency
-                EarningsService.formatCurrency(
-                  _totalEarnings,
-                  currency: _currency,
-                ).split('.')[0], // Display Dynamic Currency
-                'Total Earnings',
-                onTap: () => context.push('/coach/earnings'),
+              Expanded(
+                child: _buildSummaryItem(
+                  // Removed hardcoded currency
+                  EarningsService.formatCurrency(
+                    _totalEarnings,
+                    currency: _currency,
+                  ).split('.')[0], // Display Dynamic Currency
+                  'Earnings',
+                  onTap: () => context.push('/coach/earnings'),
+                ),
               ),
-              _buildSummaryItem(
-                _todayStudentsCount.toString(),
-                'Students',
-                onTap: () => context.push('/coach/students'),
+              Expanded(
+                child: _buildSummaryItem(
+                  _todayStudentsCount.toString(),
+                  'Students',
+                  onTap: () => context.push('/coach/students'),
+                ),
               ),
             ],
           ),
@@ -568,8 +581,8 @@ class _CoachHomeScreenState extends State<CoachHomeScreen> with RouteAware {
                     padding: EdgeInsets.all(context.spacing.sm),
                     decoration: BoxDecoration(
                       color: Theme.of(context).colorScheme.primary.withValues(
-                        alpha: 0.2,
-                      ), // Darker bg for icon
+                            alpha: 0.2,
+                          ), // Darker bg for icon
                       shape: BoxShape.circle,
                     ),
                     child: Icon(
@@ -625,13 +638,20 @@ class _CoachHomeScreenState extends State<CoachHomeScreen> with RouteAware {
       child: Padding(
         padding: EdgeInsets.all(context.spacing.sm),
         child: Column(
+          mainAxisAlignment: MainAxisAlignment.end,
           children: [
-            Text(
-              value,
-              style: GoogleFonts.inter(
-                fontSize: context.text.h1,
-                fontWeight: FontWeight.bold,
-                color: Theme.of(context).colorScheme.primary,
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.bottomCenter,
+              child: Text(
+                value,
+                style: GoogleFonts.inter(
+                  fontSize:
+                      context.responsive.sp(32), // Using a fixed base size
+                  fontWeight: FontWeight.bold,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+                maxLines: 1,
               ),
             ),
             SizedBox(height: context.spacing.sm),
@@ -643,6 +663,8 @@ class _CoachHomeScreenState extends State<CoachHomeScreen> with RouteAware {
                 color: Theme.of(context).textTheme.bodyMedium?.color,
                 fontWeight: FontWeight.w500,
               ),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
             ),
           ],
         ),
@@ -665,7 +687,10 @@ class _CoachHomeScreenState extends State<CoachHomeScreen> with RouteAware {
             style: GoogleFonts.inter(
               fontSize: context.text.caption,
               fontWeight: FontWeight.w600,
-              color: AppPalette.textSecondaryLight,
+              color: Theme.of(context)
+                  .colorScheme
+                  .onSurface
+                  .withValues(alpha: 0.6),
               letterSpacing: 1.2,
             ),
           ),
@@ -705,28 +730,13 @@ class _CoachHomeScreenState extends State<CoachHomeScreen> with RouteAware {
       );
     }
 
-    // 3. Find the next UPCOMING session
-    // Filter out completed, cancelled, or past sessions
-    final now = DateTime.now();
+    // 3. Find the next UPCOMING session using isFinished from backend
     final upcomingSessions = _todaysSessions.where((s) {
       final status = s['status'];
-      if (status == 'completed' || status == 'cancelled') return false;
-
-      // check time
-      final timeSlots =
-          (s['timeSlots'] as List?)?.cast<Map<String, dynamic>>() ?? [];
-      if (timeSlots.isEmpty) return false;
-
-      final startTimeStr = timeSlots[0]['startTime'];
-      if (startTimeStr == null) return false;
-
-      final startTime = DateTime.parse(startTimeStr).toLocal();
-      // Consider it "next" if it hasn't ended yet (start + duration)
-      // or simply if it's in the future or currently running
-      final duration = timeSlots[0]['durationMinutes'] ?? 60;
-      final endTime = startTime.add(Duration(minutes: duration));
-
-      return endTime.isAfter(now);
+      if (status == 'cancelled') return false;
+      // Use backend-provided isFinished flag; fall back to checking endTime locally
+      final isFinished = s['isFinished'] as bool? ?? false;
+      return !isFinished;
     }).toList();
 
     if (upcomingSessions.isEmpty) {
@@ -789,7 +799,8 @@ class _CoachHomeScreenState extends State<CoachHomeScreen> with RouteAware {
           style: GoogleFonts.inter(
             fontSize: context.text.caption,
             fontWeight: FontWeight.w600,
-            color: AppPalette.textSecondaryLight,
+            color:
+                Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
             letterSpacing: 1.2,
           ),
         ),
@@ -808,23 +819,64 @@ class _CoachHomeScreenState extends State<CoachHomeScreen> with RouteAware {
     final title = session['title'] ?? 'Untitled Session';
     final location = session['location'] ?? 'Location TBD';
 
-    final timeSlots = session['timeSlots'] as List?;
-    final startTimeStr = timeSlots != null && timeSlots.isNotEmpty
-        ? timeSlots[0]['startTime']
-        : null;
+    // Use displaySlot from backend (correct occurrence for this date/context).
+    // Fall back to scanning timeSlots for the selected date if backend didn't provide it.
+    Map<String, dynamic>? relevantSlot =
+        session['displaySlot'] as Map<String, dynamic>?;
 
-    final formattedTime = startTimeStr != null
-        ? DateTimeUtils.formatTime(startTimeStr)
-        : 'TBD';
+    if (relevantSlot == null) {
+      final timeSlots = session['timeSlots'] as List?;
+      if (timeSlots != null) {
+        for (final slot in timeSlots) {
+          final st = slot['startTime'];
+          if (st != null) {
+            final slotDate = DateTime.parse(st).toLocal();
+            if (slotDate.year == _selectedDate.year &&
+                slotDate.month == _selectedDate.month &&
+                slotDate.day == _selectedDate.day) {
+              relevantSlot = slot as Map<String, dynamic>;
+              break;
+            }
+          }
+        }
+        if (relevantSlot == null && timeSlots.isNotEmpty) {
+          relevantSlot = timeSlots[0] as Map<String, dynamic>;
+        }
+      }
+    }
+
+    final startTimeStr = relevantSlot?['startTime'];
+    final formattedTime =
+        startTimeStr != null ? DateTimeUtils.formatTime(startTimeStr) : 'TBD';
+
+    // Use backend-provided isFinished; fall back to end-time check
+    bool isFinishedToday = session['isFinished'] as bool? ?? false;
+    if (!(session.containsKey('isFinished'))) {
+      final now = DateTime.now();
+      DateTime? endTime;
+      if (relevantSlot != null && relevantSlot['endTime'] != null) {
+        endTime = DateTime.parse(relevantSlot['endTime']).toLocal();
+      } else if (startTimeStr != null) {
+        final startTime = DateTime.parse(startTimeStr).toLocal();
+        final duration = relevantSlot?['durationMinutes'] ?? 60;
+        endTime = startTime.add(Duration(minutes: duration));
+      }
+      if (endTime != null && endTime.isBefore(now)) {
+        isFinishedToday = true;
+      } else if (session['status'] == 'completed') {
+        isFinishedToday = true;
+      }
+    }
+
+    final primaryColor = SessionUtils.getSessionPrimaryColor(context, session);
 
     return Container(
       padding: EdgeInsets.all(context.spacing.md),
       decoration: BoxDecoration(
-        color: Theme.of(context).cardColor,
+        color: SessionUtils.getSessionColor(context, session),
         borderRadius: BorderRadius.circular(context.responsive.radius(24)),
-        border: isNextSession
-            ? Border.all(color: Theme.of(context).colorScheme.primary, width: 2)
-            : null,
+        border:
+            isNextSession ? Border.all(color: primaryColor, width: 2) : null,
         boxShadow: [
           BoxShadow(
             color: Theme.of(context).shadowColor.withValues(alpha: 0.05),
@@ -847,9 +899,7 @@ class _CoachHomeScreenState extends State<CoachHomeScreen> with RouteAware {
                     vertical: context.spacing.xs,
                   ),
                   decoration: BoxDecoration(
-                    color: Theme.of(
-                      context,
-                    ).colorScheme.primary.withValues(alpha: 0.1),
+                    color: primaryColor.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(
                       context.responsive.radius(8),
                     ),
@@ -859,7 +909,7 @@ class _CoachHomeScreenState extends State<CoachHomeScreen> with RouteAware {
                     style: GoogleFonts.inter(
                       fontSize: context.text.caption,
                       fontWeight: FontWeight.w600,
-                      color: Theme.of(context).colorScheme.primary,
+                      color: primaryColor,
                     ),
                   ),
                 ),
@@ -919,7 +969,7 @@ class _CoachHomeScreenState extends State<CoachHomeScreen> with RouteAware {
                               vertical: context.spacing.sm,
                             ),
                             decoration: BoxDecoration(
-                              color: Theme.of(context).colorScheme.primary,
+                              color: AppPalette.orangeAccent,
                               borderRadius: BorderRadius.circular(
                                 context.responsive.radius(12),
                               ),
@@ -956,8 +1006,11 @@ class _CoachHomeScreenState extends State<CoachHomeScreen> with RouteAware {
                     // Details Button
                     Expanded(
                       child: InkWell(
-                        onTap: () =>
-                            context.push('/session-details/$sessionId'),
+                        onTap: () {
+                          final dateParam = _selectedDate.toIso8601String();
+                          context.push(
+                              '/coach/session-details/$sessionId?date=$dateParam');
+                        },
                         borderRadius: BorderRadius.circular(
                           context.responsive.radius(12),
                         ),
@@ -979,7 +1032,11 @@ class _CoachHomeScreenState extends State<CoachHomeScreen> with RouteAware {
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Text(
-                                isNextSession ? 'Details' : 'View Plan',
+                                isNextSession
+                                    ? 'Details'
+                                    : (isFinishedToday
+                                        ? 'Finished'
+                                        : 'View Plan'),
                                 style: GoogleFonts.inter(
                                   fontSize: context.text.bodySmall,
                                   fontWeight: FontWeight.w600,
@@ -990,7 +1047,9 @@ class _CoachHomeScreenState extends State<CoachHomeScreen> with RouteAware {
                               ),
                               SizedBox(width: context.spacing.xs),
                               Icon(
-                                Icons.arrow_forward,
+                                isFinishedToday
+                                    ? Icons.check_circle_outline
+                                    : Icons.arrow_forward,
                                 size: context.responsive.iconSize(14),
                                 color: Theme.of(context).colorScheme.onSurface,
                               ),

@@ -52,34 +52,17 @@ class _LoginScreenState extends State<LoginScreen> {
       } else {
         debugPrint('🔄 Local login failed, trying Firebase login...');
 
-        // Retrieve stored role from SharedPreferences if exists
-        final prefs = await SharedPreferences.getInstance();
-        final storedEmail = prefs.getString('pending_email');
-        final storedRole = prefs.getString('pending_role');
-
-        String? roleToUse;
-        if (storedEmail == _emailController.text.trim() && storedRole != null) {
-          roleToUse = storedRole;
-          debugPrint('📦 Retrieved stored role: $roleToUse');
-        } else {
-          roleToUse = widget.role;
-          debugPrint('🎯 Using passed role: $roleToUse');
-        }
-
         final userCredential = await _authService.signIn(
           email: _emailController.text.trim(),
           password: _passwordController.text,
-          role: roleToUse,
         );
 
         debugPrint('✅ Firebase login successful');
 
-        // Clear stored values AFTER successful login
-        if (storedEmail == _emailController.text.trim()) {
-          await prefs.remove('pending_email');
-          await prefs.remove('pending_role');
-          debugPrint('🧹 Cleared stored registration data');
-        }
+        // Clear any legacy pending_email / pending_role keys (no longer used)
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.remove('pending_email');
+        await prefs.remove('pending_role');
 
         final token = await userCredential.user?.getIdToken();
         if (token != null) {
@@ -211,9 +194,8 @@ class _LoginScreenState extends State<LoginScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
-        backgroundColor: isError
-            ? AppPalette.errorRed
-            : AppPalette.successGreen,
+        backgroundColor:
+            isError ? AppPalette.errorRed : AppPalette.successGreen,
         behavior: SnackBarBehavior.floating,
         margin: const EdgeInsets.all(16),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -250,8 +232,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     'Log in to continue your cricket journey',
                     style: TextStyle(
                       fontSize: 16,
-                      color:
-                          Theme.of(context).textTheme.bodyMedium?.color ??
+                      color: Theme.of(context).textTheme.bodyMedium?.color ??
                           AppPalette.textSecondaryLight,
                     ),
                   ),
@@ -312,7 +293,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           fontSize: 14,
                           color:
                               Theme.of(context).textTheme.bodyMedium?.color ??
-                              AppPalette.textSecondaryLight,
+                                  AppPalette.textSecondaryLight,
                         ),
                       ),
                     ],
@@ -344,8 +325,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     child: Text(
                       'OR',
                       style: TextStyle(
-                        color:
-                            Theme.of(context).textTheme.bodyMedium?.color ??
+                        color: Theme.of(context).textTheme.bodyMedium?.color ??
                             AppPalette.textSecondaryLight,
                         fontSize: 14,
                         fontWeight: FontWeight.w500,
@@ -384,8 +364,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   Text(
                     "Don't have an account? ",
                     style: TextStyle(
-                      color:
-                          Theme.of(context).textTheme.bodyMedium?.color ??
+                      color: Theme.of(context).textTheme.bodyMedium?.color ??
                           AppPalette.textSecondaryLight,
                       fontSize: 14,
                     ),

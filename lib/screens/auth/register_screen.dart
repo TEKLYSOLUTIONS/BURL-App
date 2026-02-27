@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../../config/palette.dart';
 import '../../services/firebase_auth_service.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -100,11 +99,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
         fullName: _nameController.text.trim(),
         role: widget.role ?? 'player',
       );
-
-      // Store role for first login MongoDB creation
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('pending_role', widget.role ?? 'player');
-      await prefs.setString('pending_email', _emailController.text.trim());
 
       if (!mounted) return;
 

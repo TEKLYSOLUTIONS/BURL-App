@@ -94,7 +94,7 @@ class _CoachProfileScreenState extends ConsumerState<CoachProfileScreen> {
 
   void _showProfilePicturePreview() {
     final imageUrl = _getProfileImageUrl();
-    
+
     showDialog(
       context: context,
       builder: (context) => Dialog(
@@ -184,7 +184,7 @@ class _CoachProfileScreenState extends ConsumerState<CoachProfileScreen> {
       setState(() {
         _isUploadingImage = false;
       });
-      
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -207,7 +207,6 @@ class _CoachProfileScreenState extends ConsumerState<CoachProfileScreen> {
 
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-
       body: SingleChildScrollView(
         // Move padding to inside Column for content only
         child: Column(
@@ -277,11 +276,15 @@ class _CoachProfileScreenState extends ConsumerState<CoachProfileScreen> {
                               CircleAvatar(
                                 radius: 35,
                                 backgroundColor: AppPalette.navyPrimary,
-                                backgroundImage: _getProfileImageUrl() != null && _getProfileImageUrl()!.isNotEmpty
-                                    ? NetworkImage(_getProfileImageUrl()!)
-                                    : null,
-                                child: _getProfileImageUrl() == null || _getProfileImageUrl()!.isEmpty
-                                    ? const Icon(Icons.person, size: 35, color: Colors.white)
+                                backgroundImage:
+                                    _getProfileImageUrl() != null &&
+                                            _getProfileImageUrl()!.isNotEmpty
+                                        ? NetworkImage(_getProfileImageUrl()!)
+                                        : null,
+                                child: _getProfileImageUrl() == null ||
+                                        _getProfileImageUrl()!.isEmpty
+                                    ? const Icon(Icons.person,
+                                        size: 35, color: Colors.white)
                                     : null,
                               ),
                               Positioned(
@@ -327,8 +330,8 @@ class _CoachProfileScreenState extends ConsumerState<CoachProfileScreen> {
                                   fontWeight: FontWeight.bold,
                                   color:
                                       ref.watch(themeProvider) == ThemeMode.dark
-                                      ? Colors.white
-                                      : AppPalette.navyPrimary,
+                                          ? Colors.white
+                                          : AppPalette.navyPrimary,
                                 ),
                               ),
                               const SizedBox(height: 4),
@@ -441,8 +444,7 @@ class _CoachProfileScreenState extends ConsumerState<CoachProfileScreen> {
                             children: [
                               Consumer(
                                 builder: (context, ref, child) {
-                                  final isDark =
-                                      ref.watch(themeProvider) ==
+                                  final isDark = ref.watch(themeProvider) ==
                                       ThemeMode.dark;
                                   return Text(
                                     isDark ? 'Dark Mode' : 'Light Mode',
@@ -558,9 +560,36 @@ class _CoachProfileScreenState extends ConsumerState<CoachProfileScreen> {
                     ),
                   ).animate().fadeIn(delay: 400.ms),
 
+                  const SizedBox(height: 16),
+
+                  // Delete Account Button
+                  OutlinedButton.icon(
+                    onPressed: () => _showDeleteConfirmation(context),
+                    icon: const Icon(Icons.delete_forever, color: Colors.red),
+                    label: const Text('Delete Account'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.red,
+                      side: const BorderSide(
+                        color: Colors.red,
+                        width: 1,
+                      ),
+                      backgroundColor: Colors.white,
+                      minimumSize: const Size(double.infinity, 56),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      textStyle: GoogleFonts.inter(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ).animate().fadeIn(delay: 500.ms),
+
                   const SizedBox(height: 24),
                   Text(
-                    _appVersion.isNotEmpty ? _appVersion : 'Version 1.0.0 (Build 3)',
+                    _appVersion.isNotEmpty
+                        ? _appVersion
+                        : 'Version 1.0.0 (Build 3)',
                     style: GoogleFonts.inter(
                       fontSize: 12,
                       color: Colors.grey[400],
@@ -579,13 +608,12 @@ class _CoachProfileScreenState extends ConsumerState<CoachProfileScreen> {
   Widget _buildSubscriptionBadge() {
     final coachProfile = _profileData?['coachProfile'] as Map<String, dynamic>?;
     final plan = coachProfile?['plan'] as String? ?? 'free';
-    final subStatus = (coachProfile?['subscription'] as Map<String, dynamic>?)?['status'] as String?;
+    final subStatus = (coachProfile?['subscription']
+        as Map<String, dynamic>?)?['status'] as String?;
     final isActive = subStatus == 'active' || subStatus == 'trial';
     final isFree = plan == 'free' || plan.isEmpty;
 
-    final label = isFree
-        ? 'Free'
-        : plan[0].toUpperCase() + plan.substring(1);
+    final label = isFree ? 'Free' : plan[0].toUpperCase() + plan.substring(1);
 
     final bgColor = isFree ? Colors.grey[100]! : Colors.orange[50]!;
     final textColor = isFree ? Colors.grey[600]! : Colors.orange;
@@ -767,7 +795,18 @@ class _CoachProfileScreenState extends ConsumerState<CoachProfileScreen> {
           borderRadius: BorderRadius.circular(16),
           border: isSelected
               ? Border.all(color: AppPalette.orangeAccent, width: 2)
-              : Border.all(color: AppPalette.divider.withValues(alpha: 0.5)),
+              : Border.all(
+                  color: Theme.of(context).dividerColor.withValues(alpha: 0.1),
+                  width: 1,
+                ),
+          boxShadow: [
+            if (!isSelected)
+              BoxShadow(
+                color: Theme.of(context).shadowColor.withValues(alpha: 0.05),
+                blurRadius: 5,
+                offset: const Offset(0, 2),
+              ),
+          ],
         ),
         child: Row(
           children: [
@@ -776,12 +815,14 @@ class _CoachProfileScreenState extends ConsumerState<CoachProfileScreen> {
               decoration: BoxDecoration(
                 color: isSelected
                     ? AppPalette.orangeAccent
-                    : Colors.grey.withValues(alpha: 0.1),
+                    : Theme.of(context).disabledColor.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
               child: Icon(
                 icon,
-                color: isSelected ? Colors.white : Colors.grey,
+                color: isSelected
+                    ? Colors.white
+                    : Theme.of(context).colorScheme.primary,
                 size: 20,
               ),
             ),
@@ -803,6 +844,76 @@ class _CoachProfileScreenState extends ConsumerState<CoachProfileScreen> {
           ],
         ),
       ),
+    );
+  }
+
+  Future<void> _showDeleteConfirmation(BuildContext context) async {
+    return showDialog(
+      context: context,
+      builder: (context) {
+        bool isLoading = false;
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              titlePadding: const EdgeInsets.fromLTRB(24, 16, 8, 0),
+              title: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text('Delete Account',
+                      style: TextStyle(color: AppPalette.error)),
+                  IconButton(
+                    icon: const Icon(Icons.close, color: Colors.grey),
+                    onPressed:
+                        isLoading ? null : () => Navigator.of(context).pop(),
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                  ),
+                ],
+              ),
+              content: const Text(
+                'Are you sure you want to permanently delete your account? This action cannot be undone and you will lose all your data.',
+              ),
+              actions: [
+                ElevatedButton(
+                  onPressed: isLoading
+                      ? null
+                      : () async {
+                          setState(() => isLoading = true);
+                          final success = await AuthService.deleteAccount();
+                          setState(() => isLoading = false);
+
+                          if (context.mounted) {
+                            if (success) {
+                              Navigator.of(context).pop(); // Close dialog
+                              context.go('/welcome'); // Redirect
+                            } else {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                    content: Text(
+                                        'Failed to delete account. Please try again later.')),
+                              );
+                            }
+                          }
+                        },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppPalette.error,
+                    foregroundColor: Colors.white,
+                  ),
+                  child: isLoading
+                      ? const SizedBox(
+                          height: 16,
+                          width: 16,
+                          child: CircularProgressIndicator(
+                              color: Colors.white, strokeWidth: 2),
+                        )
+                      : const Text('Delete',
+                          style: TextStyle(fontWeight: FontWeight.bold)),
+                ),
+              ],
+            );
+          },
+        );
+      },
     );
   }
 }

@@ -31,53 +31,228 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
 
   static List<SubscriptionPlan> get _fallbackPlans {
     List<SubscriptionFeature> features(List<Map<String, dynamic>> feats) =>
-        feats.map((f) => SubscriptionFeature(name: f['name'] as String, included: f['included'] as bool, highlight: (f['highlight'] as bool?) ?? false)).toList();
+        feats
+            .map((f) => SubscriptionFeature(
+                name: f['name'] as String,
+                included: f['included'] as bool,
+                highlight: (f['highlight'] as bool?) ?? false))
+            .toList();
 
     return [
-      SubscriptionPlan(id: 'basic-m', planId: 'basic-monthly', name: 'Basic', description: 'Perfect for coaches just getting started', price: 0, currency: 'GBP', interval: 'month', tier: 'Basic', trialPeriodDays: 0, isPopular: false, features: features([
-        {'name': 'Up to 5 active sessions', 'included': true, 'highlight': false},
-        {'name': '1 player profile', 'included': true, 'highlight': false},
-        {'name': 'Basic availability management', 'included': true, 'highlight': false},
-        {'name': 'Advanced analytics', 'included': false, 'highlight': false},
-        {'name': 'Priority support', 'included': false, 'highlight': false},
-      ])),
-      SubscriptionPlan(id: 'premium-m', planId: 'premium-monthly', name: 'Premium', description: 'For coaches growing their business', price: 20, currency: 'GBP', interval: 'month', tier: 'Premium', trialPeriodDays: 7, isPopular: true, features: features([
-        {'name': 'Unlimited active sessions', 'included': true, 'highlight': false},
-        {'name': 'Unlimited player profiles', 'included': true, 'highlight': false},
-        {'name': 'Advanced availability management', 'included': true, 'highlight': false},
-        {'name': 'Advanced analytics & reports', 'included': true, 'highlight': true},
-        {'name': 'Priority support', 'included': true, 'highlight': true},
-      ])),
-      SubscriptionPlan(id: 'enterprise-m', planId: 'enterprise-monthly', name: 'Enterprise', description: 'For academies & professional organisations', price: 50, currency: 'GBP', interval: 'month', tier: 'Enterprise', trialPeriodDays: 14, isPopular: false, features: features([
-        {'name': 'Unlimited active sessions', 'included': true, 'highlight': false},
-        {'name': 'Unlimited player profiles', 'included': true, 'highlight': false},
-        {'name': 'Advanced availability management', 'included': true, 'highlight': false},
-        {'name': 'Advanced analytics & reports', 'included': true, 'highlight': false},
-        {'name': 'Dedicated account manager', 'included': true, 'highlight': true},
-        {'name': 'Custom branding & white label', 'included': true, 'highlight': true},
-      ])),
-      SubscriptionPlan(id: 'basic-y', planId: 'basic-yearly', name: 'Basic', description: 'Perfect for coaches just getting started', price: 0, currency: 'GBP', interval: 'year', tier: 'Basic', trialPeriodDays: 0, isPopular: false, features: features([
-        {'name': 'Up to 5 active sessions', 'included': true, 'highlight': false},
-        {'name': '1 player profile', 'included': true, 'highlight': false},
-        {'name': 'Basic availability management', 'included': true, 'highlight': false},
-        {'name': 'Advanced analytics', 'included': false, 'highlight': false},
-        {'name': 'Priority support', 'included': false, 'highlight': false},
-      ])),
-      SubscriptionPlan(id: 'premium-y', planId: 'premium-yearly', name: 'Premium', description: 'For coaches growing their business', price: 192, currency: 'GBP', interval: 'year', tier: 'Premium', trialPeriodDays: 7, isPopular: true, features: features([
-        {'name': 'Unlimited active sessions', 'included': true, 'highlight': false},
-        {'name': 'Unlimited player profiles', 'included': true, 'highlight': false},
-        {'name': 'Advanced availability management', 'included': true, 'highlight': false},
-        {'name': 'Advanced analytics & reports', 'included': true, 'highlight': true},
-        {'name': 'Priority support', 'included': true, 'highlight': true},
-      ])),
-      SubscriptionPlan(id: 'enterprise-y', planId: 'enterprise-yearly', name: 'Enterprise', description: 'For academies & professional organisations', price: 480, currency: 'GBP', interval: 'year', tier: 'Enterprise', trialPeriodDays: 14, isPopular: false, features: features([
-        {'name': 'Unlimited active sessions', 'included': true, 'highlight': false},
-        {'name': 'Unlimited player profiles', 'included': true, 'highlight': false},
-        {'name': 'Advanced availability management', 'included': true, 'highlight': false},
-        {'name': 'Advanced analytics & reports', 'included': true, 'highlight': false},
-        {'name': 'Dedicated account manager', 'included': true, 'highlight': true},
-        {'name': 'Custom branding & white label', 'included': true, 'highlight': true},
-      ])),
+      SubscriptionPlan(
+          id: 'basic-m',
+          planId: 'basic-monthly',
+          name: 'Basic',
+          description: 'Perfect for coaches just getting started',
+          price: 0,
+          currency: 'GBP',
+          interval: 'month',
+          tier: 'Basic',
+          trialPeriodDays: 0,
+          isPopular: false,
+          features: features([
+            {
+              'name': 'Up to 5 active sessions',
+              'included': true,
+              'highlight': false
+            },
+            {'name': '1 player profile', 'included': true, 'highlight': false},
+            {
+              'name': 'Basic availability management',
+              'included': true,
+              'highlight': false
+            },
+            {
+              'name': 'Advanced analytics',
+              'included': false,
+              'highlight': false
+            },
+            {'name': 'Priority support', 'included': false, 'highlight': false},
+          ])),
+      SubscriptionPlan(
+          id: 'premium-m',
+          planId: 'premium-monthly',
+          name: 'Premium',
+          description: 'For coaches growing their business',
+          price: 20,
+          currency: 'GBP',
+          interval: 'month',
+          tier: 'Premium',
+          trialPeriodDays: 7,
+          isPopular: true,
+          features: features([
+            {
+              'name': 'Unlimited active sessions',
+              'included': true,
+              'highlight': false
+            },
+            {
+              'name': 'Unlimited player profiles',
+              'included': true,
+              'highlight': false
+            },
+            {
+              'name': 'Advanced availability management',
+              'included': true,
+              'highlight': false
+            },
+            {
+              'name': 'Advanced analytics & reports',
+              'included': true,
+              'highlight': true
+            },
+            {'name': 'Priority support', 'included': true, 'highlight': true},
+          ])),
+      SubscriptionPlan(
+          id: 'enterprise-m',
+          planId: 'enterprise-monthly',
+          name: 'Enterprise',
+          description: 'For academies & professional organisations',
+          price: 50,
+          currency: 'GBP',
+          interval: 'month',
+          tier: 'Enterprise',
+          trialPeriodDays: 14,
+          isPopular: false,
+          features: features([
+            {
+              'name': 'Unlimited active sessions',
+              'included': true,
+              'highlight': false
+            },
+            {
+              'name': 'Unlimited player profiles',
+              'included': true,
+              'highlight': false
+            },
+            {
+              'name': 'Advanced availability management',
+              'included': true,
+              'highlight': false
+            },
+            {
+              'name': 'Advanced analytics & reports',
+              'included': true,
+              'highlight': false
+            },
+            {
+              'name': 'Dedicated account manager',
+              'included': true,
+              'highlight': true
+            },
+            {
+              'name': 'Custom branding & white label',
+              'included': true,
+              'highlight': true
+            },
+          ])),
+      SubscriptionPlan(
+          id: 'basic-y',
+          planId: 'basic-yearly',
+          name: 'Basic',
+          description: 'Perfect for coaches just getting started',
+          price: 0,
+          currency: 'GBP',
+          interval: 'year',
+          tier: 'Basic',
+          trialPeriodDays: 0,
+          isPopular: false,
+          features: features([
+            {
+              'name': 'Up to 5 active sessions',
+              'included': true,
+              'highlight': false
+            },
+            {'name': '1 player profile', 'included': true, 'highlight': false},
+            {
+              'name': 'Basic availability management',
+              'included': true,
+              'highlight': false
+            },
+            {
+              'name': 'Advanced analytics',
+              'included': false,
+              'highlight': false
+            },
+            {'name': 'Priority support', 'included': false, 'highlight': false},
+          ])),
+      SubscriptionPlan(
+          id: 'premium-y',
+          planId: 'premium-yearly',
+          name: 'Premium',
+          description: 'For coaches growing their business',
+          price: 192,
+          currency: 'GBP',
+          interval: 'year',
+          tier: 'Premium',
+          trialPeriodDays: 7,
+          isPopular: true,
+          features: features([
+            {
+              'name': 'Unlimited active sessions',
+              'included': true,
+              'highlight': false
+            },
+            {
+              'name': 'Unlimited player profiles',
+              'included': true,
+              'highlight': false
+            },
+            {
+              'name': 'Advanced availability management',
+              'included': true,
+              'highlight': false
+            },
+            {
+              'name': 'Advanced analytics & reports',
+              'included': true,
+              'highlight': true
+            },
+            {'name': 'Priority support', 'included': true, 'highlight': true},
+          ])),
+      SubscriptionPlan(
+          id: 'enterprise-y',
+          planId: 'enterprise-yearly',
+          name: 'Enterprise',
+          description: 'For academies & professional organisations',
+          price: 480,
+          currency: 'GBP',
+          interval: 'year',
+          tier: 'Enterprise',
+          trialPeriodDays: 14,
+          isPopular: false,
+          features: features([
+            {
+              'name': 'Unlimited active sessions',
+              'included': true,
+              'highlight': false
+            },
+            {
+              'name': 'Unlimited player profiles',
+              'included': true,
+              'highlight': false
+            },
+            {
+              'name': 'Advanced availability management',
+              'included': true,
+              'highlight': false
+            },
+            {
+              'name': 'Advanced analytics & reports',
+              'included': true,
+              'highlight': false
+            },
+            {
+              'name': 'Dedicated account manager',
+              'included': true,
+              'highlight': true
+            },
+            {
+              'name': 'Custom branding & white label',
+              'included': true,
+              'highlight': true
+            },
+          ])),
     ];
   }
 
@@ -156,90 +331,94 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
             child: _isLoading
                 ? const Center(child: CircularProgressIndicator())
                 : SingleChildScrollView(
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    const SizedBox(height: 16),
+                    padding: const EdgeInsets.all(24),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        const SizedBox(height: 16),
 
-                    Text(
-                      'Choose the Right Plan for You',
-                      textAlign: TextAlign.center,
-                      style: GoogleFonts.inter(
-                        fontSize: 28,
-                        fontWeight: FontWeight.bold,
-                        color: Theme.of(context).colorScheme.onSurface,
-                      ),
-                    ).animate().fadeIn().slideY(begin: 0.1),
+                        Text(
+                          'Choose the Right Plan for You',
+                          textAlign: TextAlign.center,
+                          style: GoogleFonts.inter(
+                            fontSize: 28,
+                            fontWeight: FontWeight.bold,
+                            color: Theme.of(context).colorScheme.onSurface,
+                          ),
+                        ).animate().fadeIn().slideY(begin: 0.1),
 
-                    const SizedBox(height: 12),
+                        const SizedBox(height: 12),
 
-                    Text(
-                      'Unlock advanced features to scale your coaching business.',
-                      textAlign: TextAlign.center,
-                      style: GoogleFonts.inter(
-                        fontSize: 16,
-                        color: Theme.of(
-                          context,
-                        ).colorScheme.onSurface.withValues(alpha: 0.6),
-                      ),
-                    ).animate().fadeIn().slideY(begin: 0.1, delay: 100.ms),
+                        Text(
+                          'Unlock advanced features to scale your coaching business.',
+                          textAlign: TextAlign.center,
+                          style: GoogleFonts.inter(
+                            fontSize: 16,
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.onSurface.withValues(alpha: 0.6),
+                          ),
+                        ).animate().fadeIn().slideY(begin: 0.1, delay: 100.ms),
 
-                    const SizedBox(height: 32),
+                        const SizedBox(height: 32),
 
-                    // Monthly / Annual Toggle
-                    Container(
-                      padding: const EdgeInsets.all(4),
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).cardColor,
-                        borderRadius: BorderRadius.circular(30),
-                        border: Border.all(
-                          color: Theme.of(
-                            context,
-                          ).dividerColor.withValues(alpha: 0.5),
-                        ),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          _buildToggleOption('Monthly', !_isAnnual),
-                          _buildToggleOption('Annual (Save 20%)', _isAnnual),
-                        ],
-                      ),
-                    ).animate().fadeIn(delay: 200.ms),
+                        // Monthly / Annual Toggle
+                        Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).cardColor,
+                            borderRadius: BorderRadius.circular(30),
+                            border: Border.all(
+                              color: Theme.of(
+                                context,
+                              ).dividerColor.withValues(alpha: 0.5),
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              _buildToggleOption('Monthly', !_isAnnual),
+                              _buildToggleOption(
+                                  'Annual (Save 20%)', _isAnnual),
+                            ],
+                          ),
+                        ).animate().fadeIn(delay: 200.ms),
 
-                    const SizedBox(height: 40),
+                        const SizedBox(height: 40),
 
-                    // Dynamic Plans
-                    if (displayedPlans.isEmpty)
-                      Padding(
-                        padding: const EdgeInsets.all(24.0),
-                        child: Text(
-                          "No plans available for this interval.",
-                          style: GoogleFonts.inter(color: Colors.grey),
-                        ),
-                      ),
+                        // Dynamic Plans
+                        if (displayedPlans.isEmpty)
+                          Padding(
+                            padding: const EdgeInsets.all(24.0),
+                            child: Text(
+                              "No plans available for this interval.",
+                              style: GoogleFonts.inter(color: Colors.grey),
+                            ),
+                          ),
 
-                    ...displayedPlans.map((plan) {
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 24.0),
-                        child: _buildPlanCard(
-                          title: plan.name,
-                          price: plan.price,
-                          description: plan.description ?? '',
-                          features: plan.features,
-                          isPro:
-                              plan.isPro, // You might want to adjust this logic
-                          isAnnual: plan.interval == 'year',
-                          isPopular: plan.isPopular,
-                        ).animate().fadeIn(delay: 300.ms).slideY(begin: 0.2),
-                      );
-                    }),
+                        ...displayedPlans.map((plan) {
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 24.0),
+                            child: _buildPlanCard(
+                              title: plan.name,
+                              price: plan.price,
+                              description: plan.description ?? '',
+                              features: plan.features,
+                              isPro: plan
+                                  .isPro, // You might want to adjust this logic
+                              isAnnual: plan.interval == 'year',
+                              isPopular: plan.isPopular,
+                            )
+                                .animate()
+                                .fadeIn(delay: 300.ms)
+                                .slideY(begin: 0.2),
+                          );
+                        }),
 
-                    const SizedBox(height: 40),
-                  ],
-                ),
-              ),
+                        const SizedBox(height: 40),
+                      ],
+                    ),
+                  ),
           ),
         ],
       ),
@@ -407,35 +586,34 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
           Positioned(
             top: -12,
             right: 24,
-            child:
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 6,
+            child: Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 6,
+              ),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.secondary,
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.secondary.withValues(alpha: 0.3),
+                    blurRadius: 8,
+                    offset: const Offset(0, 4),
                   ),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.secondary,
-                    borderRadius: BorderRadius.circular(20),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Theme.of(
-                          context,
-                        ).colorScheme.secondary.withValues(alpha: 0.3),
-                        blurRadius: 8,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: Text(
-                    'MOST POPULAR',
-                    style: GoogleFonts.inter(
-                      color: Colors.white,
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 1,
-                    ),
-                  ),
-                ).animate().slideY(
+                ],
+              ),
+              child: Text(
+                'MOST POPULAR',
+                style: GoogleFonts.inter(
+                  color: Colors.white,
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 1,
+                ),
+              ),
+            ).animate().slideY(
                   begin: -0.5,
                   end: 1.5,
                   duration: 600.ms,

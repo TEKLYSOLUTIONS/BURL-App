@@ -36,19 +36,43 @@ class FirebaseAuthService {
     required String fullName,
     required String role,
   }) async {
+    UserCredential? userCredential;
     try {
       debugPrint('📝 Creating Firebase account for: $email');
 
-      // Create user in Firebase
-      final userCredential = await _auth.createUserWithEmailAndPassword(
+      // 1️⃣ Create user in Firebase
+      userCredential = await _auth.createUserWithEmailAndPassword(
         email: email,
         password: password,
       );
 
-      // Update display name
+      // 2️⃣ Update display name
       await userCredential.user?.updateDisplayName(fullName);
 
-      // Send email verification with custom action code settings
+      // 3️⃣ Immediately persist role + name in MongoDB (user is authenticated
+      //    but email not yet verified — the backend only checks token validity).
+      //    This removes the race condition where role was stored in
+      //    SharedPreferences and could be lost or mismatched.
+      debugPrint('🔄 Persisting user in MongoDB at sign-up...');
+      final token = await userCredential.user?.getIdToken();
+      if (token == null) throw Exception('Could not obtain Firebase token');
+
+      final response = await http.post(
+        Uri.parse('$baseUrl/auth/signup'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({'fullName': fullName, 'role': role, 'email': email}),
+      );
+
+      if (response.statusCode != 200 && response.statusCode != 201) {
+        debugPrint('❌ MongoDB signup failed: ${response.body}');
+        throw Exception('Failed to create account. Please try again.');
+      }
+      debugPrint('✅ User persisted in MongoDB with role: $role');
+
+      // 4️⃣ Now send verification email
       final actionCodeSettings = ActionCodeSettings(
         url:
             'https://burl-ad60f.firebaseapp.com/finishSignUp?email=${userCredential.user?.email ?? email}',
@@ -61,24 +85,28 @@ class FirebaseAuthService {
       await userCredential.user?.sendEmailVerification(actionCodeSettings);
       debugPrint('✉️ Verification email sent to: $email');
 
-      // Store user data in Firebase custom claims for first login
-      // Note: MongoDB sync will happen on first verified login
-      debugPrint('✅ Firebase account created, awaiting email verification');
-
       return userCredential;
     } catch (e) {
+      // 🔥 If anything fails after Firebase user was created, delete it
+      //    so the user can retry sign-up cleanly.
+      if (userCredential != null) {
+        try {
+          await userCredential.user?.delete();
+          debugPrint('🔄 Firebase user rolled back after sign-up error');
+        } catch (_) {}
+      }
       throw _handleAuthException(e);
     }
   }
 
   // Sign in with email and password
+  // Role is NO LONGER needed here — MongoDB was populated at sign-up time.
   Future<UserCredential> signIn({
     required String email,
     required String password,
-    String? role, // Role for first-time login MongoDB creation
   }) async {
     try {
-      debugPrint('🔑 SignIn called with role: $role');
+      debugPrint('🔑 Signing in: $email');
 
       final userCredential = await _auth.signInWithEmailAndPassword(
         email: email,
@@ -93,24 +121,32 @@ class FirebaseAuthService {
         );
       }
 
-      debugPrint('✅ Email verified, syncing with MongoDB...');
-      debugPrint('📋 Passing role to _ensureMongoDBUser: $role');
+      debugPrint('✅ Email verified — user already in MongoDB from sign-up');
 
-      // Create/sync user in MongoDB on first verified login
-      await _ensureMongoDBUser(
-        email: email,
-        fullName: userCredential.user?.displayName ?? 'User',
-        role: role,
-      );
-
-      // Check if profile is complete
-      await _checkProfileCompletion();
-
-      // Save token to SharedPreferences for ApiService
+      // Save token first so ApiService has it immediately
       final token = await userCredential.user?.getIdToken();
       if (token != null) {
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString('auth_token', token);
+
+        // Fetch profile once to persist role for navigation
+        try {
+          final response = await http.get(
+            Uri.parse('$baseUrl/users/profile'),
+            headers: {'Authorization': 'Bearer $token'},
+          );
+          if (response.statusCode == 200) {
+            final data = jsonDecode(response.body);
+            final role = data['user']?['role'] as String?;
+            final name = data['user']?['fullName'] as String?;
+            if (role != null) await prefs.setString('user_role', role);
+            if (name != null) await prefs.setString('user_name', name);
+            debugPrint('💾 Role saved: $role');
+          }
+        } catch (_) {}
+
+        // Profile completion notification check — background, non-blocking
+        _checkProfileCompletion();
       }
 
       return userCredential;
@@ -165,13 +201,11 @@ class FirebaseAuthService {
 
       // Ensure user exists in MongoDB
       await _ensureMongoDBUser(
-        fullName:
-            userCredential.user?.displayName ??
+        fullName: userCredential.user?.displayName ??
             googleUser.displayName ??
             'Google User',
         role: role ?? 'player',
-        email:
-            userCredential.user?.email ?? googleUser.email,
+        email: userCredential.user?.email ?? googleUser.email,
       );
 
       // Check if profile is complete
@@ -223,7 +257,8 @@ class FirebaseAuthService {
 
       // Get full name — Apple only provides name on FIRST login
       String fullName = userCredential.user?.displayName ?? 'Apple User';
-      if (appleCredential.givenName != null || appleCredential.familyName != null) {
+      if (appleCredential.givenName != null ||
+          appleCredential.familyName != null) {
         fullName = [appleCredential.givenName, appleCredential.familyName]
             .where((n) => n != null && n.isNotEmpty)
             .join(' ');
@@ -394,17 +429,32 @@ class FirebaseAuthService {
         final user = data['user'];
 
         // Check if profile is incomplete
-        final isIncomplete =
-            user['phoneNumber'] == null ||
+        final isIncomplete = user['phoneNumber'] == null ||
             user['phoneNumber'] == '' ||
             (user['role'] == 'coach' &&
                 (user['coachProfile'] == null ||
                     user['coachProfile']['specialization'] == null ||
-                    user['coachProfile']['specialization'].isEmpty));
+                    user['coachProfile']['specialization'].isEmpty ||
+                    user['coachProfile']['bio'] == null ||
+                    (user['coachProfile']['bio'] as String).isEmpty));
 
         if (isIncomplete) {
           // Create profile completion notification
           await _createProfileCompletionNotification();
+        } else {
+          // Profile is complete — mark all notifications as read so the
+          // "Complete Your Profile" prompt disappears automatically on login.
+          try {
+            await http.put(
+              Uri.parse('$baseUrl/notifications/mark-all-read'),
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer $token',
+              },
+              body: jsonEncode({}),
+            );
+            debugPrint('✅ Profile complete — notifications marked as read');
+          } catch (_) {}
         }
       }
     } catch (e) {
@@ -443,6 +493,7 @@ class FirebaseAuthService {
   // Handle authentication exceptions
   String _handleAuthException(dynamic e) {
     if (e is FirebaseAuthException) {
+      debugPrint('Firebase Auth Error Code: ${e.code}, Message: ${e.message}');
       switch (e.code) {
         case 'weak-password':
           return 'The password provided is too weak.';
@@ -454,13 +505,40 @@ class FirebaseAuthService {
           return 'No user found with this email.';
         case 'wrong-password':
           return 'Wrong password provided.';
+        case 'invalid-credential':
+          return 'Invalid email or password.';
         case 'user-disabled':
           return 'This account has been disabled.';
         case 'too-many-requests':
           return 'Too many attempts. Please try again later.';
         case 'operation-not-allowed':
           return 'This sign-in method is not enabled.';
+        case 'unknown-error':
+          if (e.message != null &&
+              (e.message!.contains('An internal error has occurred') ||
+                  e.message!.contains('INVALID_LOGIN_CREDENTIALS'))) {
+            return 'Invalid email or password.';
+          }
+          return 'An unknown error occurred. Please try again.';
+        case 'channel-error':
+          return 'Please check your internet connection, or fields are empty.';
+        case 'network-request-failed':
+          return 'Network error. Please check your internet connection.';
+        case 'internal-error':
+          // Sometimes Firebase returns internal-error for invalid credentials on certain platforms
+          if (e.message != null &&
+              e.message!.contains('INVALID_LOGIN_CREDENTIALS')) {
+            return 'Invalid email or password.';
+          }
+          return 'An internal error occurred. Please try again.';
         default:
+          // Check if message itself mentions internal error but it's just invalid credentials
+          if (e.message != null &&
+              e.message!.contains('internal error') &&
+              (e.message!.contains('credential') ||
+                  e.message!.contains('password'))) {
+            return 'Invalid email or password.';
+          }
           return e.message ?? 'An authentication error occurred.';
       }
     }

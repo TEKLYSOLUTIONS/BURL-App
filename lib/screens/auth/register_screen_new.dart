@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+
 import '../../config/palette.dart';
 import '../../services/firebase_auth_service.dart';
 import '../../widgets/app_buttons.dart';
@@ -65,12 +65,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
       debugPrint('✅ Firebase registration successful');
 
-      // Store email and role in SharedPreferences for first login
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('pending_email', _emailController.text.trim());
-      await prefs.setString('pending_role', widget.role ?? 'player');
-      debugPrint('📦 Stored pending registration data');
-
       if (mounted) {
         _showSnackBar(
           'Registration successful! Please check your email to verify your account.',
@@ -78,7 +72,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
         await Future.delayed(const Duration(seconds: 2));
         if (mounted) {
-          context.go('/login', extra: {'role': widget.role ?? 'player'});
+          context.go('/login');
         }
       }
     } catch (e) {
@@ -144,9 +138,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
-        backgroundColor: isError
-            ? AppPalette.errorRed
-            : AppPalette.successGreen,
+        backgroundColor:
+            isError ? AppPalette.errorRed : AppPalette.successGreen,
         behavior: SnackBarBehavior.floating,
         margin: const EdgeInsets.all(16),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -194,8 +187,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       'Sign up to get started',
                       style: TextStyle(
                         fontSize: 16,
-                        color:
-                            Theme.of(context).textTheme.bodyMedium?.color ??
+                        color: Theme.of(context).textTheme.bodyMedium?.color ??
                             AppPalette.textSecondaryLight,
                       ),
                     ),
@@ -345,8 +337,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             'I agree to the ',
                             style: TextStyle(
                               fontSize: 14,
-                              color:
-                                  Theme.of(
+                              color: Theme.of(
                                     context,
                                   ).textTheme.bodyMedium?.color ??
                                   AppPalette.textSecondaryLight,
@@ -367,8 +358,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             ' and ',
                             style: TextStyle(
                               fontSize: 14,
-                              color:
-                                  Theme.of(
+                              color: Theme.of(
                                     context,
                                   ).textTheme.bodyMedium?.color ??
                                   AppPalette.textSecondaryLight,
@@ -396,7 +386,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 // Sign up button
                 PrimaryButton(
                   text: 'Sign Up',
-                  onPressed: _handleRegister,
+                  onPressed: _agreedToTerms ? _handleRegister : null,
                   isLoading: _isLoading,
                 ),
 
@@ -413,7 +403,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         style: TextStyle(
                           color:
                               Theme.of(context).textTheme.bodyMedium?.color ??
-                              AppPalette.textSecondaryLight,
+                                  AppPalette.textSecondaryLight,
                           fontSize: 14,
                           fontWeight: FontWeight.w500,
                         ),
@@ -451,8 +441,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     Text(
                       'Already have an account? ',
                       style: TextStyle(
-                        color:
-                            Theme.of(context).textTheme.bodyMedium?.color ??
+                        color: Theme.of(context).textTheme.bodyMedium?.color ??
                             AppPalette.textSecondaryLight,
                         fontSize: 14,
                       ),

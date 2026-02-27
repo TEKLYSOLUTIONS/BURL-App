@@ -7,6 +7,7 @@ import '../../widgets/notification_button.dart';
 import '../../services/auth_service.dart';
 
 import '../../utils/date_time_utils.dart';
+import '../../utils/session_utils.dart';
 import '../../services/dashboard_service.dart';
 import '../../services/guardian_service.dart';
 
@@ -17,7 +18,11 @@ class GuardianHomeScreen extends StatefulWidget {
   State<GuardianHomeScreen> createState() => _GuardianHomeScreenState();
 }
 
-class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
+class _GuardianHomeScreenState extends State<GuardianHomeScreen>
+    with AutomaticKeepAliveClientMixin<GuardianHomeScreen> {
+  @override
+  bool get wantKeepAlive => true;
+
   int _selectedTabIndex = 0;
   int _selectedDay = DateTime.now().day;
   String _userName = 'Guardian';
@@ -29,13 +34,24 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
   Map<String, dynamic>? _stats;
   // List<dynamic> _recentActivity = [];
 
+  bool _initialLoadDone = false;
+
   @override
   void initState() {
     super.initState();
     _loadUserData();
-    _loadDashboardData();
     // Listen for updates (e.g., new player added)
     GuardianService.playerUpdateNotifier.addListener(_loadDashboardData);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Reload dashboard every time this screen becomes active (first open + return from other routes)
+    if (!_initialLoadDone || _managedPlayers.isEmpty) {
+      _initialLoadDone = true;
+      _loadDashboardData();
+    }
   }
 
   @override
@@ -96,8 +112,29 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
     return [];
   }
 
+  // Get sessions filtered by the selected calendar day
+  List<dynamic> _getSessionsForSelectedDay() {
+    final filtered = _upcomingSessions.where((session) {
+      if (session['timeSlots'] == null ||
+          (session['timeSlots'] as List).isEmpty) {
+        return false;
+      }
+      final startTimeStr = session['timeSlots'][0]['startTime'];
+      if (startTimeStr == null) return false;
+      try {
+        final sessionDate = DateTime.parse(startTimeStr.toString()).toLocal();
+        return sessionDate.day == _selectedDay;
+      } catch (_) {
+        return false;
+      }
+    }).toList();
+    // If no sessions on selected day, show all upcoming
+    return filtered.isEmpty ? _upcomingSessions : filtered;
+  }
+
   @override
   Widget build(BuildContext context) {
+    super.build(context); // required for AutomaticKeepAliveClientMixin
     return Scaffold(
       backgroundColor: Theme.of(
         context,
@@ -160,23 +197,44 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
         ).animate().fadeIn(delay: 300.ms),
         const SizedBox(height: 12),
         const SizedBox(height: 12),
-        if (_upcomingSessions.isEmpty)
-          const Center(child: Text("No upcoming sessions"))
-        else
-          SizedBox(
-            height: 220,
-            child: PageView.builder(
-              itemCount: _upcomingSessions.length,
-              controller: PageController(viewportFraction: 0.92),
-              padEnds: false,
-              itemBuilder: (context, index) {
-                return Padding(
-                  padding: const EdgeInsets.only(right: 12.0),
-                  child: _UpNextCard(session: _upcomingSessions[index]),
-                );
-              },
-            ),
-          ).animate().fadeIn(delay: 400.ms).slideY(begin: 0.1),
+        Builder(
+          builder: (context) {
+            final dayFilteredSessions = _getSessionsForSelectedDay();
+            return _upcomingSessions.isEmpty
+                ? const Center(child: Text('No upcoming sessions'))
+                : Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (dayFilteredSessions.length < _upcomingSessions.length)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 8.0),
+                          child: Text(
+                            '${dayFilteredSessions.length} session${dayFilteredSessions.length == 1 ? '' : 's'} on this day',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurface
+                                  .withValues(alpha: 0.5),
+                            ),
+                          ),
+                        ),
+                      SizedBox(
+                        height: 220,
+                        child: PageView.builder(
+                          itemCount: dayFilteredSessions.length,
+                          controller: PageController(),
+                          itemBuilder: (context, index) {
+                            return _UpNextCard(
+                              session: dayFilteredSessions[index],
+                            );
+                          },
+                        ),
+                      ),
+                    ],
+                  );
+          },
+        ).animate().fadeIn(delay: 400.ms).slideY(begin: 0.1),
         const SizedBox(height: 24),
 
         // This Week Calendar (Styled Container)
@@ -247,6 +305,8 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
       );
     }
 
+    final primaryColor = SessionUtils.getSessionPrimaryColor(context, session);
+
     // childName could be used for debugging or UI
     // For now we don't display it in the session item
 
@@ -254,7 +314,7 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Theme.of(context).cardColor,
+        color: SessionUtils.getSessionColor(context, session),
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
@@ -271,10 +331,10 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
             child: Container(
               width: 60,
               height: 60,
-              color: Colors.blue.shade50,
-              child: const Icon(
+              color: primaryColor.withValues(alpha: 0.1),
+              child: Icon(
                 Icons.sports_cricket,
-                color: AppPalette.navyPrimary,
+                color: primaryColor,
               ),
             ),
           ),
@@ -568,9 +628,8 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
                   children: [
                     CircleAvatar(
                       radius: 18,
-                      backgroundColor: isSelected
-                          ? Colors.white
-                          : AppPalette.orangeAccent,
+                      backgroundColor:
+                          isSelected ? Colors.white : AppPalette.orangeAccent,
                       backgroundImage: playerImage != null
                           ? NetworkImage(playerImage)
                           : null,
@@ -609,15 +668,31 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
   }
 
   Widget _buildWeekCalendar() {
-    // Current Week (Dynamic)
     final now = DateTime.now();
-    // Start from current day or start of week? Let's show current week (Mon-Sun)
-    // Find previous Monday
     final startOfWeek = now.subtract(Duration(days: now.weekday - 1));
+
+    // Build a set of day-numbers that have sessions this week
+    final daysWithSessions = <int>{};
+    for (final session in _upcomingSessions) {
+      if (session['timeSlots'] == null ||
+          (session['timeSlots'] as List).isEmpty) {
+        continue;
+      }
+      final startTimeStr = session['timeSlots'][0]['startTime'];
+      if (startTimeStr == null) continue;
+      try {
+        final sessionDate = DateTime.parse(startTimeStr.toString()).toLocal();
+        // Only mark days within the current week
+        if (sessionDate
+                .isAfter(startOfWeek.subtract(const Duration(days: 1))) &&
+            sessionDate.isBefore(startOfWeek.add(const Duration(days: 7)))) {
+          daysWithSessions.add(sessionDate.day);
+        }
+      } catch (_) {}
+    }
 
     final days = List.generate(7, (index) {
       final date = startOfWeek.add(Duration(days: index));
-      // Format day name: Mon, Tue etc.
       final dayName = [
         'Mon',
         'Tue',
@@ -627,11 +702,10 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
         'Sat',
         'Sun',
       ][date.weekday - 1];
-
       return {
         'date': date.day,
         'day': dayName,
-        'fullDate': date, // Use this for comparison if needed
+        'fullDate': date,
       };
     });
 
@@ -653,7 +727,7 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
         children: days.map((day) {
           final date = day['date'] as int;
           final isSelected = _selectedDay == date;
-          // final hasSession = date == 25 || date == 27;
+          final hasSession = daysWithSessions.contains(date);
 
           return GestureDetector(
             onTap: () {
@@ -665,9 +739,8 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
               width: 40,
               padding: const EdgeInsets.symmetric(vertical: 8),
               decoration: BoxDecoration(
-                color: isSelected
-                    ? AppPalette.orangeAccent
-                    : Colors.transparent,
+                color:
+                    isSelected ? AppPalette.orangeAccent : Colors.transparent,
                 borderRadius: BorderRadius.circular(12),
                 // No border for unselected
               ),
@@ -705,10 +778,9 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen> {
                     decoration: BoxDecoration(
                       color: isSelected
                           ? Colors.white.withValues(alpha: 0.5)
-                          : (date == DateTime.now().day
-                                ? AppPalette
-                                      .orangeAccent // Highlight today
-                                : Theme.of(context).dividerColor),
+                          : (hasSession
+                              ? AppPalette.orangeAccent
+                              : Theme.of(context).dividerColor),
                       shape: BoxShape.circle,
                     ),
                   ),
@@ -743,21 +815,21 @@ class _ProfileHeader extends StatelessWidget {
               Text(
                 DateTimeUtils.getGreeting(),
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(
-                    context,
-                  ).colorScheme.onSurface.withValues(alpha: 0.6),
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: 0.5,
-                ),
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.onSurface.withValues(alpha: 0.6),
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 0.5,
+                    ),
               ),
               const SizedBox(height: 2),
               Text(
                 userName,
                 style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 20,
-                ),
+                      fontWeight: FontWeight.bold,
+                      fontSize: 20,
+                    ),
               ),
             ],
           ),
@@ -785,9 +857,9 @@ class _SectionHeader extends StatelessWidget {
         Text(
           title,
           style: Theme.of(context).textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.bold,
-            fontSize: 16,
-          ),
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+              ),
         ),
       ],
     );
@@ -818,15 +890,22 @@ class _UpNextCard extends StatelessWidget {
       }
     }
 
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final subtleColor =
+        Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5);
+    final primaryColor = SessionUtils.getSessionPrimaryColor(context, session);
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: SessionUtils.getSessionColor(context, session),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.grey[200]!),
+        border: Border.all(
+          color: Theme.of(context).dividerColor.withValues(alpha: 0.4),
+        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
+            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.05),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -841,9 +920,9 @@ class _UpNextCard extends StatelessWidget {
             bottom: 0,
             child: Container(
               width: 4,
-              decoration: const BoxDecoration(
-                color: AppPalette.orangeAccent,
-                borderRadius: BorderRadius.only(
+              decoration: BoxDecoration(
+                color: primaryColor,
+                borderRadius: const BorderRadius.only(
                   topLeft: Radius.circular(20),
                   bottomLeft: Radius.circular(20),
                 ),
@@ -855,28 +934,31 @@ class _UpNextCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // CRICKET badge
                 Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 8,
                     vertical: 4,
                   ),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFE3F2FD), // Light Blue
+                    color: isDark
+                        ? primaryColor.withValues(alpha: 0.15)
+                        : primaryColor.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(
+                      Icon(
                         Icons.groups,
                         size: 14,
-                        color: AppPalette.navyPrimary,
+                        color: Theme.of(context).colorScheme.onSurface,
                       ),
                       const SizedBox(width: 4),
                       Text(
                         'CRICKET',
                         style: GoogleFonts.inter(
-                          color: AppPalette.navyPrimary,
+                          color: Theme.of(context).colorScheme.onSurface,
                           fontSize: 11,
                           fontWeight: FontWeight.bold,
                         ),
@@ -893,12 +975,16 @@ class _UpNextCard extends StatelessWidget {
                           width: 50,
                           height: 50,
                           decoration: BoxDecoration(
-                            color: const Color(0xFFE8F5E9), // Light Green
+                            color: isDark
+                                ? Colors.green.withValues(alpha: 0.15)
+                                : const Color(0xFFE8F5E9),
                             borderRadius: BorderRadius.circular(12),
                           ),
-                          child: const Icon(
+                          child: Icon(
                             Icons.sports_cricket,
-                            color: Color(0xFF2E7D32),
+                            color: isDark
+                                ? Colors.green[300]
+                                : const Color(0xFF2E7D32),
                             size: 24,
                           ),
                         ),
@@ -911,9 +997,12 @@ class _UpNextCard extends StatelessWidget {
                               vertical: 2,
                             ),
                             decoration: BoxDecoration(
-                              color: AppPalette.orangeAccent,
+                              color: primaryColor,
                               borderRadius: BorderRadius.circular(8),
-                              border: Border.all(color: Colors.white, width: 2),
+                              border: Border.all(
+                                color: Theme.of(context).cardColor,
+                                width: 2,
+                              ),
                             ),
                             child: Text(
                               childName,
@@ -937,13 +1026,13 @@ class _UpNextCard extends StatelessWidget {
                             style: GoogleFonts.inter(
                               fontWeight: FontWeight.bold,
                               fontSize: 18,
-                              color: AppPalette.navyPrimary,
+                              color: Theme.of(context).colorScheme.onSurface,
                             ),
                           ),
                           Text(
                             session['location'] ?? 'Field',
                             style: GoogleFonts.inter(
-                              color: Colors.grey[500],
+                              color: subtleColor,
                               fontSize: 13,
                             ),
                           ),
@@ -955,7 +1044,10 @@ class _UpNextCard extends StatelessWidget {
                       child: Container(
                         width: 60,
                         height: 60,
-                        color: Colors.grey[100],
+                        color: Theme.of(context)
+                            .colorScheme
+                            .onSurface
+                            .withValues(alpha: 0.08),
                       ),
                     ),
                   ],
@@ -963,26 +1055,26 @@ class _UpNextCard extends StatelessWidget {
                 const Spacer(),
                 Row(
                   children: [
-                    Icon(Icons.access_time, size: 16, color: Colors.grey[500]),
+                    Icon(Icons.access_time, size: 16, color: subtleColor),
                     const SizedBox(width: 6),
                     Flexible(
                       child: Text(
                         startTime,
                         style: GoogleFonts.inter(
-                          color: Colors.grey[600],
+                          color: subtleColor,
                           fontSize: 13,
                         ),
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
                     const SizedBox(width: 12),
-                    Icon(Icons.location_on, size: 16, color: Colors.grey[500]),
+                    Icon(Icons.location_on, size: 16, color: subtleColor),
                     const SizedBox(width: 6),
                     Flexible(
                       child: Text(
                         session['location'] ?? 'TBD',
                         style: GoogleFonts.inter(
-                          color: Colors.grey[600],
+                          color: subtleColor,
                           fontSize: 13,
                         ),
                         overflow: TextOverflow.ellipsis,
@@ -992,32 +1084,51 @@ class _UpNextCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 12),
                 GestureDetector(
-                  onTap: () {},
+                  onTap: () {
+                    final sessionId = session['_id']?.toString();
+                    if (sessionId != null && sessionId.isNotEmpty) {
+                      String dateParam = '';
+                      if (session['timeSlots'] != null &&
+                          (session['timeSlots'] as List).isNotEmpty) {
+                        final slotStart = session['timeSlots'][0]['startTime'];
+                        if (slotStart != null) {
+                          final dt = DateTime.tryParse(slotStart.toString())
+                              ?.toLocal();
+                          if (dt != null) {
+                            dateParam = '?date=${dt.toIso8601String()}';
+                          }
+                        }
+                      }
+                      context.push(
+                          '/guardian/session-details/$sessionId$dateParam');
+                    }
+                  },
                   child: Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 16,
                       vertical: 8,
                     ),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFFFF3E0), // Orange tint
+                      color:
+                          primaryColor.withValues(alpha: isDark ? 0.2 : 0.12),
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    child: const Row(
+                    child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Text(
                           'Details',
                           style: TextStyle(
-                            color: Colors.deepOrange,
+                            color: primaryColor,
                             fontWeight: FontWeight.bold,
                             fontSize: 13,
                           ),
                         ),
-                        SizedBox(width: 4),
+                        const SizedBox(width: 4),
                         Icon(
                           Icons.arrow_forward,
                           size: 14,
-                          color: Colors.deepOrange,
+                          color: primaryColor,
                         ),
                       ],
                     ),

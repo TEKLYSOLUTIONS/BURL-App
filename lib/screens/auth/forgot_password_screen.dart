@@ -69,9 +69,8 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
-        backgroundColor: isError
-            ? AppPalette.errorRed
-            : AppPalette.successGreen,
+        backgroundColor:
+            isError ? AppPalette.errorRed : AppPalette.successGreen,
         behavior: SnackBarBehavior.floating,
         margin: const EdgeInsets.all(16),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -140,8 +139,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                       : 'Don\'t worry! Enter your email address and we\'ll send you instructions to reset your password.',
                   style: TextStyle(
                     fontSize: 16,
-                    color:
-                        Theme.of(context).textTheme.bodyMedium?.color ??
+                    color: Theme.of(context).textTheme.bodyMedium?.color ??
                         AppPalette.textSecondaryLight,
                     height: 1.5,
                   ),

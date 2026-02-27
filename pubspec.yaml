@@ -1,7 +1,7 @@
 name: cricketcoachflutter
 description: "A Multi-Sport Coaching Platform mobile app."
 publish_to: 'none'
-version: 1.0.0+4
+version: 1.0.0+5
 
 environment:
   sdk: '>=3.6.0 <4.0.0'
@@ -53,6 +53,9 @@ dependencies:
   flutter_stripe: ^12.2.0
   flutter_rating_bar: ^4.0.1
   package_info_plus: ^8.0.0
+  line_icons: ^2.0.3
+  geolocator: ^13.0.0
+  geocoding: ^3.0.0
 
 dev_dependencies:
   flutter_test:
@@ -73,3 +76,9 @@ flutter:
 dependency_overrides:
   intl: any
   http: ^1.2.0
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/images/burl_icon_app_front.jpeg"
+  min_sdk_android: 21

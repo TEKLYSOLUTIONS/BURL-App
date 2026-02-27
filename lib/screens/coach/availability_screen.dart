@@ -4,6 +4,7 @@ import '../../config/palette.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
 import 'package:table_calendar/table_calendar.dart';
+import 'dart:convert';
 import '../../widgets/notification_button.dart';
 import '../../widgets/headers/coach_app_bar.dart';
 
@@ -65,12 +66,12 @@ class BlockedDate {
   });
 
   Map<String, dynamic> toJson() => {
-    'title': title,
-    'startDate': start.toIso8601String(),
-    'endDate': end.toIso8601String(),
-    'icon': _iconToString(icon),
-    'color': _colorToString(color),
-  };
+        'title': title,
+        'startDate': start.toIso8601String(),
+        'endDate': end.toIso8601String(),
+        'icon': _iconToString(icon),
+        'color': _colorToString(color),
+      };
 
   String _iconToString(IconData icon) {
     if (icon == Icons.flight_takeoff) return 'flight';
@@ -144,248 +145,254 @@ class _CoachAvailabilityScreenState extends State<CoachAvailabilityScreen> {
     return ConstrainedBox(
       constraints: const BoxConstraints(minHeight: 280),
       child: Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Theme.of(context).cardColor,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: Theme.of(context).dividerColor.withValues(alpha: 0.1),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Theme.of(context).shadowColor.withValues(alpha: 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: Theme.of(context).cardColor,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: Theme.of(context).dividerColor.withValues(alpha: 0.1),
           ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Header: Day Name (Toggle Removed)
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                dayName,
-                style: GoogleFonts.outfit(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: Theme.of(context).colorScheme.onSurface,
+          boxShadow: [
+            BoxShadow(
+              color: Theme.of(context).shadowColor.withValues(alpha: 0.05),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header: Day Name (Toggle Removed)
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  dayName,
+                  style: GoogleFonts.outfit(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Theme.of(context).colorScheme.onSurface,
+                  ),
                 ),
-              ),
-              // Optional: Status Indicator text instead of toggle?
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 6,
-                ),
-                decoration: BoxDecoration(
-                  color: hasSlots
-                      ? AppPalette.orangeAccent.withValues(alpha: 0.15)
-                      : Theme.of(context).disabledColor.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Text(
-                  hasSlots ? 'Active' : 'Inactive',
-                  style: GoogleFonts.inter(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
+                // Optional: Status Indicator text instead of toggle?
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
                     color: hasSlots
-                        ? AppPalette.orangeAccent
-                        : Theme.of(context).disabledColor,
+                        ? AppPalette.orangeAccent.withValues(alpha: 0.15)
+                        : Theme.of(context)
+                            .disabledColor
+                            .withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    hasSlots ? 'Active' : 'Inactive',
+                    style: GoogleFonts.inter(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: hasSlots
+                          ? AppPalette.orangeAccent
+                          : Theme.of(context).disabledColor,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+
+            const Divider(height: 32),
+
+            // Slots List or Placeholder
+            if (hasSlots)
+              ...List.generate(_daySchedules[dataIndex]!.length, (slotIndex) {
+                final interval = _daySchedules[dataIndex]![slotIndex];
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 16),
+                  child: Row(
+                    children: [
+                      // Start Time
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'START',
+                              style: GoogleFonts.outfit(
+                                fontSize: 11,
+                                color: AppPalette.orangeAccent,
+                                fontWeight: FontWeight.w600,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            _buildTimeDropdown(interval.start, (val) {
+                              final startMin =
+                                  _minutesFromTime(_parseTime(val));
+                              final endMin = _minutesFromTime(
+                                _parseTime(interval.end),
+                              );
+                              setState(() {
+                                interval.start = val;
+                                if (startMin >= endMin) {
+                                  interval.end = _formatTime(
+                                    _timeFromMinutes(startMin + 60),
+                                  );
+                                }
+                              });
+                            }),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      // Arrow
+                      Padding(
+                        padding: const EdgeInsets.only(top: 20),
+                        child: Icon(
+                          Icons.arrow_forward_rounded,
+                          size: 20,
+                          color: AppPalette.orangeAccent.withValues(alpha: 0.5),
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      // End Time
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'END',
+                              style: GoogleFonts.outfit(
+                                fontSize: 11,
+                                color: AppPalette.orangeAccent,
+                                fontWeight: FontWeight.w600,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            _buildTimeDropdown(interval.end, (val) {
+                              final startMin = _minutesFromTime(
+                                _parseTime(interval.start),
+                              );
+                              final endMin = _minutesFromTime(_parseTime(val));
+
+                              if (endMin <= startMin) {
+                                if (mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text(
+                                        'End time must be after start time',
+                                      ),
+                                    ),
+                                  );
+                                }
+                                return;
+                              }
+                              setState(() => interval.end = val);
+                            }),
+                          ],
+                        ),
+                      ),
+                      // Remove Button
+                      Padding(
+                        padding: const EdgeInsets.only(left: 8, top: 16),
+                        child: IconButton(
+                          icon: const Icon(
+                            Icons.remove_circle_outline,
+                            color: Colors.redAccent,
+                          ),
+                          onPressed: () => _showRemoveConfirmationDialog(
+                            context,
+                            () {
+                              setState(() {
+                                _daySchedules[dataIndex]!.removeAt(slotIndex);
+                              });
+                            },
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              })
+            else
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 24),
+                child: Center(
+                  child: Column(
+                    children: [
+                      Icon(
+                        Icons.event_busy,
+                        size: 48,
+                        color: Theme.of(
+                          context,
+                        ).disabledColor.withValues(alpha: 0.3),
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        'No availability set for $dayName',
+                        style: GoogleFonts.inter(
+                          color: Theme.of(context).disabledColor,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
-            ],
-          ),
 
-          const Divider(height: 32),
+            const SizedBox(height: 16),
 
-          // Slots List or Placeholder
-          if (hasSlots)
-            ...List.generate(_daySchedules[dataIndex]!.length, (slotIndex) {
-              final interval = _daySchedules[dataIndex]![slotIndex];
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 16),
-                child: Row(
-                  children: [
-                    // Start Time
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'START',
-                            style: GoogleFonts.outfit(
-                              fontSize: 11,
-                              color: AppPalette.orangeAccent,
-                              fontWeight: FontWeight.w600,
-                              letterSpacing: 0.5,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          _buildTimeDropdown(interval.start, (val) {
-                            final startMin = _minutesFromTime(_parseTime(val));
-                            final endMin = _minutesFromTime(
-                              _parseTime(interval.end),
-                            );
-                            setState(() {
-                              interval.start = val;
-                              if (startMin >= endMin) {
-                                interval.end = _formatTime(
-                                  _timeFromMinutes(startMin + 60),
-                                );
-                              }
-                            });
-                          }),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    // Arrow
-                    Padding(
-                      padding: const EdgeInsets.only(top: 20),
-                      child: Icon(
-                        Icons.arrow_forward_rounded,
-                        size: 20,
-                        color: AppPalette.orangeAccent.withValues(alpha: 0.5),
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    // End Time
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'END',
-                            style: GoogleFonts.outfit(
-                              fontSize: 11,
-                              color: AppPalette.orangeAccent,
-                              fontWeight: FontWeight.w600,
-                              letterSpacing: 0.5,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          _buildTimeDropdown(interval.end, (val) {
-                            final startMin = _minutesFromTime(
-                              _parseTime(interval.start),
-                            );
-                            final endMin = _minutesFromTime(_parseTime(val));
+            // Add Slot Button (Always Visible)
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () {
+                  setState(() {
+                    final schedule = _daySchedules[dataIndex]!;
+                    String newStart = '09:00 AM';
+                    String newEnd = '05:00 PM';
 
-                            if (endMin <= startMin) {
-                              if (mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text(
-                                      'End time must be after start time',
-                                    ),
-                                  ),
-                                );
-                              }
-                              return;
-                            }
-                            setState(() => interval.end = val);
-                          }),
-                        ],
-                      ),
-                    ),
-                    // Remove Button
-                    Padding(
-                      padding: const EdgeInsets.only(left: 8, top: 16),
-                      child: IconButton(
-                        icon: const Icon(
-                          Icons.remove_circle_outline,
-                          color: Colors.redAccent,
-                        ),
-                        onPressed: () {
-                          setState(() {
-                            _daySchedules[dataIndex]!.removeAt(slotIndex);
-                          });
-                        },
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            })
-          else
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 24),
-              child: Center(
-                child: Column(
-                  children: [
-                    Icon(
-                      Icons.event_busy,
-                      size: 48,
-                      color: Theme.of(
-                        context,
-                      ).disabledColor.withValues(alpha: 0.3),
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      'No availability set for $dayName',
-                      style: GoogleFonts.inter(
-                        color: Theme.of(context).disabledColor,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
+                    if (schedule.isNotEmpty) {
+                      final lastSlot = schedule.last;
+                      try {
+                        final lastEnd = _parseTime(lastSlot.end);
+                        final lastEndMinutes = _minutesFromTime(lastEnd);
 
-          const SizedBox(height: 16),
+                        // Start next slot at end of last slot
+                        final startMinutes = lastEndMinutes;
+                        // End next slot 1 hour later, cap at 23:59 (1439 mins)
+                        final endMinutes = (startMinutes + 60).clamp(0, 1439);
 
-          // Add Slot Button (Always Visible)
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton.icon(
-              onPressed: () {
-                setState(() {
-                  final schedule = _daySchedules[dataIndex]!;
-                  String newStart = '09:00 AM';
-                  String newEnd = '05:00 PM';
-
-                  if (schedule.isNotEmpty) {
-                    final lastSlot = schedule.last;
-                    try {
-                      final lastEnd = _parseTime(lastSlot.end);
-                      final lastEndMinutes = _minutesFromTime(lastEnd);
-
-                      // Start next slot at end of last slot
-                      final startMinutes = lastEndMinutes;
-                      // End next slot 1 hour later, cap at 23:59 (1439 mins)
-                      final endMinutes = (startMinutes + 60).clamp(0, 1439);
-
-                      newStart = _formatTime(_timeFromMinutes(startMinutes));
-                      newEnd = _formatTime(_timeFromMinutes(endMinutes));
-                    } catch (e) {
-                      debugPrint('Error calculating dynamic time slot: $e');
+                        newStart = _formatTime(_timeFromMinutes(startMinutes));
+                        newEnd = _formatTime(_timeFromMinutes(endMinutes));
+                      } catch (e) {
+                        debugPrint('Error calculating dynamic time slot: $e');
+                      }
                     }
-                  }
 
-                  schedule.add(TimeInterval(start: newStart, end: newEnd));
-                });
-              },
-              icon: const Icon(Icons.add),
-              label: const Text('Add Time Slot'),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: AppPalette.orangeAccent,
-                side: BorderSide(
-                  color: AppPalette.orangeAccent.withValues(alpha: 0.5),
-                ),
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
+                    schedule.add(TimeInterval(start: newStart, end: newEnd));
+                  });
+                },
+                icon: const Icon(Icons.add),
+                label: const Text('Add Time Slot'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppPalette.orangeAccent,
+                  side: BorderSide(
+                    color: AppPalette.orangeAccent.withValues(alpha: 0.5),
+                  ),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
                 ),
               ),
             ),
-          ),
-        ],
-      ),
-    ),  // end ConstrainedBox child Container
-    );  // end ConstrainedBox
+          ],
+        ),
+      ), // end ConstrainedBox child Container
+    ); // end ConstrainedBox
   }
 
   List<BlockedDate> _blockedDates = [];
@@ -566,20 +573,36 @@ class _CoachAvailabilityScreenState extends State<CoachAvailabilityScreen> {
     }
   }
 
+  String _colorToString(Color color) {
+    if (color == Colors.orange) return 'orange';
+    if (color == Colors.blueGrey) return 'blueGrey';
+    if (color == Colors.redAccent) return 'red';
+    return 'red';
+  }
+
+  String _iconToString(IconData icon) {
+    if (icon == Icons.flight_takeoff) return 'flight';
+    if (icon == Icons.calendar_today) return 'calendar';
+    if (icon == Icons.block) return 'block';
+    return 'block';
+  }
+
   // ... (keeping existing imports and class definitions)
 
   /// [silent] – when true, suppresses the success snackbar (used for auto-saves).
   Future<void> _saveAvailability({bool silent = false}) async {
     if (!mounted) return;
-    setState(() => _isSaving = true);
+
+    if (!silent) {
+      setState(() => _isSaving = true);
+    }
 
     try {
       // Convert day schedules to API format
       final daySchedulesData = <String, dynamic>{};
       for (int i = 0; i < 7; i++) {
-        daySchedulesData[i.toString()] = _daySchedules[i]!
-            .map((ti) => ti.toJson())
-            .toList();
+        daySchedulesData[i.toString()] =
+            _daySchedules[i]!.map((ti) => ti.toJson()).toList();
       }
 
       final availabilityData = {
@@ -599,19 +622,23 @@ class _CoachAvailabilityScreenState extends State<CoachAvailabilityScreen> {
                 'title': bd.title,
                 'startDate': bd.start.toIso8601String(),
                 'endDate': bd.end.toIso8601String(),
-                'icon': bd._iconToString(bd.icon),
-                'color': bd._colorToString(bd.color),
+                'icon': _iconToString(bd.icon),
+                'color': _colorToString(bd.color),
               },
             )
             .toList(),
       };
 
-      debugPrint('Saving availability data: $availabilityData');
+      debugPrint(
+          'Saving availability data (JSON): ${jsonEncode(availabilityData)}');
 
       await CoachService.updateCoachAvailability(availabilityData);
 
       if (!mounted) return;
-      setState(() => _isSaving = false);
+
+      if (!silent) {
+        setState(() => _isSaving = false);
+      }
 
       if (!silent && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -744,9 +771,9 @@ class _CoachAvailabilityScreenState extends State<CoachAvailabilityScreen> {
                                 spacing * 6; // 6 gaps between 7 items
                             final circleSize =
                                 ((availableWidth - totalSpacing) / 7).clamp(
-                                  40.0,
-                                  56.0,
-                                );
+                              40.0,
+                              56.0,
+                            );
 
                             return SizedBox(
                               height: circleSize,
@@ -763,7 +790,7 @@ class _CoachAvailabilityScreenState extends State<CoachAvailabilityScreen> {
                                   final isSelected = _selectedDayIndex == index;
                                   final hasSlots =
                                       _daySchedules[dataIndex]?.isNotEmpty ??
-                                      false;
+                                          false;
 
                                   return GestureDetector(
                                     onTap: () {
@@ -781,14 +808,15 @@ class _CoachAvailabilityScreenState extends State<CoachAvailabilityScreen> {
                                         color: isSelected
                                             ? AppPalette.orangeAccent
                                             : hasSlots
-                                            ? AppPalette.orangeAccent
-                                                  .withValues(alpha: 0.15)
-                                            : Theme.of(context).cardColor,
+                                                ? AppPalette.orangeAccent
+                                                    .withValues(alpha: 0.15)
+                                                : Theme.of(context).cardColor,
                                         border: Border.all(
                                           color: hasSlots || isSelected
                                               ? AppPalette.orangeAccent
-                                              : Theme.of(context).dividerColor
-                                                    .withValues(alpha: 0.2),
+                                              : Theme.of(context)
+                                                  .dividerColor
+                                                  .withValues(alpha: 0.2),
                                           width: isSelected ? 2 : 1,
                                         ),
                                         boxShadow: isSelected
@@ -814,17 +842,16 @@ class _CoachAvailabilityScreenState extends State<CoachAvailabilityScreen> {
                                             'S',
                                           ][index],
                                           style: GoogleFonts.outfit(
-                                            fontSize:
-                                                circleSize *
+                                            fontSize: circleSize *
                                                 0.35, // Dynamic font size
                                             fontWeight: FontWeight.bold,
                                             color: isSelected
                                                 ? Colors.white
                                                 : hasSlots
-                                                ? AppPalette.orangeAccent
-                                                : Theme.of(
-                                                    context,
-                                                  ).disabledColor,
+                                                    ? AppPalette.orangeAccent
+                                                    : Theme.of(
+                                                        context,
+                                                      ).disabledColor,
                                           ),
                                         ),
                                       ),
@@ -972,7 +999,8 @@ class _CoachAvailabilityScreenState extends State<CoachAvailabilityScreen> {
                                 color: Colors.red.withValues(alpha: 0.10),
                                 shape: BoxShape.circle,
                                 border: Border.all(
-                                  color: Colors.redAccent.withValues(alpha: 0.5),
+                                  color:
+                                      Colors.redAccent.withValues(alpha: 0.5),
                                   width: 1.2,
                                 ),
                               ),
@@ -980,7 +1008,8 @@ class _CoachAvailabilityScreenState extends State<CoachAvailabilityScreen> {
                                 child: Text(
                                   '${date.day}',
                                   style: GoogleFonts.inter(
-                                    color: Colors.redAccent.withValues(alpha: 0.6),
+                                    color:
+                                        Colors.redAccent.withValues(alpha: 0.6),
                                     fontWeight: FontWeight.w500,
                                     fontSize: 14,
                                   ),
@@ -1019,10 +1048,12 @@ class _CoachAvailabilityScreenState extends State<CoachAvailabilityScreen> {
                               decoration: BoxDecoration(
                                 color: isBlocked
                                     ? Colors.red.withValues(alpha: 0.15)
-                                    : AppPalette.orangeAccent.withValues(alpha: 0.3),
+                                    : AppPalette.orangeAccent
+                                        .withValues(alpha: 0.3),
                                 shape: BoxShape.circle,
                                 border: isBlocked
-                                    ? Border.all(color: Colors.redAccent, width: 1.2)
+                                    ? Border.all(
+                                        color: Colors.redAccent, width: 1.2)
                                     : null,
                               ),
                               child: Center(
@@ -1031,7 +1062,9 @@ class _CoachAvailabilityScreenState extends State<CoachAvailabilityScreen> {
                                   style: GoogleFonts.inter(
                                     color: isBlocked
                                         ? Colors.redAccent
-                                        : Theme.of(context).colorScheme.onSurface,
+                                        : Theme.of(context)
+                                            .colorScheme
+                                            .onSurface,
                                     fontWeight: FontWeight.bold,
                                     fontSize: 14,
                                   ),
@@ -1075,7 +1108,7 @@ class _CoachAvailabilityScreenState extends State<CoachAvailabilityScreen> {
                             );
                             final hasRecurring =
                                 _daySchedules[weekdayIndex]?.isNotEmpty ??
-                                false;
+                                    false;
 
                             if (hasRecurring) {
                               return Positioned(
@@ -1110,7 +1143,6 @@ class _CoachAvailabilityScreenState extends State<CoachAvailabilityScreen> {
                     // Blocked Dates List (Keep at bottom)
                     Text(
                       'Blocked Dates List',
-
                       style: GoogleFonts.outfit(
                         color: Theme.of(context).colorScheme.onSurface,
                         fontSize: 18,
@@ -1405,7 +1437,6 @@ class _CoachAvailabilityScreenState extends State<CoachAvailabilityScreen> {
                     ),
                 ],
               ),
-
             ],
           ),
           const Divider(height: 24),
@@ -1523,9 +1554,12 @@ class _CoachAvailabilityScreenState extends State<CoachAvailabilityScreen> {
                           color: Colors.redAccent,
                           size: 20,
                         ),
-                        onPressed: () {
-                          _removeOverrideSlot(dateKey, index);
-                        },
+                        onPressed: () => _showRemoveConfirmationDialog(
+                          context,
+                          () {
+                            _removeOverrideSlot(dateKey, index);
+                          },
+                        ),
                       ),
                     ),
                   ],
@@ -1558,9 +1592,11 @@ class _CoachAvailabilityScreenState extends State<CoachAvailabilityScreen> {
             SizedBox(
               width: double.infinity,
               child: ElevatedButton.icon(
-                onPressed: _isSaving ? null : () async {
-                  await _saveAvailability();
-                },
+                onPressed: _isSaving
+                    ? null
+                    : () async {
+                        await _saveAvailability();
+                      },
                 icon: _isSaving
                     ? const SizedBox(
                         width: 16,
@@ -1573,7 +1609,8 @@ class _CoachAvailabilityScreenState extends State<CoachAvailabilityScreen> {
                     : const Icon(Icons.save_outlined, color: Colors.white),
                 label: Text(
                   _isSaving ? 'Saving...' : 'Save Changes',
-                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                  style: const TextStyle(
+                      color: Colors.white, fontWeight: FontWeight.bold),
                 ),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppPalette.orangeAccent,
@@ -1712,7 +1749,8 @@ class _CoachAvailabilityScreenState extends State<CoachAvailabilityScreen> {
             ScaffoldMessenger.of(context).clearSnackBars();
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
-                content: Text('No available gap to add a new slot. All time is occupied.'),
+                content: Text(
+                    'No available gap to add a new slot. All time is occupied.'),
                 backgroundColor: Colors.redAccent,
                 behavior: SnackBarBehavior.floating,
               ),
@@ -1907,9 +1945,9 @@ class _CoachAvailabilityScreenState extends State<CoachAvailabilityScreen> {
           builder: (BuildContext dialogContext) {
             TimeOfDay selectedTime = initialTime;
             return Theme(
-              data: ThemeData.light(),
+              data: Theme.of(context),
               child: Dialog(
-                backgroundColor: Colors.white,
+                backgroundColor: Theme.of(context).cardColor,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(20),
                 ),
@@ -1927,7 +1965,7 @@ class _CoachAvailabilityScreenState extends State<CoachAvailabilityScreen> {
                             child: Text(
                               'Cancel',
                               style: GoogleFonts.inter(
-                                color: Colors.grey[600],
+                                color: Theme.of(context).disabledColor,
                                 fontWeight: FontWeight.w600,
                                 fontSize: 16,
                               ),
@@ -1936,7 +1974,7 @@ class _CoachAvailabilityScreenState extends State<CoachAvailabilityScreen> {
                           Text(
                             'Select Time',
                             style: GoogleFonts.outfit(
-                              color: AppPalette.navyPrimary,
+                              color: Theme.of(context).colorScheme.onSurface,
                               fontWeight: FontWeight.bold,
                               fontSize: 18,
                             ),
@@ -1959,8 +1997,14 @@ class _CoachAvailabilityScreenState extends State<CoachAvailabilityScreen> {
                       // Picker
                       Expanded(
                         child: CupertinoTheme(
-                          data: const CupertinoThemeData(
-                            brightness: Brightness.light,
+                          data: CupertinoThemeData(
+                            brightness: Theme.of(context).brightness,
+                            textTheme: CupertinoTextThemeData(
+                              dateTimePickerTextStyle: TextStyle(
+                                color: Theme.of(context).colorScheme.onSurface,
+                                fontSize: 21,
+                              ),
+                            ),
                           ),
                           child: CupertinoDatePicker(
                             mode: CupertinoDatePickerMode.time,
@@ -1993,10 +2037,10 @@ class _CoachAvailabilityScreenState extends State<CoachAvailabilityScreen> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: Theme.of(context).canvasColor,
           borderRadius: BorderRadius.circular(10),
           border: Border.all(
-            color: AppPalette.divider.withValues(alpha: 0.3),
+            color: Theme.of(context).dividerColor.withValues(alpha: 0.2),
             width: 1,
           ),
           boxShadow: [
@@ -2018,7 +2062,7 @@ class _CoachAvailabilityScreenState extends State<CoachAvailabilityScreen> {
                   value,
                   style: GoogleFonts.outfit(
                     fontWeight: FontWeight.w600,
-                    color: AppPalette.textPrimaryLight,
+                    color: Theme.of(context).colorScheme.onSurface,
                     fontSize: 14,
                   ),
                 ),
@@ -2033,6 +2077,76 @@ class _CoachAvailabilityScreenState extends State<CoachAvailabilityScreen> {
           ],
         ),
       ),
+    );
+  }
+
+  Future<void> _showRemoveConfirmationDialog(
+      BuildContext context, VoidCallback onConfirm) async {
+    return showDialog<void>(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          backgroundColor: Theme.of(context).cardColor,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Remove Time Slot',
+                style: GoogleFonts.outfit(
+                  fontWeight: FontWeight.bold,
+                  color: Theme.of(context).colorScheme.onSurface,
+                ),
+              ),
+              IconButton(
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+                icon: const Icon(Icons.close),
+                onPressed: () => Navigator.of(dialogContext).pop(),
+                color: Theme.of(context).disabledColor,
+              ),
+            ],
+          ),
+          content: Text(
+            'Are you sure you want to remove this time slot?',
+            style: GoogleFonts.inter(
+              color: Theme.of(context)
+                  .colorScheme
+                  .onSurface
+                  .withValues(alpha: 0.8),
+            ),
+          ),
+          actions: [
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () {
+                  Navigator.of(dialogContext).pop();
+                  onConfirm();
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.redAccent,
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+                child: Text(
+                  'Remove',
+                  style: GoogleFonts.inter(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 

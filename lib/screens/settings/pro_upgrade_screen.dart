@@ -24,9 +24,11 @@ class _ProUpgradeScreenState extends State<ProUpgradeScreen> {
   String? _error;
   final PageController _pageController = PageController();
   int _currentPlanIndex = 0;
-  String _userCurrency = CurrencyHelper.defaultCurrency; // User's preferred currency
+  String _userCurrency =
+      CurrencyHelper.defaultCurrency; // User's preferred currency
   String? _userLocation;
-  bool _isAnnualSelected = true; // Track monthly vs annual selection (default to annual for discount)
+  bool _isAnnualSelected =
+      true; // Track monthly vs annual selection (default to annual for discount)
   String? _userId;
   String _currentUserPlan = 'free'; // Actual plan from user's profile
   String _subscriptionStatus = 'inactive'; // Actual subscription status
@@ -60,29 +62,34 @@ class _ProUpgradeScreenState extends State<ProUpgradeScreen> {
   Future<void> _fetchUserCurrency() async {
     try {
       final profile = await ProfileService.getProfile();
-      
+
       // Store userId
       _userId = profile['_id'] ?? profile['id'];
-      
+
       // Try to get currency and plan info from profile
       String? currency;
       if (profile['coachProfile'] != null) {
         currency = profile['coachProfile']['currency'];
         _userLocation = profile['coachProfile']['city'];
         final planField = profile['coachProfile']['plan'] as String?;
-        final sub = profile['coachProfile']['subscription'] as Map<String, dynamic>?;
-        if (planField != null) _currentUserPlan = planField;
-        if (sub != null) _subscriptionStatus = sub['status'] as String? ?? 'inactive';
+        final sub =
+            profile['coachProfile']['subscription'] as Map<String, dynamic>?;
+        if (planField != null) {
+          _currentUserPlan = planField;
+        }
+        if (sub != null) {
+          _subscriptionStatus = sub['status'] as String? ?? 'inactive';
+        }
       } else if (profile['playerProfile'] != null) {
         currency = profile['playerProfile']['currency'];
         _userLocation = profile['playerProfile']['city'];
       }
-      
+
       // If currency not in profile, detect from location
       if (currency == null && _userLocation != null) {
         currency = CurrencyHelper.getCurrencyFromLocation(_userLocation);
       }
-      
+
       if (mounted) {
         setState(() {
           _userCurrency = currency ?? CurrencyHelper.defaultCurrency;
@@ -125,16 +132,16 @@ class _ProUpgradeScreenState extends State<ProUpgradeScreen> {
 
   List<SubscriptionPlan> get _proPlans {
     final proPlans = _plans.where((p) => p.isPro).toList();
-    
+
     // Prefer plans in user's currency, but show all if none match
     final matchingCurrencyPlans = proPlans
         .where((p) => p.currency.toUpperCase() == _userCurrency.toUpperCase())
         .toList();
-    
+
     if (matchingCurrencyPlans.isNotEmpty) {
       return matchingCurrencyPlans;
     }
-    
+
     // If no plans match user's currency, return all pro plans
     return proPlans;
   }
@@ -163,246 +170,265 @@ class _ProUpgradeScreenState extends State<ProUpgradeScreen> {
             child: _isLoading
                 ? const Center(child: CircularProgressIndicator())
                 : _error != null
-                ? Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          'Error loading plans',
-                          style: GoogleFonts.inter(fontSize: 18),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          _error!,
-                          style: GoogleFonts.inter(
-                            fontSize: 14,
-                            color: Colors.red,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 16),
-                        ElevatedButton(
-                          onPressed: _fetchPlans,
-                          child: const Text('Retry'),
-                        ),
-                      ],
-                    ),
-                  )
-                : SingleChildScrollView(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 24,
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        // Currency Info Banner
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 12,
-                          ),
-                          decoration: BoxDecoration(
-                            color: AppPalette.navyPrimary.withValues(alpha: 0.05),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: AppPalette.navyPrimary.withValues(alpha: 0.1),
+                    ? Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              'Error loading plans',
+                              style: GoogleFonts.inter(fontSize: 18),
                             ),
-                          ),
-                          child: Row(
-                            children: [
-                              Icon(
-                                Icons.info_outline,
-                                size: 18,
-                                color: AppPalette.navyPrimary,
-                              ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  _userLocation != null
-                                      ? 'Prices shown in ${CurrencyHelper.getCurrencyName(_userCurrency)} based on your location: $_userLocation'
-                                      : 'Prices shown in ${CurrencyHelper.getCurrencyName(_userCurrency)}',
-                                  style: GoogleFonts.inter(
-                                    fontSize: 12,
-                                    color: AppPalette.navyPrimary,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ).animate().fadeIn(duration: 300.ms),
-
-                        const SizedBox(height: 24),
-
-                        // 1. Free Plan Container
-                        _buildFreePlanCard()
-                            .animate()
-                            .fadeIn(duration: 400.ms)
-                            .slideY(begin: 0.1),
-
-                        const SizedBox(height: 24),
-
-                        // 2. Swipeable Pro Plan Cards
-                        if (_proPlans.isNotEmpty) ...[
-                          SizedBox(
-                            height: 620,
-                            child: PageView.builder(
-                              controller: _pageController,
-                              onPageChanged: (index) {
-                                setState(() {
-                                  _currentPlanIndex = index;
-                                });
-                              },
-                              itemCount: _proPlans.length,
-                              itemBuilder: (context, index) {
-                                return Padding(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8),
-                                  child: _buildProPlanCard(_proPlans[index]),
-                                );
-                              },
-                            ),
-                          ).animate().fadeIn(delay: 200.ms).slideY(begin: 0.1),
-                          const SizedBox(height: 16),
-                          // Page Indicator
-                          if (_proPlans.length > 1)
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: List.generate(
-                                _proPlans.length,
-                                (index) => Container(
-                                  margin: const EdgeInsets.symmetric(horizontal: 4),
-                                  width: _currentPlanIndex == index ? 24 : 8,
-                                  height: 8,
-                                  decoration: BoxDecoration(
-                                    color: _currentPlanIndex == index
-                                        ? AppPalette.navyPrimary
-                                        : Colors.grey[300],
-                                    borderRadius: BorderRadius.circular(4),
-                                  ),
-                                ),
-                              ),
-                            ).animate().fadeIn(delay: 250.ms),
-                        ],
-                        
-                        // Show message if no premium plans
-                        if (_proPlans.isEmpty)
-                          Container(
-                            height: 200,
-                            alignment: Alignment.center,
-                            child: Text(
-                              'No premium plans available',
+                            const SizedBox(height: 8),
+                            Text(
+                              _error!,
                               style: GoogleFonts.inter(
-                                fontSize: 16,
-                                color: Colors.grey[600],
+                                fontSize: 14,
+                                color: Colors.red,
                               ),
+                              textAlign: TextAlign.center,
                             ),
-                          ),
-
-                        const SizedBox(height: 24),
-
-                        // 4. Trial Banner
-                        if (_plans.any((p) => p.isPro && p.trialPeriodDays > 0))
-                          Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFFF7D20), // Vibrant Orange
-                              borderRadius: BorderRadius.circular(16),
+                            const SizedBox(height: 16),
+                            ElevatedButton(
+                              onPressed: _fetchPlans,
+                              child: const Text('Retry'),
                             ),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                const Icon(
-                                  Icons.card_giftcard,
-                                  color: Colors.white,
+                          ],
+                        ),
+                      )
+                    : SingleChildScrollView(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 24,
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            // Currency Info Banner
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 12,
+                              ),
+                              decoration: BoxDecoration(
+                                color: AppPalette.navyPrimary
+                                    .withValues(alpha: 0.05),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: AppPalette.navyPrimary
+                                      .withValues(alpha: 0.1),
                                 ),
-                                const SizedBox(width: 8),
-                                Text(
-                                  '${_plans.firstWhere((p) => p.isPro && p.trialPeriodDays > 0).trialPeriodDays}-day free trial included',
-                                  style: GoogleFonts.inter(
-                                    color: Colors.white,
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.info_outline,
+                                    size: 18,
+                                    color: AppPalette.navyPrimary,
                                   ),
-                                ),
-                              ],
-                            ),
-                          ).animate().fadeIn(delay: 300.ms),
-
-                        if (_plans.any((p) => p.isPro && p.trialPeriodDays > 0))
-                          const SizedBox(height: 32),
-
-                        // 5. Start Free Trial CTA
-                        SizedBox(
-                          height: 56,
-                          child: ElevatedButton(
-                            onPressed: _isLoading ? null : _handleSubscription,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFFFF7D20),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(30),
-                              ),
-                              elevation: 4,
-                              shadowColor: Colors.orange.withValues(alpha: 0.4),
-                            ),
-                            child: _isLoading
-                                ? const SizedBox(
-                                    width: 24,
-                                    height: 24,
-                                    child: CircularProgressIndicator(
-                                      color: Colors.white,
-                                      strokeWidth: 2,
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      _userLocation != null
+                                          ? 'Prices shown in ${CurrencyHelper.getCurrencyName(_userCurrency)} based on your location: $_userLocation'
+                                          : 'Prices shown in ${CurrencyHelper.getCurrencyName(_userCurrency)}',
+                                      style: GoogleFonts.inter(
+                                        fontSize: 12,
+                                        color: AppPalette.navyPrimary,
+                                        fontWeight: FontWeight.w500,
+                                      ),
                                     ),
-                                  )
-                                : Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Text(
-                                        _isAnnualSelected
-                                            ? 'Start Annual Trial'
-                                            : 'Start Monthly Trial',
-                                        style: GoogleFonts.inter(
-                                          fontSize: 18,
-                                          fontWeight: FontWeight.bold,
-                                          color: Colors.white,
-                                        ),
-                                      ),
-                                      const SizedBox(width: 8),
-                                      const Icon(
-                                        Icons.arrow_forward,
-                                        color: Colors.white,
-                                      ),
-                                    ],
                                   ),
-                          ),
-                        ).animate().fadeIn(delay: 500.ms).slideY(begin: 0.2),
+                                ],
+                              ),
+                            ).animate().fadeIn(duration: 300.ms),
 
-                        const SizedBox(height: 24),
+                            const SizedBox(height: 24),
 
-                        Text(
-                          'Recurring billing, cancel anytime.',
-                          textAlign: TextAlign.center,
-                          style: GoogleFonts.inter(
-                            fontSize: 12,
-                            color: Colors.grey[500],
-                          ),
+                            // 1. Free Plan Container
+                            _buildFreePlanCard()
+                                .animate()
+                                .fadeIn(duration: 400.ms)
+                                .slideY(begin: 0.1),
+
+                            const SizedBox(height: 24),
+
+                            // 2. Swipeable Pro Plan Cards
+                            if (_proPlans.isNotEmpty) ...[
+                              SizedBox(
+                                height: 620,
+                                child: PageView.builder(
+                                  controller: _pageController,
+                                  onPageChanged: (index) {
+                                    setState(() {
+                                      _currentPlanIndex = index;
+                                    });
+                                  },
+                                  itemCount: _proPlans.length,
+                                  itemBuilder: (context, index) {
+                                    return Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 8),
+                                      child:
+                                          _buildProPlanCard(_proPlans[index]),
+                                    );
+                                  },
+                                ),
+                              )
+                                  .animate()
+                                  .fadeIn(delay: 200.ms)
+                                  .slideY(begin: 0.1),
+                              const SizedBox(height: 16),
+                              // Page Indicator
+                              if (_proPlans.length > 1)
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: List.generate(
+                                    _proPlans.length,
+                                    (index) => Container(
+                                      margin: const EdgeInsets.symmetric(
+                                          horizontal: 4),
+                                      width:
+                                          _currentPlanIndex == index ? 24 : 8,
+                                      height: 8,
+                                      decoration: BoxDecoration(
+                                        color: _currentPlanIndex == index
+                                            ? AppPalette.navyPrimary
+                                            : Colors.grey[300],
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                    ),
+                                  ),
+                                ).animate().fadeIn(delay: 250.ms),
+                            ],
+
+                            // Show message if no premium plans
+                            if (_proPlans.isEmpty)
+                              Container(
+                                height: 200,
+                                alignment: Alignment.center,
+                                child: Text(
+                                  'No premium plans available',
+                                  style: GoogleFonts.inter(
+                                    fontSize: 16,
+                                    color: Colors.grey[600],
+                                  ),
+                                ),
+                              ),
+
+                            const SizedBox(height: 24),
+
+                            // 4. Trial Banner
+                            if (_plans
+                                .any((p) => p.isPro && p.trialPeriodDays > 0))
+                              Container(
+                                width: double.infinity,
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 16),
+                                decoration: BoxDecoration(
+                                  color:
+                                      const Color(0xFFFF7D20), // Vibrant Orange
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    const Icon(
+                                      Icons.card_giftcard,
+                                      color: Colors.white,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      '${_plans.firstWhere((p) => p.isPro && p.trialPeriodDays > 0).trialPeriodDays}-day free trial included',
+                                      style: GoogleFonts.inter(
+                                        color: Colors.white,
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ).animate().fadeIn(delay: 300.ms),
+
+                            if (_plans
+                                .any((p) => p.isPro && p.trialPeriodDays > 0))
+                              const SizedBox(height: 32),
+
+                            // 5. Start Free Trial CTA
+                            SizedBox(
+                              height: 56,
+                              child: ElevatedButton(
+                                onPressed:
+                                    _isLoading ? null : _handleSubscription,
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xFFFF7D20),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(30),
+                                  ),
+                                  elevation: 4,
+                                  shadowColor:
+                                      Colors.orange.withValues(alpha: 0.4),
+                                ),
+                                child: _isLoading
+                                    ? const SizedBox(
+                                        width: 24,
+                                        height: 24,
+                                        child: CircularProgressIndicator(
+                                          color: Colors.white,
+                                          strokeWidth: 2,
+                                        ),
+                                      )
+                                    : Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        children: [
+                                          Text(
+                                            _isAnnualSelected
+                                                ? 'Start Annual Trial'
+                                                : 'Start Monthly Trial',
+                                            style: GoogleFonts.inter(
+                                              fontSize: 18,
+                                              fontWeight: FontWeight.bold,
+                                              color: Colors.white,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 8),
+                                          const Icon(
+                                            Icons.arrow_forward,
+                                            color: Colors.white,
+                                          ),
+                                        ],
+                                      ),
+                              ),
+                            )
+                                .animate()
+                                .fadeIn(delay: 500.ms)
+                                .slideY(begin: 0.2),
+
+                            const SizedBox(height: 24),
+
+                            Text(
+                              'Recurring billing, cancel anytime.',
+                              textAlign: TextAlign.center,
+                              style: GoogleFonts.inter(
+                                fontSize: 12,
+                                color: Colors.grey[500],
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+
+                            Text(
+                              'Have a promo code? You can apply it on the next step.',
+                              textAlign: TextAlign.center,
+                              style: GoogleFonts.inter(
+                                fontSize: 12,
+                                color: AppPalette.orangeAccent,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            const SizedBox(height: 40),
+                          ],
                         ),
-                        const SizedBox(height: 16),
-
-                        Text(
-                          'Have a promo code? You can apply it on the next step.',
-                          textAlign: TextAlign.center,
-                          style: GoogleFonts.inter(
-                            fontSize: 12,
-                            color: AppPalette.orangeAccent,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                        const SizedBox(height: 40),
-                      ],
-                    ),
-                  ),
+                      ),
           ),
         ],
       ),
@@ -488,7 +514,8 @@ class _ProUpgradeScreenState extends State<ProUpgradeScreen> {
                 ),
               ),
               // Only show "Current" when user is actually on the free plan
-              if (_subscriptionStatus != 'active' && _subscriptionStatus != 'trial')
+              if (_subscriptionStatus != 'active' &&
+                  _subscriptionStatus != 'trial')
                 Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 10,
@@ -578,8 +605,11 @@ class _ProUpgradeScreenState extends State<ProUpgradeScreen> {
                   ],
                 ),
               ),
-              if (_currentUserPlan == plan.planId &&
-                  (_subscriptionStatus == 'active' || _subscriptionStatus == 'trial'))
+              if (_currentUserPlan != 'free' &&
+                  (_subscriptionStatus == 'active' ||
+                      _subscriptionStatus == 'trial') &&
+                  // Checks if the user is currently on *this* Pro plan tier by checking plan name
+                  (_currentUserPlan.contains(plan.name.toLowerCase())))
                 Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 12,
@@ -592,7 +622,8 @@ class _ProUpgradeScreenState extends State<ProUpgradeScreen> {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(Icons.check_circle, color: Colors.white, size: 13),
+                      const Icon(Icons.check_circle,
+                          color: Colors.white, size: 13),
                       const SizedBox(width: 4),
                       Text(
                         'ACTIVE',
@@ -692,17 +723,46 @@ class _ProUpgradeScreenState extends State<ProUpgradeScreen> {
                       ),
                     ],
                   ),
-                  if (!_isAnnualSelected)
+                  if (!_isAnnualSelected ||
+                      (_currentUserPlan.contains(plan.name.toLowerCase()) &&
+                          _currentUserPlan.contains('monthly')))
                     Container(
-                      padding: const EdgeInsets.all(6),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
-                        color: Colors.white,
-                        shape: BoxShape.circle,
+                        color: (_currentUserPlan
+                                    .contains(plan.name.toLowerCase()) &&
+                                _currentUserPlan.contains('monthly'))
+                            ? const Color(0xFF22C55E)
+                            : Colors.white,
+                        borderRadius: BorderRadius.circular(12),
                       ),
-                      child: const Icon(
-                        Icons.check,
-                        color: Color(0xFF0F253E),
-                        size: 16,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.check,
+                            color: (_currentUserPlan
+                                        .contains(plan.name.toLowerCase()) &&
+                                    _currentUserPlan.contains('monthly'))
+                                ? Colors.white
+                                : const Color(0xFF0F253E),
+                            size: 14,
+                          ),
+                          if (_currentUserPlan
+                                  .contains(plan.name.toLowerCase()) &&
+                              _currentUserPlan.contains('monthly')) ...[
+                            const SizedBox(width: 4),
+                            Text(
+                              'ACTIVE',
+                              style: GoogleFonts.inter(
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ],
+                        ],
                       ),
                     ),
                 ],
@@ -805,17 +865,47 @@ class _ProUpgradeScreenState extends State<ProUpgradeScreen> {
                       ),
                     ],
                   ),
-                  if (_isAnnualSelected)
+                  if (_isAnnualSelected ||
+                      (_currentUserPlan.contains(plan.name.toLowerCase()) &&
+                          _currentUserPlan.contains('yearly')))
                     Container(
-                      padding: const EdgeInsets.all(6),
-                      decoration: const BoxDecoration(
-                        color: Color(0xFF22C55E),
-                        shape: BoxShape.circle,
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: (_currentUserPlan
+                                    .contains(plan.name.toLowerCase()) &&
+                                _currentUserPlan.contains('yearly'))
+                            ? const Color(0xFF22C55E)
+                            : const Color(
+                                0xFF22C55E), // Annual selection also uses green when selected, but let's stick to the active badge logic
+                        borderRadius: BorderRadius.circular(12),
                       ),
-                      child: const Icon(
-                        Icons.check,
-                        color: Colors.white,
-                        size: 16,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.check,
+                            color: (_currentUserPlan
+                                        .contains(plan.name.toLowerCase()) &&
+                                    _currentUserPlan.contains('yearly'))
+                                ? Colors.white
+                                : Colors.white,
+                            size: 14,
+                          ),
+                          if (_currentUserPlan
+                                  .contains(plan.name.toLowerCase()) &&
+                              _currentUserPlan.contains('yearly')) ...[
+                            const SizedBox(width: 4),
+                            Text(
+                              'ACTIVE',
+                              style: GoogleFonts.inter(
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ],
+                        ],
                       ),
                     ),
                 ],
@@ -834,7 +924,8 @@ class _ProUpgradeScreenState extends State<ProUpgradeScreen> {
                 children: [
                   if (plan.features.isNotEmpty)
                     ...plan.features.map(
-                      (f) => _buildFeatureItem(f.name, isPro: true, highlight: f.highlight),
+                      (f) => _buildFeatureItem(f.name,
+                          isPro: true, highlight: f.highlight),
                     )
                   else
                     Padding(
@@ -857,7 +948,8 @@ class _ProUpgradeScreenState extends State<ProUpgradeScreen> {
     );
   }
 
-  Widget _buildFeatureItem(String text, {required bool isPro, bool highlight = false}) {
+  Widget _buildFeatureItem(String text,
+      {required bool isPro, bool highlight = false}) {
     // Pro features: Green circle check, white text
     // Free features: Grey/Blue circle check, dark text
     // Highlighted features: Orange accent
@@ -869,7 +961,9 @@ class _ProUpgradeScreenState extends State<ProUpgradeScreen> {
             padding: const EdgeInsets.all(4),
             decoration: BoxDecoration(
               color: isPro
-                  ? (highlight ? AppPalette.orangeAccent : const Color(0xFF22C55E))
+                  ? (highlight
+                      ? AppPalette.orangeAccent
+                      : const Color(0xFF22C55E))
                   : AppPalette.navyPrimary.withValues(alpha: 0.1),
               shape: BoxShape.circle,
             ),

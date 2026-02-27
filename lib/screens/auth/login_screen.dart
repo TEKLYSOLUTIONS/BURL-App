@@ -46,69 +46,49 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _isLoading = true);
 
     try {
-      // First, try local authentication (for existing MongoDB users)
       debugPrint('🔐 Attempting login for: ${_emailController.text.trim()}');
-      final localSuccess = await _tryLocalLogin();
 
-      if (localSuccess) {
-        debugPrint('✅ Local authentication successful');
-        if (!mounted) return;
-        _navigateToHome();
-        return;
-      }
-
-      // If local auth fails, try Firebase authentication (for new users)
-      debugPrint('🔄 Local auth failed, trying Firebase...');
+      // ── Fast path: Firebase auth (covers 99% of users) ──────────────────
       try {
-        // Get stored role from registration
-        final prefs = await SharedPreferences.getInstance();
-        final storedRole = prefs.getString('pending_role');
-        final storedEmail = prefs.getString('pending_email');
-
-        String? roleToUse;
-        if (storedEmail == _emailController.text.trim()) {
-          roleToUse = storedRole;
-          debugPrint('📝 Using stored role for first login: $roleToUse');
-        } else {
-          debugPrint('⚠️ No stored role found or email mismatch');
-        }
-
-        debugPrint('🔑 Calling signIn with role: $roleToUse');
-
         await _authService.signIn(
           email: _emailController.text.trim(),
           password: _passwordController.text,
-          role: roleToUse,
         );
 
         debugPrint('✅ Firebase authentication successful');
 
-        // Clear stored values after successful login and MongoDB sync
-        if (storedEmail == _emailController.text.trim()) {
-          await prefs.remove('pending_role');
-          await prefs.remove('pending_email');
-          debugPrint('🗑️ Cleared stored registration data');
+        // Role is already in SharedPrefs from _checkProfileCompletion()
+        // inside signIn() — no extra network call needed.
+        final prefs = await SharedPreferences.getInstance();
+        final role = prefs.getString('user_role');
+        if (mounted && role != null) {
+          setState(() => _userRole = role);
         }
-
-        // Get Firebase ID token and save it
-        final firebaseToken = await _authService.getIdToken();
-        if (firebaseToken != null) {
-          await prefs.setString('auth_token', firebaseToken);
-          debugPrint('💾 Firebase token saved to SharedPreferences');
-        }
-
-        // Fetch user profile from backend to get actual role
-        await _fetchUserProfile();
 
         if (!mounted) return;
         _navigateToHome();
+        return;
       } on Exception catch (firebaseError) {
-        debugPrint('❌ Firebase auth also failed: $firebaseError');
-        throw Exception('Login failed. Please check your credentials.');
+        final msg = firebaseError.toString();
+        // If Firebase says "invalid credential" it's a real error — stop here.
+        // Only fall through to local auth if Firebase has no account at all.
+        if (!msg.contains('No user found') && !msg.contains('user-not-found')) {
+          rethrow;
+        }
+        debugPrint('⚠️ No Firebase account, trying local auth...');
+      }
+
+      // ── Slow/rare path: local-only MongoDB users ─────────────────────────
+      final localSuccess = await _tryLocalLogin();
+      if (localSuccess) {
+        if (!mounted) return;
+        _navigateToHome();
+      } else {
+        throw Exception('Invalid email or password.');
       }
     } catch (e) {
       if (!mounted) return;
-      _showSnackBar(e.toString(), isError: true);
+      _showSnackBar(e.toString().replaceAll('Exception: ', ''), isError: true);
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
@@ -151,9 +131,21 @@ class _LoginScreenState extends State<LoginScreen> {
 
         return true;
       }
+
       debugPrint(
-        '❌ Local auth failed: ${response.statusCode} - ${response.body}',
-      );
+          '❌ Local auth failed: ${response.statusCode} - ${response.body}');
+
+      // Parse backend error messages explicitly
+      try {
+        final data = jsonDecode(response.body);
+        if (data['message'] != null) {
+          throw Exception(
+              data['message']); // "User not found." or "Invalid credentials."
+        }
+      } catch (parseError) {
+        // Not JSON or another issue, we'll let it fail silently and proceed to Firebase
+      }
+
       return false;
     } catch (e) {
       debugPrint('❌ Local auth error: $e');
@@ -222,7 +214,7 @@ class _LoginScreenState extends State<LoginScreen> {
       _navigateToHome();
     } catch (e) {
       if (!mounted) return;
-      _showSnackBar(e.toString(), isError: true);
+      _showSnackBar(e.toString().replaceAll('Exception: ', ''), isError: true);
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
@@ -251,7 +243,7 @@ class _LoginScreenState extends State<LoginScreen> {
       _navigateToHome();
     } catch (e) {
       if (!mounted) return;
-      _showSnackBar(e.toString(), isError: true);
+      _showSnackBar(e.toString().replaceAll('Exception: ', ''), isError: true);
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);

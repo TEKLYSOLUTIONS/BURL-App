@@ -76,13 +76,7 @@ class _GuardianProfileScreenState extends ConsumerState<GuardianProfileScreen> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         centerTitle: true,
-        leading: IconButton(
-          icon: Icon(
-            Icons.arrow_back,
-            color: Theme.of(context).colorScheme.onSurface,
-          ),
-          onPressed: () => context.pop(),
-        ),
+        automaticallyImplyLeading: false,
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 16.0),
@@ -179,7 +173,7 @@ class _GuardianProfileScreenState extends ConsumerState<GuardianProfileScreen> {
                         GestureDetector(
                           onTap: () async {
                             final result = await context.push(
-                              '/edit-profile',
+                              '/guardian/edit-profile',
                               extra: _userProfile, // Pass complete profile data
                             );
                             if (result == true) {
@@ -209,12 +203,12 @@ class _GuardianProfileScreenState extends ConsumerState<GuardianProfileScreen> {
               _buildSettingsTile(
                 icon: Icons.lock_outline_rounded,
                 title: 'Change Password',
-                onTap: () => context.push('/change-password'),
+                onTap: () => context.push('/guardian/change-password'),
               ),
               _buildSettingsTile(
                 icon: Icons.credit_card,
                 title: 'Payment Method',
-                onTap: () => context.push('/payment-methods'),
+                onTap: () => context.push('/guardian/payment-methods'),
               ),
             ]),
             const SizedBox(height: 24),
@@ -290,17 +284,17 @@ class _GuardianProfileScreenState extends ConsumerState<GuardianProfileScreen> {
               _buildSettingsTile(
                 icon: Icons.help_outline_rounded,
                 title: 'Help Center',
-                onTap: () => context.push('/help-center'),
+                onTap: () => context.push('/guardian/help-center'),
               ),
               _buildSettingsTile(
                 icon: Icons.privacy_tip_outlined,
                 title: 'Privacy Policy',
-                onTap: () => context.push('/privacy-policy'),
+                onTap: () => context.push('/guardian/privacy-policy'),
               ),
               _buildSettingsTile(
                 icon: Icons.gavel_outlined,
                 title: 'Terms of Service',
-                onTap: () => context.push('/terms-of-service'),
+                onTap: () => context.push('/guardian/terms-of-service'),
               ),
             ]),
 
@@ -335,6 +329,35 @@ class _GuardianProfileScreenState extends ConsumerState<GuardianProfileScreen> {
                 ),
               ),
             ).animate().fadeIn(delay: 200.ms),
+
+            const SizedBox(height: 16),
+
+            // Delete Account
+            Container(
+              width: double.infinity,
+              decoration: BoxDecoration(
+                color: ref.watch(themeProvider) == ThemeMode.dark
+                    ? AppPalette.surfaceGlassDark
+                    : Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Colors.red.withValues(alpha: 0.1)),
+              ),
+              child: TextButton.icon(
+                onPressed: () => _showDeleteConfirmation(context),
+                style: TextButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  foregroundColor: Colors.red,
+                ),
+                icon: const Icon(Icons.delete_forever),
+                label: Text(
+                  'Delete Account',
+                  style: GoogleFonts.inter(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ).animate().fadeIn(delay: 300.ms),
 
             const SizedBox(height: 16),
             Text(
@@ -381,7 +404,6 @@ class _GuardianProfileScreenState extends ConsumerState<GuardianProfileScreen> {
           ),
         ],
       ),
-
       child: Column(
         children: children.asMap().entries.map((entry) {
           final index = entry.key;
@@ -443,18 +465,18 @@ class _GuardianProfileScreenState extends ConsumerState<GuardianProfileScreen> {
               activeThumbColor: Colors.white, // thumb color
             )
           : (trailing ??
-                const Icon(
-                  Icons.arrow_forward_ios_rounded,
-                  size: 16,
-                  color: Colors.grey,
-                )),
+              const Icon(
+                Icons.arrow_forward_ios_rounded,
+                size: 16,
+                color: Colors.grey,
+              )),
     );
   }
 
   void _showThemeBottomSheet(BuildContext context, WidgetRef ref) {
     showModalBottomSheet(
       context: context,
-      backgroundColor: Colors.white,
+      backgroundColor: Theme.of(context).cardColor,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
@@ -471,7 +493,7 @@ class _GuardianProfileScreenState extends ConsumerState<GuardianProfileScreen> {
                 style: GoogleFonts.inter(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
-                  color: AppPalette.navyPrimary,
+                  color: Theme.of(context).colorScheme.onSurface,
                 ),
               ),
               const SizedBox(height: 24),
@@ -521,11 +543,22 @@ class _GuardianProfileScreenState extends ConsumerState<GuardianProfileScreen> {
         decoration: BoxDecoration(
           color: isSelected
               ? Colors.orange.withValues(alpha: 0.1)
-              : Colors.white,
+              : Theme.of(context).cardColor,
           borderRadius: BorderRadius.circular(16),
           border: isSelected
               ? Border.all(color: Colors.orange, width: 2)
-              : Border.all(color: Colors.grey.shade200),
+              : Border.all(
+                  color: Theme.of(context).dividerColor.withValues(alpha: 0.1),
+                  width: 1,
+                ),
+          boxShadow: [
+            if (!isSelected)
+              BoxShadow(
+                color: Theme.of(context).shadowColor.withValues(alpha: 0.05),
+                blurRadius: 5,
+                offset: const Offset(0, 2),
+              ),
+          ],
         ),
         child: Row(
           children: [
@@ -534,12 +567,14 @@ class _GuardianProfileScreenState extends ConsumerState<GuardianProfileScreen> {
               decoration: BoxDecoration(
                 color: isSelected
                     ? Colors.orange
-                    : Colors.grey.withValues(alpha: 0.1),
+                    : Theme.of(context).disabledColor.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
               child: Icon(
                 icon,
-                color: isSelected ? Colors.white : Colors.grey,
+                color: isSelected
+                    ? Colors.white
+                    : Theme.of(context).colorScheme.primary,
                 size: 20,
               ),
             ),
@@ -550,7 +585,9 @@ class _GuardianProfileScreenState extends ConsumerState<GuardianProfileScreen> {
                 style: GoogleFonts.inter(
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
-                  color: isSelected ? Colors.orange : AppPalette.navyPrimary,
+                  color: isSelected
+                      ? Colors.orange
+                      : Theme.of(context).colorScheme.onSurface,
                 ),
               ),
             ),
@@ -561,4 +598,74 @@ class _GuardianProfileScreenState extends ConsumerState<GuardianProfileScreen> {
       ),
     );
   }
-}
+
+  Future<void> _showDeleteConfirmation(BuildContext context) async {
+    return showDialog(
+      context: context,
+      builder: (context) {
+        bool isLoading = false;
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              titlePadding: const EdgeInsets.fromLTRB(24, 16, 8, 0),
+              title: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text('Delete Account',
+                      style: TextStyle(color: AppPalette.error)),
+                  IconButton(
+                    icon: const Icon(Icons.close, color: Colors.grey),
+                    onPressed:
+                        isLoading ? null : () => Navigator.of(context).pop(),
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                  ),
+                ],
+              ),
+              content: const Text(
+                'Are you sure you want to permanently delete your account? This action cannot be undone and you will lose all your data.',
+              ),
+              actions: [
+                ElevatedButton(
+                  onPressed: isLoading
+                      ? null
+                      : () async {
+                          setState(() => isLoading = true);
+                          final success = await AuthService.deleteAccount();
+                          setState(() => isLoading = false);
+
+                          if (context.mounted) {
+                            if (success) {
+                              Navigator.of(context).pop(); // Close dialog
+                              context.go('/welcome'); // Redirect
+                            } else {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                    content: Text(
+                                        'Failed to delete account. Please try again later.')),
+                              );
+                            }
+                          }
+                        },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppPalette.error,
+                    foregroundColor: Colors.white,
+                  ),
+                  child: isLoading
+                      ? const SizedBox(
+                          height: 16,
+                          width: 16,
+                          child: CircularProgressIndicator(
+                              color: Colors.white, strokeWidth: 2),
+                        )
+                      : const Text('Delete',
+                          style: TextStyle(fontWeight: FontWeight.bold)),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+} // End of _GuardianProfileScreenState

@@ -3,6 +3,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
 import '../../config/palette.dart';
 import '../../services/guardian_service.dart';
+import '../../services/storage_service.dart';
+import 'dart:io';
 
 class EditPlayerScreen extends StatefulWidget {
   final Map<String, dynamic>? playerData;
@@ -39,6 +41,9 @@ class _EditPlayerScreenState extends State<EditPlayerScreen> {
 
   String _playerName = '';
   String _playerId = '';
+  File? _pickedImage;
+  String? _existingImageUrl;
+  bool _isLoading = false;
 
   @override
   void initState() {
@@ -53,7 +58,9 @@ class _EditPlayerScreenState extends State<EditPlayerScreen> {
     final fullName = data?['fullName'] ?? 'Player';
 
     _playerName = fullName;
-    _playerId = data?['_id'] ?? '';
+    _playerId = data?['_id'] ?? data?['id'] ?? '';
+    _existingImageUrl =
+        data?['profileUrl'] ?? data?['profilePhoto'] ?? data?['profileImage'];
 
     _firstNameController = TextEditingController(text: fullName);
     _medicalIssuesController = TextEditingController(
@@ -61,10 +68,19 @@ class _EditPlayerScreenState extends State<EditPlayerScreen> {
     );
     _ageController = TextEditingController(text: data?['age'] ?? '10');
 
-    // Cricket-specific fields
-    _selectedRole = data?['role'] ?? 'Batsman';
-    _selectedBattingStyle = data?['battingStyle'] ?? 'Right-hand bat';
-    _selectedBowlingStyle = data?['bowlingStyle'] ?? 'N/A';
+    // Cricket-specific fields — fall back to first item if stored value not in list
+    final rawRole = data?['role'] ?? '';
+    _selectedRole = _roles.contains(rawRole) ? rawRole : _roles.first;
+
+    final rawBattingStyle = data?['battingStyle'] ?? '';
+    _selectedBattingStyle = _battingStyles.contains(rawBattingStyle)
+        ? rawBattingStyle
+        : _battingStyles.first;
+
+    final rawBowlingStyle = data?['bowlingStyle'] ?? '';
+    _selectedBowlingStyle = _bowlingStyles.contains(rawBowlingStyle)
+        ? rawBowlingStyle
+        : _bowlingStyles.first;
   }
 
   void _showDeleteConfirmation() {
@@ -137,6 +153,17 @@ class _EditPlayerScreenState extends State<EditPlayerScreen> {
         return;
       }
 
+      setState(() => _isLoading = true);
+
+      // Upload image if selected
+      String? finalImageUrl = _existingImageUrl;
+      if (_pickedImage != null) {
+        finalImageUrl = await StorageService.uploadProfilePicture(
+          userId: _playerId,
+          imageFile: _pickedImage!,
+        );
+      }
+
       // Call API to update player
       await GuardianService().updatePlayer(
         _playerId,
@@ -146,6 +173,7 @@ class _EditPlayerScreenState extends State<EditPlayerScreen> {
         battingStyle: _selectedBattingStyle,
         bowlingStyle: _selectedBowlingStyle,
         medicalIssues: _medicalIssuesController.text.trim(),
+        profilePhoto: finalImageUrl,
       );
 
       if (mounted) {
@@ -160,34 +188,50 @@ class _EditPlayerScreenState extends State<EditPlayerScreen> {
           context,
         ).showSnackBar(SnackBar(content: Text('Failed to save changes: $e')));
       }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _pickImage() async {
+    final pickedFile = await StorageService.showImageSourceSheet(context);
+    if (pickedFile != null) {
+      setState(() {
+        _pickedImage = File(pickedFile.path);
+      });
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final surface = cs.surface;
+    final onSurface = cs.onSurface;
+    final divider = Theme.of(context).dividerColor;
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F7FA), // Light grey background
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         title: Text(
           'Edit Player',
           style: GoogleFonts.inter(
-            color: AppPalette.navyPrimary,
+            color: onSurface,
             fontWeight: FontWeight.bold,
             fontSize: 20,
           ),
         ),
-        backgroundColor: const Color(0xFFF5F7FA),
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+        surfaceTintColor: Colors.transparent,
         elevation: 0,
         centerTitle: true,
         leading: IconButton(
-          icon: const Icon(
+          icon: Icon(
             Icons.arrow_back_ios_new_rounded,
-            color: Colors.black,
+            color: onSurface,
           ),
           onPressed: () => context.pop(),
         ),
       ),
-
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24.0),
         child: Column(
@@ -196,39 +240,57 @@ class _EditPlayerScreenState extends State<EditPlayerScreen> {
             Center(
               child: Column(
                 children: [
-                  Stack(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(4),
-                        decoration: const BoxDecoration(
-                          color: Colors.white,
-                          shape: BoxShape.circle,
-                        ),
-                        child: const CircleAvatar(
-                          radius: 50,
-                          backgroundImage: AssetImage(
-                            'assets/images/user_placeholder_soccer.png',
-                          ), // Mock
-                        ),
-                      ),
-                      Positioned(
-                        bottom: 0,
-                        right: 4,
-                        child: Container(
-                          padding: const EdgeInsets.all(8),
+                  GestureDetector(
+                    onTap: _pickImage,
+                    child: Stack(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(4),
                           decoration: BoxDecoration(
-                            color: Colors.orange,
+                            color: surface,
                             shape: BoxShape.circle,
-                            border: Border.all(color: Colors.white, width: 2),
+                            border: Border.all(color: divider, width: 2),
                           ),
-                          child: const Icon(
-                            Icons.camera_alt,
-                            color: Colors.white,
-                            size: 18,
+                          child: CircleAvatar(
+                            radius: 50,
+                            backgroundColor: cs.surfaceContainerHighest,
+                            backgroundImage: _pickedImage != null
+                                ? FileImage(_pickedImage!)
+                                : (_existingImageUrl != null &&
+                                        _existingImageUrl!.isNotEmpty
+                                    ? NetworkImage(_existingImageUrl!)
+                                        as ImageProvider
+                                    : null),
+                            child: (_pickedImage == null &&
+                                    (_existingImageUrl == null ||
+                                        _existingImageUrl!.isEmpty))
+                                ? Icon(
+                                    Icons.person,
+                                    size: 50,
+                                    color: onSurface.withValues(alpha: 0.3),
+                                  )
+                                : null,
                           ),
                         ),
-                      ),
-                    ],
+                        Positioned(
+                          bottom: 0,
+                          right: 4,
+                          child: Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: Colors.orange,
+                              shape: BoxShape.circle,
+                              border: Border.all(color: surface, width: 2),
+                            ),
+                            child: const Icon(
+                              Icons.camera_alt,
+                              color: Colors.white,
+                              size: 18,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                   const SizedBox(height: 16),
                   Text(
@@ -236,7 +298,7 @@ class _EditPlayerScreenState extends State<EditPlayerScreen> {
                     style: GoogleFonts.inter(
                       fontSize: 22,
                       fontWeight: FontWeight.bold,
-                      color: AppPalette.navyPrimary,
+                      color: onSurface,
                     ),
                   ),
                   const SizedBox(height: 4),
@@ -244,7 +306,7 @@ class _EditPlayerScreenState extends State<EditPlayerScreen> {
                     'ID: #${_playerId.substring(0, 6)}',
                     style: GoogleFonts.inter(
                       fontSize: 14,
-                      color: Colors.grey[500],
+                      color: onSurface.withValues(alpha: 0.5),
                       fontWeight: FontWeight.w500,
                     ),
                   ),
@@ -266,30 +328,11 @@ class _EditPlayerScreenState extends State<EditPlayerScreen> {
               children: [
                 _buildLabel("Role"),
                 const SizedBox(height: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.grey[200]!),
-                  ),
-                  child: DropdownButtonHideUnderline(
-                    child: DropdownButton<String>(
-                      isExpanded: true,
-                      value: _selectedRole,
-                      items: _roles
-                          .map(
-                            (r) => DropdownMenuItem(value: r, child: Text(r)),
-                          )
-                          .toList(),
-                      onChanged: (val) =>
-                          setState(() => _selectedRole = val ?? _selectedRole),
-                      icon: const Icon(
-                        Icons.keyboard_arrow_down,
-                        color: Colors.orange,
-                      ),
-                    ),
-                  ),
+                _buildDropdown(
+                  value: _selectedRole,
+                  items: _roles,
+                  onChanged: (val) =>
+                      setState(() => _selectedRole = val ?? _selectedRole),
                 ),
               ],
             ),
@@ -301,32 +344,11 @@ class _EditPlayerScreenState extends State<EditPlayerScreen> {
               children: [
                 _buildLabel("Batting Style"),
                 const SizedBox(height: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.grey[200]!),
-                  ),
-                  child: DropdownButtonHideUnderline(
-                    child: DropdownButton<String>(
-                      isExpanded: true,
-                      value: _selectedBattingStyle,
-                      items: _battingStyles
-                          .map(
-                            (s) => DropdownMenuItem(value: s, child: Text(s)),
-                          )
-                          .toList(),
-                      onChanged: (val) => setState(
-                        () => _selectedBattingStyle =
-                            val ?? _selectedBattingStyle,
-                      ),
-                      icon: const Icon(
-                        Icons.keyboard_arrow_down,
-                        color: Colors.orange,
-                      ),
-                    ),
-                  ),
+                _buildDropdown(
+                  value: _selectedBattingStyle,
+                  items: _battingStyles,
+                  onChanged: (val) => setState(() =>
+                      _selectedBattingStyle = val ?? _selectedBattingStyle),
                 ),
               ],
             ),
@@ -338,32 +360,11 @@ class _EditPlayerScreenState extends State<EditPlayerScreen> {
               children: [
                 _buildLabel("Bowling Style"),
                 const SizedBox(height: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.grey[200]!),
-                  ),
-                  child: DropdownButtonHideUnderline(
-                    child: DropdownButton<String>(
-                      isExpanded: true,
-                      value: _selectedBowlingStyle,
-                      items: _bowlingStyles
-                          .map(
-                            (s) => DropdownMenuItem(value: s, child: Text(s)),
-                          )
-                          .toList(),
-                      onChanged: (val) => setState(
-                        () => _selectedBowlingStyle =
-                            val ?? _selectedBowlingStyle,
-                      ),
-                      icon: const Icon(
-                        Icons.keyboard_arrow_down,
-                        color: Colors.orange,
-                      ),
-                    ),
-                  ),
+                _buildDropdown(
+                  value: _selectedBowlingStyle,
+                  items: _bowlingStyles,
+                  onChanged: (val) => setState(() =>
+                      _selectedBowlingStyle = val ?? _selectedBowlingStyle),
                 ),
               ],
             ),
@@ -378,9 +379,18 @@ class _EditPlayerScreenState extends State<EditPlayerScreen> {
             SizedBox(
               width: double.infinity,
               child: ElevatedButton.icon(
-                onPressed: _saveChanges,
-                icon: const Icon(Icons.save_outlined, size: 20),
-                label: const Text('Save Changes'),
+                onPressed: _isLoading ? null : _saveChanges,
+                icon: _isLoading
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : const Icon(Icons.save_outlined, size: 20),
+                label: Text(_isLoading ? 'Saving...' : 'Save Changes'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFFFF6F00), // Darker orange
                   foregroundColor: Colors.white,
@@ -421,12 +431,59 @@ class _EditPlayerScreenState extends State<EditPlayerScreen> {
     );
   }
 
+  Widget _buildDropdown({
+    required String value,
+    required List<String> items,
+    required void Function(String?) onChanged,
+  }) {
+    return DropdownButtonFormField<String>(
+      initialValue: items.contains(value) ? value : items.first,
+      isExpanded: true,
+      // Forces menu to always open BELOW the field
+      menuMaxHeight: 240,
+      decoration: InputDecoration(
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        filled: true,
+        fillColor: Theme.of(context).colorScheme.surface,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Theme.of(context).dividerColor),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Theme.of(context).dividerColor),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: AppPalette.orangeAccent),
+        ),
+      ),
+      icon:
+          const Icon(Icons.keyboard_arrow_down, color: AppPalette.orangeAccent),
+      dropdownColor: Theme.of(context).colorScheme.surface,
+      items: items
+          .map((item) => DropdownMenuItem(
+                value: item,
+                child: Text(
+                  item,
+                  style: GoogleFonts.inter(
+                    fontSize: 14,
+                    color: Theme.of(context).colorScheme.onSurface,
+                  ),
+                ),
+              ))
+          .toList(),
+      onChanged: onChanged,
+    );
+  }
+
   Widget _buildLabel(String text) {
     return Text(
       text,
       style: GoogleFonts.inter(
         fontWeight: FontWeight.w600,
-        color: AppPalette.navyPrimary,
+        color: Theme.of(context).colorScheme.onSurface,
         fontSize: 14,
       ),
     );
@@ -448,15 +505,15 @@ class _EditPlayerScreenState extends State<EditPlayerScreen> {
           textAlign: isCenter ? TextAlign.center : TextAlign.start,
           decoration: InputDecoration(
             filled: true,
-            fillColor: Colors.white,
+            fillColor: Theme.of(context).colorScheme.surface,
             suffixIcon: icon != null ? Icon(icon, color: Colors.orange) : null,
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: Colors.grey[200]!),
+              borderSide: BorderSide(color: Theme.of(context).dividerColor),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: Colors.grey[200]!),
+              borderSide: BorderSide(color: Theme.of(context).dividerColor),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
@@ -467,7 +524,8 @@ class _EditPlayerScreenState extends State<EditPlayerScreen> {
               vertical: 16,
             ),
           ),
-          style: GoogleFonts.inter(color: AppPalette.textPrimaryLight),
+          style:
+              GoogleFonts.inter(color: Theme.of(context).colorScheme.onSurface),
         ),
       ],
     );

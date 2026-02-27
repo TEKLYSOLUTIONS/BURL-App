@@ -168,14 +168,18 @@ class _ConfirmBookingScreenSimpleState
     try {
       final sessionId = widget.bookingDetails['sessionId'] as String?;
       final occurrenceDate = widget.bookingDetails['occurrenceDate'] as String?;
+      final List<String>? selectedDates =
+          (widget.bookingDetails['selectedDates'] as List?)?.cast<String>();
 
-      if (sessionId == null || occurrenceDate == null) {
+      if (sessionId == null ||
+          (occurrenceDate == null && selectedDates == null)) {
         throw Exception('Missing session details');
       }
 
       final booking = await BookingService.createBooking(
         sessionId: sessionId,
         occurrenceDate: occurrenceDate,
+        occurrenceDates: selectedDates,
         paymentMethod: 'test',
         promoCode: _appliedPromoCode,
         playerId: _isGuardian ? _selectedPlayerId : null,
@@ -189,8 +193,7 @@ class _ConfirmBookingScreenSimpleState
             'booking': booking,
             'totalPaid': _totalAmount,
             'paymentMethod': 'Test Booking',
-            'confirmationCode':
-                booking['_id'] ??
+            'confirmationCode': booking['_id'] ??
                 '#TRX-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}',
           },
         );
@@ -218,8 +221,7 @@ class _ConfirmBookingScreenSimpleState
   @override
   Widget build(BuildContext context) {
     final coachName = widget.bookingDetails['coachName'] ?? 'Coach';
-    final coachImage =
-        widget.bookingDetails['coachImage'] ??
+    final coachImage = widget.bookingDetails['coachImage'] ??
         'https://i.pravatar.cc/150?img=12';
     final dateStr = widget.bookingDetails['date'] ?? 'Date TBD';
     final timeStr = widget.bookingDetails['time'] ?? 'Time TBD';
@@ -732,9 +734,8 @@ class _ConfirmBookingScreenSimpleState
                     isSelected
                         ? Icons.radio_button_checked
                         : Icons.radio_button_unchecked,
-                    color: isSelected
-                        ? AppPalette.orangeAccent
-                        : Colors.grey[400],
+                    color:
+                        isSelected ? AppPalette.orangeAccent : Colors.grey[400],
                     size: 22,
                   ),
                 ],

@@ -96,9 +96,9 @@ class _PlayerHomeScreenState extends State<PlayerHomeScreen> {
                             fit: BoxFit.cover,
                             errorBuilder: (context, error, stackTrace) =>
                                 const Icon(
-                                  Icons.person,
-                                  color: AppPalette.orangeAccent,
-                                ),
+                              Icons.person,
+                              color: AppPalette.orangeAccent,
+                            ),
                           ),
                         ),
                       ),
@@ -277,7 +277,8 @@ class _PlayerHomeScreenState extends State<PlayerHomeScreen> {
                                       const SizedBox(width: 8),
                                       Text(
                                         DateTimeUtils.formatRelativeTime(
-                                          _upcomingSession!['timeSlots'][0]['startTime'],
+                                          _upcomingSession!['timeSlots'][0]
+                                              ['startTime'],
                                         ),
                                         style: GoogleFonts.inter(
                                           color: Theme.of(
@@ -328,7 +329,8 @@ class _PlayerHomeScreenState extends State<PlayerHomeScreen> {
                                     const SizedBox(width: 6),
                                     Text(
                                       DateTimeUtils.formatTime(
-                                        _upcomingSession!['timeSlots'][0]['startTime'],
+                                        _upcomingSession!['timeSlots'][0]
+                                            ['startTime'],
                                       ),
                                       style: GoogleFonts.inter(
                                         color: Theme.of(context)

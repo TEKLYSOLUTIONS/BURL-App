@@ -282,6 +282,33 @@ class _PlayerProfileScreenState extends ConsumerState<PlayerProfileScreen> {
                     ),
                   ).animate().fadeIn(delay: 500.ms),
 
+                  const SizedBox(height: 16),
+
+                  // Delete Account
+                  SizedBox(
+                    width: double.infinity,
+                    child: TextButton.icon(
+                      onPressed: () => _showDeleteConfirmation(context),
+                      icon: const Icon(Icons.delete_forever, color: Colors.red),
+                      label: Text(
+                        'Delete Account',
+                        style: GoogleFonts.inter(
+                          color: Colors.red,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        backgroundColor: Colors.transparent,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          side: const BorderSide(color: Colors.red, width: 1),
+                        ),
+                      ),
+                    ),
+                  ).animate().fadeIn(delay: 600.ms),
+
                   const SizedBox(height: 24),
                 ],
               ),
@@ -354,8 +381,7 @@ class _PlayerProfileScreenState extends ConsumerState<PlayerProfileScreen> {
           fontSize: 15,
         ),
       ),
-      trailing:
-          trailing ??
+      trailing: trailing ??
           const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.orange),
     );
   }
@@ -434,7 +460,18 @@ class _PlayerProfileScreenState extends ConsumerState<PlayerProfileScreen> {
           borderRadius: BorderRadius.circular(16),
           border: isSelected
               ? Border.all(color: Colors.orange, width: 2)
-              : Border.all(color: Colors.grey.shade200),
+              : Border.all(
+                  color: Theme.of(context).dividerColor.withValues(alpha: 0.1),
+                  width: 1,
+                ),
+          boxShadow: [
+            if (!isSelected)
+              BoxShadow(
+                color: Theme.of(context).shadowColor.withValues(alpha: 0.05),
+                blurRadius: 5,
+                offset: const Offset(0, 2),
+              ),
+          ],
         ),
         child: Row(
           children: [
@@ -443,18 +480,14 @@ class _PlayerProfileScreenState extends ConsumerState<PlayerProfileScreen> {
               decoration: BoxDecoration(
                 color: isSelected
                     ? AppPalette.orangeAccent
-                    : Theme.of(
-                        context,
-                      ).colorScheme.onSurface.withValues(alpha: 0.1),
+                    : Theme.of(context).disabledColor.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
               child: Icon(
                 icon,
                 color: isSelected
                     ? Colors.white
-                    : Theme.of(
-                        context,
-                      ).colorScheme.onSurface.withValues(alpha: 0.5),
+                    : Theme.of(context).colorScheme.primary,
                 size: 20,
               ),
             ),
@@ -478,4 +511,74 @@ class _PlayerProfileScreenState extends ConsumerState<PlayerProfileScreen> {
       ),
     );
   }
-}
+
+  Future<void> _showDeleteConfirmation(BuildContext context) async {
+    return showDialog(
+      context: context,
+      builder: (context) {
+        bool isLoading = false;
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              titlePadding: const EdgeInsets.fromLTRB(24, 16, 8, 0),
+              title: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text('Delete Account',
+                      style: TextStyle(color: AppPalette.error)),
+                  IconButton(
+                    icon: const Icon(Icons.close, color: Colors.grey),
+                    onPressed:
+                        isLoading ? null : () => Navigator.of(context).pop(),
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                  ),
+                ],
+              ),
+              content: const Text(
+                'Are you sure you want to permanently delete your account? This action cannot be undone and you will lose all your data.',
+              ),
+              actions: [
+                ElevatedButton(
+                  onPressed: isLoading
+                      ? null
+                      : () async {
+                          setState(() => isLoading = true);
+                          final success = await AuthService.deleteAccount();
+                          setState(() => isLoading = false);
+
+                          if (context.mounted) {
+                            if (success) {
+                              Navigator.of(context).pop(); // Close dialog
+                              context.go('/welcome'); // Redirect
+                            } else {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                    content: Text(
+                                        'Failed to delete account. Please try again later.')),
+                              );
+                            }
+                          }
+                        },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppPalette.error,
+                    foregroundColor: Colors.white,
+                  ),
+                  child: isLoading
+                      ? const SizedBox(
+                          height: 16,
+                          width: 16,
+                          child: CircularProgressIndicator(
+                              color: Colors.white, strokeWidth: 2),
+                        )
+                      : const Text('Delete',
+                          style: TextStyle(fontWeight: FontWeight.bold)),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+} // End of _PlayerProfileScreenState

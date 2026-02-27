@@ -167,7 +167,7 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
                     )
                   : const Icon(Icons.add),
               label: Text(
-                _isLoading ? 'Processing...' : 'Add New Card (\$10 Test)',
+                _isLoading ? 'Processing...' : 'Add New Card',
               ),
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppPalette.navyPrimary,

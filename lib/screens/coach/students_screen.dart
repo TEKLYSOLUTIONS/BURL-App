@@ -206,8 +206,7 @@ class _StudentsScreenState extends State<StudentsScreen> {
                         statusColor: colors.background,
                         statusTextColor: colors.text,
                         showOnlineDot: student['showOnlineDot'] ?? false,
-                        onlineDotColor:
-                            student['onlineDotColor'] ??
+                        onlineDotColor: student['onlineDotColor'] ??
                             AppPalette.successGreen,
                       );
                     }),
@@ -242,9 +241,8 @@ class _StudentsScreenState extends State<StudentsScreen> {
         );
       case 'waitlisted':
         return (
-          background: isDark
-              ? Colors.blue.withValues(alpha: 0.2)
-              : Colors.blue[50]!,
+          background:
+              isDark ? Colors.blue.withValues(alpha: 0.2) : Colors.blue[50]!,
           text: isDark ? Colors.blue[200]! : Colors.blue[700]!,
         );
       case 'confirmed':
@@ -343,8 +341,7 @@ class _StudentsScreenState extends State<StudentsScreen> {
               style: GoogleFonts.inter(
                 fontSize: 11,
                 fontWeight: FontWeight.w600,
-                color:
-                    subtitleColor ??
+                color: subtitleColor ??
                     (isDark
                         ? Theme.of(context).colorScheme.secondary
                         : Theme.of(
