@@ -102,6 +102,44 @@ class GuardianService {
     }
   }
 
+  // Update guardian profile
+  Future<Map<String, dynamic>> updateGuardianProfile(
+      Map<String, dynamic> data) async {
+    try {
+      final response = await ApiService.put('guardian/profile', data);
+
+      if (response.statusCode == 200) {
+        final resData = jsonDecode(response.body);
+        return resData['data'];
+      } else {
+        throw Exception('Failed to update guardian profile');
+      }
+    } catch (e) {
+      debugPrint('❌ Error updating guardian profile: $e');
+      rethrow;
+    }
+  }
+
+  // Link existing player via email
+  Future<void> linkPlayer(String email) async {
+    try {
+      final response = await ApiService.post('guardian/players/existing', {
+        'email': email,
+      });
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        debugPrint('✅ Player linked successfully');
+        playerUpdateNotifier.value = !playerUpdateNotifier.value;
+      } else {
+        final errorData = jsonDecode(response.body);
+        throw Exception(errorData['message'] ?? 'Failed to link player');
+      }
+    } catch (e) {
+      debugPrint('❌ Error linking player: $e');
+      rethrow;
+    }
+  }
+
   // Update a player's profile
   Future<Map<String, dynamic>> updatePlayer(
     String playerId, {

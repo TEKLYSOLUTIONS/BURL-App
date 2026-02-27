@@ -4,6 +4,7 @@ import 'package:table_calendar/table_calendar.dart';
 import 'package:intl/intl.dart';
 import 'package:go_router/go_router.dart';
 import '../../../services/session_service.dart';
+import '../../../utils/session_utils.dart';
 import '../../../services/booking_service.dart';
 import '../../../config/palette.dart';
 
@@ -158,15 +159,44 @@ class _CalendarTabState extends State<CalendarTab> {
             selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
             calendarFormat: CalendarFormat.month,
             startingDayOfWeek: StartingDayOfWeek.monday,
+            daysOfWeekStyle: DaysOfWeekStyle(
+              weekdayStyle: GoogleFonts.inter(
+                color: Theme.of(context).colorScheme.onSurface,
+              ),
+              weekendStyle: GoogleFonts.inter(
+                color: Theme.of(context).colorScheme.onSurface,
+              ),
+            ),
             headerStyle: HeaderStyle(
               titleCentered: true,
               formatButtonVisible: false,
               titleTextStyle: GoogleFonts.inter(
                 fontSize: 18,
                 fontWeight: FontWeight.w600,
+                color: Theme.of(context).colorScheme.onSurface,
+              ),
+              leftChevronIcon: Icon(
+                Icons.chevron_left,
+                color: Theme.of(context).colorScheme.onSurface,
+              ),
+              rightChevronIcon: Icon(
+                Icons.chevron_right,
+                color: Theme.of(context).colorScheme.onSurface,
               ),
             ),
             calendarStyle: CalendarStyle(
+              defaultTextStyle: GoogleFonts.inter(
+                color: Theme.of(context).colorScheme.onSurface,
+              ),
+              weekendTextStyle: GoogleFonts.inter(
+                color: Theme.of(context).colorScheme.onSurface,
+              ),
+              outsideTextStyle: GoogleFonts.inter(
+                color: Theme.of(context)
+                    .colorScheme
+                    .onSurface
+                    .withValues(alpha: 0.5),
+              ),
               selectedDecoration: const BoxDecoration(
                 color: AppPalette.orangeAccent,
                 shape: BoxShape.circle,
@@ -175,8 +205,8 @@ class _CalendarTabState extends State<CalendarTab> {
                 color: AppPalette.orangeAccent.withValues(alpha: 0.3),
                 shape: BoxShape.circle,
               ),
-              markerDecoration: const BoxDecoration(
-                color: AppPalette.navyPrimary,
+              markerDecoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.secondary,
                 shape: BoxShape.circle,
               ),
             ),
@@ -256,7 +286,12 @@ class _CalendarTabState extends State<CalendarTab> {
             margin: const EdgeInsets.only(bottom: 12),
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: Theme.of(context).cardColor,
+              color: SessionUtils.getSessionColor(
+                context,
+                isBooking
+                    ? {...event['data'], 'isBooking': true}
+                    : event['data'],
+              ),
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
                 color: Theme.of(context).dividerColor.withValues(alpha: 0.1),
@@ -275,7 +310,12 @@ class _CalendarTabState extends State<CalendarTab> {
                   width: 4,
                   height: 48,
                   decoration: BoxDecoration(
-                    color: isBooking ? Colors.blue : Colors.purple,
+                    color: SessionUtils.getSessionPrimaryColor(
+                      context,
+                      isBooking
+                          ? {...event['data'], 'isBooking': true}
+                          : event['data'],
+                    ),
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),

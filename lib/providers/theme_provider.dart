@@ -10,13 +10,13 @@ final themeProvider = StateNotifierProvider<ThemeNotifier, ThemeMode>((ref) {
 });
 
 class ThemeNotifier extends StateNotifier<ThemeMode> {
-  ThemeNotifier() : super(ThemeMode.light) {
+  ThemeNotifier() : super(ThemeMode.dark) {
     _loadTheme();
   }
 
   Future<void> _loadTheme() async {
     final prefs = await SharedPreferences.getInstance();
-    final isDarkMode = prefs.getBool(_themePrefsKey) ?? false;
+    final isDarkMode = prefs.getBool(_themePrefsKey) ?? true;
     state = isDarkMode ? ThemeMode.dark : ThemeMode.light;
     debugPrint('Theme loaded: $state');
   }

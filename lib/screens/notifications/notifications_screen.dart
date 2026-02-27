@@ -17,8 +17,10 @@ class NotificationItem {
   final bool isLike;
   final IconData? typeIcon;
   final String? actionButton;
+  final String? actionUrl;
+  final Map<String, dynamic>? metadata;
   final String
-  category; // 'Mentions', 'Schedule', 'Performance', 'Payments', 'Other'
+      category; // 'Mentions', 'Schedule', 'Performance', 'Payments', 'Other'
 
   NotificationItem({
     required this.id,
@@ -33,6 +35,8 @@ class NotificationItem {
     this.isLike = false,
     this.typeIcon,
     this.actionButton,
+    this.actionUrl,
+    this.metadata,
     required this.category,
   });
 
@@ -61,6 +65,8 @@ class NotificationItem {
       isUnread: !(json['isRead'] as bool? ?? false),
       isLike: json['type'] == 'like',
       actionButton: json['actionButton']?['text'] as String?,
+      actionUrl: json['actionButton']?['url'] as String?,
+      metadata: json['metadata'] as Map<String, dynamic>?,
       category: json['category'] as String? ?? 'Other',
     );
   }
@@ -166,6 +172,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             isLike: _allNotifications[index].isLike,
             typeIcon: _allNotifications[index].typeIcon,
             actionButton: _allNotifications[index].actionButton,
+            actionUrl: _allNotifications[index].actionUrl,
+            metadata: _allNotifications[index].metadata,
             category: _allNotifications[index].category,
           );
         }
@@ -197,6 +205,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             isLike: n.isLike,
             typeIcon: n.typeIcon,
             actionButton: n.actionButton,
+            actionUrl: n.actionUrl,
+            metadata: n.metadata,
             category: n.category,
           );
         }).toList();
@@ -319,95 +329,133 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             child: _isLoading
                 ? const Center(child: CircularProgressIndicator())
                 : _error != null
-                ? Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.error_outline,
-                          size: 64,
-                          color: Colors.grey[400],
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          'Failed to load notifications',
-                          style: GoogleFonts.inter(
-                            fontSize: 16,
-                            color: Colors.grey[600],
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        TextButton(
-                          onPressed: _loadNotifications,
-                          child: const Text('Retry'),
-                        ),
-                      ],
-                    ),
-                  )
-                : RefreshIndicator(
-                    onRefresh: _loadNotifications,
-                    child: SingleChildScrollView(
-                      physics: const AlwaysScrollableScrollPhysics(),
-                      padding: const EdgeInsets.all(24),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // Filter Chips
-                          SingleChildScrollView(
-                            scrollDirection: Axis.horizontal,
-                            child: Row(
-                              children: [
-                                _buildFilterChip('All'),
-                                _buildFilterChip(
-                                  'Mentions',
-                                  icon: Icons.alternate_email,
-                                ),
-                                _buildFilterChip(
-                                  'Schedule',
-                                  icon: Icons.calendar_today,
-                                ),
-                                _buildFilterChip(
-                                  'Performance',
-                                  icon: Icons.bar_chart,
-                                ),
-                                _buildFilterChip(
-                                  'Payments',
-                                  icon: Icons.payment,
-                                ),
-                              ],
+                    ? Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.error_outline,
+                              size: 64,
+                              color: Colors.grey[400],
                             ),
-                          ),
-                          const SizedBox(height: 32),
-
-                          if (_allNotifications.isEmpty)
-                            Center(
-                              child: Column(
-                                children: [
-                                  const SizedBox(height: 64),
-                                  Icon(
-                                    Icons.notifications_none,
-                                    size: 80,
-                                    color: Colors.grey[300],
-                                  ),
-                                  const SizedBox(height: 16),
-                                  Text(
-                                    'No notifications yet',
-                                    style: GoogleFonts.inter(
-                                      fontSize: 18,
-                                      color: Colors.grey[600],
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                ],
+                            const SizedBox(height: 16),
+                            Text(
+                              'Failed to load notifications',
+                              style: GoogleFonts.inter(
+                                fontSize: 16,
+                                color: Colors.grey[600],
                               ),
                             ),
+                            const SizedBox(height: 8),
+                            TextButton(
+                              onPressed: _loadNotifications,
+                              child: const Text('Retry'),
+                            ),
+                          ],
+                        ),
+                      )
+                    : RefreshIndicator(
+                        onRefresh: _loadNotifications,
+                        child: SingleChildScrollView(
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          padding: const EdgeInsets.all(24),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Filter Chips
+                              SingleChildScrollView(
+                                scrollDirection: Axis.horizontal,
+                                child: Row(
+                                  children: [
+                                    _buildFilterChip('All'),
+                                    _buildFilterChip(
+                                      'Mentions',
+                                      icon: Icons.alternate_email,
+                                    ),
+                                    _buildFilterChip(
+                                      'Schedule',
+                                      icon: Icons.calendar_today,
+                                    ),
+                                    _buildFilterChip(
+                                      'Performance',
+                                      icon: Icons.bar_chart,
+                                    ),
+                                    _buildFilterChip(
+                                      'Payments',
+                                      icon: Icons.payment,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(height: 32),
 
-                          if (newNotifications.isNotEmpty) ...[
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
+                              if (_allNotifications.isEmpty)
+                                Center(
+                                  child: Column(
+                                    children: [
+                                      const SizedBox(height: 64),
+                                      Icon(
+                                        Icons.notifications_none,
+                                        size: 80,
+                                        color: Colors.grey[300],
+                                      ),
+                                      const SizedBox(height: 16),
+                                      Text(
+                                        'No notifications yet',
+                                        style: GoogleFonts.inter(
+                                          fontSize: 18,
+                                          color: Colors.grey[600],
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+
+                              if (newNotifications.isNotEmpty) ...[
+                                Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text(
+                                      'NEW',
+                                      style: GoogleFonts.inter(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.grey[600],
+                                        letterSpacing: 1,
+                                      ),
+                                    ),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                        vertical: 4,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: Colors.orange[50],
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: Text(
+                                        '${newNotifications.length} unread',
+                                        style: GoogleFonts.inter(
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.orange[800],
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 16),
+                                ...newNotifications.map(
+                                  (n) => _buildNotificationCard(n),
+                                ),
+                                const SizedBox(height: 32),
+                              ],
+
+                              if (earlierNotifications.isNotEmpty) ...[
                                 Text(
-                                  'NEW',
+                                  'EARLIER',
                                   style: GoogleFonts.inter(
                                     fontSize: 12,
                                     fontWeight: FontWeight.bold,
@@ -415,52 +463,15 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                                     letterSpacing: 1,
                                   ),
                                 ),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 8,
-                                    vertical: 4,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: Colors.orange[50],
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: Text(
-                                    '${newNotifications.length} unread',
-                                    style: GoogleFonts.inter(
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.orange[800],
-                                    ),
-                                  ),
+                                const SizedBox(height: 16),
+                                ...earlierNotifications.map(
+                                  (n) => _buildNotificationCard(n),
                                 ),
                               ],
-                            ),
-                            const SizedBox(height: 16),
-                            ...newNotifications.map(
-                              (n) => _buildNotificationCard(n),
-                            ),
-                            const SizedBox(height: 32),
-                          ],
-
-                          if (earlierNotifications.isNotEmpty) ...[
-                            Text(
-                              'EARLIER',
-                              style: GoogleFonts.inter(
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.grey[600],
-                                letterSpacing: 1,
-                              ),
-                            ),
-                            const SizedBox(height: 16),
-                            ...earlierNotifications.map(
-                              (n) => _buildNotificationCard(n),
-                            ),
-                          ],
-                        ],
+                            ],
+                          ),
+                        ),
                       ),
-                    ),
-                  ),
           ),
         ],
       ),
@@ -549,6 +560,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
               'iconData': item.iconData,
               'iconColor': item.iconColor,
               'iconBg': item.iconBg,
+              'actionButton': item.actionButton,
+              'actionUrl': item.actionUrl,
+              'metadata': item.metadata,
             },
           );
         },
@@ -606,15 +620,13 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                 Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color:
-                        item.iconBg ??
+                    color: item.iconBg ??
                         Theme.of(context).colorScheme.surfaceContainerHighest,
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Icon(
                     item.iconData,
-                    color:
-                        item.iconColor ??
+                    color: item.iconColor ??
                         Theme.of(context).colorScheme.onSurfaceVariant,
                     size: 20,
                   ),
@@ -677,25 +689,45 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                     ],
                     if (item.actionButton != null) ...[
                       const SizedBox(height: 12),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 8,
-                        ),
-                        decoration: BoxDecoration(
-                          color: isDark
-                              ? AppPalette.orangeAccent.withValues(alpha: 0.1)
-                              : Colors.orange[50],
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          item.actionButton!,
-                          style: GoogleFonts.inter(
-                            fontWeight: FontWeight.bold,
+                      GestureDetector(
+                        onTap: () {
+                          if (item.actionUrl != null) {
+                            if (item.actionUrl == '/add-review' &&
+                                item.metadata != null) {
+                              final sessionData = {
+                                'id': item.metadata!['sessionId'],
+                                'title': item.metadata!['sessionTitle'],
+                                'coach': {
+                                  'id': item.metadata!['coachId'],
+                                  'fullName': item.metadata!['coachName'],
+                                }
+                              };
+                              context.push('/add-review', extra: sessionData);
+                            } else {
+                              context.push(item.actionUrl!);
+                            }
+                          }
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 8,
+                          ),
+                          decoration: BoxDecoration(
                             color: isDark
-                                ? AppPalette.orangeAccent
-                                : Colors.orange[800],
-                            fontSize: 12,
+                                ? AppPalette.orangeAccent.withValues(alpha: 0.1)
+                                : Colors.orange[50],
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            item.actionButton!,
+                            style: GoogleFonts.inter(
+                              fontWeight: FontWeight.bold,
+                              color: isDark
+                                  ? AppPalette.orangeAccent
+                                  : Colors.orange[800],
+                              fontSize: 12,
+                            ),
                           ),
                         ),
                       ),

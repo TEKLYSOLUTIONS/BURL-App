@@ -294,7 +294,6 @@ class _FullEarningsHistoryScreenState extends State<FullEarningsHistoryScreen> {
                       ),
                     ),
                     const SizedBox(height: 16),
-
                     if (_earnings.isEmpty)
                       Center(
                         child: Padding(
@@ -326,24 +325,21 @@ class _FullEarningsHistoryScreenState extends State<FullEarningsHistoryScreen> {
                               : playerName,
                           detail:
                               '${earning['sessionTitle'] ?? 'Session'} • ${sessionDate != null ? DateFormat('MMM d, yyyy').format(sessionDate) : 'Unknown date'}',
-                          amount: '+${EarningsService.formatCurrency(amount, currency: _userCurrency)}',
+                          amount:
+                              '+${EarningsService.formatCurrency(amount, currency: _userCurrency)}',
                           isCompleted:
                               status == 'confirmed' || status == 'paid',
-                          statusText: status == 'pending'
-                              ? 'Pending'
-                              : 'Completed',
-                          avatarUrl:
-                              player['avatar'] ??
+                          statusText:
+                              status == 'pending' ? 'Pending' : 'Completed',
+                          avatarUrl: player['avatar'] ??
                               'https://ui-avatars.com/api/?name=${Uri.encodeComponent(playerName)}&background=EBF4FF&color=7F9CF5',
                         );
                       }),
-
                     if (_isLoadingMore)
                       const Padding(
                         padding: EdgeInsets.all(16.0),
                         child: Center(child: CircularProgressIndicator()),
                       ),
-
                     if (_pagination['pages'] != null &&
                         _currentPage < _pagination['pages'])
                       Padding(
@@ -375,7 +371,6 @@ class _FullEarningsHistoryScreenState extends State<FullEarningsHistoryScreen> {
                           ),
                         ),
                       ),
-
                     const SizedBox(height: 80),
                   ],
                 ),

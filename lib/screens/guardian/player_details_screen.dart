@@ -75,6 +75,9 @@ class _PlayerDetailsScreenState extends State<PlayerDetailsScreen> {
     final String role = player['role'] ?? 'Athlete';
     final String age = player['age']?.toString() ?? 'N/A';
     final String? profilePhoto = player['profilePhoto'];
+    final stats = player['stats'] as Map<String, dynamic>?;
+    final String sessionsCount = stats?['sessions']?.toString() ?? '0';
+    final String avgRating = stats?['rating']?.toString() ?? 'N/A';
 
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
@@ -188,7 +191,7 @@ class _PlayerDetailsScreenState extends State<PlayerDetailsScreen> {
                 Expanded(
                   child: _buildStatCard(
                     'Sessions',
-                    '12', // Mock
+                    sessionsCount,
                     Icons.sports_cricket,
                     Colors.blue,
                   ),
@@ -197,7 +200,7 @@ class _PlayerDetailsScreenState extends State<PlayerDetailsScreen> {
                 Expanded(
                   child: _buildStatCard(
                     'Avg Rating',
-                    '4.8', // Mock
+                    avgRating,
                     Icons.star,
                     Colors.orange,
                   ),

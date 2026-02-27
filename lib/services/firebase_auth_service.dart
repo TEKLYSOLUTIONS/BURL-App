@@ -165,13 +165,11 @@ class FirebaseAuthService {
 
       // Ensure user exists in MongoDB
       await _ensureMongoDBUser(
-        fullName:
-            userCredential.user?.displayName ??
+        fullName: userCredential.user?.displayName ??
             googleUser.displayName ??
             'Google User',
         role: role ?? 'player',
-        email:
-            userCredential.user?.email ?? googleUser.email,
+        email: userCredential.user?.email ?? googleUser.email,
       );
 
       // Check if profile is complete
@@ -223,7 +221,8 @@ class FirebaseAuthService {
 
       // Get full name — Apple only provides name on FIRST login
       String fullName = userCredential.user?.displayName ?? 'Apple User';
-      if (appleCredential.givenName != null || appleCredential.familyName != null) {
+      if (appleCredential.givenName != null ||
+          appleCredential.familyName != null) {
         fullName = [appleCredential.givenName, appleCredential.familyName]
             .where((n) => n != null && n.isNotEmpty)
             .join(' ');
@@ -394,17 +393,32 @@ class FirebaseAuthService {
         final user = data['user'];
 
         // Check if profile is incomplete
-        final isIncomplete =
-            user['phoneNumber'] == null ||
+        final isIncomplete = user['phoneNumber'] == null ||
             user['phoneNumber'] == '' ||
             (user['role'] == 'coach' &&
                 (user['coachProfile'] == null ||
                     user['coachProfile']['specialization'] == null ||
-                    user['coachProfile']['specialization'].isEmpty));
+                    user['coachProfile']['specialization'].isEmpty ||
+                    user['coachProfile']['bio'] == null ||
+                    (user['coachProfile']['bio'] as String).isEmpty));
 
         if (isIncomplete) {
           // Create profile completion notification
           await _createProfileCompletionNotification();
+        } else {
+          // Profile is complete — mark all notifications as read so the
+          // "Complete Your Profile" prompt disappears automatically on login.
+          try {
+            await http.put(
+              Uri.parse('$baseUrl/notifications/mark-all-read'),
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer $token',
+              },
+              body: jsonEncode({}),
+            );
+            debugPrint('✅ Profile complete — notifications marked as read');
+          } catch (_) {}
         }
       }
     } catch (e) {
@@ -443,6 +457,7 @@ class FirebaseAuthService {
   // Handle authentication exceptions
   String _handleAuthException(dynamic e) {
     if (e is FirebaseAuthException) {
+      debugPrint('Firebase Auth Error Code: ${e.code}, Message: ${e.message}');
       switch (e.code) {
         case 'weak-password':
           return 'The password provided is too weak.';
@@ -454,13 +469,40 @@ class FirebaseAuthService {
           return 'No user found with this email.';
         case 'wrong-password':
           return 'Wrong password provided.';
+        case 'invalid-credential':
+          return 'Invalid email or password.';
         case 'user-disabled':
           return 'This account has been disabled.';
         case 'too-many-requests':
           return 'Too many attempts. Please try again later.';
         case 'operation-not-allowed':
           return 'This sign-in method is not enabled.';
+        case 'unknown-error':
+          if (e.message != null &&
+              (e.message!.contains('An internal error has occurred') ||
+                  e.message!.contains('INVALID_LOGIN_CREDENTIALS'))) {
+            return 'Invalid email or password.';
+          }
+          return 'An unknown error occurred. Please try again.';
+        case 'channel-error':
+          return 'Please check your internet connection, or fields are empty.';
+        case 'network-request-failed':
+          return 'Network error. Please check your internet connection.';
+        case 'internal-error':
+          // Sometimes Firebase returns internal-error for invalid credentials on certain platforms
+          if (e.message != null &&
+              e.message!.contains('INVALID_LOGIN_CREDENTIALS')) {
+            return 'Invalid email or password.';
+          }
+          return 'An internal error occurred. Please try again.';
         default:
+          // Check if message itself mentions internal error but it's just invalid credentials
+          if (e.message != null &&
+              e.message!.contains('internal error') &&
+              (e.message!.contains('credential') ||
+                  e.message!.contains('password'))) {
+            return 'Invalid email or password.';
+          }
           return e.message ?? 'An authentication error occurred.';
       }
     }

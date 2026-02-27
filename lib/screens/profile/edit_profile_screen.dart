@@ -235,7 +235,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: Theme.of(context).shadowColor.withValues(alpha: 0.05),
+                    color:
+                        Theme.of(context).shadowColor.withValues(alpha: 0.05),
                     blurRadius: 20,
                     offset: const Offset(0, 10),
                   ),
@@ -360,131 +361,134 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                               ),
                               if (_isUploadingImage)
                                 Positioned.fill(
-                            child: Container(
-                              decoration: BoxDecoration(
-                                color: Colors.black45,
-                                shape: BoxShape.circle,
-                              ),
-                              child: const Center(
-                                child: CircularProgressIndicator(
-                                  valueColor: AlwaysStoppedAnimation<Color>(
-                                    Colors.white,
+                                  child: Container(
+                                    decoration: BoxDecoration(
+                                      color: Colors.black45,
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: const Center(
+                                      child: CircularProgressIndicator(
+                                        valueColor:
+                                            AlwaysStoppedAnimation<Color>(
+                                          Colors.white,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              Positioned(
+                                bottom: 0,
+                                right: 4,
+                                child: GestureDetector(
+                                  onTap: _isUploadingImage
+                                      ? null
+                                      : _changeProfilePhoto,
+                                  child: Container(
+                                    padding: const EdgeInsets.all(8),
+                                    decoration: BoxDecoration(
+                                      color: _isUploadingImage
+                                          ? Colors.grey
+                                          : AppPalette.orangeAccent,
+                                      shape: BoxShape.circle,
+                                      border: Border.all(
+                                        color: Colors.white,
+                                        width: 2,
+                                      ),
+                                    ),
+                                    child: const Icon(
+                                      Icons.camera_alt,
+                                      color: Colors.white,
+                                      size: 20,
+                                    ),
                                   ),
                                 ),
                               ),
-                            ),
+                            ],
                           ),
-                        Positioned(
-                          bottom: 0,
-                          right: 4,
-                          child: GestureDetector(
-                            onTap: _isUploadingImage ? null : _changeProfilePhoto,
-                            child: Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                color: _isUploadingImage
-                                    ? Colors.grey
-                                    : AppPalette.orangeAccent,
-                                shape: BoxShape.circle,
-                                border: Border.all(
-                                  color: Colors.white,
-                                  width: 2,
-                                ),
-                              ),
-                              child: const Icon(
-                                Icons.camera_alt,
-                                color: Colors.white,
-                                size: 20,
+                          const SizedBox(height: 12),
+                          GestureDetector(
+                            onTap: _changeProfilePhoto,
+                            child: Text(
+                              'Change Profile Photo',
+                              style: GoogleFonts.inter(
+                                color: AppPalette.orangeAccent,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 14,
                               ),
                             ),
                           ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    GestureDetector(
-                      onTap: _changeProfilePhoto,
-                      child: Text(
-                        'Change Profile Photo',
-                        style: GoogleFonts.inter(
-                          color: AppPalette.orangeAccent,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 14,
-                        ),
+                        ],
                       ),
                     ),
+                    const SizedBox(height: 32),
+
+                    // Personal Information
+                    Text(
+                      "Personal Information",
+                      style: GoogleFonts.inter(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Theme.of(context).colorScheme.onSurface,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    _buildTextField(
+                      "Full Name",
+                      _nameController,
+                      icon: Icons.person,
+                      validator: (value) {
+                        if (value == null || value.trim().isEmpty) {
+                          return 'Name is required';
+                        }
+                        return null;
+                      },
+                    ),
+
+                    if (_userRole == 'coach') ...[
+                      const SizedBox(height: 16),
+                      _buildTextField(
+                        "Bio",
+                        _bioController,
+                        maxLines: 4,
+                        validator: null, // Optional field
+                      ),
+                    ],
+
+                    const SizedBox(height: 32),
+
+                    // Contact Details
+                    Text(
+                      "Contact Details",
+                      style: GoogleFonts.inter(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Theme.of(context).colorScheme.onSurface,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    _buildTextField(
+                      "Email Address",
+                      _emailController,
+                      icon: Icons.email_outlined,
+                      readOnly: true, // Email cannot be changed
+                      keyboardType: TextInputType.emailAddress,
+                      validator: (value) => null,
+                    ),
+                    const SizedBox(height: 16),
+                    _buildTextField(
+                      "Phone Number",
+                      _phoneController,
+                      icon: Icons.phone_outlined,
+                      keyboardType: TextInputType.phone,
+                      validator: null, // Optional field
+                    ),
+
+                    const SizedBox(height: 32),
                   ],
                 ),
               ),
-              const SizedBox(height: 32),
-
-              // Personal Information
-              Text(
-                "Personal Information",
-                style: GoogleFonts.inter(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Theme.of(context).colorScheme.onSurface,
-                ),
-              ),
-              const SizedBox(height: 16),
-              _buildTextField(
-                "Full Name",
-                _nameController,
-                icon: Icons.person,
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return 'Name is required';
-                  }
-                  return null;
-                },
-              ),
-
-              if (_userRole == 'coach') ...[
-                const SizedBox(height: 16),
-                _buildTextField(
-                  "Bio",
-                  _bioController,
-                  maxLines: 4,
-                  validator: null, // Optional field
-                ),
-              ],
-
-              const SizedBox(height: 32),
-
-              // Contact Details
-              Text(
-                "Contact Details",
-                style: GoogleFonts.inter(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Theme.of(context).colorScheme.onSurface,
-                ),
-              ),
-              const SizedBox(height: 16),
-              _buildTextField(
-                "Email Address",
-                _emailController,
-                icon: Icons.email_outlined,
-                readOnly: true, // Email cannot be changed
-                keyboardType: TextInputType.emailAddress,
-                validator: (value) => null,
-              ),
-              const SizedBox(height: 16),
-              _buildTextField(
-                "Phone Number",
-                _phoneController,
-                icon: Icons.phone_outlined,
-                keyboardType: TextInputType.phone,
-                validator: null, // Optional field
-              ),
-
-              const SizedBox(height: 32),
-            ],
+            ),
           ),
-        ),
-      ),
-    ),
           // Fixed Continue Button at Bottom
           Container(
             padding: const EdgeInsets.all(24),
@@ -551,7 +555,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           label,
           style: GoogleFonts.inter(
             fontWeight: FontWeight.w600,
-            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.8),
+            color:
+                Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.8),
             fontSize: 14,
           ),
         ),
@@ -610,7 +615,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               suffixIcon: icon != null
                   ? Icon(
                       icon,
-                      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.4),
+                      color: Theme.of(context)
+                          .colorScheme
+                          .onSurface
+                          .withValues(alpha: 0.4),
                       size: 20,
                     )
                   : null,

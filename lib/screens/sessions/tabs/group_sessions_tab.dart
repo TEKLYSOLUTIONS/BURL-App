@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 import '../../../services/session_service.dart';
+import '../../../utils/session_utils.dart';
 import '../../../utils/date_time_utils.dart';
 
 class GroupSessionsTab extends StatefulWidget {
@@ -86,7 +87,7 @@ class _GroupSessionsTabState extends State<GroupSessionsTab>
           child: TabBar(
             controller: _tabController,
             indicator: BoxDecoration(
-              color: Theme.of(context).primaryColor,
+              color: Theme.of(context).colorScheme.secondary,
               borderRadius: BorderRadius.circular(10),
             ),
             labelColor: Colors.white,
@@ -187,11 +188,13 @@ class _GroupSessionsTabState extends State<GroupSessionsTab>
         ? Theme.of(context).colorScheme.onPrimaryContainer
         : const Color(0xFF1565C0);
 
+    final primaryColor = SessionUtils.getSessionPrimaryColor(context, session);
+
     return Container(
       margin: const EdgeInsets.only(bottom: 20),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Theme.of(context).cardColor,
+        color: SessionUtils.getSessionColor(context, session),
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
@@ -305,14 +308,14 @@ class _GroupSessionsTabState extends State<GroupSessionsTab>
                           style: GoogleFonts.inter(
                             fontSize: 13,
                             fontWeight: FontWeight.w600,
-                            color: Theme.of(context).primaryColor,
+                            color: primaryColor,
                           ),
                         ),
                         const SizedBox(width: 6),
                         Icon(
                           Icons.arrow_forward_rounded,
                           size: 16,
-                          color: Theme.of(context).primaryColor,
+                          color: primaryColor,
                         ),
                       ],
                     ),
@@ -331,7 +334,7 @@ class _GroupSessionsTabState extends State<GroupSessionsTab>
               child: Icon(
                 Icons.sports_cricket,
                 size: 40,
-                color: Theme.of(context).primaryColor,
+                color: primaryColor,
               ),
             ),
           ),

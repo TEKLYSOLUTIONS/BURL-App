@@ -144,9 +144,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
-        backgroundColor: isError
-            ? AppPalette.errorRed
-            : AppPalette.successGreen,
+        backgroundColor:
+            isError ? AppPalette.errorRed : AppPalette.successGreen,
         behavior: SnackBarBehavior.floating,
         margin: const EdgeInsets.all(16),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -194,8 +193,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       'Sign up to get started',
                       style: TextStyle(
                         fontSize: 16,
-                        color:
-                            Theme.of(context).textTheme.bodyMedium?.color ??
+                        color: Theme.of(context).textTheme.bodyMedium?.color ??
                             AppPalette.textSecondaryLight,
                       ),
                     ),
@@ -345,8 +343,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             'I agree to the ',
                             style: TextStyle(
                               fontSize: 14,
-                              color:
-                                  Theme.of(
+                              color: Theme.of(
                                     context,
                                   ).textTheme.bodyMedium?.color ??
                                   AppPalette.textSecondaryLight,
@@ -367,8 +364,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             ' and ',
                             style: TextStyle(
                               fontSize: 14,
-                              color:
-                                  Theme.of(
+                              color: Theme.of(
                                     context,
                                   ).textTheme.bodyMedium?.color ??
                                   AppPalette.textSecondaryLight,
@@ -413,7 +409,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         style: TextStyle(
                           color:
                               Theme.of(context).textTheme.bodyMedium?.color ??
-                              AppPalette.textSecondaryLight,
+                                  AppPalette.textSecondaryLight,
                           fontSize: 14,
                           fontWeight: FontWeight.w500,
                         ),
@@ -451,8 +447,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     Text(
                       'Already have an account? ',
                       style: TextStyle(
-                        color:
-                            Theme.of(context).textTheme.bodyMedium?.color ??
+                        color: Theme.of(context).textTheme.bodyMedium?.color ??
                             AppPalette.textSecondaryLight,
                         fontSize: 14,
                       ),

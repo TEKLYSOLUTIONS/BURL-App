@@ -43,9 +43,9 @@ class _CustomTextFieldState extends State<CustomTextField> {
         Text(
           widget.label,
           style: Theme.of(context).textTheme.labelLarge?.copyWith(
-            fontWeight: FontWeight.w600,
-            color: Theme.of(context).colorScheme.onSurface,
-          ),
+                fontWeight: FontWeight.w600,
+                color: Theme.of(context).colorScheme.onSurface,
+              ),
         ),
         const SizedBox(height: 8),
         TextFormField(
@@ -63,8 +63,7 @@ class _CustomTextFieldState extends State<CustomTextField> {
           decoration: InputDecoration(
             hintText: widget.hint,
             filled: true,
-            fillColor:
-                Theme.of(context).inputDecorationTheme.fillColor ??
+            fillColor: Theme.of(context).inputDecorationTheme.fillColor ??
                 Theme.of(context).cardColor,
             hintStyle: TextStyle(color: Theme.of(context).hintColor),
             border: OutlineInputBorder(

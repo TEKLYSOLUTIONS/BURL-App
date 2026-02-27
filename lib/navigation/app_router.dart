@@ -56,6 +56,7 @@ import '../screens/profile/complete_coach_profile_screen.dart';
 import '../screens/profile/change_password_screen.dart';
 import '../screens/profile/payment_methods_screen.dart';
 import '../screens/legal/terms_of_service_screen.dart';
+import '../screens/reviews/add_review_screen.dart'; // New Import
 
 // Placeholder screens for other tabs
 class PlaceholderScreen extends StatelessWidget {
@@ -138,10 +139,21 @@ class AppRouter {
           return ConfirmPrivateBookingScreen(
             coachId: extra['coachId'],
             coachName: extra['coachName'],
+            coachImageUrl: extra['coachImageUrl'],
             startTime: extra['startTime'],
             durationMinutes: extra['durationMinutes'],
             price: extra['price'],
+            cancellationPolicy: extra['cancellationPolicy'] ?? 'flexible',
           );
+        },
+      ),
+
+      GoRoute(
+        path: '/add-review',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) {
+          final sessionData = state.extra as Map<String, dynamic>? ?? {};
+          return AddReviewScreen(sessionData: sessionData);
         },
       ),
 
@@ -163,7 +175,10 @@ class AppRouter {
           return CoachBookingScreen(
             coachId: coachId,
             coachName: extra['coachName'] ?? 'Coach',
+            coachImageUrl: extra['coachImageUrl'],
             hourlyRate: extra['hourlyRate'] ?? 60.0,
+            sessionDuration: extra['sessionDuration'] ?? 60,
+            cancellationPolicy: extra['cancellationPolicy'] ?? 'flexible',
           );
         },
       ),
@@ -178,31 +193,6 @@ class AppRouter {
         parentNavigatorKey: _rootNavigatorKey,
         builder: (context, state) =>
             SessionReportScreen(sessionId: state.pathParameters['id'] ?? ''),
-      ),
-
-      GoRoute(
-        path: '/guardian/add-player',
-        parentNavigatorKey: _rootNavigatorKey,
-        builder: (context, state) => const AddPlayerScreen(),
-      ),
-
-      GoRoute(
-        path: '/guardian/player-details/:id',
-        builder: (context, state) {
-          final isCoach = state.uri.queryParameters['isCoach'] == 'true';
-          return PlayerDetailsScreen(
-            playerId: state.pathParameters['id'] ?? '1',
-            isCoachView: isCoach,
-          );
-        },
-      ),
-
-      GoRoute(
-        path: '/guardian/edit-player',
-        builder: (context, state) {
-          final playerData = state.extra as Map<String, dynamic>?;
-          return EditPlayerScreen(playerData: playerData);
-        },
       ),
 
       GoRoute(
@@ -388,6 +378,115 @@ class AppRouter {
           GoRoute(
             path: '/guardian/notifications',
             builder: (context, state) => const NotificationsScreen(),
+          ),
+          GoRoute(
+            path: '/guardian/add-player',
+            builder: (context, state) => const AddPlayerScreen(),
+          ),
+          GoRoute(
+            path: '/guardian/player-details/:id',
+            builder: (context, state) {
+              final isCoach = state.uri.queryParameters['isCoach'] == 'true';
+              return PlayerDetailsScreen(
+                playerId: state.pathParameters['id'] ?? '1',
+                isCoachView: isCoach,
+              );
+            },
+          ),
+          GoRoute(
+            path: '/guardian/edit-player',
+            builder: (context, state) {
+              final playerData = state.extra as Map<String, dynamic>?;
+              return EditPlayerScreen(playerData: playerData);
+            },
+          ),
+          GoRoute(
+            path: '/guardian/session-details/:id',
+            builder: (context, state) => SessionDetailsScreen(
+                sessionId: state.pathParameters['id'] ?? ''),
+          ),
+          GoRoute(
+            path: '/guardian/coach-details/:id',
+            builder: (context, state) =>
+                CoachDetailsScreen(coachId: state.pathParameters['id'] ?? '1'),
+          ),
+          GoRoute(
+            path: '/guardian/coach/:id/book',
+            builder: (context, state) {
+              final coachId = state.pathParameters['id']!;
+              final extra = state.extra as Map<String, dynamic>? ?? {};
+              return CoachBookingScreen(
+                coachId: coachId,
+                coachName: extra['coachName'] ?? 'Coach',
+                coachImageUrl: extra['coachImageUrl'],
+                hourlyRate: extra['hourlyRate'] ?? 60.0,
+                sessionDuration: extra['sessionDuration'] ?? 60,
+                cancellationPolicy: extra['cancellationPolicy'] ?? 'flexible',
+              );
+            },
+          ),
+          GoRoute(
+            path: '/guardian/booking/confirm-private',
+            builder: (context, state) {
+              final extra = state.extra as Map<String, dynamic>? ?? {};
+              return ConfirmPrivateBookingScreen(
+                coachId: extra['coachId'],
+                coachName: extra['coachName'],
+                coachImageUrl: extra['coachImageUrl'],
+                startTime: extra['startTime'],
+                durationMinutes: extra['durationMinutes'],
+                price: extra['price'],
+                cancellationPolicy: extra['cancellationPolicy'] ?? 'flexible',
+              );
+            },
+          ),
+          GoRoute(
+            path: '/guardian/booking/:sessionId',
+            builder: (context, state) {
+              final sessionId = state.pathParameters['sessionId']!;
+              return BookingScreen(sessionId: sessionId);
+            },
+          ),
+          GoRoute(
+            path: '/guardian/confirm-booking',
+            builder: (context, state) {
+              final extra = state.extra as Map<String, dynamic>? ?? {};
+              return ConfirmBookingScreenSimple(bookingDetails: extra);
+            },
+          ),
+          GoRoute(
+            path: '/guardian/booking-success',
+            builder: (context, state) {
+              final extra = state.extra as Map<String, dynamic>? ?? {};
+              return BookingSuccessScreen(bookingDetails: extra);
+            },
+          ),
+          GoRoute(
+            path: '/guardian/change-password',
+            builder: (context, state) => const ChangePasswordScreen(),
+          ),
+          GoRoute(
+            path: '/guardian/payment-methods',
+            builder: (context, state) => const PaymentMethodsScreen(),
+          ),
+          GoRoute(
+            path: '/guardian/help-center',
+            builder: (context, state) => const HelpCenterScreen(),
+          ),
+          GoRoute(
+            path: '/guardian/privacy-policy',
+            builder: (context, state) => const PrivacyPolicyScreen(),
+          ),
+          GoRoute(
+            path: '/guardian/terms-of-service',
+            builder: (context, state) => const TermsOfServiceScreen(),
+          ),
+          GoRoute(
+            path: '/guardian/edit-profile',
+            builder: (context, state) {
+              final profileData = state.extra as Map<String, dynamic>?;
+              return GuardianEditProfileScreen(profileData: profileData);
+            },
           ),
         ],
       ),

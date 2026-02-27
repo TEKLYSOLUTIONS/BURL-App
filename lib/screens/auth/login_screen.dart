@@ -48,51 +48,34 @@ class _LoginScreenState extends State<LoginScreen> {
     try {
       // First, try local authentication (for existing MongoDB users)
       debugPrint('🔐 Attempting login for: ${_emailController.text.trim()}');
-      final localSuccess = await _tryLocalLogin();
+      try {
+        final localSuccess = await _tryLocalLogin();
 
-      if (localSuccess) {
-        debugPrint('✅ Local authentication successful');
-        if (!mounted) return;
-        _navigateToHome();
-        return;
+        if (localSuccess) {
+          debugPrint('✅ Local authentication successful');
+          if (!mounted) return;
+          _navigateToHome();
+          return;
+        }
+      } catch (e) {
+        // Local auth failed, proceed to Firebase
+        debugPrint('⚠️ Local auth failed: ${e.toString()}');
       }
 
-      // If local auth fails, try Firebase authentication (for new users)
+      // If local auth fails (for any other reason like network error, etc), try Firebase authentication (for new users)
       debugPrint('🔄 Local auth failed, trying Firebase...');
       try {
-        // Get stored role from registration
-        final prefs = await SharedPreferences.getInstance();
-        final storedRole = prefs.getString('pending_role');
-        final storedEmail = prefs.getString('pending_email');
-
-        String? roleToUse;
-        if (storedEmail == _emailController.text.trim()) {
-          roleToUse = storedRole;
-          debugPrint('📝 Using stored role for first login: $roleToUse');
-        } else {
-          debugPrint('⚠️ No stored role found or email mismatch');
-        }
-
-        debugPrint('🔑 Calling signIn with role: $roleToUse');
-
         await _authService.signIn(
           email: _emailController.text.trim(),
           password: _passwordController.text,
-          role: roleToUse,
         );
 
         debugPrint('✅ Firebase authentication successful');
 
-        // Clear stored values after successful login and MongoDB sync
-        if (storedEmail == _emailController.text.trim()) {
-          await prefs.remove('pending_role');
-          await prefs.remove('pending_email');
-          debugPrint('🗑️ Cleared stored registration data');
-        }
-
         // Get Firebase ID token and save it
         final firebaseToken = await _authService.getIdToken();
         if (firebaseToken != null) {
+          final prefs = await SharedPreferences.getInstance();
           await prefs.setString('auth_token', firebaseToken);
           debugPrint('💾 Firebase token saved to SharedPreferences');
         }
@@ -102,13 +85,14 @@ class _LoginScreenState extends State<LoginScreen> {
 
         if (!mounted) return;
         _navigateToHome();
-      } on Exception catch (firebaseError) {
+      } catch (firebaseError) {
         debugPrint('❌ Firebase auth also failed: $firebaseError');
-        throw Exception('Login failed. Please check your credentials.');
+        // firebaseError is already a friendly string from _handleAuthException
+        rethrow;
       }
     } catch (e) {
       if (!mounted) return;
-      _showSnackBar(e.toString(), isError: true);
+      _showSnackBar(e.toString().replaceAll('Exception: ', ''), isError: true);
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
@@ -151,9 +135,21 @@ class _LoginScreenState extends State<LoginScreen> {
 
         return true;
       }
+
       debugPrint(
-        '❌ Local auth failed: ${response.statusCode} - ${response.body}',
-      );
+          '❌ Local auth failed: ${response.statusCode} - ${response.body}');
+
+      // Parse backend error messages explicitly
+      try {
+        final data = jsonDecode(response.body);
+        if (data['message'] != null) {
+          throw Exception(
+              data['message']); // "User not found." or "Invalid credentials."
+        }
+      } catch (parseError) {
+        // Not JSON or another issue, we'll let it fail silently and proceed to Firebase
+      }
+
       return false;
     } catch (e) {
       debugPrint('❌ Local auth error: $e');
@@ -222,7 +218,7 @@ class _LoginScreenState extends State<LoginScreen> {
       _navigateToHome();
     } catch (e) {
       if (!mounted) return;
-      _showSnackBar(e.toString(), isError: true);
+      _showSnackBar(e.toString().replaceAll('Exception: ', ''), isError: true);
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
@@ -251,7 +247,7 @@ class _LoginScreenState extends State<LoginScreen> {
       _navigateToHome();
     } catch (e) {
       if (!mounted) return;
-      _showSnackBar(e.toString(), isError: true);
+      _showSnackBar(e.toString().replaceAll('Exception: ', ''), isError: true);
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);

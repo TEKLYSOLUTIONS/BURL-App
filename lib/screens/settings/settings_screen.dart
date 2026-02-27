@@ -257,6 +257,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 NotificationButton(
                   iconColor: Theme.of(context).colorScheme.onSurface,
                   backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+                  onTap: () => context.push('/guardian/notifications'),
                 ),
               ],
             ),
@@ -292,7 +293,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                                     onTap: _showProfilePicturePreview,
                                     child: CircleAvatar(
                                       radius: 30,
-                                      backgroundImage: _getProfileImageUrl() != null
+                                      backgroundImage: _getProfileImageUrl() !=
+                                              null
                                           ? NetworkImage(_getProfileImageUrl()!)
                                           : null,
                                       backgroundColor:
@@ -454,8 +456,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                           iconBg: Colors.purple.withValues(alpha: 0.1),
                           title: 'Push Notifications',
                           trailing: Switch(
-                            value:
-                                _userData?['preferences']?['pushNotifications'] ??
+                            value: _userData?['preferences']
+                                    ?['pushNotifications'] ??
                                 true,
                             activeTrackColor: Colors.orange,
                             onChanged: (value) {
@@ -475,8 +477,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                             children: [
                               Consumer(
                                 builder: (context, ref, child) {
-                                  final isDark =
-                                      ref.watch(themeProvider) ==
+                                  final isDark = ref.watch(themeProvider) ==
                                       ThemeMode.dark;
                                   return Text(
                                     isDark ? 'Dark Mode' : 'Light Mode',
@@ -609,8 +610,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         leading: Container(
           padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
-            color:
-                iconBg ??
+            color: iconBg ??
                 Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
             shape: BoxShape.circle,
           ),
@@ -628,8 +628,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             fontSize: 15,
           ),
         ),
-        trailing:
-            trailing ??
+        trailing: trailing ??
             (onTap != null
                 ? Icon(
                     Icons.chevron_right,
@@ -713,9 +712,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               ? Colors.orange.withValues(alpha: 0.1)
               : Theme.of(context).cardColor,
           borderRadius: BorderRadius.circular(16),
-          border: isSelected
-              ? Border.all(color: Colors.orange, width: 2)
-              : null,
+          border:
+              isSelected ? Border.all(color: Colors.orange, width: 2) : null,
           boxShadow: [
             if (!isSelected)
               BoxShadow(

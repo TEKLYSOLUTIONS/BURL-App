@@ -10,17 +10,21 @@ import '../../services/guardian_service.dart';
 class ConfirmPrivateBookingScreen extends StatefulWidget {
   final String coachId;
   final String coachName;
+  final String? coachImageUrl;
   final DateTime startTime;
   final int durationMinutes;
   final double price;
+  final String cancellationPolicy;
 
   const ConfirmPrivateBookingScreen({
     super.key,
     required this.coachId,
     required this.coachName,
+    this.coachImageUrl,
     required this.startTime,
     this.durationMinutes = 60,
     this.price = 60.0,
+    this.cancellationPolicy = 'flexible',
   });
 
   @override
@@ -42,11 +46,16 @@ class _ConfirmPrivateBookingScreenState
   // Guardian state
   bool _isGuardian = false;
   List<dynamic> _players = [];
-  String? _selectedPlayerId;
+  List<String> _selectedPlayerIds = [];
   bool _isLoadingPlayers = false;
 
   // Pricing
-  double get _sessionFee => widget.price;
+  double get _sessionFee {
+    if (!_isGuardian) return widget.price;
+    return widget.price *
+        (_selectedPlayerIds.isEmpty ? 1 : _selectedPlayerIds.length);
+  }
+
   final double _serviceFee = 2.50;
   final double _tax = 0.00;
   double get _totalAmount => _sessionFee + _serviceFee + _tax - _discountAmount;
@@ -72,7 +81,7 @@ class _ConfirmPrivateBookingScreenState
       if (mounted) {
         setState(() {
           _players = players;
-          if (_players.isNotEmpty) _selectedPlayerId = _players[0]['_id'];
+          if (_players.isNotEmpty) _selectedPlayerIds = [_players[0]['_id']];
         });
       }
     } catch (e) {
@@ -129,10 +138,10 @@ class _ConfirmPrivateBookingScreenState
   }
 
   Future<void> _confirmBooking() async {
-    if (_isGuardian && _selectedPlayerId == null) {
+    if (_isGuardian && _selectedPlayerIds.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Please select a player'),
+          content: Text('Please select at least 1 player'),
           backgroundColor: Colors.red,
         ),
       );
@@ -148,8 +157,8 @@ class _ConfirmPrivateBookingScreenState
         durationMinutes: widget.durationMinutes,
         paymentMethod: 'test',
         promoCode: _appliedPromoCode,
-        playerIds: _isGuardian && _selectedPlayerId != null
-            ? [_selectedPlayerId!]
+        playerIds: _isGuardian && _selectedPlayerIds.isNotEmpty
+            ? _selectedPlayerIds
             : null,
       );
 
@@ -165,8 +174,7 @@ class _ConfirmPrivateBookingScreenState
             'booking': booking,
             'totalPaid': _totalAmount,
             'paymentMethod': 'Test Booking',
-            'confirmationCode':
-                booking['_id'] ??
+            'confirmationCode': booking['_id'] ??
                 '#TRX-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}',
           },
         );
@@ -324,6 +332,53 @@ class _ConfirmPrivateBookingScreenState
                   ),
                   const SizedBox(height: 10),
                   _buildPriceBreakdownCard(durationLabel),
+
+                  const SizedBox(height: 24),
+
+                  // CANCELLATION POLICY
+                  Text(
+                    'CANCELLATION POLICY',
+                    style: GoogleFonts.inter(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 1.2,
+                      color: Colors.grey[600],
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: Colors.grey.shade200),
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Icon(
+                          Icons.error_outline,
+                          size: 18,
+                          color: Colors.black54,
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            widget.cancellationPolicy == 'flexible'
+                                ? 'Flexible: Full refund up to 12 hours before.'
+                                : widget.cancellationPolicy == 'moderate'
+                                    ? 'Moderate: Full refund up to 24 hours before.'
+                                    : 'Strict: No refund within 48 hours.', // fallback
+                            style: GoogleFonts.inter(
+                              color: Colors.black87,
+                              fontSize: 13,
+                              height: 1.4,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
 
                   const SizedBox(height: 20),
 
@@ -491,16 +546,21 @@ class _ConfirmPrivateBookingScreenState
               CircleAvatar(
                 radius: 26,
                 backgroundColor: AppPalette.navyPrimary.withValues(alpha: 0.1),
-                child: Text(
-                  widget.coachName.isNotEmpty
-                      ? widget.coachName[0].toUpperCase()
-                      : 'C',
-                  style: GoogleFonts.inter(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 20,
-                    color: AppPalette.navyPrimary,
-                  ),
-                ),
+                backgroundImage: widget.coachImageUrl != null
+                    ? NetworkImage(widget.coachImageUrl!)
+                    : null,
+                child: widget.coachImageUrl == null
+                    ? Text(
+                        widget.coachName.isNotEmpty
+                            ? widget.coachName[0].toUpperCase()
+                            : 'C',
+                        style: GoogleFonts.inter(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 20,
+                          color: AppPalette.navyPrimary,
+                        ),
+                      )
+                    : null,
               ),
               const SizedBox(width: 14),
               Expanded(
@@ -658,9 +718,17 @@ class _ConfirmPrivateBookingScreenState
       child: Column(
         children: _players.map((player) {
           final playerId = player['_id'] as String;
-          final isSelected = _selectedPlayerId == playerId;
+          final isSelected = _selectedPlayerIds.contains(playerId);
           return InkWell(
-            onTap: () => setState(() => _selectedPlayerId = playerId),
+            onTap: () {
+              setState(() {
+                if (isSelected) {
+                  _selectedPlayerIds.remove(playerId);
+                } else {
+                  _selectedPlayerIds.add(playerId);
+                }
+              });
+            },
             borderRadius: BorderRadius.circular(14),
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
@@ -697,11 +765,10 @@ class _ConfirmPrivateBookingScreenState
                   ),
                   Icon(
                     isSelected
-                        ? Icons.radio_button_checked
+                        ? Icons.check_circle
                         : Icons.radio_button_unchecked,
-                    color: isSelected
-                        ? AppPalette.orangeAccent
-                        : Colors.grey[400],
+                    color:
+                        isSelected ? AppPalette.orangeAccent : Colors.grey[400],
                     size: 22,
                   ),
                 ],
@@ -724,7 +791,9 @@ class _ConfirmPrivateBookingScreenState
       ),
       child: Column(
         children: [
-          _buildPriceRow('Session Fee ($durationLabel)', _sessionFee),
+          _buildPriceRow(
+              'Session Fee ($durationLabel)${_isGuardian && _selectedPlayerIds.length > 1 ? ' x ${_selectedPlayerIds.length}' : ''}',
+              _sessionFee),
           const SizedBox(height: 10),
           _buildPriceRow('Service Fee', _serviceFee),
           const SizedBox(height: 10),

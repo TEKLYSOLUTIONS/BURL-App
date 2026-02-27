@@ -5,6 +5,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 
 import '../../config/palette.dart';
 import '../../services/guardian_service.dart';
+import '../../widgets/notification_button.dart';
 
 class MyPlayersScreen extends StatefulWidget {
   const MyPlayersScreen({super.key});
@@ -66,13 +67,17 @@ class _MyPlayersScreenState extends State<MyPlayersScreen> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         centerTitle: true,
-        leading: IconButton(
-          icon: Icon(
-            Icons.arrow_back_ios_new_rounded,
-            color: Theme.of(context).colorScheme.onSurface,
+        automaticallyImplyLeading: false,
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 16.0),
+            child: NotificationButton(
+              onTap: () => context.push('/guardian/notifications'),
+              iconColor: Theme.of(context).colorScheme.onSurface,
+              backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+            ),
           ),
-          onPressed: () => context.go('/guardian/home'),
-        ),
+        ],
       ),
       floatingActionButton: Padding(
         padding: const EdgeInsets.only(
@@ -151,7 +156,7 @@ class _MyPlayersScreenState extends State<MyPlayersScreen> {
         }),
 
         // Connect Athlete Card (Optional feature)
-        _ConnectAthleteCard()
+        _ConnectAthleteCard(onPlayerAdded: _fetchPlayers)
             .animate()
             .fadeIn(delay: (_players.length * 100).ms)
             .slideX(),
@@ -209,9 +214,8 @@ class _PlayerCard extends StatelessWidget {
                       backgroundImage: avatarUrl != null
                           ? NetworkImage(avatarUrl)
                           : const AssetImage(
-                                  'assets/images/user_placeholder_soccer.png',
-                                )
-                                as ImageProvider,
+                              'assets/images/user_placeholder_soccer.png',
+                            ) as ImageProvider,
                       backgroundColor: Theme.of(
                         context,
                       ).colorScheme.surfaceContainerHighest,
@@ -288,7 +292,112 @@ class _PlayerCard extends StatelessWidget {
   }
 }
 
-class _ConnectAthleteCard extends StatelessWidget {
+class _ConnectAthleteCard extends StatefulWidget {
+  final VoidCallback onPlayerAdded;
+
+  const _ConnectAthleteCard({required this.onPlayerAdded});
+
+  @override
+  State<_ConnectAthleteCard> createState() => _ConnectAthleteCardState();
+}
+
+class _ConnectAthleteCardState extends State<_ConnectAthleteCard> {
+  void _showConnectDialog(BuildContext context) {
+    final emailController = TextEditingController();
+    bool isConnecting = false;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => StatefulBuilder(builder: (context, setState) {
+        return AlertDialog(
+          title: Text(
+            'Connect Athlete',
+            style: GoogleFonts.inter(fontWeight: FontWeight.bold),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Enter the email address of the existing player to link them to your account.',
+                style: GoogleFonts.inter(),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: emailController,
+                keyboardType: TextInputType.emailAddress,
+                decoration: InputDecoration(
+                  hintText: 'player@example.com',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: isConnecting ? null : () => Navigator.of(ctx).pop(),
+              child: Text('Cancel', style: GoogleFonts.inter()),
+            ),
+            ElevatedButton(
+              onPressed: isConnecting
+                  ? null
+                  : () async {
+                      final email = emailController.text.trim();
+                      if (email.isEmpty) return;
+
+                      setState(() {
+                        isConnecting = true;
+                      });
+
+                      try {
+                        await GuardianService().linkPlayer(email);
+                        if (ctx.mounted) {
+                          Navigator.of(ctx).pop();
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Player linked successfully!'),
+                              backgroundColor: AppPalette.successGreen,
+                            ),
+                          );
+                          widget.onPlayerAdded();
+                        }
+                      } catch (e) {
+                        setState(() {
+                          isConnecting = false;
+                        });
+                        if (ctx.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(e.toString()),
+                              backgroundColor: Colors.red,
+                            ),
+                          );
+                        }
+                      }
+                    },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppPalette.orangeAccent,
+                foregroundColor: Colors.white,
+              ),
+              child: isConnecting
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : Text('Connect', style: GoogleFonts.inter()),
+            ),
+          ],
+        );
+      }),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -308,10 +417,7 @@ class _ConnectAthleteCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
         child: InkWell(
           onTap: () {
-            // Logic to connect athlete code
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Connect Athlete Flow')),
-            );
+            _showConnectDialog(context);
           },
           borderRadius: BorderRadius.circular(20),
           child: Padding(
@@ -355,7 +461,7 @@ class _ConnectAthleteCard extends StatelessWidget {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        'Enter team code',
+                        'Enter player email',
                         style: GoogleFonts.inter(
                           fontSize: 14,
                           color: Theme.of(

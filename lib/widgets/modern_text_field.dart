@@ -47,16 +47,19 @@ class ModernTextField extends StatelessWidget {
             style: GoogleFonts.inter(
               fontSize: 14,
               fontWeight: FontWeight.w600,
-              color: Colors.black87,
+              color: Theme.of(context).colorScheme.onSurface,
             ),
           ),
           const SizedBox(height: 8),
         ],
         Container(
           decoration: BoxDecoration(
-            color: Colors.grey.shade50,
+            color: Theme.of(context)
+                .colorScheme
+                .surfaceContainerHighest
+                .withValues(alpha: 0.3),
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.grey.shade200),
+            border: Border.all(color: Theme.of(context).dividerColor),
           ),
           child: FormBuilderTextField(
             name: name,
@@ -69,20 +72,32 @@ class ModernTextField extends StatelessWidget {
             readOnly: readOnly,
             onTap: onTap,
             cursorColor: Theme.of(context).primaryColor,
-            style: GoogleFonts.inter(fontSize: 16, color: Colors.black87),
+            style: GoogleFonts.inter(
+                fontSize: 16, color: Theme.of(context).colorScheme.onSurface),
             decoration: InputDecoration(
               hintText: hintText,
               hintStyle: GoogleFonts.inter(
-                color: Colors.grey.shade400,
+                color: Theme.of(context)
+                    .colorScheme
+                    .onSurface
+                    .withValues(alpha: 0.4),
                 fontSize: 15,
               ),
               prefixText: prefixText,
               prefixStyle: GoogleFonts.inter(
-                color: Colors.grey.shade600,
+                color: Theme.of(context)
+                    .colorScheme
+                    .onSurface
+                    .withValues(alpha: 0.6),
                 fontSize: 16,
               ),
               prefixIcon: prefixIcon != null
-                  ? Icon(prefixIcon, color: Colors.grey.shade400, size: 22)
+                  ? Icon(prefixIcon,
+                      color: Theme.of(context)
+                          .colorScheme
+                          .onSurface
+                          .withValues(alpha: 0.4),
+                      size: 22)
                   : null,
               suffixIcon: suffixIcon,
               border: InputBorder.none,

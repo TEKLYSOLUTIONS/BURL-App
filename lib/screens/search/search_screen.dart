@@ -4,6 +4,7 @@ import '../../config/palette.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../services/search_service.dart';
+import '../../widgets/notification_button.dart';
 
 class SearchScreen extends StatefulWidget {
   const SearchScreen({super.key});
@@ -116,15 +117,35 @@ class _SearchScreenState extends State<SearchScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Search Header
-                  Text(
-                    'Search',
-                    style: GoogleFonts.inter(
-                      fontSize: 32,
-                      fontWeight: FontWeight.bold,
-                      color: Theme.of(context).colorScheme.onSurface,
-                    ),
-                  ).animate().fadeIn().slideX(begin: -0.1),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Search',
+                        style: GoogleFonts.inter(
+                          fontSize: 32,
+                          fontWeight: FontWeight.bold,
+                          color: Theme.of(context).colorScheme.onSurface,
+                        ),
+                      ).animate().fadeIn().slideX(begin: -0.1),
+                      NotificationButton(
+                        iconColor: Theme.of(context).colorScheme.onSurface,
+                        backgroundColor:
+                            Theme.of(context).scaffoldBackgroundColor,
+                        onTap: () {
+                          final isGuardian = GoRouterState.of(context)
+                              .uri
+                              .toString()
+                              .startsWith('/guardian');
+                          context.push(
+                            isGuardian
+                                ? '/guardian/notifications'
+                                : '/player/notifications',
+                          );
+                        },
+                      ),
+                    ],
+                  ),
 
                   const SizedBox(height: 24),
 
@@ -193,185 +214,215 @@ class _SearchScreenState extends State<SearchScreen> {
               child: _isLoading
                   ? const Center(child: CircularProgressIndicator())
                   : _error != null
-                  ? Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.error_outline,
-                            size: 64,
-                            color: Theme.of(context).colorScheme.error,
-                          ),
-                          const SizedBox(height: 16),
-                          Text(
-                            'Failed to load results',
-                            style: GoogleFonts.inter(
-                              fontSize: 16,
-                              color: Theme.of(context).colorScheme.onSurface,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          TextButton(
-                            onPressed: () {
-                              if (_hasSearched) {
-                                _performSearch(_searchController.text);
-                              } else {
-                                _loadInitialSuggestions();
-                              }
-                            },
-                            child: const Text('Retry'),
-                          ),
-                        ],
-                      ),
-                    )
-                  : SingleChildScrollView(
-                      padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // Coaches Section
-                          if (_coaches.isNotEmpty) ...[
-                            Text(
-                              _hasSearched
-                                  ? 'Coaches (${_coaches.length})'
-                                  : 'Recommended Coaches',
-                              style: GoogleFonts.inter(
-                                fontSize: 18,
-                                fontWeight: FontWeight.w600,
-                                color: Theme.of(context).colorScheme.onSurface,
+                      ? Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.error_outline,
+                                size: 64,
+                                color: Theme.of(context).colorScheme.error,
                               ),
-                            ).animate().fadeIn(delay: 300.ms),
-                            const SizedBox(height: 16),
-
-                            SizedBox(
-                              height: 160,
-                              child: ListView.separated(
-                                scrollDirection: Axis.horizontal,
-                                itemCount: _coaches.length,
-                                separatorBuilder: (context, index) =>
-                                    const SizedBox(width: 16),
-                                itemBuilder: (context, index) {
-                                  final coach = _coaches[index];
-                                  final user = coach['userId'];
-                                  return _CoachCard(
-                                    name: user?['fullName'] ?? 'Unknown',
-                                    role:
-                                        (coach['specializations'] as List?)
-                                            ?.join(', ') ??
-                                        'Coach',
-                                    rating:
-                                        coach['ratings']?['overall']
-                                            ?.toStringAsFixed(1) ??
-                                        '0.0',
-                                    imageUrl:
-                                        user?['profilePhoto'] ??
-                                        'https://i.pravatar.cc/150?u=${coach['_id']}',
-                                    onTap: () {
-                                      // Navigate to coach details
-                                      context.push(
-                                        '/coach-details/${coach['_id']}',
-                                      );
-                                    },
-                                  );
+                              const SizedBox(height: 16),
+                              Text(
+                                'Failed to load results',
+                                style: GoogleFonts.inter(
+                                  fontSize: 16,
+                                  color:
+                                      Theme.of(context).colorScheme.onSurface,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              TextButton(
+                                onPressed: () {
+                                  if (_hasSearched) {
+                                    _performSearch(_searchController.text);
+                                  } else {
+                                    _loadInitialSuggestions();
+                                  }
                                 },
+                                child: const Text('Retry'),
                               ),
-                            ).animate().fadeIn(delay: 400.ms).slideX(),
-
-                            const SizedBox(height: 32),
-                          ],
-
-                          // Sessions Section
-                          if (_sessions.isNotEmpty) ...[
-                            Text(
-                              'Sessions (${_sessions.length})',
-                              style: GoogleFonts.inter(
-                                fontSize: 18,
-                                fontWeight: FontWeight.w600,
-                                color: Theme.of(context).colorScheme.onSurface,
-                              ),
-                            ).animate().fadeIn(delay: 500.ms),
-                            const SizedBox(height: 16),
-
-                            Column(
-                              children: _sessions.map((session) {
-                                final timeSlots = session['timeSlots'] as List?;
-                                final firstSlot = timeSlots?.isNotEmpty == true
-                                    ? timeSlots!.first
-                                    : null;
-                                final startTime = firstSlot != null
-                                    ? DateTime.parse(firstSlot['startTime'])
-                                    : null;
-
-                                return Padding(
-                                  padding: const EdgeInsets.only(bottom: 12),
-                                  child: _SearchResultItem(
-                                    title: session['title'] ?? 'Session',
-                                    subtitle: startTime != null
-                                        ? '${_formatDate(startTime)} • ${_formatTime(startTime)}'
-                                        : 'Date TBD',
-                                    icon: Icons.sports_cricket,
-                                    onTap: () {
-                                      context.push(
-                                        '/session-details/${session['_id']}',
+                            ],
+                          ),
+                        )
+                      : SingleChildScrollView(
+                          padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Coaches Section
+                              if (_coaches.isNotEmpty) ...[
+                                Text(
+                                  _hasSearched
+                                      ? 'Coaches (${_coaches.length})'
+                                      : 'Recommended Coaches',
+                                  style: GoogleFonts.inter(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w600,
+                                    color:
+                                        Theme.of(context).colorScheme.onSurface,
+                                  ),
+                                ).animate().fadeIn(delay: 300.ms),
+                                const SizedBox(height: 16),
+                                SizedBox(
+                                  height: 160,
+                                  child: ListView.separated(
+                                    scrollDirection: Axis.horizontal,
+                                    itemCount: _coaches.length,
+                                    separatorBuilder: (context, index) =>
+                                        const SizedBox(width: 16),
+                                    itemBuilder: (context, index) {
+                                      final coach = _coaches[index];
+                                      final user = coach['userId'];
+                                      return _CoachCard(
+                                        name: user?['fullName'] ?? 'Unknown',
+                                        role:
+                                            (coach['specializations'] as List?)
+                                                    ?.join(', ') ??
+                                                'Coach',
+                                        rating: coach['ratings']?['overall']
+                                                ?.toStringAsFixed(1) ??
+                                            '0.0',
+                                        imageUrl: user?['profilePhoto'] ??
+                                            coach['profilePhoto'] ??
+                                            coach['profileImage'] ??
+                                            'https://ui-avatars.com/api/?name=${Uri.encodeComponent(user?['fullName'] ?? 'Unknown')}&background=random',
+                                        onTap: () {
+                                          // Navigate to coach details based on current tree
+                                          final isGuardian = GoRouterState.of(
+                                            context,
+                                          )
+                                              .uri
+                                              .toString()
+                                              .startsWith('/guardian');
+                                          if (isGuardian) {
+                                            context.push(
+                                              '/guardian/coach-details/${coach['_id']}',
+                                            );
+                                          } else {
+                                            context.push(
+                                              '/coach-details/${coach['_id']}',
+                                            );
+                                          }
+                                        },
                                       );
                                     },
                                   ),
-                                );
-                              }).toList(),
-                            ).animate().fadeIn().slideX(begin: 0.1),
-                          ],
+                                ).animate().fadeIn(delay: 400.ms).slideX(),
+                                const SizedBox(height: 32),
+                              ],
 
-                          // Empty state
-                          if (_coaches.isEmpty && _sessions.isEmpty) ...[
-                            Center(
-                              child: Padding(
-                                padding: const EdgeInsets.all(48.0),
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(
-                                      Icons.search_off,
-                                      size: 64,
-                                      color: Theme.of(context)
-                                          .colorScheme
-                                          .onSurfaceVariant
-                                          .withValues(alpha: 0.5),
-                                    ),
-                                    const SizedBox(height: 16),
-                                    Text(
-                                      _hasSearched
-                                          ? 'No results found'
-                                          : 'No coaches available',
-                                      style: GoogleFonts.inter(
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.w600,
-                                        color: Theme.of(
-                                          context,
-                                        ).colorScheme.onSurfaceVariant,
+                              // Sessions Section
+                              if (_sessions.isNotEmpty) ...[
+                                Text(
+                                  'Sessions (${_sessions.length})',
+                                  style: GoogleFonts.inter(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w600,
+                                    color:
+                                        Theme.of(context).colorScheme.onSurface,
+                                  ),
+                                ).animate().fadeIn(delay: 500.ms),
+                                const SizedBox(height: 16),
+                                Column(
+                                  children: _sessions.map((session) {
+                                    final timeSlots =
+                                        session['timeSlots'] as List?;
+                                    final firstSlot =
+                                        timeSlots?.isNotEmpty == true
+                                            ? timeSlots!.first
+                                            : null;
+                                    final startTime = firstSlot != null
+                                        ? DateTime.parse(firstSlot['startTime'])
+                                        : null;
+
+                                    return Padding(
+                                      padding:
+                                          const EdgeInsets.only(bottom: 12),
+                                      child: _SearchResultItem(
+                                        title: session['title'] ?? 'Session',
+                                        subtitle: startTime != null
+                                            ? '${_formatDate(startTime)} • ${_formatTime(startTime)}'
+                                            : 'Date TBD',
+                                        imageUrl: session['imageUrl'] ??
+                                            session['coverImage'],
+                                        icon: Icons.sports_cricket,
+                                        onTap: () {
+                                          final isGuardian = GoRouterState.of(
+                                            context,
+                                          )
+                                              .uri
+                                              .toString()
+                                              .startsWith('/guardian');
+                                          if (isGuardian) {
+                                            context.push(
+                                              '/guardian/session-details/${session['_id']}',
+                                            );
+                                          } else {
+                                            context.push(
+                                              '/session-details/${session['_id']}',
+                                            );
+                                          }
+                                        },
                                       ),
+                                    );
+                                  }).toList(),
+                                ).animate().fadeIn().slideX(begin: 0.1),
+                              ],
+
+                              // Empty state
+                              if (_coaches.isEmpty && _sessions.isEmpty) ...[
+                                Center(
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(48.0),
+                                    child: Column(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: [
+                                        Icon(
+                                          Icons.search_off,
+                                          size: 64,
+                                          color: Theme.of(context)
+                                              .colorScheme
+                                              .onSurfaceVariant
+                                              .withValues(alpha: 0.5),
+                                        ),
+                                        const SizedBox(height: 16),
+                                        Text(
+                                          _hasSearched
+                                              ? 'No results found'
+                                              : 'No coaches available',
+                                          style: GoogleFonts.inter(
+                                            fontSize: 18,
+                                            fontWeight: FontWeight.w600,
+                                            color: Theme.of(
+                                              context,
+                                            ).colorScheme.onSurfaceVariant,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 8),
+                                        Text(
+                                          _hasSearched
+                                              ? 'Try different search terms'
+                                              : 'Check back later',
+                                          style: GoogleFonts.inter(
+                                            fontSize: 14,
+                                            color: Theme.of(
+                                              context,
+                                            ).colorScheme.onSurfaceVariant,
+                                          ),
+                                        ),
+                                      ],
                                     ),
-                                    const SizedBox(height: 8),
-                                    Text(
-                                      _hasSearched
-                                          ? 'Try different search terms'
-                                          : 'Check back later',
-                                      style: GoogleFonts.inter(
-                                        fontSize: 14,
-                                        color: Theme.of(
-                                          context,
-                                        ).colorScheme.onSurfaceVariant,
-                                      ),
-                                    ),
-                                  ],
+                                  ),
                                 ),
-                              ),
-                            ),
-                          ],
+                              ],
 
-                          const SizedBox(height: 48),
-                        ],
-                      ),
-                    ),
+                              const SizedBox(height: 48),
+                            ],
+                          ),
+                        ),
             ),
           ],
         ),
@@ -492,13 +543,15 @@ class _CoachCard extends StatelessWidget {
 class _SearchResultItem extends StatelessWidget {
   final String title;
   final String subtitle;
-  final IconData icon;
+  final String? imageUrl;
+  final IconData? icon;
   final VoidCallback onTap;
 
   const _SearchResultItem({
     required this.title,
     required this.subtitle,
-    required this.icon,
+    this.imageUrl,
+    this.icon,
     required this.onTap,
   });
 
@@ -516,14 +569,31 @@ class _SearchResultItem extends StatelessWidget {
         ),
         child: Row(
           children: [
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Theme.of(context).primaryColor.withValues(alpha: 0.1),
-                shape: BoxShape.circle,
+            if (imageUrl != null)
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  image: DecorationImage(
+                    image: NetworkImage(imageUrl!),
+                    fit: BoxFit.cover,
+                  ),
+                ),
+              )
+            else
+              Container(
+                width: 48,
+                height: 48,
+                decoration: const BoxDecoration(
+                  shape: BoxShape.circle,
+                  image: DecorationImage(
+                    image:
+                        AssetImage('assets/images/default_cricket_session.png'),
+                    fit: BoxFit.cover,
+                  ),
+                ),
               ),
-              child: Icon(icon, color: Theme.of(context).primaryColor),
-            ),
             const SizedBox(width: 16),
             Expanded(
               child: Column(

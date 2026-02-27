@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
 import '../../services/session_service.dart';
 import 'package:intl/intl.dart';
+import '../../utils/session_utils.dart';
 
 class BookingScreen extends StatefulWidget {
   final String sessionId;
@@ -110,9 +111,40 @@ class _BookingScreenState extends State<BookingScreen> {
       );
     }
 
+    Map<String, dynamic>? coachData;
+    final createdByValue = _session!['createdBy'];
+    final coachValue = _session!['coach'];
+    if (createdByValue is Map) {
+      coachData = Map<String, dynamic>.from(createdByValue);
+    } else if (coachValue is Map) {
+      final m = Map<String, dynamic>.from(coachValue);
+      if (m['coachProfile'] is Map) {
+        coachData = Map<String, dynamic>.from(m['coachProfile']);
+      } else {
+        coachData = m;
+      }
+    }
+
     final sessionTitle = _session!['title'] ?? 'Session';
-    final coachName = _session!['coach']?['fullName'] ?? 'Coach';
+    final coachName = coachData?['fullName']?.toString() ??
+        _session!['coachName']?.toString() ??
+        'Coach';
     final location = _session!['location'] ?? 'TBA';
+
+    final coachImage = coachData?['profilePhoto']?.toString() ??
+        coachData?['profileImage']?.toString() ??
+        coachData?['avatarUrl']?.toString() ??
+        coachData?['profileUrl']?.toString() ??
+        coachData?['profilePhotoUrl']?.toString() ??
+        (coachData?['coachProfile'] is Map
+            ? coachData!['coachProfile']['profilePhoto']?.toString()
+            : null);
+
+    final sessionImage = _session!['imageUrl']?.toString() ??
+        _session!['coverImage']?.toString();
+
+    final displayImage =
+        coachImage ?? sessionImage ?? SessionUtils.getSessionImage(_session);
 
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
@@ -160,21 +192,16 @@ class _BookingScreenState extends State<BookingScreen> {
                 children: [
                   ClipRRect(
                     borderRadius: BorderRadius.circular(12),
-                    child: Image.network(
-                      'https://i.pravatar.cc/150?img=12', // Reliable placeholder
-                      width: 80,
-                      height: 80,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) => Container(
-                        width: 80,
-                        height: 80,
-                        color: Colors.grey[300],
-                        child: Icon(
-                          Icons.broken_image,
-                          color: Colors.grey[600],
-                        ),
-                      ),
-                    ),
+                    child: displayImage.isNotEmpty
+                        ? Image.network(
+                            displayImage,
+                            width: 80,
+                            height: 80,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) =>
+                                _buildImagePlaceholder(),
+                          )
+                        : _buildImagePlaceholder(),
                   ),
                   const SizedBox(width: 16),
                   Expanded(
@@ -441,11 +468,10 @@ class _BookingScreenState extends State<BookingScreen> {
                     ? null
                     : () {
                         // Get all selected dates
-                        final selectedDates =
-                            _selectedDateIndices
-                                .map((i) => _availableDates[i])
-                                .toList()
-                              ..sort();
+                        final selectedDates = _selectedDateIndices
+                            .map((i) => _availableDates[i])
+                            .toList()
+                          ..sort();
 
                         context.push(
                           '/confirm-booking',
@@ -455,8 +481,8 @@ class _BookingScreenState extends State<BookingScreen> {
                             'selectedDates': selectedDates
                                 .map((d) => d.toIso8601String())
                                 .toList(),
-                            'occurrenceDate': selectedDates.first
-                                .toIso8601String(),
+                            'occurrenceDate':
+                                selectedDates.first.toIso8601String(),
                             'date': _selectedDateIndices.length == 1
                                 ? DateFormat(
                                     'EEE, MMM d',
@@ -471,7 +497,7 @@ class _BookingScreenState extends State<BookingScreen> {
                             'location': location,
                             'totalAmount':
                                 (_session!['pricing']['amount'] as num) *
-                                _selectedDateIndices.length,
+                                    _selectedDateIndices.length,
                           },
                         );
                       },
@@ -496,6 +522,18 @@ class _BookingScreenState extends State<BookingScreen> {
             ).animate().fadeIn(delay: 500.ms).slideY(begin: 0.2),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildImagePlaceholder() {
+    return Container(
+      width: 80,
+      height: 80,
+      color: Colors.grey[300],
+      child: Icon(
+        Icons.broken_image,
+        color: Colors.grey[600],
       ),
     );
   }

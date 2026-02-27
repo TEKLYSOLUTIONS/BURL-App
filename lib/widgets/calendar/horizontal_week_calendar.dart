@@ -75,7 +75,8 @@ class _HorizontalWeekCalendarState extends State<HorizontalWeekCalendar> {
             style: GoogleFonts.inter(
               fontSize: 14,
               fontWeight: FontWeight.bold,
-              color: AppPalette.navyPrimary,
+              color:
+                  Theme.of(context).colorScheme.primary, // Theme-aware header
               letterSpacing: 1,
             ),
           ),
@@ -89,13 +90,11 @@ class _HorizontalWeekCalendarState extends State<HorizontalWeekCalendar> {
             itemCount: _dates.length,
             itemBuilder: (context, index) {
               final date = _dates[index];
-              final isSelected =
-                  date.year == _selectedDate.year &&
+              final isSelected = date.year == _selectedDate.year &&
                   date.month == _selectedDate.month &&
                   date.day == _selectedDate.day;
 
-              final isToday =
-                  date.year == DateTime.now().year &&
+              final isToday = date.year == DateTime.now().year &&
                   date.month == DateTime.now().month &&
                   date.day == DateTime.now().day;
 
@@ -111,21 +110,30 @@ class _HorizontalWeekCalendarState extends State<HorizontalWeekCalendar> {
                   width: 60,
                   margin: const EdgeInsets.only(right: 12),
                   decoration: BoxDecoration(
-                    color: isSelected ? AppPalette.navyPrimary : Colors.white,
+                    color: isSelected
+                        ? Theme.of(context)
+                            .colorScheme
+                            .primary // Theme-aware selected bg
+                        : Theme.of(context)
+                            .colorScheme
+                            .surfaceContainerHighest, // Theme-aware unselected bg
                     borderRadius: BorderRadius.circular(16),
                     border: isSelected
                         ? null
                         : Border.all(
                             color: isToday
                                 ? AppPalette.orangeAccent
-                                : Colors.grey.shade200,
+                                : Theme.of(context).colorScheme.outlineVariant,
                           ),
                     boxShadow: isSelected
                         ? [
                             BoxShadow(
-                              color: AppPalette.navyPrimary.withValues(
-                                alpha: 0.3,
-                              ),
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .primary
+                                  .withValues(
+                                    alpha: 0.3,
+                                  ),
                               blurRadius: 8,
                               offset: const Offset(0, 4),
                             ),
@@ -150,8 +158,8 @@ class _HorizontalWeekCalendarState extends State<HorizontalWeekCalendar> {
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
                           color: isSelected
-                              ? Colors.white
-                              : AppPalette.navyPrimary,
+                              ? Theme.of(context).colorScheme.onPrimary
+                              : Theme.of(context).colorScheme.onSurface,
                         ),
                       ),
                       if (isToday)

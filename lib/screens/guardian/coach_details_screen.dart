@@ -6,6 +6,7 @@ import '../../config/palette.dart';
 import '../../services/search_service.dart';
 import '../../services/review_service.dart';
 import '../../utils/date_time_utils.dart';
+import '../../services/profile_service.dart';
 
 class CoachDetailsScreen extends StatefulWidget {
   final String coachId;
@@ -148,16 +149,21 @@ class _CoachDetailsScreenState extends State<CoachDetailsScreen>
 
     // Safely handle user object/populated field
     final userObj = profile['userId'];
-    final userMap = userObj is Map<String, dynamic>
-        ? userObj
-        : <String, dynamic>{};
+    final userMap =
+        userObj is Map<String, dynamic> ? userObj : <String, dynamic>{};
 
-    final fullName = userMap['fullName'] ?? 'Unknown Coach';
-    final profilePhoto =
-        userMap['profilePhoto'] ??
-        'https://i.pravatar.cc/150?u=${widget.coachId}';
-    final specializations =
-        (profile['specializations'] as List?)?.join(', ') ?? 'Coach';
+    final fullName =
+        userMap['fullName'] ?? profile['fullName'] ?? 'Unknown Coach';
+    final profilePhoto = userMap['profilePhoto'] ??
+        profile['profilePhoto'] ??
+        profile['profileImage'] ??
+        'https://ui-avatars.com/api/?name=${Uri.encodeComponent(fullName)}&background=random';
+
+    final specializationsList =
+        profile['specializations'] ?? profile['specialties'] ?? [];
+    final specializations = specializationsList is List
+        ? specializationsList.join(', ')
+        : specializationsList.toString();
     final bio = profile['bio'] ?? profile['aboutMe'] ?? 'No bio available.';
     final coachingPhilosophy = profile['coachingPhilosophy'] as String?;
     final notableAchievements =
@@ -171,13 +177,14 @@ class _CoachDetailsScreenState extends State<CoachDetailsScreen>
         (profile['certifications'] as List?)?.cast<String>() ?? [];
 
     // Handle rating mismatch (backend has 'rating', frontend expected 'ratings.overall')
-    final rawRating = profile['rating'] ?? profile['ratings']?['overall'] ?? 0;
-    final rating = rawRating.toString(); // Simplify display
+    final rawRating =
+        profile['ratings']?['overall'] ?? profile['rating'] ?? 0.0;
+    final rating =
+        (rawRating as num).toDouble().toStringAsFixed(1); // Simplify display
 
     final experience =
         '${profile['experienceYears'] ?? profile['experience'] ?? 0} Yrs';
-    final hourlyRate =
-        profile['defaultPricing']?['hourlyRate']?.toString() ??
+    final hourlyRate = profile['defaultPricing']?['hourlyRate']?.toString() ??
         profile['pricing']?['hourlyRate']?.toString() ??
         'TBD';
 
@@ -270,9 +277,9 @@ class _CoachDetailsScreenState extends State<CoachDetailsScreen>
                       ),
                     ],
                   ).animate().scale(
-                    duration: 400.ms,
-                    curve: Curves.easeOutBack,
-                  ),
+                        duration: 400.ms,
+                        curve: Curves.easeOutBack,
+                      ),
 
                   const SizedBox(height: 16),
 
@@ -401,7 +408,6 @@ class _CoachDetailsScreenState extends State<CoachDetailsScreen>
                                   ),
                                 ),
                                 const SizedBox(height: 24),
-
                                 if (city != null) ...[
                                   _buildSectionTitle('Location'),
                                   const SizedBox(height: 8),
@@ -424,7 +430,6 @@ class _CoachDetailsScreenState extends State<CoachDetailsScreen>
                                   ),
                                   const SizedBox(height: 24),
                                 ],
-
                                 if (coachingPhilosophy != null &&
                                     coachingPhilosophy.isNotEmpty) ...[
                                   _buildSectionTitle('Coaching Philosophy'),
@@ -440,7 +445,6 @@ class _CoachDetailsScreenState extends State<CoachDetailsScreen>
                                   ),
                                   const SizedBox(height: 24),
                                 ],
-
                                 if (notableAchievements.isNotEmpty) ...[
                                   _buildSectionTitle('Notable Achievements'),
                                   const SizedBox(height: 12),
@@ -449,7 +453,6 @@ class _CoachDetailsScreenState extends State<CoachDetailsScreen>
                                   ),
                                   const SizedBox(height: 24),
                                 ],
-
                                 if (certifications.isNotEmpty) ...[
                                   _buildSectionTitle('Certifications'),
                                   const SizedBox(height: 12),
@@ -458,7 +461,6 @@ class _CoachDetailsScreenState extends State<CoachDetailsScreen>
                                   ),
                                   const SizedBox(height: 24),
                                 ],
-
                                 if (ageGroups.isNotEmpty) ...[
                                   _buildSectionTitle('Age Groups Coached'),
                                   const SizedBox(height: 12),
@@ -471,7 +473,6 @@ class _CoachDetailsScreenState extends State<CoachDetailsScreen>
                                   ),
                                   const SizedBox(height: 24),
                                 ],
-
                                 if (sessionTypes.isNotEmpty) ...[
                                   _buildSectionTitle('Session Types'),
                                   const SizedBox(height: 12),
@@ -484,31 +485,6 @@ class _CoachDetailsScreenState extends State<CoachDetailsScreen>
                                   ),
                                   const SizedBox(height: 24),
                                 ],
-
-                                Text(
-                                  'Training Gallery',
-                                  style: GoogleFonts.inter(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
-                                    color: AppPalette.navyPrimary,
-                                  ),
-                                ),
-                                const SizedBox(height: 12),
-                                SizedBox(
-                                  height: 120,
-                                  child: ListView(
-                                    scrollDirection: Axis.horizontal,
-                                    children: [
-                                      _buildGalleryItem(
-                                        'https://images.unsplash.com/photo-1599058945522-28d584b6f0ff',
-                                      ),
-                                      _buildGalleryItem(
-                                        'https://i.pravatar.cc/300?img=25',
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                const SizedBox(height: 24),
                               ],
                             ),
                           ),
@@ -517,264 +493,287 @@ class _CoachDetailsScreenState extends State<CoachDetailsScreen>
                           _isLoadingReviews
                               ? const Center(child: CircularProgressIndicator())
                               : _reviews.isEmpty
-                              ? Center(
-                                  child: Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      const Icon(
-                                        Icons.rate_review_outlined,
-                                        size: 48,
-                                        color: Colors.grey,
-                                      ),
-                                      const SizedBox(height: 16),
-                                      Text(
-                                        "No reviews yet",
-                                        style: GoogleFonts.inter(
-                                          color: Colors.grey[600],
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                )
-                              : ListView.separated(
-                                  padding: EdgeInsets.zero,
-                                  itemCount: _reviews.length,
-                                  separatorBuilder: (context, index) =>
-                                      const SizedBox(height: 16),
-                                  itemBuilder: (context, index) {
-                                    final review = _reviews[index];
-                                    final player = review['player'] ?? {};
-                                    final playerName =
-                                        player['fullName'] ?? 'Anonymous';
-                                    final playerImage =
-                                        player['profilePhoto'] ??
-                                        'https://i.pravatar.cc/150';
-                                    final rating = (review['rating'] as num)
-                                        .toDouble();
-                                    final comment = review['comment'] ?? '';
-                                    final date = DateTime.parse(
-                                      review['createdAt'],
-                                    ).toLocal();
-
-                                    return Container(
-                                      padding: const EdgeInsets.all(16),
-                                      decoration: BoxDecoration(
-                                        color: Colors.white,
-                                        borderRadius: BorderRadius.circular(16),
-                                        border: Border.all(
-                                          color: Colors.grey[200]!,
-                                        ),
-                                      ),
+                                  ? Center(
                                       child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
                                         children: [
-                                          Row(
+                                          const Icon(
+                                            Icons.rate_review_outlined,
+                                            size: 48,
+                                            color: Colors.grey,
+                                          ),
+                                          const SizedBox(height: 16),
+                                          Text(
+                                            "No reviews yet",
+                                            style: GoogleFonts.inter(
+                                              color: Colors.grey[600],
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    )
+                                  : ListView.separated(
+                                      padding: EdgeInsets.zero,
+                                      itemCount: _reviews.length,
+                                      separatorBuilder: (context, index) =>
+                                          const SizedBox(height: 16),
+                                      itemBuilder: (context, index) {
+                                        final review = _reviews[index];
+                                        final player = review['player'] ?? {};
+                                        final playerName =
+                                            player['fullName'] ?? 'Anonymous';
+                                        final playerImage =
+                                            player['profilePhoto'] ??
+                                                'https://i.pravatar.cc/150';
+                                        final rating = (review['rating'] as num)
+                                            .toDouble();
+                                        final comment = review['comment'] ?? '';
+                                        final date = DateTime.parse(
+                                          review['createdAt'],
+                                        ).toLocal();
+
+                                        return Container(
+                                          padding: const EdgeInsets.all(16),
+                                          decoration: BoxDecoration(
+                                            color: Colors.white,
+                                            borderRadius:
+                                                BorderRadius.circular(16),
+                                            border: Border.all(
+                                              color: Colors.grey[200]!,
+                                            ),
+                                          ),
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
                                             children: [
-                                              CircleAvatar(
-                                                radius: 20,
-                                                backgroundImage: NetworkImage(
-                                                  playerImage,
-                                                ),
-                                              ),
-                                              const SizedBox(width: 12),
-                                              Expanded(
-                                                child: Column(
-                                                  crossAxisAlignment:
-                                                      CrossAxisAlignment.start,
-                                                  children: [
-                                                    Text(
-                                                      playerName,
-                                                      style: GoogleFonts.inter(
-                                                        fontWeight:
-                                                            FontWeight.bold,
-                                                        color: AppPalette
-                                                            .navyPrimary,
-                                                      ),
+                                              Row(
+                                                children: [
+                                                  CircleAvatar(
+                                                    radius: 20,
+                                                    backgroundImage:
+                                                        NetworkImage(
+                                                      playerImage,
                                                     ),
-                                                    Text(
-                                                      DateTimeUtils.formatDate(
-                                                        date,
-                                                      ),
-                                                      style: GoogleFonts.inter(
-                                                        fontSize: 12,
-                                                        color: Colors.grey,
-                                                      ),
+                                                  ),
+                                                  const SizedBox(width: 12),
+                                                  Expanded(
+                                                    child: Column(
+                                                      crossAxisAlignment:
+                                                          CrossAxisAlignment
+                                                              .start,
+                                                      children: [
+                                                        Text(
+                                                          playerName,
+                                                          style:
+                                                              GoogleFonts.inter(
+                                                            fontWeight:
+                                                                FontWeight.bold,
+                                                            color: AppPalette
+                                                                .navyPrimary,
+                                                          ),
+                                                        ),
+                                                        Text(
+                                                          DateTimeUtils
+                                                              .formatDate(
+                                                            date,
+                                                          ),
+                                                          style:
+                                                              GoogleFonts.inter(
+                                                            fontSize: 12,
+                                                            color: Colors.grey,
+                                                          ),
+                                                        ),
+                                                      ],
                                                     ),
-                                                  ],
-                                                ),
-                                              ),
-                                              Container(
-                                                padding:
-                                                    const EdgeInsets.symmetric(
+                                                  ),
+                                                  Container(
+                                                    padding: const EdgeInsets
+                                                        .symmetric(
                                                       horizontal: 8,
                                                       vertical: 4,
                                                     ),
-                                                decoration: BoxDecoration(
-                                                  color: Colors.amber
-                                                      .withValues(alpha: 0.1),
-                                                  borderRadius:
-                                                      BorderRadius.circular(12),
-                                                ),
-                                                child: Row(
-                                                  children: [
-                                                    const Icon(
-                                                      Icons.star,
-                                                      size: 14,
-                                                      color: Colors.amber,
+                                                    decoration: BoxDecoration(
+                                                      color: Colors.amber
+                                                          .withValues(
+                                                              alpha: 0.1),
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                              12),
                                                     ),
-                                                    const SizedBox(width: 4),
-                                                    Text(
-                                                      rating.toString(),
-                                                      style: GoogleFonts.inter(
-                                                        fontWeight:
-                                                            FontWeight.bold,
-                                                        fontSize: 12,
-                                                        color:
-                                                            Colors.amber[800],
-                                                      ),
+                                                    child: Row(
+                                                      children: [
+                                                        const Icon(
+                                                          Icons.star,
+                                                          size: 14,
+                                                          color: Colors.amber,
+                                                        ),
+                                                        const SizedBox(
+                                                            width: 4),
+                                                        Text(
+                                                          rating.toString(),
+                                                          style:
+                                                              GoogleFonts.inter(
+                                                            fontWeight:
+                                                                FontWeight.bold,
+                                                            fontSize: 12,
+                                                            color: Colors
+                                                                .amber[800],
+                                                          ),
+                                                        ),
+                                                      ],
                                                     ),
-                                                  ],
-                                                ),
+                                                  ),
+                                                ],
                                               ),
+                                              if (comment.isNotEmpty) ...[
+                                                const SizedBox(height: 12),
+                                                Text(
+                                                  comment,
+                                                  style: GoogleFonts.inter(
+                                                    color: Colors.grey[700],
+                                                    height: 1.5,
+                                                    fontSize: 14,
+                                                  ),
+                                                ),
+                                              ],
                                             ],
                                           ),
-                                          if (comment.isNotEmpty) ...[
-                                            const SizedBox(height: 12),
-                                            Text(
-                                              comment,
-                                              style: GoogleFonts.inter(
-                                                color: Colors.grey[700],
-                                                height: 1.5,
-                                                fontSize: 14,
-                                              ),
-                                            ),
-                                          ],
-                                        ],
-                                      ),
-                                    );
-                                  },
-                                ),
+                                        );
+                                      },
+                                    ),
 
                           // SCHEDULE TAB (Placeholder)
                           // SCHEDULE TAB
                           _isLoadingSessions
                               ? const Center(child: CircularProgressIndicator())
                               : _sessions.isEmpty
-                              ? Center(
-                                  child: Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      const Icon(
-                                        Icons.calendar_today_outlined,
-                                        size: 48,
-                                        color: Colors.grey,
+                                  ? Center(
+                                      child: Column(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        children: [
+                                          const Icon(
+                                            Icons.calendar_today_outlined,
+                                            size: 48,
+                                            color: Colors.grey,
+                                          ),
+                                          const SizedBox(height: 16),
+                                          Text(
+                                            "No upcoming sessions",
+                                            style: GoogleFonts.inter(
+                                              color: Colors.grey[600],
+                                            ),
+                                          ),
+                                        ],
                                       ),
-                                      const SizedBox(height: 16),
-                                      Text(
-                                        "No upcoming sessions",
-                                        style: GoogleFonts.inter(
-                                          color: Colors.grey[600],
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                )
-                              : ListView.separated(
-                                  padding: EdgeInsets.zero,
-                                  itemCount: _sessions.length,
-                                  separatorBuilder: (context, index) =>
-                                      const SizedBox(height: 16),
-                                  itemBuilder: (context, index) {
-                                    final session = _sessions[index];
-                                    final title = session['title'] ?? 'Session';
-                                    final timeSlots =
-                                        session['timeSlots'] as List?;
-                                    final firstSlot =
-                                        timeSlots?.isNotEmpty == true
-                                        ? timeSlots!.first
-                                        : null;
-                                    final startTime = firstSlot != null
-                                        ? DateTime.parse(
-                                            firstSlot['startTime'],
-                                          ).toLocal()
-                                        : null;
-                                    final price =
-                                        session['pricing']?['amount'] ?? 0;
+                                    )
+                                  : ListView.separated(
+                                      padding: EdgeInsets.zero,
+                                      itemCount: _sessions.length,
+                                      separatorBuilder: (context, index) =>
+                                          const SizedBox(height: 16),
+                                      itemBuilder: (context, index) {
+                                        final session = _sessions[index];
+                                        final title =
+                                            session['title'] ?? 'Session';
+                                        final timeSlots =
+                                            session['timeSlots'] as List?;
+                                        final firstSlot =
+                                            timeSlots?.isNotEmpty == true
+                                                ? timeSlots!.first
+                                                : null;
+                                        final startTime = firstSlot != null
+                                            ? DateTime.parse(
+                                                firstSlot['startTime'],
+                                              ).toLocal()
+                                            : null;
+                                        final price =
+                                            session['pricing']?['amount'] ?? 0;
 
-                                    return InkWell(
-                                      onTap: () {
-                                        context.push(
-                                          '/session-details/${session['_id']}',
+                                        return InkWell(
+                                          onTap: () {
+                                            context.push(
+                                              '/session-details/${session['_id']}',
+                                            );
+                                          },
+                                          borderRadius:
+                                              BorderRadius.circular(16),
+                                          child: Container(
+                                            padding: const EdgeInsets.all(16),
+                                            decoration: BoxDecoration(
+                                              color: Colors.white,
+                                              borderRadius:
+                                                  BorderRadius.circular(
+                                                16,
+                                              ),
+                                              border: Border.all(
+                                                color: Colors.grey[200]!,
+                                              ),
+                                            ),
+                                            child: Row(
+                                              children: [
+                                                Container(
+                                                  padding:
+                                                      const EdgeInsets.all(12),
+                                                  decoration: BoxDecoration(
+                                                    color: AppPalette
+                                                        .navyPrimary
+                                                        .withValues(alpha: 0.1),
+                                                    shape: BoxShape.circle,
+                                                  ),
+                                                  child: Icon(
+                                                    Icons.sports_cricket,
+                                                    color:
+                                                        AppPalette.navyPrimary,
+                                                  ),
+                                                ),
+                                                const SizedBox(width: 16),
+                                                Expanded(
+                                                  child: Column(
+                                                    crossAxisAlignment:
+                                                        CrossAxisAlignment
+                                                            .start,
+                                                    children: [
+                                                      Text(
+                                                        title,
+                                                        style:
+                                                            GoogleFonts.inter(
+                                                          fontWeight:
+                                                              FontWeight.w600,
+                                                          fontSize: 16,
+                                                          color: AppPalette
+                                                              .navyPrimary,
+                                                        ),
+                                                      ),
+                                                      if (startTime != null)
+                                                        Text(
+                                                          '${DateTimeUtils.formatDate(startTime)} • ${DateTimeUtils.formatTimeFromDateTime(startTime)}',
+                                                          style:
+                                                              GoogleFonts.inter(
+                                                            color: Colors
+                                                                .grey[600],
+                                                            fontSize: 14,
+                                                          ),
+                                                        ),
+                                                    ],
+                                                  ),
+                                                ),
+                                                Text(
+                                                  '\$$price',
+                                                  style: GoogleFonts.inter(
+                                                    fontWeight: FontWeight.bold,
+                                                    fontSize: 16,
+                                                    color:
+                                                        AppPalette.orangeAccent,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
                                         );
                                       },
-                                      borderRadius: BorderRadius.circular(16),
-                                      child: Container(
-                                        padding: const EdgeInsets.all(16),
-                                        decoration: BoxDecoration(
-                                          color: Colors.white,
-                                          borderRadius: BorderRadius.circular(
-                                            16,
-                                          ),
-                                          border: Border.all(
-                                            color: Colors.grey[200]!,
-                                          ),
-                                        ),
-                                        child: Row(
-                                          children: [
-                                            Container(
-                                              padding: const EdgeInsets.all(12),
-                                              decoration: BoxDecoration(
-                                                color: AppPalette.navyPrimary
-                                                    .withValues(alpha: 0.1),
-                                                shape: BoxShape.circle,
-                                              ),
-                                              child: Icon(
-                                                Icons.sports_cricket,
-                                                color: AppPalette.navyPrimary,
-                                              ),
-                                            ),
-                                            const SizedBox(width: 16),
-                                            Expanded(
-                                              child: Column(
-                                                crossAxisAlignment:
-                                                    CrossAxisAlignment.start,
-                                                children: [
-                                                  Text(
-                                                    title,
-                                                    style: GoogleFonts.inter(
-                                                      fontWeight:
-                                                          FontWeight.w600,
-                                                      fontSize: 16,
-                                                      color: AppPalette
-                                                          .navyPrimary,
-                                                    ),
-                                                  ),
-                                                  if (startTime != null)
-                                                    Text(
-                                                      '${DateTimeUtils.formatDate(startTime)} • ${DateTimeUtils.formatTimeFromDateTime(startTime)}',
-                                                      style: GoogleFonts.inter(
-                                                        color: Colors.grey[600],
-                                                        fontSize: 14,
-                                                      ),
-                                                    ),
-                                                ],
-                                              ),
-                                            ),
-                                            Text(
-                                              '\$$price',
-                                              style: GoogleFonts.inter(
-                                                fontWeight: FontWeight.bold,
-                                                fontSize: 16,
-                                                color: AppPalette.orangeAccent,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    );
-                                  },
-                                ),
+                                    ),
                         ],
                       ),
                     ),
@@ -838,18 +837,63 @@ class _CoachDetailsScreenState extends State<CoachDetailsScreen>
                 const SizedBox(width: 24),
                 Expanded(
                   child: ElevatedButton(
-                    onPressed: () {
-                      // Navigate to Book Session Screen
-                      // Parse hourly rate safely
+                    onPressed: () async {
+                      final ScaffoldMessengerState messenger =
+                          ScaffoldMessenger.of(context);
+                      final dynamic localRouter = GoRouter.of(context);
+                      final Uri currentRouteUri = GoRouterState.of(context).uri;
+
+                      final isComplete =
+                          await ProfileService.isProfileComplete();
+                      if (!mounted) return;
+                      if (!isComplete) {
+                        messenger.showSnackBar(
+                          const SnackBar(
+                            content: Text(
+                                'Please complete your profile (Location and Phone Number) before booking.'),
+                            backgroundColor: Colors.red,
+                          ),
+                        );
+                        return;
+                      }
+
                       double rate = 60.0;
                       if (hourlyRate != 'TBD') {
                         rate = double.tryParse(hourlyRate.toString()) ?? 60.0;
                       }
 
-                      context.push(
-                        '/coach/${widget.coachId}/book',
-                        extra: {'coachName': fullName, 'hourlyRate': rate},
-                      );
+                      final int sessionDuration =
+                          profile['defaultPricing']?['sessionDuration'] ?? 60;
+                      final String cancellationPolicy =
+                          profile['bookingSettings']?['cancellationPolicy'] ??
+                              'flexible';
+
+                      final isGuardian =
+                          currentRouteUri.toString().startsWith('/guardian');
+
+                      if (isGuardian) {
+                        localRouter.push(
+                          '/guardian/coach/${widget.coachId}/book',
+                          extra: <String, dynamic>{
+                            'coachName': fullName,
+                            'coachImageUrl': profilePhoto,
+                            'hourlyRate': rate,
+                            'sessionDuration': sessionDuration,
+                            'cancellationPolicy': cancellationPolicy,
+                          },
+                        );
+                      } else {
+                        localRouter.push(
+                          '/coach/${widget.coachId}/book',
+                          extra: <String, dynamic>{
+                            'coachName': fullName,
+                            'coachImageUrl': profilePhoto,
+                            'hourlyRate': rate,
+                            'sessionDuration': sessionDuration,
+                            'cancellationPolicy': cancellationPolicy,
+                          },
+                        );
+                      }
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppPalette.orangeAccent,
@@ -951,20 +995,6 @@ class _CoachDetailsScreenState extends State<CoachDetailsScreen>
 
   Widget _buildDivider() {
     return Container(height: 30, width: 1, color: Colors.grey[200]);
-  }
-
-  Widget _buildGalleryItem(String imageUrl) {
-    return Container(
-      margin: const EdgeInsets.only(right: 16),
-      width: 180,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
-        image: DecorationImage(
-          image: NetworkImage(imageUrl),
-          fit: BoxFit.cover,
-        ),
-      ),
-    );
   }
 
   Widget _buildSectionTitle(String title) {

@@ -53,8 +53,7 @@ class _ConfirmBookingScreenState extends State<ConfirmBookingScreen> {
         } else {
           _appliedPromoCode = null;
           _discountAmount = 0.0;
-          _promoError =
-              result['message'] ??
+          _promoError = result['message'] ??
               "The code '$code' is invalid or has expired.";
         }
       });
@@ -84,8 +83,11 @@ class _ConfirmBookingScreenState extends State<ConfirmBookingScreen> {
       // Get booking details from widget
       final sessionId = widget.bookingDetails['sessionId'];
       final occurrenceDate = widget.bookingDetails['occurrenceDate'];
+      final List<String>? selectedDates =
+          (widget.bookingDetails['selectedDates'] as List?)?.cast<String>();
 
-      if (sessionId == null || occurrenceDate == null) {
+      if (sessionId == null ||
+          (occurrenceDate == null && selectedDates == null)) {
         throw Exception('Missing booking details');
       }
 
@@ -96,6 +98,7 @@ class _ConfirmBookingScreenState extends State<ConfirmBookingScreen> {
       final booking = await BookingService.createBooking(
         sessionId: sessionId,
         occurrenceDate: occurrenceDate,
+        occurrenceDates: selectedDates,
         paymentMethod: paymentMethod,
         promoCode: _appliedPromoCode,
       );
@@ -136,10 +139,36 @@ class _ConfirmBookingScreenState extends State<ConfirmBookingScreen> {
   @override
   Widget build(BuildContext context) {
     // Determine dynamic values with fallbacks
-    final coachName = widget.bookingDetails['coachName'] ?? 'Michael Ray';
-    final coachImage =
-        widget.bookingDetails['coachImage'] ??
-        'https://i.pravatar.cc/150?img=12'; // Reliable placeholder
+    final session = widget.bookingDetails['session'];
+    Map<String, dynamic>? coachData;
+    if (session != null) {
+      final createdByValue = session['createdBy'];
+      final coachValue = session['coach'];
+      if (createdByValue is Map) {
+        coachData = Map<String, dynamic>.from(createdByValue);
+      } else if (coachValue is Map) {
+        final m = Map<String, dynamic>.from(coachValue);
+        if (m['coachProfile'] is Map) {
+          coachData = Map<String, dynamic>.from(m['coachProfile']);
+        } else {
+          coachData = m;
+        }
+      }
+    }
+
+    final coachName = coachData?['fullName']?.toString() ??
+        widget.bookingDetails['coachName']?.toString() ??
+        session?['coachName']?.toString() ??
+        'Michael Ray';
+
+    final sessionImage =
+        session?['imageUrl']?.toString() ?? session?['coverImage']?.toString();
+    final profilePhoto = coachData?['profilePhoto']?.toString() ??
+        coachData?['avatarUrl']?.toString();
+    final coachImage = widget.bookingDetails['coachImage']?.toString() ??
+        profilePhoto ??
+        sessionImage;
+
     final dateStr = widget.bookingDetails['date'] ?? 'Tue, Oct 24';
     final timeStr = widget.bookingDetails['time'] ?? '10:00 AM';
     final location =
@@ -251,7 +280,8 @@ class _ConfirmBookingScreenState extends State<ConfirmBookingScreen> {
                             children: [
                               CircleAvatar(
                                 radius: 30,
-                                backgroundImage: NetworkImage(coachImage),
+                                backgroundImage: NetworkImage(coachImage ??
+                                    'https://i.pravatar.cc/150?img=12'),
                                 onBackgroundImageError:
                                     (exception, stackTrace) {}, // Prevent crash
                                 backgroundColor: Theme.of(
@@ -621,9 +651,8 @@ class _ConfirmBookingScreenState extends State<ConfirmBookingScreen> {
                               ),
                             ),
                             ElevatedButton(
-                              onPressed: _isValidatingPromo
-                                  ? null
-                                  : _applyPromoCode,
+                              onPressed:
+                                  _isValidatingPromo ? null : _applyPromoCode,
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: AppPalette.orangeAccent
                                     .withValues(alpha: 0.1),
@@ -645,8 +674,8 @@ class _ConfirmBookingScreenState extends State<ConfirmBookingScreen> {
                                         strokeWidth: 2,
                                         valueColor:
                                             AlwaysStoppedAnimation<Color>(
-                                              AppPalette.orangeAccent,
-                                            ),
+                                          AppPalette.orangeAccent,
+                                        ),
                                       ),
                                     )
                                   : Text(
@@ -786,8 +815,7 @@ class _ConfirmBookingScreenState extends State<ConfirmBookingScreen> {
                             Text(
                               'Add Payment Method',
                               style: GoogleFonts.inter(
-                                color:
-                                    Theme.of(context).brightness ==
+                                color: Theme.of(context).brightness ==
                                         Brightness.dark
                                     ? AppPalette.textSecondaryDark
                                     : AppPalette.textSecondaryLight,

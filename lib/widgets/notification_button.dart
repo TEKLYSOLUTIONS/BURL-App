@@ -63,8 +63,7 @@ class _NotificationButtonState extends State<NotificationButton> {
       width: 40,
       height: 40,
       decoration: BoxDecoration(
-        color:
-            widget.backgroundColor ??
+        color: widget.backgroundColor ??
             (isDark
                 ? Colors.white.withValues(alpha: 0.1)
                 : Colors.black.withValues(alpha: 0.05)),
@@ -83,15 +82,15 @@ class _NotificationButtonState extends State<NotificationButton> {
           },
           child: Stack(
             alignment: Alignment.center,
+            clipBehavior: Clip.none,
             children: [
               Center(
                 child: Icon(
                   hasNotification
                       ? Icons
-                            .notifications_active // Changed icon for active state
+                          .notifications_active // Changed icon for active state
                       : Icons.notifications_none,
-                  color:
-                      widget.iconColor ??
+                  color: widget.iconColor ??
                       (isDark
                           ? Colors.white
                           : Theme.of(

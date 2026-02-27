@@ -1,17 +1,19 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../config/palette.dart';
-import '../../services/session_service.dart';
-import '../../services/coach_service.dart';
 import '../../services/booking_service.dart';
+import '../../services/coach_service.dart';
+import '../../services/profile_service.dart';
+import '../../services/session_service.dart';
 import '../../utils/date_time_utils.dart';
-import 'create_session_screen.dart';
 import '../../widgets/headers/coach_app_bar.dart';
 import '../../widgets/navigation/coach_bottom_bar.dart';
+import 'create_session_screen.dart';
 
 class SessionDetailsScreen extends StatefulWidget {
   final String sessionId;
@@ -401,18 +403,12 @@ class _SessionDetailsScreenState extends State<SessionDetailsScreen> {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        leading: Padding(
-          padding: const EdgeInsets.only(left: 16.0),
-          child: CircleAvatar(
-            backgroundColor: Colors.white,
-            child: IconButton(
-              icon: Icon(
-                Icons.arrow_back_ios_new_rounded,
-                color: Theme.of(context).iconTheme.color,
-              ),
-              onPressed: () => context.pop(),
-            ),
+        leading: IconButton(
+          icon: Icon(
+            Icons.arrow_back_ios_new_rounded,
+            color: Theme.of(context).colorScheme.onSurface,
           ),
+          onPressed: () => context.pop(),
         ),
         title: Text(
           'Session Details',
@@ -433,31 +429,26 @@ class _SessionDetailsScreenState extends State<SessionDetailsScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Header Image with Cricket Icon (Only for non-coach)
+                // Header Image with Avatar/Image (Only for non-coach)
                 Container(
                   height: 200,
                   width: double.infinity,
                   margin: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(24),
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [
-                        AppPalette.navyPrimary,
-                        AppPalette.navyPrimary.withValues(alpha: 0.7),
-                      ],
+                    color: AppPalette.navyPrimary,
+                    image: DecorationImage(
+                      image: (_session!['imageUrl'] != null ||
+                              _session!['coverImage'] != null)
+                          ? NetworkImage(_session!['imageUrl'] ??
+                              _session!['coverImage']!) as ImageProvider
+                          : const AssetImage(
+                              'assets/images/default_cricket_session.png'),
+                      fit: BoxFit.cover,
                     ),
                   ),
                   child: Stack(
                     children: [
-                      Center(
-                        child: Icon(
-                          Icons.sports_cricket,
-                          size: 80,
-                          color: Colors.white.withValues(alpha: 0.3),
-                        ),
-                      ),
                       Positioned(
                         top: 16,
                         left: 16,
@@ -507,8 +498,7 @@ class _SessionDetailsScreenState extends State<SessionDetailsScreen> {
     final isCompleted = _session!['status'] == 'completed';
     // Active if in-progress OR (isToday and not completed/cancelled)
     // Also consider sessions active if they are past start time but within duration
-    final isActiveSession =
-        _session!['status'] == 'in-progress' ||
+    final isActiveSession = _session!['status'] == 'in-progress' ||
         (isToday &&
             _session!['status'] != 'completed' &&
             _session!['status'] != 'cancelled');
@@ -529,15 +519,30 @@ class _SessionDetailsScreenState extends State<SessionDetailsScreen> {
     final createdByValue = _session!['createdBy'];
     final coachValue = _session!['coach'];
 
+    // Prefer createdBy (populated User with fullName), fall back to coach field.
+    // When coach has a nested coachProfile, merge its fields (e.g. coachTitle)
+    // into the parent map WITHOUT discarding fullName from the User level.
     if (createdByValue is Map) {
       coach = Map<String, dynamic>.from(createdByValue);
+      // Also pull coachTitle from the coach field's coachProfile if available
+      if (coachValue is Map) {
+        final coachMap = Map<String, dynamic>.from(coachValue);
+        if (coachMap['coachProfile'] is Map) {
+          final profile = Map<String, dynamic>.from(coachMap['coachProfile']);
+          coach['coachTitle'] = profile['coachTitle'];
+          coach['profilePhoto'] ??= profile['profilePhoto'];
+        }
+        // If createdBy has no fullName, fall back to coach.fullName
+        coach['fullName'] ??= coachMap['fullName'];
+      }
     } else if (coachValue is Map) {
       final coachMap = Map<String, dynamic>.from(coachValue);
-      // Check for nested coachProfile
+      coach = coachMap;
+      // Merge coachProfile fields (coachTitle etc.) WITHOUT discarding fullName
       if (coachMap['coachProfile'] is Map) {
-        coach = Map<String, dynamic>.from(coachMap['coachProfile']);
-      } else {
-        coach = coachMap;
+        final profile = Map<String, dynamic>.from(coachMap['coachProfile']);
+        coach['coachTitle'] ??= profile['coachTitle'];
+        coach['profilePhoto'] ??= profile['profilePhoto'];
       }
     }
 
@@ -584,21 +589,53 @@ class _SessionDetailsScreenState extends State<SessionDetailsScreen> {
           const SizedBox(height: 20),
 
           // Stats Row
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              _buildQuickStat(
-                Icons.timer_outlined,
-                DateTimeUtils.formatDuration(duration),
-              ),
-              _buildQuickStat(
-                Icons.people_outline,
-                (_session!['capacity'] == 0 || _session!['capacity'] == null)
-                    ? '1 Capacity' // Default to 1 for 1-on-1 if 0/null
-                    : '${_session!['capacity']} Capacity',
-              ),
-              _buildQuickStat(Icons.sports_cricket, 'Cricket'),
-            ],
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.start,
+              children: [
+                _buildQuickStat(
+                  Icons.timer_outlined,
+                  DateTimeUtils.formatDuration(duration),
+                ),
+                const SizedBox(width: 24),
+                _buildQuickStat(
+                  Icons.people_outline,
+                  () {
+                    final cap = _session!['capacity'];
+                    if (cap == null || cap == 0) {
+                      return '1 Capacity';
+                    }
+                    if (cap is Map) {
+                      return '${cap['max'] ?? cap['maximum'] ?? cap} Capacity';
+                    }
+                    if (cap is String && cap.contains('max:')) {
+                      final regex = RegExp(r'max:\s*(\d+)');
+                      final match = regex.firstMatch(cap);
+                      if (match != null) {
+                        return '${match.group(1)} Capacity';
+                      }
+                    }
+                    return '$cap Capacity';
+                  }(),
+                ),
+                const SizedBox(width: 24),
+                _buildQuickStat(
+                  Icons.payments_outlined,
+                  () {
+                    final pricing = _session!['pricing'];
+                    if (pricing == null) return 'Free';
+                    final amount = pricing['amount'] ?? 0;
+                    final model = pricing['model'] ?? 'per-session';
+                    final currency = pricing['currency'] ?? 'USD';
+                    final suffix = model == 'per-hour' ? '/ hr' : '/ ses';
+                    return '$currency $amount $suffix';
+                  }(),
+                ),
+                const SizedBox(width: 24),
+                _buildQuickStat(Icons.sports_cricket, 'Cricket'),
+              ],
+            ),
           ),
 
           const SizedBox(height: 32),
@@ -626,32 +663,43 @@ class _SessionDetailsScreenState extends State<SessionDetailsScreen> {
             const SizedBox(height: 32),
           ],
 
-          // Coach & Location
-          _buildSectionTitle('Coach & Location'),
+          // Coach & Location (Coach section hidden for coaches)
+          _buildSectionTitle(isCoach ? 'Location' : 'Coach & Location'),
           const SizedBox(height: 16),
 
-          // Coach Card
-          if (coach != null)
-            _buildInfoCard(
-              icon: CircleAvatar(
-                backgroundColor: AppPalette.navyPrimary,
-                child: Text(
-                  (coach['fullName']?.toString() ??
-                          _session!['coachName']?.toString() ??
-                          'C')
-                      .substring(0, 1)
-                      .toUpperCase(),
-                  style: const TextStyle(color: Colors.white),
+          // Coach Card (Only for non-coaches)
+          if (coach != null && !isCoach) ...[
+            Builder(builder: (context) {
+              final phone = coach?['phoneNumber']?.toString();
+              return _buildInfoCard(
+                icon: CircleAvatar(
+                  backgroundColor: AppPalette.navyPrimary,
+                  child: Text(
+                    (coach!['fullName']?.toString() ??
+                            _session!['coachName']?.toString() ??
+                            'C')
+                        .substring(0, 1)
+                        .toUpperCase(),
+                    style: const TextStyle(color: Colors.white),
+                  ),
                 ),
-              ),
-              title:
-                  coach['fullName']?.toString() ??
-                  _session!['coachName']?.toString() ??
-                  'Coach',
-              subtitle: coach['coachTitle']?.toString() ?? 'Head Coach',
-              actionIcon: Icons.phone,
-            ),
-          const SizedBox(height: 12),
+                title: coach['fullName']?.toString() ??
+                    _session!['coachName']?.toString() ??
+                    'Coach',
+                subtitle: coach['coachTitle']?.toString() ?? 'Head Coach',
+                actionIcon: Icons.phone,
+                onAction: phone != null && phone.isNotEmpty
+                    ? () async {
+                        final uri = Uri(scheme: 'tel', path: phone);
+                        if (await canLaunchUrl(uri)) {
+                          await launchUrl(uri);
+                        }
+                      }
+                    : null,
+              );
+            }),
+            const SizedBox(height: 12),
+          ],
 
           // Location Card
           _buildInfoCard(
@@ -831,7 +879,7 @@ class _SessionDetailsScreenState extends State<SessionDetailsScreen> {
             else
               // Standard horizontal list for players or future sessions
               SizedBox(
-                height: 60,
+                height: 80,
                 child: ListView.separated(
                   scrollDirection: Axis.horizontal,
                   itemCount: assignedPlayers.length,
@@ -943,8 +991,8 @@ class _SessionDetailsScreenState extends State<SessionDetailsScreen> {
                       onPressed: _isDeleting
                           ? null
                           : () => context.push(
-                              '/coach/session-report/${widget.sessionId}',
-                            ),
+                                '/coach/session-report/${widget.sessionId}',
+                              ),
                       style: OutlinedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 16),
                         side: const BorderSide(color: AppPalette.navyPrimary),
@@ -991,8 +1039,8 @@ class _SessionDetailsScreenState extends State<SessionDetailsScreen> {
                                 onPressed: _isDeleting
                                     ? null
                                     : () => context.push(
-                                        '/session-attendance/${widget.sessionId}',
-                                      ),
+                                          '/session-attendance/${widget.sessionId}',
+                                        ),
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: status == 'in-progress'
                                       ? Colors.blue
@@ -1099,11 +1147,29 @@ class _SessionDetailsScreenState extends State<SessionDetailsScreen> {
                             ),
                     )
                   : ElevatedButton(
-                      onPressed: () {
-                        context.push('/booking/${widget.sessionId}');
+                      onPressed: () async {
+                        final ScaffoldMessengerState messenger =
+                            ScaffoldMessenger.of(context);
+                        final dynamic localRouter = GoRouter.of(context);
+                        final isComplete =
+                            await ProfileService.isProfileComplete();
+                        if (!mounted) return;
+
+                        if (!isComplete) {
+                          messenger.showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                  'Please complete your profile (Location and Phone Number) before booking.'),
+                              backgroundColor: Colors.red,
+                            ),
+                          );
+                          return;
+                        }
+
+                        localRouter.push('/booking/${widget.sessionId}');
                       },
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: AppPalette.navyPrimary,
+                        backgroundColor: AppPalette.orangeAccent,
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(vertical: 16),
                         shape: RoundedRectangleBorder(
@@ -1192,6 +1258,7 @@ class _SessionDetailsScreenState extends State<SessionDetailsScreen> {
     required String title,
     required String subtitle,
     required IconData actionIcon,
+    VoidCallback? onAction,
   }) {
     return Container(
       padding: const EdgeInsets.all(16),
@@ -1229,9 +1296,11 @@ class _SessionDetailsScreenState extends State<SessionDetailsScreen> {
           IconButton(
             icon: Icon(
               actionIcon,
-              color: Theme.of(context).colorScheme.primary,
+              color: onAction != null
+                  ? Theme.of(context).colorScheme.primary
+                  : Theme.of(context).disabledColor,
             ),
-            onPressed: () {},
+            onPressed: onAction,
           ),
         ],
       ),
@@ -1239,26 +1308,42 @@ class _SessionDetailsScreenState extends State<SessionDetailsScreen> {
   }
 
   Widget _buildAvatar(String label, String playerId) {
-    return Container(
-      width: 40,
-      height: 40,
-      decoration: BoxDecoration(
-        color: AppPalette.navyPrimary.withValues(alpha: 0.1),
-        shape: BoxShape.circle,
-        border: Border.all(
-          color: AppPalette.navyPrimary.withValues(alpha: 0.2),
-        ),
-      ),
-      child: Center(
-        child: Text(
-          label.substring(0, min(label.length, 2)).toUpperCase(),
-          style: GoogleFonts.inter(
-            fontWeight: FontWeight.bold,
-            color: AppPalette.navyPrimary,
-            fontSize: 14,
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 44,
+          height: 44,
+          decoration: const BoxDecoration(
+            color: AppPalette.orangeAccent,
+            shape: BoxShape.circle,
+          ),
+          child: Center(
+            child: Text(
+              label.substring(0, min(label.length, 2)).toUpperCase(),
+              style: GoogleFonts.inter(
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+                fontSize: 14,
+              ),
+            ),
           ),
         ),
-      ),
+        const SizedBox(height: 4),
+        SizedBox(
+          width: 52,
+          child: Text(
+            label,
+            style: GoogleFonts.inter(
+              fontSize: 10,
+              fontWeight: FontWeight.w500,
+              color: Theme.of(context).colorScheme.onSurface,
+            ),
+            textAlign: TextAlign.center,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+      ],
     );
   }
 
@@ -1432,94 +1517,94 @@ class _AddPlayersSheetState extends State<_AddPlayersSheet> {
             child: _isLoading
                 ? const Center(child: CircularProgressIndicator())
                 : _myPlayers.isEmpty
-                ? Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.people_outline,
-                          size: 48,
-                          color: Theme.of(context).disabledColor,
+                    ? Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.people_outline,
+                              size: 48,
+                              color: Theme.of(context).disabledColor,
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              'No available players to add',
+                              style: GoogleFonts.inter(
+                                color: Theme.of(context).disabledColor,
+                              ),
+                            ),
+                          ],
                         ),
-                        const SizedBox(height: 16),
-                        Text(
-                          'No available players to add',
-                          style: GoogleFonts.inter(
-                            color: Theme.of(context).disabledColor,
-                          ),
-                        ),
-                      ],
-                    ),
-                  )
-                : ListView.builder(
-                    padding: const EdgeInsets.symmetric(horizontal: 24),
-                    itemCount: _myPlayers.length,
-                    itemBuilder: (context, index) {
-                      final player = _myPlayers[index];
-                      final id = player['_id'] as String;
-                      final isSelected = _selectedPlayers.contains(id);
+                      )
+                    : ListView.builder(
+                        padding: const EdgeInsets.symmetric(horizontal: 24),
+                        itemCount: _myPlayers.length,
+                        itemBuilder: (context, index) {
+                          final player = _myPlayers[index];
+                          final id = player['_id'] as String;
+                          final isSelected = _selectedPlayers.contains(id);
 
-                      return Container(
-                        margin: const EdgeInsets.only(bottom: 12),
-                        decoration: BoxDecoration(
-                          color: Theme.of(context).cardColor,
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(
-                            color: isSelected
-                                ? Theme.of(context).colorScheme.primary
-                                : Colors.transparent,
-                            width: 2,
-                          ),
-                        ),
-                        child: ListTile(
-                          onTap: () {
-                            setState(() {
-                              if (isSelected) {
-                                _selectedPlayers.remove(id);
-                              } else {
-                                _selectedPlayers.add(id);
-                              }
-                            });
-                          },
-                          leading: CircleAvatar(
-                            backgroundImage: NetworkImage(
-                              player['avatarUrl'] ??
-                                  'https://i.pravatar.cc/150',
-                            ),
-                          ),
-                          title: Text(
-                            player['name'] ?? 'Unknown',
-                            style: GoogleFonts.inter(
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          trailing: Container(
-                            width: 24,
-                            height: 24,
+                          return Container(
+                            margin: const EdgeInsets.only(bottom: 12),
                             decoration: BoxDecoration(
-                              color: isSelected
-                                  ? Theme.of(context).colorScheme.primary
-                                  : Colors.transparent,
+                              color: Theme.of(context).cardColor,
+                              borderRadius: BorderRadius.circular(16),
                               border: Border.all(
                                 color: isSelected
                                     ? Theme.of(context).colorScheme.primary
-                                    : Theme.of(context).dividerColor,
+                                    : Colors.transparent,
                                 width: 2,
                               ),
-                              shape: BoxShape.circle,
                             ),
-                            child: isSelected
-                                ? const Icon(
-                                    Icons.check,
-                                    size: 16,
-                                    color: Colors.white,
-                                  )
-                                : null,
-                          ),
-                        ),
-                      );
-                    },
-                  ),
+                            child: ListTile(
+                              onTap: () {
+                                setState(() {
+                                  if (isSelected) {
+                                    _selectedPlayers.remove(id);
+                                  } else {
+                                    _selectedPlayers.add(id);
+                                  }
+                                });
+                              },
+                              leading: CircleAvatar(
+                                backgroundImage: NetworkImage(
+                                  player['avatarUrl'] ??
+                                      'https://i.pravatar.cc/150',
+                                ),
+                              ),
+                              title: Text(
+                                player['name'] ?? 'Unknown',
+                                style: GoogleFonts.inter(
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              trailing: Container(
+                                width: 24,
+                                height: 24,
+                                decoration: BoxDecoration(
+                                  color: isSelected
+                                      ? Theme.of(context).colorScheme.primary
+                                      : Colors.transparent,
+                                  border: Border.all(
+                                    color: isSelected
+                                        ? Theme.of(context).colorScheme.primary
+                                        : Theme.of(context).dividerColor,
+                                    width: 2,
+                                  ),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: isSelected
+                                    ? const Icon(
+                                        Icons.check,
+                                        size: 16,
+                                        color: Colors.white,
+                                      )
+                                    : null,
+                              ),
+                            ),
+                          );
+                        },
+                      ),
           ),
         ],
       ),

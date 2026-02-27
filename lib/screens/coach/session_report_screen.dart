@@ -70,9 +70,8 @@ class _SessionReportScreenState extends State<SessionReportScreen> {
         ? DateTime.parse(firstTimeSlot['startTime'] as String).toLocal()
         : DateTime.now();
 
-    final presentCount = assignedPlayers
-        .where((p) => p['attended'] == true)
-        .length;
+    final presentCount =
+        assignedPlayers.where((p) => p['attended'] == true).length;
 
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
@@ -175,8 +174,7 @@ class _SessionReportScreenState extends State<SessionReportScreen> {
                   fontSize: 15,
                   height: 1.5,
                   color: Theme.of(context).colorScheme.onSurface,
-                  fontStyle:
-                      (_session!['sessionNotes'] == null ||
+                  fontStyle: (_session!['sessionNotes'] == null ||
                           _session!['sessionNotes'].toString().isEmpty)
                       ? FontStyle.italic
                       : FontStyle.normal,
@@ -201,6 +199,20 @@ class _SessionReportScreenState extends State<SessionReportScreen> {
                     : <String, dynamic>{};
                 final attended = playerData['attended'] as bool? ?? false;
                 final note = playerData['note'] as String? ?? '';
+                final report = playerData['report'] as Map<String, dynamic>?;
+
+                bool hasReport = false;
+                if (report != null) {
+                  // Check if at least one field is filled
+                  final focus = report['primaryFocus'] as String? ?? '';
+                  final wins = report['technicalWins'] as String? ?? '';
+                  final drills = report['specificDrills'] as String? ?? '';
+                  if (focus.isNotEmpty ||
+                      wins.isNotEmpty ||
+                      drills.isNotEmpty) {
+                    hasReport = true;
+                  }
+                }
 
                 return Container(
                   padding: const EdgeInsets.all(16),
@@ -281,6 +293,62 @@ class _SessionReportScreenState extends State<SessionReportScreen> {
                           ),
                         ),
                       ],
+                      const SizedBox(height: 12),
+                      const Divider(),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          if (report != null && hasReport)
+                            Row(
+                              children: [
+                                const Icon(Icons.check_circle_rounded,
+                                    color: Colors.green, size: 20),
+                                const SizedBox(width: 4),
+                                Text(
+                                  'Report submitted',
+                                  style: GoogleFonts.inter(
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.green,
+                                  ),
+                                ),
+                              ],
+                            )
+                          else
+                            Text(
+                              'No report yet',
+                              style: GoogleFonts.inter(
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .onSurfaceVariant,
+                                fontStyle: FontStyle.italic,
+                                fontSize: 13,
+                              ),
+                            ),
+                          TextButton.icon(
+                            onPressed: () async {
+                              final result = await context.push(
+                                  '/coach/player-report/${widget.sessionId}/${player['_id']}');
+                              if (result == true) {
+                                _fetchSessionDetails(); // Reload data after returning true
+                              }
+                            },
+                            icon: Icon(
+                              report != null
+                                  ? Icons.edit_note_rounded
+                                  : Icons.add_chart_rounded,
+                              size: 18,
+                              color: Theme.of(context).colorScheme.primary,
+                            ),
+                            label: Text(
+                              report != null ? 'Edit Report' : 'Evaluate',
+                              style: GoogleFonts.inter(
+                                fontWeight: FontWeight.bold,
+                                color: Theme.of(context).colorScheme.primary,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ],
                   ),
                 );

@@ -42,7 +42,16 @@ class _MySessionsScreenState extends State<MySessionsScreen> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const SizedBox(width: 40),
+                if (context.canPop())
+                  IconButton(
+                    icon: Icon(
+                      Icons.arrow_back,
+                      color: Theme.of(context).colorScheme.onSurface,
+                    ),
+                    onPressed: () => context.pop(),
+                  )
+                else
+                  const SizedBox(width: 48), // Balance for centering
                 Expanded(
                   child: Text(
                     'Sessions',
@@ -50,13 +59,13 @@ class _MySessionsScreenState extends State<MySessionsScreen> {
                     style: GoogleFonts.inter(
                       fontSize: 24,
                       fontWeight: FontWeight.bold,
-                      color: Theme.of(context).colorScheme.primary,
+                      color: Theme.of(context).colorScheme.onSurface,
                     ),
                   ),
                 ),
                 NotificationButton(
-                  iconColor: Theme.of(context).colorScheme.primary,
-                  backgroundColor: Theme.of(context).cardColor,
+                  iconColor: Theme.of(context).colorScheme.onSurface,
+                  backgroundColor: Theme.of(context).scaffoldBackgroundColor,
                   onTap: () => context.push(
                     widget.notificationPath ?? '/player/notifications',
                   ),
@@ -146,7 +155,6 @@ class _MySessionsScreenState extends State<MySessionsScreen> {
                 ],
               ),
             ),
-
             Expanded(
               child: const TabBarView(
                 children: [

@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 import '../../../services/booking_service.dart';
+import '../../../utils/session_utils.dart';
 import '../../../utils/date_time_utils.dart';
 
 class PlayerSessionsView extends StatefulWidget {
@@ -86,13 +87,11 @@ class _PlayerSessionsViewState extends State<PlayerSessionsView>
           child: TabBar(
             controller: _tabController,
             indicator: BoxDecoration(
-              color: Theme.of(context).primaryColor,
+              color: Theme.of(context).colorScheme.secondary,
               borderRadius: BorderRadius.circular(10),
             ),
             labelColor: Colors.white,
-            unselectedLabelColor: Theme.of(
-              context,
-            ).textTheme.bodyMedium?.color?.withValues(alpha: 0.6),
+            unselectedLabelColor: Theme.of(context).textTheme.bodyMedium?.color,
             labelStyle: GoogleFonts.inter(fontWeight: FontWeight.w600),
             dividerColor: Colors.transparent,
             indicatorSize: TabBarIndicatorSize.tab,
@@ -168,6 +167,8 @@ class _PlayerSessionsViewState extends State<PlayerSessionsView>
         : DateTime.now();
     final bookingStatus = booking['status'] as String? ?? 'pending';
 
+    final primaryColor = SessionUtils.getSessionPrimaryColor(context, session);
+
     String displayStatus;
     Color statusColor;
     Color statusTextColor;
@@ -176,37 +177,32 @@ class _PlayerSessionsViewState extends State<PlayerSessionsView>
     switch (bookingStatus.toLowerCase()) {
       case 'confirmed':
         displayStatus = 'Confirmed';
-        statusColor = isDark
-            ? Colors.green.withValues(alpha: 0.2)
-            : Colors.green[50]!;
+        statusColor =
+            isDark ? Colors.green.withValues(alpha: 0.2) : Colors.green[50]!;
         statusTextColor = isDark ? Colors.greenAccent : Colors.green[700]!;
         break;
       case 'pending':
         displayStatus = 'Pending';
-        statusColor = isDark
-            ? Colors.orange.withValues(alpha: 0.2)
-            : Colors.orange[50]!;
+        statusColor =
+            isDark ? Colors.orange.withValues(alpha: 0.2) : Colors.orange[50]!;
         statusTextColor = isDark ? Colors.orangeAccent : Colors.orange[700]!;
         break;
       case 'cancelled':
         displayStatus = 'Cancelled';
-        statusColor = isDark
-            ? Colors.red.withValues(alpha: 0.2)
-            : Colors.red[50]!;
+        statusColor =
+            isDark ? Colors.red.withValues(alpha: 0.2) : Colors.red[50]!;
         statusTextColor = isDark ? Colors.redAccent : Colors.red[700]!;
         break;
       case 'completed':
         displayStatus = 'Completed';
-        statusColor = isDark
-            ? Colors.blue.withValues(alpha: 0.2)
-            : Colors.blue[50]!;
+        statusColor =
+            isDark ? Colors.blue.withValues(alpha: 0.2) : Colors.blue[50]!;
         statusTextColor = isDark ? Colors.blueAccent : Colors.blue[700]!;
         break;
       default:
         displayStatus = 'Scheduled';
-        statusColor = isDark
-            ? Colors.grey.withValues(alpha: 0.2)
-            : Colors.grey[50]!;
+        statusColor =
+            isDark ? Colors.grey.withValues(alpha: 0.2) : Colors.grey[50]!;
         statusTextColor = isDark ? Colors.grey[400]! : Colors.grey[700]!;
     }
 
@@ -214,7 +210,7 @@ class _PlayerSessionsViewState extends State<PlayerSessionsView>
       margin: const EdgeInsets.only(bottom: 20),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Theme.of(context).cardColor,
+        color: SessionUtils.getSessionColor(context, session),
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
@@ -247,8 +243,8 @@ class _PlayerSessionsViewState extends State<PlayerSessionsView>
                         displayStatus == 'Confirmed'
                             ? Icons.check_circle
                             : displayStatus == 'Pending'
-                            ? Icons.access_time_filled
-                            : Icons.calendar_month,
+                                ? Icons.access_time_filled
+                                : Icons.calendar_month,
                         size: 14,
                         color: statusTextColor,
                       ),
@@ -310,8 +306,36 @@ class _PlayerSessionsViewState extends State<PlayerSessionsView>
                         if (coachData == null) return 'Unknown Coach';
                         final profile =
                             coachData['coachProfile'] as Map<String, dynamic>?;
-                        return profile?['fullName'] as String? ??
+                        return coachData['fullName'] as String? ??
+                            profile?['fullName'] as String? ??
                             'Unknown Coach';
+                      })(),
+                      style: GoogleFonts.inter(
+                        fontSize: 13,
+                        color: Theme.of(
+                          context,
+                        ).textTheme.bodyMedium?.color?.withValues(alpha: 0.6),
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Row(
+                  children: [
+                    Icon(
+                      Icons.face,
+                      size: 14,
+                      color: Theme.of(context).disabledColor,
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      (() {
+                        final playerData =
+                            booking['player'] as Map<String, dynamic>?;
+                        if (playerData == null) return 'Unknown Player';
+                        return playerData['fullName'] as String? ??
+                            'Unknown Player';
                       })(),
                       style: GoogleFonts.inter(
                         fontSize: 13,
@@ -353,7 +377,7 @@ class _PlayerSessionsViewState extends State<PlayerSessionsView>
                     final sessionId = session['_id'] as String?;
                     if (sessionId != null && sessionId.isNotEmpty) {
                       final result = await context.push(
-                        '/session-details/$sessionId',
+                        '/guardian/session-details/$sessionId',
                       );
                       if (result == true) _fetchSessions();
                     }
@@ -364,9 +388,7 @@ class _PlayerSessionsViewState extends State<PlayerSessionsView>
                       vertical: 10,
                     ),
                     decoration: BoxDecoration(
-                      color: Theme.of(
-                        context,
-                      ).dividerColor.withValues(alpha: 0.1),
+                      color: primaryColor.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Row(
@@ -377,14 +399,14 @@ class _PlayerSessionsViewState extends State<PlayerSessionsView>
                           style: GoogleFonts.inter(
                             fontSize: 13,
                             fontWeight: FontWeight.w600,
-                            color: Theme.of(context).primaryColor,
+                            color: primaryColor,
                           ),
                         ),
                         const SizedBox(width: 8),
                         Icon(
                           Icons.arrow_forward_ios,
                           size: 12,
-                          color: Theme.of(context).primaryColor,
+                          color: primaryColor,
                         ),
                       ],
                     ),

@@ -176,12 +176,12 @@ class _EarningHistoryScreenState extends State<EarningHistoryScreen> {
     }
 
     final totalBalance = (_summaryData['totalBalance'] ?? 0).toDouble();
-    final percentageChange = (_summaryData['trend']?['percentageChange'] ?? 0)
-        .toDouble();
-    final changeAmount = (_summaryData['trend']?['changeAmount'] ?? 0)
-        .toDouble();
-    final currentMonthTotal = (_summaryData['currentMonth']?['total'] ?? 0)
-        .toDouble();
+    final percentageChange =
+        (_summaryData['trend']?['percentageChange'] ?? 0).toDouble();
+    final changeAmount =
+        (_summaryData['trend']?['changeAmount'] ?? 0).toDouble();
+    final currentMonthTotal =
+        (_summaryData['currentMonth']?['total'] ?? 0).toDouble();
 
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
@@ -248,7 +248,9 @@ class _EarningHistoryScreenState extends State<EarningHistoryScreen> {
                               Text(
                                 'TOTAL BALANCE',
                                 style: GoogleFonts.inter(
-                                  color: Theme.of(context).colorScheme.onPrimary
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onPrimary
                                       .withValues(alpha: 0.7),
                                   fontSize: 12,
                                   fontWeight: FontWeight.w600,
@@ -296,7 +298,8 @@ class _EarningHistoryScreenState extends State<EarningHistoryScreen> {
                           ),
                           const SizedBox(height: 8),
                           Text(
-                            EarningsService.formatCurrency(totalBalance, currency: _currency),
+                            EarningsService.formatCurrency(totalBalance,
+                                currency: _currency),
                             style: GoogleFonts.inter(
                               color: Colors.white,
                               fontSize: 40,
@@ -392,7 +395,8 @@ class _EarningHistoryScreenState extends State<EarningHistoryScreen> {
                             ),
                             const SizedBox(height: 4),
                             Text(
-                              EarningsService.formatCurrency(currentMonthTotal, currency: _currency),
+                              EarningsService.formatCurrency(currentMonthTotal,
+                                  currency: _currency),
                               style: GoogleFonts.inter(
                                 color: Theme.of(context).colorScheme.onSurface,
                                 fontSize: 24,
@@ -535,14 +539,13 @@ class _EarningHistoryScreenState extends State<EarningHistoryScreen> {
                               : playerName,
                           detail:
                               '${activity['sessionTitle'] ?? 'Session'} • ${sessionDate != null ? DateFormat('MMM d').format(sessionDate) : 'Unknown date'}',
-                          amount: '+${EarningsService.formatCurrency(amount, currency: _currency)}',
+                          amount:
+                              '+${EarningsService.formatCurrency(amount, currency: _currency)}',
                           isCompleted:
                               status == 'confirmed' || status == 'paid',
-                          statusText: status == 'pending'
-                              ? 'Pending'
-                              : 'Completed',
-                          avatarUrl:
-                              player['avatar'] ??
+                          statusText:
+                              status == 'pending' ? 'Pending' : 'Completed',
+                          avatarUrl: player['avatar'] ??
                               'https://ui-avatars.com/api/?name=${Uri.encodeComponent(playerName)}&background=EBF4FF&color=7F9CF5',
                         );
                       }),
@@ -664,9 +667,8 @@ class _EarningHistoryScreenState extends State<EarningHistoryScreen> {
     }
 
     // Get values from API data and convert to double
-    final values = _periodData
-        .map((e) => ((e['total'] ?? 0).toDouble()) / 100)
-        .toList();
+    final values =
+        _periodData.map((e) => ((e['total'] ?? 0).toDouble()) / 100).toList();
 
     return List.generate(values.length, (index) {
       // Highlight the last bar

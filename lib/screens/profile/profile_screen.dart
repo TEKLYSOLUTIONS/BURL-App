@@ -212,6 +212,13 @@ class ProfileScreen extends ConsumerWidget {
                       if (context.mounted) context.go('/welcome');
                     },
                   ),
+                  const SizedBox(height: 12),
+                  _ProfileMenuItem(
+                    icon: Icons.delete_forever,
+                    label: 'Delete Account',
+                    color: AppPalette.error,
+                    onTap: () => _showDeleteConfirmation(context),
+                  ),
                 ],
               ),
             ).animate().fadeIn(delay: 300.ms).slideY(begin: 0.1),
@@ -220,6 +227,76 @@ class ProfileScreen extends ConsumerWidget {
           ],
         ),
       ),
+    );
+  }
+
+  Future<void> _showDeleteConfirmation(BuildContext context) async {
+    return showDialog(
+      context: context,
+      builder: (context) {
+        bool isLoading = false;
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              titlePadding: const EdgeInsets.fromLTRB(24, 16, 8, 0),
+              title: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text('Delete Account',
+                      style: TextStyle(color: AppPalette.error)),
+                  IconButton(
+                    icon: const Icon(Icons.close, color: Colors.grey),
+                    onPressed:
+                        isLoading ? null : () => Navigator.of(context).pop(),
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                  ),
+                ],
+              ),
+              content: const Text(
+                'Are you sure you want to permanently delete your account? This action cannot be undone and you will lose all your data.',
+              ),
+              actions: [
+                ElevatedButton(
+                  onPressed: isLoading
+                      ? null
+                      : () async {
+                          setState(() => isLoading = true);
+                          final success = await AuthService.deleteAccount();
+                          setState(() => isLoading = false);
+
+                          if (context.mounted) {
+                            if (success) {
+                              Navigator.of(context).pop(); // Close dialog
+                              context.go('/welcome'); // Redirect
+                            } else {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                    content: Text(
+                                        'Failed to delete account. Please try again later.')),
+                              );
+                            }
+                          }
+                        },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppPalette.error,
+                    foregroundColor: Colors.white,
+                  ),
+                  child: isLoading
+                      ? const SizedBox(
+                          height: 16,
+                          width: 16,
+                          child: CircularProgressIndicator(
+                              color: Colors.white, strokeWidth: 2),
+                        )
+                      : const Text('Delete',
+                          style: TextStyle(fontWeight: FontWeight.bold)),
+                ),
+              ],
+            );
+          },
+        );
+      },
     );
   }
 
@@ -323,7 +400,18 @@ class ProfileScreen extends ConsumerWidget {
           borderRadius: BorderRadius.circular(16),
           border: isSelected
               ? Border.all(color: Colors.orange, width: 2)
-              : Border.all(color: AppPalette.divider.withValues(alpha: 0.5)),
+              : Border.all(
+                  color: Theme.of(context).dividerColor.withValues(alpha: 0.1),
+                  width: 1,
+                ),
+          boxShadow: [
+            if (!isSelected)
+              BoxShadow(
+                color: Theme.of(context).shadowColor.withValues(alpha: 0.05),
+                blurRadius: 5,
+                offset: const Offset(0, 2),
+              ),
+          ],
         ),
         child: Row(
           children: [
@@ -332,9 +420,7 @@ class ProfileScreen extends ConsumerWidget {
               decoration: BoxDecoration(
                 color: isSelected
                     ? Colors.orange
-                    : Theme.of(
-                        context,
-                      ).colorScheme.primary.withValues(alpha: 0.1),
+                    : Theme.of(context).disabledColor.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
               child: Icon(

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../config/palette.dart';
+
 class ModernDurationSelector<T> extends StatelessWidget {
   final T? selectedValue;
   final List<T> options;
@@ -32,33 +34,23 @@ class ModernDurationSelector<T> extends StatelessWidget {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
               decoration: BoxDecoration(
-                color: isSelected
-                    ? Theme.of(context).colorScheme.secondary
-                    : Colors.white,
+                color: Theme.of(context).cardColor,
                 borderRadius: BorderRadius.circular(24),
                 border: Border.all(
                   color: isSelected
-                      ? Theme.of(context).colorScheme.secondary
-                      : Colors.grey.withValues(alpha: 0.3),
+                      ? AppPalette.orangeAccent
+                      : Theme.of(context).dividerColor.withValues(alpha: 0.2),
                 ),
-                boxShadow: isSelected
-                    ? [
-                        BoxShadow(
-                          color: Theme.of(
-                            context,
-                          ).colorScheme.secondary.withValues(alpha: 0.3),
-                          blurRadius: 8,
-                          offset: const Offset(0, 4),
-                        ),
-                      ]
-                    : [],
               ),
               child: Text(
                 labelBuilder(option),
                 style: GoogleFonts.inter(
                   color: isSelected
-                      ? Theme.of(context).colorScheme.onSecondary
-                      : Colors.black87,
+                      ? AppPalette.orangeAccent
+                      : Theme.of(context)
+                          .colorScheme
+                          .onSurface
+                          .withValues(alpha: 0.5),
                   fontWeight: FontWeight.w600,
                   fontSize: 14,
                 ),
@@ -72,14 +64,16 @@ class ModernDurationSelector<T> extends StatelessWidget {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: Theme.of(context).cardColor,
                 borderRadius: BorderRadius.circular(24),
-                border: Border.all(color: Colors.grey.withValues(alpha: 0.3)),
+                border: Border.all(
+                    color:
+                        Theme.of(context).dividerColor.withValues(alpha: 0.2)),
               ),
               child: Text(
                 customLabel!,
                 style: GoogleFonts.inter(
-                  color: Colors.black87,
+                  color: Theme.of(context).colorScheme.onSurface,
                   fontWeight: FontWeight.w600,
                   fontSize: 14,
                 ),

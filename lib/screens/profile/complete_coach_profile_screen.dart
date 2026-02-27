@@ -1,10 +1,12 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 
 import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:geocoding/geocoding.dart';
 import '../../config/palette.dart';
 import '../../services/profile_service.dart';
 import '../../services/auth_service.dart';
@@ -59,6 +61,7 @@ class _CompleteCoachProfileScreenState
 
   bool _isLoading = false;
   bool _isSaving = false;
+  bool _isDetectingLocation = false;
   String? _profileImageUrl;
   String? _userId;
   String? _country; // Store country extracted from location
@@ -123,8 +126,81 @@ class _CompleteCoachProfileScreenState
     super.initState();
     if (widget.profileData != null) {
       _initializeWithData(widget.profileData!);
+      // Auto-detect only if no country saved
+      if (_country == null || _country!.isEmpty) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _autoDetectLocation();
+        });
+      }
     } else {
       _fetchAndInitialize();
+    }
+  }
+
+  /// Requests GPS permission, gets current coordinates, then reverse-geocodes
+  /// to obtain city and country. Fills [_cityController] and updates [_country]/[_userCurrency].
+  Future<void> _autoDetectLocation() async {
+    if (!mounted) return;
+    setState(() => _isDetectingLocation = true);
+    try {
+      // Check if location services are enabled
+      final serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        if (mounted) setState(() => _isDetectingLocation = false);
+        return;
+      }
+
+      // Request permission
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied ||
+            permission == LocationPermission.deniedForever) {
+          if (mounted) setState(() => _isDetectingLocation = false);
+          return;
+        }
+      }
+      if (permission == LocationPermission.deniedForever) {
+        if (mounted) setState(() => _isDetectingLocation = false);
+        return;
+      }
+
+      // Get position
+      final position = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.low,
+          timeLimit: Duration(seconds: 10),
+        ),
+      );
+
+      // Reverse geocode
+      final placemarks = await placemarkFromCoordinates(
+        position.latitude,
+        position.longitude,
+      );
+
+      if (placemarks.isNotEmpty && mounted) {
+        final placemark = placemarks.first;
+        // Pick city: prefer locality â†’ subAdminArea â†’ adminArea
+        final city = (placemark.locality?.isNotEmpty == true
+                ? placemark.locality
+                : placemark.subAdministrativeArea?.isNotEmpty == true
+                    ? placemark.subAdministrativeArea
+                    : placemark.administrativeArea) ??
+            '';
+        final country = placemark.country ?? '';
+        setState(() {
+          if (city.isNotEmpty) _cityController.text = city;
+          if (country.isNotEmpty) {
+            _country = country;
+            _userCurrency = CurrencyHelper.getCurrencyFromLocation(country);
+          }
+        });
+      }
+    } catch (e) {
+      debugPrint('geolocation error: $e');
+    } finally {
+      if (mounted) setState(() => _isDetectingLocation = false);
     }
   }
 
@@ -144,12 +220,13 @@ class _CompleteCoachProfileScreenState
       final coachProfile = data['coachProfile'];
 
       _cityController.text = coachProfile['city'] ?? '';
-      
+
       // Extract country and currency from location
       final city = coachProfile['city'] ?? '';
       _country = coachProfile['country'] ?? CurrencyHelper.extractCountry(city);
-      _userCurrency = coachProfile['currency'] ?? CurrencyHelper.getCurrencyFromLocation(city);
-      
+      _userCurrency = coachProfile['currency'] ??
+          CurrencyHelper.getCurrencyFromLocation(city);
+
       _coachTitleController.text = coachProfile['coachTitle'] ?? '';
       _bioController.text = coachProfile['aboutMe'] ?? '';
       _experienceController.text =
@@ -163,32 +240,27 @@ class _CompleteCoachProfileScreenState
       _primarySpecialization = coachProfile['primarySpecialization'];
 
       // Safely convert arrays to List<String>
-      _selectedSpecialties =
-          (coachProfile['specialties'] as List<dynamic>?)
+      _selectedSpecialties = (coachProfile['specialties'] as List<dynamic>?)
               ?.map((e) => e.toString())
               .toList() ??
           [];
 
-      _certifications =
-          (coachProfile['certifications'] as List<dynamic>?)
+      _certifications = (coachProfile['certifications'] as List<dynamic>?)
               ?.map((e) => e.toString())
               .toList() ??
           [];
 
-      _achievements =
-          (coachProfile['notableAchievements'] as List<dynamic>?)
+      _achievements = (coachProfile['notableAchievements'] as List<dynamic>?)
               ?.map((e) => e.toString())
               .toList() ??
           [];
 
-      _ageGroups =
-          (coachProfile['ageGroupsCoached'] as List<dynamic>?)
+      _ageGroups = (coachProfile['ageGroupsCoached'] as List<dynamic>?)
               ?.map((e) => e.toString())
               .toList() ??
           [];
 
-      _sessionTypes =
-          (coachProfile['sessionTypesOffered'] as List<dynamic>?)
+      _sessionTypes = (coachProfile['sessionTypesOffered'] as List<dynamic>?)
               ?.map((e) => e.toString())
               .toList() ??
           [];
@@ -202,6 +274,10 @@ class _CompleteCoachProfileScreenState
       final profile = await ProfileService.getProfile();
       _initializeWithData(profile);
       setState(() => _isLoading = false);
+      // Auto-detect country if none was saved
+      if (_country == null || _country!.isEmpty) {
+        _autoDetectLocation();
+      }
     } catch (e) {
       setState(() => _isLoading = false);
       if (mounted) {
@@ -342,16 +418,21 @@ class _CompleteCoachProfileScreenState
       setState(() {
         _isSaving = false;
       });
-      
+
       if (mounted) {
         String errorMessage = 'Error uploading photo.';
         final errStr = e.toString().toLowerCase();
-        if (errStr.contains('object-not-found') || errStr.contains('not-found')) {
-          errorMessage = 'Storage path not found. Please check Firebase Storage is enabled.';
-        } else if (errStr.contains('unauthorized') || errStr.contains('permission')) {
-          errorMessage = 'Permission denied. Please check Firebase Storage rules.';
+        if (errStr.contains('object-not-found') ||
+            errStr.contains('not-found')) {
+          errorMessage =
+              'Storage path not found. Please check Firebase Storage is enabled.';
+        } else if (errStr.contains('unauthorized') ||
+            errStr.contains('permission')) {
+          errorMessage =
+              'Permission denied. Please check Firebase Storage rules.';
         } else if (errStr.contains('network') || errStr.contains('socket')) {
-          errorMessage = 'Network error. Please check your connection and try again.';
+          errorMessage =
+              'Network error. Please check your connection and try again.';
         } else {
           errorMessage = 'Upload failed: ${e.toString()}';
         }
@@ -369,7 +450,7 @@ class _CompleteCoachProfileScreenState
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    
+
     if (_isLoading) {
       return Scaffold(
         backgroundColor: theme.scaffoldBackgroundColor,
@@ -414,9 +495,10 @@ class _CompleteCoachProfileScreenState
               CircleAvatar(
                 radius: 50,
                 backgroundColor: theme.colorScheme.primary,
-                backgroundImage: _profileImageUrl != null && _profileImageUrl!.isNotEmpty
-                    ? NetworkImage(_profileImageUrl!)
-                    : null,
+                backgroundImage:
+                    _profileImageUrl != null && _profileImageUrl!.isNotEmpty
+                        ? NetworkImage(_profileImageUrl!)
+                        : null,
                 child: _profileImageUrl == null || _profileImageUrl!.isEmpty
                     ? const Icon(Icons.person, size: 50, color: Colors.white)
                     : null,
@@ -473,35 +555,37 @@ class _CompleteCoachProfileScreenState
   }) {
     final theme = Theme.of(context);
     final isDark = ref.watch(themeProvider) == ThemeMode.dark;
-    
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          children: [
-            Flexible(
-              child: Text(
-                label,
-                style: GoogleFonts.inter(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: theme.textTheme.bodyLarge?.color,
+        if (label.isNotEmpty) ...[
+          Row(
+            children: [
+              Flexible(
+                child: Text(
+                  label,
+                  style: GoogleFonts.inter(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: theme.textTheme.bodyLarge?.color,
+                  ),
                 ),
               ),
-            ),
-            if (isOptional) ...[
-              const SizedBox(width: 4),
-              Text(
-                '(Optional)',
-                style: GoogleFonts.inter(
-                  fontSize: 12,
-                  color: theme.textTheme.bodySmall?.color,
+              if (isOptional) ...[
+                const SizedBox(width: 4),
+                Text(
+                  '(Optional)',
+                  style: GoogleFonts.inter(
+                    fontSize: 12,
+                    color: theme.textTheme.bodySmall?.color,
+                  ),
                 ),
-              ),
+              ],
             ],
-          ],
-        ),
-        const SizedBox(height: 8),
+          ),
+          const SizedBox(height: 8),
+        ],
         TextFormField(
           controller: controller,
           maxLines: maxLines,
@@ -513,10 +597,12 @@ class _CompleteCoachProfileScreenState
           style: TextStyle(color: theme.textTheme.bodyLarge?.color),
           decoration: InputDecoration(
             hintText: hint,
-            hintStyle: TextStyle(color: theme.textTheme.bodySmall?.color),
+            hintStyle: TextStyle(
+              color: isDark ? Colors.grey[500] : Colors.grey[400],
+            ),
             prefixIcon: Icon(icon, color: theme.colorScheme.primary),
             filled: true,
-            fillColor: isDark 
+            fillColor: isDark
                 ? Colors.white.withValues(alpha: 0.05)
                 : Colors.grey[100],
             border: OutlineInputBorder(
@@ -549,7 +635,7 @@ class _CompleteCoachProfileScreenState
   }) {
     final theme = Theme.of(context);
     final isDark = ref.watch(themeProvider) == ThemeMode.dark;
-    
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -562,31 +648,52 @@ class _CompleteCoachProfileScreenState
           ),
         ),
         const SizedBox(height: 8),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          decoration: BoxDecoration(
-            color: isDark 
-                ? Colors.white.withValues(alpha: 0.05)
-                : Colors.grey[100],
+        PopupMenuButton<String>(
+          initialValue: value,
+          onSelected: onChanged,
+          position: PopupMenuPosition.under,
+          color: isDark ? const Color(0xFF1E293B) : Colors.white,
+          shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
-          child: DropdownButtonHideUnderline(
-            child: DropdownButton<String>(
-              value: value,
-              isExpanded: true,
-              icon: Icon(Icons.keyboard_arrow_down, color: AppPalette.orangeAccent),
-              hint: Text('Select...', style: TextStyle(color: theme.textTheme.bodySmall?.color)),
-              dropdownColor: theme.cardColor,
-              items: items.map((String item) {
-                return DropdownMenuItem<String>(
-                  value: item,
-                  child: Text(
-                    item.toUpperCase(), 
-                    style: GoogleFonts.inter(color: theme.textTheme.bodyLarge?.color),
-                  ),
-                );
-              }).toList(),
-              onChanged: onChanged,
+          elevation: 8,
+          constraints: BoxConstraints(
+            minWidth: MediaQuery.of(context).size.width - 48,
+            maxWidth: MediaQuery.of(context).size.width - 48,
+          ),
+          itemBuilder: (context) => items.map((String item) {
+            return PopupMenuItem<String>(
+              value: item,
+              child: Text(
+                item.toUpperCase(),
+                style: GoogleFonts.inter(
+                  color: theme.textTheme.bodyLarge?.color,
+                ),
+              ),
+            );
+          }).toList(),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+            decoration: BoxDecoration(
+              color: isDark
+                  ? Colors.white.withValues(alpha: 0.05)
+                  : Colors.grey[100],
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  value != null ? value.toUpperCase() : 'Select...',
+                  style: value != null
+                      ? GoogleFonts.inter(
+                          color: theme.textTheme.bodyLarge?.color)
+                      : TextStyle(
+                          color: isDark ? Colors.grey[500] : Colors.grey[400],
+                        ),
+                ),
+                Icon(Icons.keyboard_arrow_down, color: AppPalette.orangeAccent),
+              ],
             ),
           ),
         ),
@@ -602,7 +709,7 @@ class _CompleteCoachProfileScreenState
   }) {
     final theme = Theme.of(context);
     final isDark = ref.watch(themeProvider) == ThemeMode.dark;
-    
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -638,14 +745,14 @@ class _CompleteCoachProfileScreenState
                 decoration: BoxDecoration(
                   color: isSelected
                       ? AppPalette.orangeAccent.withValues(alpha: 0.1)
-                      : isDark 
+                      : isDark
                           ? Colors.white.withValues(alpha: 0.05)
                           : Colors.white,
                   borderRadius: BorderRadius.circular(24),
                   border: Border.all(
-                    color: isSelected 
-                        ? AppPalette.orangeAccent 
-                        : isDark 
+                    color: isSelected
+                        ? AppPalette.orangeAccent
+                        : isDark
                             ? Colors.white.withValues(alpha: 0.2)
                             : Colors.grey[300]!,
                     width: 1.5,
@@ -659,15 +766,11 @@ class _CompleteCoachProfileScreenState
                       style: GoogleFonts.inter(
                         fontSize: 14,
                         fontWeight: FontWeight.w500,
-                        color: isSelected 
-                            ? AppPalette.orangeAccent 
+                        color: isSelected
+                            ? AppPalette.orangeAccent
                             : theme.textTheme.bodyLarge?.color,
                       ),
                     ),
-                    if (isSelected) ...[
-                      const SizedBox(width: 6),
-                      Icon(Icons.check, size: 16, color: AppPalette.orangeAccent),
-                    ],
                   ],
                 ),
               ),
@@ -678,13 +781,23 @@ class _CompleteCoachProfileScreenState
     );
   }
 
-  Widget _buildListField({
+  Widget _buildScrollableBoxField({
     required String label,
     required List<String> items,
-    required VoidCallback onAdd,
-    required void Function(int) onRemove,
     required String hint,
+    required String dialogTitle,
+    required String dialogHint,
+    required IconData icon,
+    required Color accentColor,
   }) {
+    final theme = Theme.of(context);
+    final isDark = ref.watch(themeProvider) == ThemeMode.dark;
+    // Each card: 56px + 6px bottom margin = 62px total per item
+    const double cardHeight = 56;
+    const double cardMargin = 6;
+    const double itemHeight = cardHeight + cardMargin;
+    const int maxVisible = 3;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -696,15 +809,29 @@ class _CompleteCoachProfileScreenState
               style: GoogleFonts.inter(
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
-                color: AppPalette.textPrimaryLight,
+                color: theme.textTheme.bodyLarge?.color,
               ),
             ),
-            TextButton.icon(
-              onPressed: onAdd,
-              icon: const Icon(Icons.add, size: 18, color: Colors.orange),
-              label: const Text('Add'),
-              style: TextButton.styleFrom(
-                foregroundColor: AppPalette.navyPrimary,
+            GestureDetector(
+              onTap: () => _showAddDialog(
+                dialogTitle,
+                dialogHint,
+                (value) => setState(() => items.add(value)),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.add_circle_outline,
+                      size: 16, color: AppPalette.orangeAccent),
+                  const SizedBox(width: 4),
+                  Text(
+                    'Add',
+                    style: GoogleFonts.inter(
+                      fontSize: 12,
+                      color: AppPalette.orangeAccent,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
               ),
             ),
           ],
@@ -712,45 +839,88 @@ class _CompleteCoachProfileScreenState
         const SizedBox(height: 8),
         if (items.isEmpty)
           Container(
-            padding: const EdgeInsets.all(16),
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             decoration: BoxDecoration(
-              color: Colors.grey[100],
+              color: isDark
+                  ? Colors.white.withValues(alpha: 0.05)
+                  : Colors.grey[100],
               borderRadius: BorderRadius.circular(12),
             ),
-            child: Center(
-              child: Text(
-                hint,
-                style: GoogleFonts.inter(color: Colors.grey[600]),
+            child: Text(
+              hint,
+              style: GoogleFonts.inter(
+                color: isDark ? Colors.grey[500] : Colors.grey[400],
+                fontSize: 14,
               ),
             ),
           )
         else
-          ...items.asMap().entries.map((entry) {
-            return Container(
-              margin: const EdgeInsets.only(bottom: 8),
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.grey[100],
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(entry.value, style: GoogleFonts.inter()),
-                  ),
-                  IconButton(
-                    icon: const Icon(
-                      Icons.close,
-                      size: 20,
-                      color: Colors.orange,
+          ConstrainedBox(
+            constraints: BoxConstraints(
+              maxHeight: items.length <= maxVisible
+                  ? items.length * itemHeight
+                  : maxVisible * itemHeight,
+            ),
+            child: ListView.builder(
+              shrinkWrap: true,
+              physics: items.length > maxVisible
+                  ? const BouncingScrollPhysics()
+                  : const NeverScrollableScrollPhysics(),
+              itemCount: items.length,
+              itemBuilder: (context, index) {
+                return Container(
+                  margin: const EdgeInsets.only(bottom: cardMargin),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: isDark
+                        ? Colors.white.withValues(alpha: 0.05)
+                        : Colors.grey[100],
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: accentColor.withValues(alpha: 0.25),
+                      width: 1,
                     ),
-                    onPressed: () => onRemove(entry.key),
-                    color: Colors.red,
                   ),
-                ],
+                  child: Row(
+                    children: [
+                      Icon(icon, size: 16, color: accentColor),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          items[index],
+                          style: GoogleFonts.inter(
+                            fontSize: 14,
+                            color: theme.textTheme.bodyLarge?.color,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 1,
+                        ),
+                      ),
+                      GestureDetector(
+                        onTap: () => setState(() => items.removeAt(index)),
+                        child:
+                            Icon(Icons.close, size: 18, color: Colors.red[300]),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ),
+        if (items.length > maxVisible)
+          Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: Text(
+              '${items.length - maxVisible} more — scroll to see all',
+              style: GoogleFonts.inter(
+                fontSize: 11,
+                color: theme.textTheme.bodySmall?.color,
+                fontStyle: FontStyle.italic,
               ),
-            );
-          }),
+            ),
+          ),
       ],
     );
   }
@@ -781,46 +951,61 @@ class _CompleteCoachProfileScreenState
     _removeOverlay();
 
     _overlayEntry = OverlayEntry(
-      builder: (context) => Positioned(
-        width: MediaQuery.of(context).size.width - 48, // 24 padding each side
-        child: CompositedTransformFollower(
-          link: _layerLink,
-          showWhenUnlinked: false,
-          offset: const Offset(
-            0,
-            60,
-          ), // Adjust offset based on text field height
-          child: Material(
-            elevation: 4,
-            borderRadius: BorderRadius.circular(12),
-            color: Colors.white,
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxHeight: 200),
-              child: ListView.separated(
-                padding: EdgeInsets.zero,
-                shrinkWrap: true,
-                itemCount: _predictions.length,
-                separatorBuilder: (context, index) => const Divider(height: 1),
-                itemBuilder: (context, index) {
-                  final p = _predictions[index];
-                  return ListTile(
-                    dense: true,
-                    title: Text(
-                      p.mainText,
-                      style: GoogleFonts.inter(fontWeight: FontWeight.w600),
-                    ),
-                    subtitle: Text(
-                      p.secondaryText,
-                      style: GoogleFonts.inter(fontSize: 12),
-                    ),
-                    onTap: () => _onPredictionSelected(p),
-                  );
-                },
+      builder: (context) {
+        final theme = Theme.of(context);
+        final isDark = theme.brightness == Brightness.dark;
+
+        return Positioned(
+          width: MediaQuery.of(context).size.width - 48, // 24 padding each side
+          child: CompositedTransformFollower(
+            link: _layerLink,
+            showWhenUnlinked: false,
+            offset: const Offset(
+              0,
+              60,
+            ), // Adjust offset based on text field height
+            child: Material(
+              elevation: 8,
+              borderRadius: BorderRadius.circular(12),
+              color: isDark ? const Color(0xFF1E293B) : Colors.white,
+              clipBehavior: Clip.antiAlias,
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxHeight: 250),
+                child: ListView.separated(
+                  padding: EdgeInsets.zero,
+                  shrinkWrap: true,
+                  itemCount: _predictions.length,
+                  separatorBuilder: (context, index) => Divider(
+                    height: 1,
+                    color: isDark ? Colors.white24 : Colors.grey[200],
+                  ),
+                  itemBuilder: (context, index) {
+                    final p = _predictions[index];
+                    return ListTile(
+                      dense: true,
+                      title: Text(
+                        p.mainText,
+                        style: GoogleFonts.inter(
+                          fontWeight: FontWeight.w600,
+                          color: theme.textTheme.bodyLarge?.color,
+                        ),
+                      ),
+                      subtitle: Text(
+                        p.secondaryText,
+                        style: GoogleFonts.inter(
+                          fontSize: 12,
+                          color: theme.textTheme.bodySmall?.color,
+                        ),
+                      ),
+                      onTap: () => _onPredictionSelected(p),
+                    );
+                  },
+                ),
               ),
             ),
           ),
-        ),
-      ),
+        );
+      },
     );
 
     Overlay.of(context).insert(_overlayEntry!);
@@ -834,13 +1019,14 @@ class _CompleteCoachProfileScreenState
   void _onPredictionSelected(PlacePrediction prediction) {
     _removeOverlay();
     _cityController.text = prediction.description;
-    
+
     // Extract country and currency from selected location
     setState(() {
       _country = CurrencyHelper.extractCountry(prediction.description);
-      _userCurrency = CurrencyHelper.getCurrencyFromLocation(prediction.description);
+      _userCurrency =
+          CurrencyHelper.getCurrencyFromLocation(prediction.description);
     });
-    
+
     _cityFocus.unfocus();
   }
 
@@ -925,17 +1111,63 @@ class _CompleteCoachProfileScreenState
                     value?.isEmpty ?? true ? 'Phone is required' : null,
               ),
               const SizedBox(height: 16),
-              CompositedTransformTarget(
-                link: _layerLink,
-                child: _buildTextField(
-                  controller: _cityController,
-                  label: 'City/Location',
-                  hint: 'Search for your city...',
-                  icon: Icons.location_on_outlined,
-                  isOptional: true,
-                  focusNode: _cityFocus,
-                  onChanged: _onSearchChanged,
-                ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'City/Location *',
+                        style: GoogleFonts.inter(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: Theme.of(context).textTheme.bodyLarge?.color,
+                        ),
+                      ),
+                      if (_isDetectingLocation)
+                        const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      else
+                        GestureDetector(
+                          onTap: _autoDetectLocation,
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.my_location,
+                                size: 16,
+                                color: AppPalette.orangeAccent,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                'Detect',
+                                style: GoogleFonts.inter(
+                                  fontSize: 12,
+                                  color: AppPalette.orangeAccent,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  CompositedTransformTarget(
+                    link: _layerLink,
+                    child: _buildTextField(
+                      controller: _cityController,
+                      label: '',
+                      hint: 'Search for your city...',
+                      icon: Icons.location_on_outlined,
+                      focusNode: _cityFocus,
+                      onChanged: _onSearchChanged,
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
@@ -1038,31 +1270,24 @@ class _CompleteCoachProfileScreenState
                     setState(() => _sessionTypes = selected),
               ),
               const SizedBox(height: 16),
-
-              _buildListField(
+              _buildScrollableBoxField(
                 label: 'Certifications',
                 items: _certifications,
-                onAdd: () => _showAddDialog(
-                  'Add Certification',
-                  'E.g., ICC Level 2, ECB Level 3',
-                  (value) => setState(() => _certifications.add(value)),
-                ),
-                onRemove: (index) =>
-                    setState(() => _certifications.removeAt(index)),
                 hint: 'Add your coaching certifications',
+                dialogTitle: 'Add Certification',
+                dialogHint: 'E.g., ICC Level 2, ECB Level 3',
+                icon: Icons.workspace_premium,
+                accentColor: AppPalette.orangeAccent,
               ),
               const SizedBox(height: 16),
-              _buildListField(
+              _buildScrollableBoxField(
                 label: 'Notable Achievements',
                 items: _achievements,
-                onAdd: () => _showAddDialog(
-                  'Add Achievement',
-                  'E.g., Coached U19 State Team',
-                  (value) => setState(() => _achievements.add(value)),
-                ),
-                onRemove: (index) =>
-                    setState(() => _achievements.removeAt(index)),
                 hint: 'Add your coaching achievements',
+                dialogTitle: 'Add Achievement',
+                dialogHint: 'E.g., Coached U19 State Team',
+                icon: Icons.emoji_events_outlined,
+                accentColor: Colors.amber,
               ),
             ],
           ),

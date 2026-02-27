@@ -211,9 +211,8 @@ class _LoginScreenState extends State<LoginScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
-        backgroundColor: isError
-            ? AppPalette.errorRed
-            : AppPalette.successGreen,
+        backgroundColor:
+            isError ? AppPalette.errorRed : AppPalette.successGreen,
         behavior: SnackBarBehavior.floating,
         margin: const EdgeInsets.all(16),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -250,8 +249,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     'Log in to continue your cricket journey',
                     style: TextStyle(
                       fontSize: 16,
-                      color:
-                          Theme.of(context).textTheme.bodyMedium?.color ??
+                      color: Theme.of(context).textTheme.bodyMedium?.color ??
                           AppPalette.textSecondaryLight,
                     ),
                   ),
@@ -312,7 +310,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           fontSize: 14,
                           color:
                               Theme.of(context).textTheme.bodyMedium?.color ??
-                              AppPalette.textSecondaryLight,
+                                  AppPalette.textSecondaryLight,
                         ),
                       ),
                     ],
@@ -344,8 +342,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     child: Text(
                       'OR',
                       style: TextStyle(
-                        color:
-                            Theme.of(context).textTheme.bodyMedium?.color ??
+                        color: Theme.of(context).textTheme.bodyMedium?.color ??
                             AppPalette.textSecondaryLight,
                         fontSize: 14,
                         fontWeight: FontWeight.w500,
@@ -384,8 +381,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   Text(
                     "Don't have an account? ",
                     style: TextStyle(
-                      color:
-                          Theme.of(context).textTheme.bodyMedium?.color ??
+                      color: Theme.of(context).textTheme.bodyMedium?.color ??
                           AppPalette.textSecondaryLight,
                       fontSize: 14,
                     ),
