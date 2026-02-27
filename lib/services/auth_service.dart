@@ -143,4 +143,20 @@ class AuthService {
       rethrow;
     }
   }
+
+  static Future<bool> deleteAccount() async {
+    try {
+      final response = await ApiService.delete('users/me');
+
+      if (response.statusCode == 200) {
+        await signOutCompletely();
+        return true;
+      } else {
+        return false;
+      }
+    } catch (e) {
+      debugPrint('Delete account error: $e');
+      return false;
+    }
+  }
 }
