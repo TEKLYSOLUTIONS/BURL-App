@@ -106,11 +106,16 @@ class _GuardianEditProfileScreenState extends State<GuardianEditProfileScreen> {
     }
     _phoneController.text = phone;
 
-    _profileImageUrl =
-        data['profileUrl'] ?? data['profilePhoto'] ?? data['profileImage'];
+    final guardianProfile = data['guardianProfile'] as Map<String, dynamic>?;
+
+    _profileImageUrl = data['profileUrl'] ??
+        data['profilePhoto'] ??
+        data['profileImage'] ??
+        guardianProfile?['profilePhoto'] ??
+        guardianProfile?['profileImage'];
+
     _userId = data['_id'] ?? data['id'];
 
-    final guardianProfile = data['guardianProfile'] as Map<String, dynamic>?;
     if (guardianProfile != null) {
       _addressController.text = guardianProfile['address'] ?? '';
     }
@@ -234,6 +239,11 @@ class _GuardianEditProfileScreenState extends State<GuardianEditProfileScreen> {
   Future<void> _saveChanges() async {
     if (!_formKey.currentState!.validate()) return;
 
+    if (_addressController.text.trim().isEmpty) {
+      if (mounted) _showSnack('Home Address is required', isError: true);
+      return;
+    }
+
     setState(() => _isSaving = true);
     try {
       final String fullPhone =
@@ -293,7 +303,7 @@ class _GuardianEditProfileScreenState extends State<GuardianEditProfileScreen> {
         _isSaving = false;
       });
 
-      await ProfileService.updateProfile({'profileUrl': imageUrl});
+      await ProfileService.updateProfileImage(imageUrl);
 
       if (mounted) {
         _showSnack('Profile photo updated successfully!', isError: false);
@@ -565,9 +575,8 @@ class _GuardianEditProfileScreenState extends State<GuardianEditProfileScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          mainAxisAlignment: MainAxisAlignment.end,
           children: [
-            // Home Address label is already added above this widget
             // Add an auto-detect location button here
             TextButton.icon(
               onPressed: _isDetectingLocation ? null : _autoDetectLocation,
@@ -583,7 +592,7 @@ class _GuardianEditProfileScreenState extends State<GuardianEditProfileScreen> {
                   : const Icon(Icons.my_location,
                       size: 18, color: AppPalette.orangeAccent),
               label: Text(
-                'Auto-detect location',
+                'Detect',
                 style: GoogleFonts.inter(
                   color: AppPalette.orangeAccent,
                   fontSize: 13,
@@ -1138,8 +1147,11 @@ class _GuardianEditProfileScreenState extends State<GuardianEditProfileScreen> {
             ),
             decoration: InputDecoration(
               border: InputBorder.none,
+              isDense: true,
+              fillColor: Colors.transparent,
+              filled: true,
               contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
               prefixIcon: prefixWidget ??
                   (icon != null
                       ? Icon(

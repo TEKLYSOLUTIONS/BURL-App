@@ -80,7 +80,7 @@ class ProfileService {
   ) async {
     try {
       final response = await ApiService.put('users/profile', {
-        'profileImage': imageUrl,
+        'profilePhoto': imageUrl,
       });
 
       final data = json.decode(response.body);

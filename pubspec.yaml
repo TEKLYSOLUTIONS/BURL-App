@@ -80,5 +80,6 @@ dependency_overrides:
 flutter_launcher_icons:
   android: true
   ios: true
+  remove_alpha_ios: true
   image_path: "assets/images/burl_icon_app_front.jpeg"
   min_sdk_android: 21

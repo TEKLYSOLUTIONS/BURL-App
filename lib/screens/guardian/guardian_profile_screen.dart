@@ -6,6 +6,8 @@ import '../../config/palette.dart';
 import '../../widgets/notification_button.dart';
 import '../../services/profile_service.dart';
 import '../../services/auth_service.dart';
+import '../../services/storage_service.dart';
+import 'dart:io';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../providers/theme_provider.dart';
@@ -47,9 +49,97 @@ class _GuardianProfileScreenState extends ConsumerState<GuardianProfileScreen> {
         _isLoading = false;
       });
     } catch (e) {
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  void _showSnack(String message, {required bool isError}) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: isError ? AppPalette.error : AppPalette.success,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+    );
+  }
+
+  void _showImagePreview(String imageUrl) {
+    showDialog(
+      context: context,
+      barrierColor: Colors.black87,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: EdgeInsets.zero,
+        child: Stack(
+          fit: StackFit.loose,
+          alignment: Alignment.center,
+          children: [
+            InteractiveViewer(
+              panEnabled: true,
+              minScale: 0.5,
+              maxScale: 4.0,
+              child: Image.network(
+                imageUrl,
+                fit: BoxFit.contain,
+                loadingBuilder: (context, child, loadingProgress) {
+                  if (loadingProgress == null) return child;
+                  return const Center(
+                    child: CircularProgressIndicator(
+                      color: AppPalette.orangeAccent,
+                    ),
+                  );
+                },
+              ),
+            ),
+            Positioned(
+              top: 40,
+              right: 20,
+              child: IconButton(
+                icon: const Icon(Icons.close, color: Colors.white, size: 30),
+                onPressed: () => Navigator.of(context).pop(),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _changeProfilePhoto() async {
+    final userId = _userProfile?['_id'] ?? _userProfile?['id'];
+    if (userId == null) {
+      _showSnack('User ID not found. Please try again.', isError: true);
+      return;
+    }
+
+    try {
+      final pickedFile = await StorageService.showImageSourceSheet(context);
+      if (pickedFile == null) return;
+
+      setState(() => _isLoading = true);
+
+      final imageUrl = await StorageService.uploadProfilePicture(
+        userId: userId,
+        imageFile: File(pickedFile.path),
+      );
+
+      await ProfileService.updateProfileImage(imageUrl);
+
+      if (mounted) {
+        _showSnack('Profile photo updated successfully!', isError: false);
+        _fetchProfile(); // Refresh the profile from the server
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        _showSnack('Error uploading photo: $e', isError: true);
+      }
     }
   }
 
@@ -117,27 +207,57 @@ class _GuardianProfileScreenState extends ConsumerState<GuardianProfileScreen> {
                           color: AppPalette.orangeAccent,
                           shape: BoxShape.circle,
                         ),
-                        child: const CircleAvatar(
-                          radius: 35,
-                          backgroundColor: Colors.white,
-                          backgroundImage: NetworkImage(
-                            'https://i.pravatar.cc/150?u=sarah',
+                        child: GestureDetector(
+                          onTap: () {
+                            final photoUrl = _userProfile?['guardianProfile']
+                                ?['profilePhoto'];
+                            if (photoUrl != null &&
+                                photoUrl.toString().isNotEmpty) {
+                              _showImagePreview(photoUrl.toString());
+                            }
+                          },
+                          child: CircleAvatar(
+                            radius: 35,
+                            backgroundColor: Colors.grey[200],
+                            backgroundImage: (_userProfile?['guardianProfile']
+                                            ?['profilePhoto'] !=
+                                        null &&
+                                    _userProfile!['guardianProfile']
+                                            ['profilePhoto']
+                                        .toString()
+                                        .isNotEmpty)
+                                ? NetworkImage(_userProfile!['guardianProfile']
+                                    ['profilePhoto'])
+                                : null,
+                            child: (_userProfile?['guardianProfile']
+                                            ?['profilePhoto'] ==
+                                        null ||
+                                    _userProfile!['guardianProfile']
+                                            ['profilePhoto']
+                                        .toString()
+                                        .isEmpty)
+                                ? const Icon(Icons.person,
+                                    size: 40, color: Colors.grey)
+                                : null,
                           ),
                         ),
                       ),
                       Positioned(
                         bottom: 0,
                         right: 0,
-                        child: Container(
-                          padding: const EdgeInsets.all(4),
-                          decoration: const BoxDecoration(
-                            color: AppPalette.orangeAccent,
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(
-                            Icons.edit,
-                            color: Colors.white,
-                            size: 14,
+                        child: GestureDetector(
+                          onTap: () => _changeProfilePhoto(),
+                          child: Container(
+                            padding: const EdgeInsets.all(4),
+                            decoration: const BoxDecoration(
+                              color: AppPalette.orangeAccent,
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.edit,
+                              color: Colors.white,
+                              size: 14,
+                            ),
                           ),
                         ),
                       ),
