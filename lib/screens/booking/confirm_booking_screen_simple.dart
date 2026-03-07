@@ -120,14 +120,23 @@ class _ConfirmBookingScreenSimpleState
       if (!mounted) return;
 
       if (result['valid'] == true) {
+        final discountType = result['discountType'] as String? ?? 'fixed';
+        final discountValue = (result['discountValue'] as num?)?.toDouble() ?? 0.0;
+        double computedDiscount;
+        if (discountType == 'percentage') {
+          computedDiscount = _sessionFee * (discountValue / 100);
+        } else {
+          computedDiscount = discountValue;
+        }
+        computedDiscount = computedDiscount.clamp(0.0, _sessionFee);
         setState(() {
-          _appliedPromoCode = result['code'] ?? code.toUpperCase();
-          _discountAmount = (result['discount'] as num?)?.toDouble() ?? 0.0;
+          _appliedPromoCode = result['code'] as String? ?? code.toUpperCase();
+          _discountAmount = computedDiscount;
           _promoError = null;
         });
       } else {
         setState(() {
-          _promoError = result['message'] ?? 'Invalid promo code';
+          _promoError = result['message'] as String? ?? 'Invalid promo code';
           _appliedPromoCode = null;
           _discountAmount = 0.0;
         });

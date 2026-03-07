@@ -351,8 +351,6 @@ class _CompleteCoachProfileScreenState
         'city': _cityController.text.trim(),
         'country': _country,
         'currency': _userCurrency ?? CurrencyHelper.defaultCurrency,
-        'hourlyRate': 0, // Default to 0
-        'sessionDuration': 60, // Default to 60
         'coachTitle': _coachTitleController.text.trim(),
         'bio': _bioController.text.trim(),
         'experienceYears': int.tryParse(_experienceController.text) ?? 0,

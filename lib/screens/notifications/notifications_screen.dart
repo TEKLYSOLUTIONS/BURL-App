@@ -703,6 +703,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                                 }
                               };
                               context.push('/add-review', extra: sessionData);
+                            } else if (item.actionUrl == '/profile/edit' ||
+                                item.actionUrl == '/edit-profile') {
+                              _handleEditProfileNavigation(context);
                             } else {
                               context.push(item.actionUrl!);
                             }
@@ -740,5 +743,12 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> _handleEditProfileNavigation(BuildContext context) async {
+    if (context.mounted) {
+      // Don't pass profileData so EditProfileScreen fetches fresh data from the API
+      context.push('/edit-profile');
+    }
   }
 }

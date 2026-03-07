@@ -538,7 +538,7 @@ class _CoachProfileScreenState extends ConsumerState<CoachProfileScreen> {
                   OutlinedButton.icon(
                     onPressed: () async {
                       await AuthService.signOutCompletely();
-                      if (context.mounted) context.go('/welcome');
+                      if (context.mounted) context.go('/login');
                     },
                     icon: const Icon(Icons.logout, color: Colors.red),
                     label: const Text('Log Out'),
@@ -879,18 +879,90 @@ class _CoachProfileScreenState extends ConsumerState<CoachProfileScreen> {
                       ? null
                       : () async {
                           setState(() => isLoading = true);
-                          final success = await AuthService.deleteAccount();
+                          final errorMsg = await AuthService.deleteAccount();
                           setState(() => isLoading = false);
 
                           if (context.mounted) {
-                            if (success) {
+                            if (errorMsg == null) {
                               Navigator.of(context).pop(); // Close dialog
-                              context.go('/welcome'); // Redirect
+                              showDialog(
+                                context: context,
+                                barrierDismissible: false,
+                                builder: (dialogContext) {
+                                  return AlertDialog(
+                                    backgroundColor:
+                                        Theme.of(dialogContext).cardColor,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(20),
+                                    ),
+                                    content: Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        const Icon(Icons.check_circle,
+                                            color: Colors.green, size: 64),
+                                        const SizedBox(height: 16),
+                                        Text(
+                                          'Account Deleted',
+                                          style: GoogleFonts.inter(
+                                            fontSize: 20,
+                                            fontWeight: FontWeight.bold,
+                                            color: Theme.of(dialogContext)
+                                                .colorScheme
+                                                .onSurface,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 8),
+                                        Text(
+                                          'Your account has been successfully deleted.',
+                                          textAlign: TextAlign.center,
+                                          style: GoogleFonts.inter(
+                                            fontSize: 14,
+                                            color: Theme.of(dialogContext)
+                                                .colorScheme
+                                                .onSurface
+                                                .withValues(alpha: 0.7),
+                                          ),
+                                        ),
+                                        const SizedBox(height: 24),
+                                        SizedBox(
+                                          width: double.infinity,
+                                          child: ElevatedButton(
+                                            onPressed: () {
+                                              context.go('/login');
+                                            },
+                                            style: ElevatedButton.styleFrom(
+                                              backgroundColor:
+                                                  AppPalette.orangeAccent,
+                                              foregroundColor: Colors.white,
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(12),
+                                              ),
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                      vertical: 16),
+                                            ),
+                                            child: Text(
+                                              'Go to Login',
+                                              style: GoogleFonts.inter(
+                                                fontSize: 16,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                },
+                              );
                             } else {
                               ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                    content: Text(
-                                        'Failed to delete account. Please try again later.')),
+                                SnackBar(
+                                  content: Text(errorMsg),
+                                  backgroundColor: Colors.red,
+                                  duration: const Duration(seconds: 6),
+                                ),
                               );
                             }
                           }

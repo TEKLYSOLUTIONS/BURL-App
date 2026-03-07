@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../config/palette.dart';
 
 class NotificationDetailScreen extends StatelessWidget {
@@ -201,7 +202,7 @@ class NotificationDetailScreen extends StatelessWidget {
                           SizedBox(
                             width: double.infinity,
                             child: ElevatedButton(
-                              onPressed: () {
+                              onPressed: () async {
                                 if (actionUrl != null) {
                                   if (actionUrl == '/add-review' &&
                                       metadata != null) {
@@ -213,10 +214,23 @@ class NotificationDetailScreen extends StatelessWidget {
                                         'fullName': metadata!['coachName'],
                                       }
                                     };
-                                    context.push('/add-review',
-                                        extra: sessionData);
+                                    if (context.mounted) {
+                                      context.push('/add-review',
+                                          extra: sessionData);
+                                    }
+                                  } else if (actionUrl == '/profile/edit' ||
+                                      actionUrl == '/edit-profile') {
+                                    final prefs =
+                                        await SharedPreferences.getInstance();
+                                    final role = prefs.getString('user_role');
+                                    if (context.mounted) {
+                                      context.push('/edit-profile',
+                                          extra: {'role': role});
+                                    }
                                   } else {
-                                    context.push(actionUrl!);
+                                    if (context.mounted) {
+                                      context.push(actionUrl!);
+                                    }
                                   }
                                 }
                               },

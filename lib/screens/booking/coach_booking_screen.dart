@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import '../../config/palette.dart';
 import '../../services/search_service.dart';
 import '../../services/profile_service.dart';
+import '../../widgets/navigation/role_based_bottom_nav_bar.dart';
 
 class CoachBookingScreen extends StatefulWidget {
   final String coachId;
@@ -14,6 +15,7 @@ class CoachBookingScreen extends StatefulWidget {
   final double hourlyRate;
   final int sessionDuration;
   final String cancellationPolicy;
+  final String currencySymbol;
 
   const CoachBookingScreen({
     super.key,
@@ -23,6 +25,7 @@ class CoachBookingScreen extends StatefulWidget {
     required this.hourlyRate,
     this.sessionDuration = 60,
     this.cancellationPolicy = 'flexible',
+    this.currencySymbol = '\$',
   });
 
   @override
@@ -57,8 +60,8 @@ class _CoachBookingScreenState extends State<CoachBookingScreen> {
       // Fetch for the current focused month
       // Start from first day of month
       final start = DateTime(_focusedDay.year, _focusedDay.month, 1);
-      // End at last day of month
-      final end = DateTime(_focusedDay.year, _focusedDay.month + 1, 0);
+      // End at last day of month (23:59:59 to include all slots on the final day)
+      final end = DateTime(_focusedDay.year, _focusedDay.month + 1, 0, 23, 59, 59);
 
       final data = await _searchService.getCoachAvailability(
         coachId: widget.coachId,
@@ -98,6 +101,7 @@ class _CoachBookingScreenState extends State<CoachBookingScreen> {
 
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      bottomNavigationBar: const RoleBasedBottomNavBar(),
       appBar: AppBar(
         title: Text(
           "Book Session",
@@ -366,7 +370,7 @@ class _CoachBookingScreenState extends State<CoachBookingScreen> {
                         ),
                       ),
                       Text(
-                        '\$ ${(widget.hourlyRate * (widget.sessionDuration / 60.0)).toStringAsFixed(0)}',
+                        '${widget.currencySymbol} ${(widget.hourlyRate * (widget.sessionDuration / 60.0)).toStringAsFixed(0)}',
                         style: GoogleFonts.inter(
                           fontWeight: FontWeight.bold,
                           fontSize: 24,
@@ -413,6 +417,7 @@ class _CoachBookingScreenState extends State<CoachBookingScreen> {
                                       (widget.sessionDuration / 60.0),
                                   'cancellationPolicy':
                                       widget.cancellationPolicy,
+                                  'currencySymbol': widget.currencySymbol,
                                 },
                               );
                             }

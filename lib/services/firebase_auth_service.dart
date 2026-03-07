@@ -139,9 +139,11 @@ class FirebaseAuthService {
             final data = jsonDecode(response.body);
             final role = data['user']?['role'] as String?;
             final name = data['user']?['fullName'] as String?;
+            final uid = (data['user']?['_id'] ?? data['user']?['id']) as String?;
             if (role != null) await prefs.setString('user_role', role);
             if (name != null) await prefs.setString('user_name', name);
-            debugPrint('💾 Role saved: $role');
+            if (uid != null) await prefs.setString('user_id', uid);
+            debugPrint('💾 Role saved: $role, ID saved: $uid');
           }
         } catch (_) {}
 
@@ -216,6 +218,24 @@ class FirebaseAuthService {
       if (token != null) {
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString('auth_token', token);
+
+        // Fetch profile to persist role, name, and user_id
+        try {
+          final response = await http.get(
+            Uri.parse('$baseUrl/users/profile'),
+            headers: {'Authorization': 'Bearer $token'},
+          );
+          if (response.statusCode == 200) {
+            final data = jsonDecode(response.body);
+            final role = data['user']?['role'] as String?;
+            final name = data['user']?['fullName'] as String?;
+            final uid = (data['user']?['_id'] ?? data['user']?['id']) as String?;
+            if (role != null) await prefs.setString('user_role', role);
+            if (name != null) await prefs.setString('user_name', name);
+            if (uid != null) await prefs.setString('user_id', uid);
+            debugPrint('💾 Google/Apple login — role: $role, ID: $uid');
+          }
+        } catch (_) {}
       }
 
       return userCredential;
@@ -249,6 +269,7 @@ class FirebaseAuthService {
       final oAuthProvider = OAuthProvider('apple.com');
       final credential = oAuthProvider.credential(
         idToken: appleCredential.identityToken,
+        accessToken: appleCredential.authorizationCode,
         rawNonce: rawNonce,
       );
 
@@ -285,6 +306,24 @@ class FirebaseAuthService {
       if (token != null) {
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString('auth_token', token);
+
+        // Fetch profile to persist role, name, and user_id
+        try {
+          final response = await http.get(
+            Uri.parse('$baseUrl/users/profile'),
+            headers: {'Authorization': 'Bearer $token'},
+          );
+          if (response.statusCode == 200) {
+            final data = jsonDecode(response.body);
+            final role = data['user']?['role'] as String?;
+            final name = data['user']?['fullName'] as String?;
+            final uid = (data['user']?['_id'] ?? data['user']?['id']) as String?;
+            if (role != null) await prefs.setString('user_role', role);
+            if (name != null) await prefs.setString('user_name', name);
+            if (uid != null) await prefs.setString('user_id', uid);
+            debugPrint('💾 Apple login — role: $role, ID: $uid');
+          }
+        } catch (_) {}
       }
 
       return userCredential;
@@ -333,6 +372,15 @@ class FirebaseAuthService {
 
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('auth_token');
+  }
+
+  // Delete the current Firebase user account
+  Future<void> deleteCurrentUser() async {
+    final user = _auth.currentUser;
+    if (user != null) {
+      await user.delete();
+      debugPrint('🗑️ Firebase account deleted for: ${user.email}');
+    }
   }
 
   // Reset password
@@ -392,6 +440,7 @@ class FirebaseAuthService {
           final dbUser = data['user'];
           final dbRole = dbUser['role'];
           final dbName = dbUser['fullName'];
+          final dbId = (dbUser['_id'] ?? dbUser['id']) as String?;
 
           if (dbRole != null) {
             final prefs = await SharedPreferences.getInstance();
@@ -399,7 +448,10 @@ class FirebaseAuthService {
             if (dbName != null) {
               await prefs.setString('user_name', dbName);
             }
-            debugPrint('💾 Updated local role to: $dbRole');
+            if (dbId != null) {
+              await prefs.setString('user_id', dbId);
+            }
+            debugPrint('💾 Updated local role to: $dbRole, ID: $dbId');
           }
         }
       } else {
@@ -481,7 +533,7 @@ class FirebaseAuthService {
           'type': 'profile_completion',
           'category': 'general',
           'priority': 'high',
-          'actionUrl': '/profile/edit',
+          'actionUrl': '/edit-profile',
           'icon': 'person',
         }),
       );

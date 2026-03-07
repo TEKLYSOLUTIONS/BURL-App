@@ -39,28 +39,34 @@ class _SplashScreenState extends State<SplashScreen>
 
     _controller.forward();
 
-    // Navigate after splash — check if already logged in
-    Future.delayed(const Duration(seconds: 3), () async {
-      if (!mounted) return;
-      final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString('auth_token');
-      final role = prefs.getString('user_role');
-      if (!mounted) return;
-      if (token != null && token.isNotEmpty && role != null) {
-        switch (role) {
-          case 'coach':
-            context.go('/coach/home');
-            break;
-          case 'guardian':
-            context.go('/guardian/home');
-            break;
-          default:
-            context.go('/player/home');
-        }
-      } else {
-        context.go('/welcome');
+    // Check auth status immediately without artificial delay
+    _checkAuth();
+  }
+
+  Future<void> _checkAuth() async {
+    // Wait for animation to finish and keep the splash screen visible a bit longer
+    await Future.delayed(const Duration(milliseconds: 3000));
+
+    if (!mounted) return;
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('auth_token');
+    final role = prefs.getString('user_role');
+
+    if (!mounted) return;
+    if (token != null && token.isNotEmpty && role != null) {
+      switch (role) {
+        case 'coach':
+          context.go('/coach/home');
+          break;
+        case 'guardian':
+          context.go('/guardian/home');
+          break;
+        default:
+          context.go('/player/home');
       }
-    });
+    } else {
+      context.go('/welcome');
+    }
   }
 
   @override
@@ -78,38 +84,49 @@ class _SplashScreenState extends State<SplashScreen>
         opacity: _fadeAnimation,
         child: ScaleTransition(
           scale: _scaleAnimation,
-          child: SizedBox.expand(
+          child: Container(
+            width: double.infinity,
+            height: double.infinity,
+            decoration: BoxDecoration(
+              color: Theme.of(context).scaffoldBackgroundColor,
+              gradient: Theme.of(context).brightness == Brightness.dark
+                  ? const RadialGradient(
+                      center: Alignment.center,
+                      radius: 1.5, // Spread the glow out smoother
+                      colors: [
+                        Color(
+                            0xFF2962FF), // Bright, vivid whitish-blue glow at the center
+                        Color(
+                            0xFF010613), // Deep, dark navy almost-black at the edges
+                      ],
+                    )
+                  : null,
+            ),
             child: Stack(
               fit: StackFit.expand,
               children: [
-                // Full Screen Background
-                DecoratedBox(
-                  decoration: BoxDecoration(
-                    image: DecorationImage(
-                      image: AssetImage(
-                        Theme.of(context).brightness == Brightness.dark
-                            ? 'assets/images/burl_splash_dark.png'
-                            : 'assets/images/burl_splash_light.png',
+                // Central Content: Logo and Spaced Loading Spinner
+                Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Image.asset(
+                        'assets/images/burl_splash_logo.png',
+                        width: 250, // Adjust width as necessary
                       ),
-                      fit: BoxFit.cover,
-                    ),
-                  ),
-                ),
-                // Loading Spinner at the bottom
-                Align(
-                  alignment: Alignment.bottomCenter,
-                  child: Padding(
-                    padding: const EdgeInsets.only(bottom: 60.0),
-                    child: SizedBox(
-                      width: 40,
-                      height: 40,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 3,
-                        valueColor: AlwaysStoppedAnimation<Color>(
-                          Theme.of(context).colorScheme.primary,
+                      const SizedBox(
+                          height: 40), // Space between logo and spinner
+                      SizedBox(
+                        width: 40,
+                        height: 40,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 3,
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            Theme.of(context).colorScheme.primary,
+                          ),
                         ),
                       ),
-                    ),
+                    ],
                   ),
                 ),
               ],

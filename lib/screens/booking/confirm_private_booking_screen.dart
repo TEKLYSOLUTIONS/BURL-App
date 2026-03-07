@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../config/palette.dart';
 import '../../services/booking_service.dart';
+import '../../widgets/navigation/role_based_bottom_nav_bar.dart';
 import '../../services/guardian_service.dart';
 
 class ConfirmPrivateBookingScreen extends StatefulWidget {
@@ -15,6 +16,7 @@ class ConfirmPrivateBookingScreen extends StatefulWidget {
   final int durationMinutes;
   final double price;
   final String cancellationPolicy;
+  final String currencySymbol;
 
   const ConfirmPrivateBookingScreen({
     super.key,
@@ -25,6 +27,7 @@ class ConfirmPrivateBookingScreen extends StatefulWidget {
     this.durationMinutes = 60,
     this.price = 60.0,
     this.cancellationPolicy = 'flexible',
+    this.currencySymbol = '\$',
   });
 
   @override
@@ -105,14 +108,23 @@ class _ConfirmPrivateBookingScreenState
       if (!mounted) return;
 
       if (result['valid'] == true) {
+        final discountType = result['discountType'] as String? ?? 'fixed';
+        final discountValue = (result['discountValue'] as num?)?.toDouble() ?? 0.0;
+        double computedDiscount;
+        if (discountType == 'percentage') {
+          computedDiscount = _sessionFee * (discountValue / 100);
+        } else {
+          computedDiscount = discountValue;
+        }
+        computedDiscount = computedDiscount.clamp(0.0, _sessionFee);
         setState(() {
-          _appliedPromoCode = result['code'] ?? code.toUpperCase();
-          _discountAmount = (result['discount'] as num?)?.toDouble() ?? 0.0;
+          _appliedPromoCode = result['code'] as String? ?? code.toUpperCase();
+          _discountAmount = computedDiscount;
           _promoError = null;
         });
       } else {
         setState(() {
-          _promoError = result['message'] ?? 'Invalid promo code';
+          _promoError = result['message'] as String? ?? 'Invalid promo code';
           _appliedPromoCode = null;
           _discountAmount = 0.0;
         });
@@ -212,22 +224,23 @@ class _ConfirmPrivateBookingScreenState
         : '${widget.durationMinutes}min';
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FE),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      bottomNavigationBar: const RoleBasedBottomNavBar(),
       appBar: AppBar(
         title: Text(
           'Confirm Booking',
           style: GoogleFonts.inter(
             fontWeight: FontWeight.bold,
-            color: AppPalette.navyPrimary,
+            color: Theme.of(context).colorScheme.onSurface,
             fontSize: 18,
           ),
         ),
-        backgroundColor: Colors.white,
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         elevation: 0,
         centerTitle: true,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new, size: 18),
-          color: AppPalette.navyPrimary,
+          color: Theme.of(context).colorScheme.onSurface,
           onPressed: () => context.pop(),
         ),
       ),
@@ -271,7 +284,7 @@ class _ConfirmPrivateBookingScreenState
                                   ),
                                 ),
                                 Text(
-                                  'You\'re saving \$${_discountAmount.toStringAsFixed(2)} on this session.',
+                                  'You\'re saving ${widget.currencySymbol}${_discountAmount.toStringAsFixed(2)} on this session.',
                                   style: GoogleFonts.inter(
                                     color: Colors.white.withValues(alpha: 0.9),
                                     fontSize: 12,
@@ -293,7 +306,7 @@ class _ConfirmPrivateBookingScreenState
                       fontSize: 11,
                       fontWeight: FontWeight.w700,
                       letterSpacing: 1.2,
-                      color: Colors.grey[600],
+                      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                     ),
                   ),
                   const SizedBox(height: 10),
@@ -312,7 +325,7 @@ class _ConfirmPrivateBookingScreenState
                         fontSize: 11,
                         fontWeight: FontWeight.w700,
                         letterSpacing: 1.2,
-                        color: Colors.grey[600],
+                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                       ),
                     ),
                     const SizedBox(height: 10),
@@ -327,7 +340,7 @@ class _ConfirmPrivateBookingScreenState
                       fontSize: 11,
                       fontWeight: FontWeight.w700,
                       letterSpacing: 1.2,
-                      color: Colors.grey[600],
+                      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                     ),
                   ),
                   const SizedBox(height: 10),
@@ -342,24 +355,24 @@ class _ConfirmPrivateBookingScreenState
                       fontSize: 11,
                       fontWeight: FontWeight.w700,
                       letterSpacing: 1.2,
-                      color: Colors.grey[600],
+                      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                     ),
                   ),
                   const SizedBox(height: 10),
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: Theme.of(context).cardColor,
                       borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: Colors.grey.shade200),
+                      border: Border.all(color: Theme.of(context).dividerColor),
                     ),
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Icon(
+                        Icon(
                           Icons.error_outline,
                           size: 18,
-                          color: Colors.black54,
+                          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
                         ),
                         const SizedBox(width: 12),
                         Expanded(
@@ -370,7 +383,7 @@ class _ConfirmPrivateBookingScreenState
                                     ? 'Moderate: Full refund up to 24 hours before.'
                                     : 'Strict: No refund within 48 hours.', // fallback
                             style: GoogleFonts.inter(
-                              color: Colors.black87,
+                              color: Theme.of(context).colorScheme.onSurface,
                               fontSize: 13,
                               height: 1.4,
                             ),
@@ -429,7 +442,7 @@ class _ConfirmPrivateBookingScreenState
                       fontSize: 11,
                       fontWeight: FontWeight.w700,
                       letterSpacing: 1.2,
-                      color: Colors.grey[600],
+                      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                     ),
                   ),
                   const SizedBox(height: 10),
@@ -468,7 +481,7 @@ class _ConfirmPrivateBookingScreenState
           Container(
             padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: Theme.of(context).cardColor,
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withValues(alpha: 0.05),
@@ -510,7 +523,7 @@ class _ConfirmPrivateBookingScreenState
                             ),
                           ),
                           Text(
-                            '\$ ${_totalAmount.toStringAsFixed(2)}',
+                            '${widget.currencySymbol} ${_totalAmount.toStringAsFixed(2)}',
                             style: GoogleFonts.inter(
                               fontSize: 16,
                               fontWeight: FontWeight.bold,
@@ -534,9 +547,9 @@ class _ConfirmPrivateBookingScreenState
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: Colors.grey.shade200),
+        border: Border.all(color: Theme.of(context).dividerColor),
       ),
       child: Column(
         children: [
@@ -545,7 +558,7 @@ class _ConfirmPrivateBookingScreenState
             children: [
               CircleAvatar(
                 radius: 26,
-                backgroundColor: AppPalette.navyPrimary.withValues(alpha: 0.1),
+                backgroundColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
                 backgroundImage: widget.coachImageUrl != null
                     ? NetworkImage(widget.coachImageUrl!)
                     : null,
@@ -557,7 +570,7 @@ class _ConfirmPrivateBookingScreenState
                         style: GoogleFonts.inter(
                           fontWeight: FontWeight.bold,
                           fontSize: 20,
-                          color: AppPalette.navyPrimary,
+                          color: Theme.of(context).colorScheme.onSurface,
                         ),
                       )
                     : null,
@@ -572,7 +585,7 @@ class _ConfirmPrivateBookingScreenState
                       style: GoogleFonts.inter(
                         fontWeight: FontWeight.bold,
                         fontSize: 17,
-                        color: AppPalette.navyPrimary,
+                        color: Theme.of(context).colorScheme.onSurface,
                       ),
                     ),
                     Text(
@@ -609,7 +622,7 @@ class _ConfirmPrivateBookingScreenState
 
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 16),
-            child: Divider(color: Colors.grey.shade200, height: 1),
+            child: Divider(color: Theme.of(context).dividerColor, height: 1),
           ),
 
           // Date & Time
@@ -661,7 +674,7 @@ class _ConfirmPrivateBookingScreenState
                 style: GoogleFonts.inter(
                   fontSize: 10,
                   fontWeight: FontWeight.w700,
-                  color: Colors.grey[500],
+                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.55),
                   letterSpacing: 0.8,
                 ),
               ),
@@ -670,7 +683,7 @@ class _ConfirmPrivateBookingScreenState
                 style: GoogleFonts.inter(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
-                  color: AppPalette.navyPrimary,
+                  color: Theme.of(context).colorScheme.onSurface,
                 ),
               ),
             ],
@@ -711,9 +724,9 @@ class _ConfirmPrivateBookingScreenState
 
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.grey.shade200),
+        border: Border.all(color: Theme.of(context).dividerColor),
       ),
       child: Column(
         children: _players.map((player) {
@@ -759,7 +772,7 @@ class _ConfirmPrivateBookingScreenState
                       style: GoogleFonts.inter(
                         fontWeight: FontWeight.w600,
                         fontSize: 14,
-                        color: AppPalette.navyPrimary,
+                        color: Theme.of(context).colorScheme.onSurface,
                       ),
                     ),
                   ),
@@ -785,9 +798,9 @@ class _ConfirmPrivateBookingScreenState
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: Colors.grey.shade200),
+        border: Border.all(color: Theme.of(context).dividerColor),
       ),
       child: Column(
         children: [
@@ -822,7 +835,7 @@ class _ConfirmPrivateBookingScreenState
                   ],
                 ),
                 Text(
-                  '-\$${_discountAmount.toStringAsFixed(2)}',
+                  '-${widget.currencySymbol}${_discountAmount.toStringAsFixed(2)}',
                   style: GoogleFonts.inter(
                     fontSize: 14,
                     fontWeight: FontWeight.bold,
@@ -834,7 +847,7 @@ class _ConfirmPrivateBookingScreenState
           ],
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 14),
-            child: Divider(color: Colors.grey.shade200, height: 1),
+            child: Divider(color: Theme.of(context).dividerColor, height: 1),
           ),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -844,15 +857,15 @@ class _ConfirmPrivateBookingScreenState
                 style: GoogleFonts.inter(
                   fontSize: 17,
                   fontWeight: FontWeight.bold,
-                  color: AppPalette.navyPrimary,
+                  color: Theme.of(context).colorScheme.onSurface,
                 ),
               ),
               Text(
-                '\$ ${_totalAmount.toStringAsFixed(2)}',
+                '${widget.currencySymbol} ${_totalAmount.toStringAsFixed(2)}',
                 style: GoogleFonts.inter(
                   fontSize: 22,
                   fontWeight: FontWeight.bold,
-                  color: AppPalette.navyPrimary,
+                  color: Theme.of(context).colorScheme.onSurface,
                 ),
               ),
             ],
@@ -868,14 +881,14 @@ class _ConfirmPrivateBookingScreenState
       children: [
         Text(
           label,
-          style: GoogleFonts.inter(fontSize: 14, color: Colors.grey[600]),
+          style: GoogleFonts.inter(fontSize: 14, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),
         ),
         Text(
-          '\$ ${amount.toStringAsFixed(2)}',
+          '${widget.currencySymbol} ${amount.toStringAsFixed(2)}',
           style: GoogleFonts.inter(
             fontSize: 14,
             fontWeight: FontWeight.w500,
-            color: AppPalette.navyPrimary,
+            color: Theme.of(context).colorScheme.onSurface,
           ),
         ),
       ],
@@ -887,9 +900,9 @@ class _ConfirmPrivateBookingScreenState
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.grey.shade200),
+        border: Border.all(color: Theme.of(context).dividerColor),
       ),
       child: Row(
         children: [
@@ -913,7 +926,7 @@ class _ConfirmPrivateBookingScreenState
               style: GoogleFonts.inter(
                 fontWeight: FontWeight.w600,
                 fontSize: 13,
-                color: AppPalette.navyPrimary,
+                color: Theme.of(context).colorScheme.onSurface,
               ),
             ),
           ),
@@ -943,7 +956,7 @@ class _ConfirmPrivateBookingScreenState
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
           color: const Color(0xFF22C55E).withValues(alpha: 0.3),
@@ -991,7 +1004,7 @@ class _ConfirmPrivateBookingScreenState
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: AppPalette.orangeAccent, width: 1.5),
       ),
@@ -1019,7 +1032,7 @@ class _ConfirmPrivateBookingScreenState
                   style: GoogleFonts.inter(
                     fontWeight: FontWeight.w600,
                     fontSize: 14,
-                    color: AppPalette.navyPrimary,
+                    color: Theme.of(context).colorScheme.onSurface,
                   ),
                 ),
                 Text(

@@ -112,8 +112,9 @@ class ProfileService {
         return hasPhone && hasLocation;
       } else if (role == 'player') {
         final profile = userProfile['playerProfile'];
-        final location =
-            profile?['location'] as String?; // Assuming player has location
+        final location = profile?['address'] as String? ??
+            profile?['location'] as String? ??
+            profile?['city'] as String?;
         final hasLocation = location != null && location.trim().isNotEmpty;
         return hasPhone && hasLocation;
       } else if (role == 'coach') {

@@ -8,18 +8,93 @@ import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../providers/theme_provider.dart';
 
-class ProfileScreen extends ConsumerWidget {
+import '../../services/profile_service.dart';
+
+class ProfileScreen extends ConsumerStatefulWidget {
   final bool isCoachView;
   final String? playerId;
   const ProfileScreen({super.key, this.isCoachView = false, this.playerId});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends ConsumerState<ProfileScreen> {
+  bool _isLoading = true;
+  Map<String, dynamic>? _userData;
+  Map<String, dynamic>? _profileData;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadProfile();
+  }
+
+  Future<void> _loadProfile() async {
+    try {
+      if (mounted) setState(() => _isLoading = true);
+      // For coach viewing a player, would fetch player specific data, 
+      // but for "Me" tab it fetches current user profile
+      final data = await ProfileService.getProfile();
+      if (mounted) {
+        setState(() {
+          _userData = data['user'] as Map<String, dynamic>?;
+          _profileData = data['profile'] as Map<String, dynamic>?;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading profile: $e');
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  String _getProfileImageUrl() {
+    if (_userData != null && _userData!['profileImage'] != null) {
+      return _userData!['profileImage'] as String;
+    }
+    if (_profileData != null) {
+      if (_profileData!['profilePhoto'] != null) {
+        return _profileData!['profilePhoto'] as String;
+      }
+      if (_userData?['role'] == 'coach' && _profileData!['coachProfile'] != null) {
+        return _profileData!['coachProfile']['profilePhoto'] as String? ?? '';
+      }
+      if (_userData?['role'] == 'player' && _profileData!['playerProfile'] != null) {
+        return _profileData!['playerProfile']['profilePhoto'] as String? ?? '';
+      }
+    }
+    return '';
+  }
+
+  String get _displayName {
+    return _userData?['fullName'] ?? 'User';
+  }
+
+  String get _displaySubtitle {
+    final role = _userData?['role'] as String? ?? '';
+    if (role == 'coach') {
+      return _profileData?['coachTitle'] ?? 'Cricket Coach';
+    } else if (role == 'player') {
+      final playerRole = _profileData?['role'] ?? 'Batsman';
+      final batStyle = _profileData?['battingStyle'];
+      return batStyle != null ? '$playerRole • $batStyle' : playerRole;
+    }
+    return role.isNotEmpty ? role[0].toUpperCase() + role.substring(1) : '';
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final themeMode = ref.watch(themeProvider);
     debugPrint('ProfileScreen Build: ThemeMode = $themeMode');
+    
+    final imageUrl = _getProfileImageUrl();
+
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      body: SingleChildScrollView(
+      body: _isLoading 
+        ? const Center(child: CircularProgressIndicator()) 
+        : SingleChildScrollView(
         child: Column(
           children: [
             // Header
@@ -45,13 +120,9 @@ class ProfileScreen extends ConsumerWidget {
                               color: Colors.white,
                             ),
                             onPressed: () {
-                              if (isCoachView) {
-                                // Coach view viewing player profile OR coach profile - Logic might need detail
-                                // Assuming 'isCoachView' true means a coach is looking at a player?
-                                // Actually ProfileScreen is used for 'Me' tab too.
+                              if (widget.isCoachView) {
                                 context.push('/settings');
                               } else {
-                                // Player Profile
                                 context.push('/player/settings');
                               }
                             },
@@ -78,11 +149,16 @@ class ProfileScreen extends ConsumerWidget {
                         ),
                       ],
                     ),
-                    child: const CircleAvatar(
+                    child: CircleAvatar(
                       radius: 60,
-                      backgroundImage: NetworkImage(
-                        'https://i.pravatar.cc/150?img=11',
-                      ),
+                      backgroundColor: Theme.of(context).colorScheme.primary,
+                      backgroundImage: imageUrl.isNotEmpty ? NetworkImage(imageUrl) : null,
+                      child: imageUrl.isEmpty
+                          ? Text(
+                              _displayName.isNotEmpty ? _displayName[0].toUpperCase() : 'U',
+                              style: const TextStyle(color: Colors.white, fontSize: 40, fontWeight: FontWeight.bold),
+                            )
+                          : null,
                     ),
                   ),
                 ),
@@ -92,7 +168,7 @@ class ProfileScreen extends ConsumerWidget {
             const SizedBox(height: 16),
 
             Text(
-              'Arjun Kumar',
+              _displayName,
               style: GoogleFonts.inter(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
@@ -100,7 +176,7 @@ class ProfileScreen extends ConsumerWidget {
               ),
             ),
             Text(
-              'Batsman • Right Hand',
+              _displaySubtitle,
               style: GoogleFonts.inter(
                 fontSize: 14,
                 color: Theme.of(context).colorScheme.onSurfaceVariant,
@@ -131,20 +207,20 @@ class ProfileScreen extends ConsumerWidget {
               padding: const EdgeInsets.symmetric(horizontal: 24),
               child: Column(
                 children: [
-                  if (!isCoachView)
+                  if (!widget.isCoachView)
                     _ProfileMenuItem(
                       icon: Icons.person_outline,
                       label: 'Personal Details',
                       onTap: () => context.push('/edit-profile'),
                     ),
-                  if (isCoachView)
+                  if (widget.isCoachView)
                     _ProfileMenuItem(
                       icon: Icons.bar_chart,
                       label: 'Performance Reports',
                       onTap: () =>
-                          context.push('/coach/reports/${playerId ?? '1'}'),
+                          context.push('/coach/reports/${widget.playerId ?? '1'}'),
                     ),
-                  if (isCoachView)
+                  if (widget.isCoachView)
                     _ProfileMenuItem(
                       icon: Icons.star_rounded,
                       label: 'My Reviews',
@@ -215,7 +291,7 @@ class ProfileScreen extends ConsumerWidget {
                     color: AppPalette.error,
                     onTap: () async {
                       await AuthService.signOutCompletely();
-                      if (context.mounted) context.go('/welcome');
+                      if (context.mounted) context.go('/login');
                     },
                   ),
                   const SizedBox(height: 12),
@@ -268,18 +344,95 @@ class ProfileScreen extends ConsumerWidget {
                       ? null
                       : () async {
                           setState(() => isLoading = true);
-                          final success = await AuthService.deleteAccount();
+                          final errorMsg = await AuthService.deleteAccount();
                           setState(() => isLoading = false);
 
                           if (context.mounted) {
-                            if (success) {
+                            if (errorMsg == null) {
                               Navigator.of(context).pop(); // Close dialog
-                              context.go('/welcome'); // Redirect
+                              showDialog(
+                                context: context,
+                                barrierDismissible: false,
+                                builder: (dialogContext) {
+                                  return AlertDialog(
+                                    backgroundColor:
+                                        Theme.of(dialogContext).cardColor,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(20),
+                                    ),
+                                    content: Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        const Icon(Icons.check_circle,
+                                            color: Colors.green, size: 64),
+                                        const SizedBox(height: 16),
+                                        Text(
+                                          'Account Deleted',
+                                          style: GoogleFonts.inter(
+                                            fontSize: 20,
+                                            fontWeight: FontWeight.bold,
+                                            color: Theme.of(dialogContext)
+                                                .colorScheme
+                                                .onSurface,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 8),
+                                        Text(
+                                          'Your account has been successfully deleted.',
+                                          textAlign: TextAlign.center,
+                                          style: GoogleFonts.inter(
+                                            fontSize: 14,
+                                            color: Theme.of(dialogContext)
+                                                .colorScheme
+                                                .onSurface
+                                                .withValues(alpha: 0.7),
+                                          ),
+                                        ),
+                                        const SizedBox(height: 24),
+                                        SizedBox(
+                                          width: double.infinity,
+                                          child: ElevatedButton(
+                                            onPressed: () async {
+                                                // Close the success dialog first
+                                                Navigator.of(dialogContext).pop();
+                                                await AuthService.signOutCompletely();
+                                                if (context.mounted) {
+                                                  context.go('/login');
+                                                }
+                                              },
+                                            style: ElevatedButton.styleFrom(
+                                              backgroundColor:
+                                                  AppPalette.orangeAccent,
+                                              foregroundColor: Colors.white,
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(12),
+                                              ),
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                      vertical: 16),
+                                            ),
+                                            child: Text(
+                                              'Go to Login',
+                                              style: GoogleFonts.inter(
+                                                fontSize: 16,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                },
+                              );
                             } else {
                               ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                    content: Text(
-                                        'Failed to delete account. Please try again later.')),
+                                SnackBar(
+                                  content: Text(errorMsg),
+                                  backgroundColor: Colors.red,
+                                  duration: const Duration(seconds: 5),
+                                ),
                               );
                             }
                           }

@@ -87,3 +87,12 @@ jobs:
           issuer-id: ${{ secrets.APPSTORE_ISSUER_ID }}
           api-key-id: ${{ secrets.APPSTORE_API_KEY_ID }}
           api-private-key: ${{ secrets.APPSTORE_API_PRIVATE_KEY }}
+
+      # 6. Save IPA for manual download
+      - name: Upload IPA Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Burl-App-IPA  # This is the name of the zip file you'll download
+          path: build/ios/ipa/BURL.ipa
+          retention-days: 7
+

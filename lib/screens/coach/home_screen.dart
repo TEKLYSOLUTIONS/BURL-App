@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import '../../widgets/notification_button.dart';
 import '../../widgets/headers/coach_app_bar.dart';
 import '../../widgets/calendar/horizontal_week_calendar.dart'; // Import Calendar
+import '../../widgets/cached_avatar.dart'; // Import CachedAvatar
 
 import '../../services/auth_service.dart';
 import '../../services/dashboard_service.dart';
@@ -184,12 +185,13 @@ class _CoachHomeScreenState extends State<CoachHomeScreen> with RouteAware {
     setState(() => _isLoading = true);
 
     try {
-      final data = await DashboardService.getCoachDashboard();
+      final results = await Future.wait([
+        DashboardService.getCoachDashboard(),
+        SessionService.getCoachSessions(date: DateTime.now()),
+      ]);
 
-      // Also fetch full sessions for today to populate the schedule list correctly
-      final todaySessionsResponse = await SessionService.getCoachSessions(
-        date: DateTime.now(),
-      );
+      final data = results[0];
+      final todaySessionsResponse = results[1] as Map<String, dynamic>;
 
       if (data != null && mounted) {
         setState(() {
@@ -236,29 +238,15 @@ class _CoachHomeScreenState extends State<CoachHomeScreen> with RouteAware {
                       onTap: _changeProfilePhoto,
                       child: Stack(
                         children: [
-                          CircleAvatar(
+                          CachedAvatar(
+                            imageUrl: _profileImageUrl ?? '',
                             radius: context.responsive.circularSize(
                               20,
                               min: 18,
                               max: 24,
                             ),
                             backgroundColor: AppPalette.navyPrimary,
-                            backgroundImage: _profileImageUrl != null &&
-                                    _profileImageUrl!.isNotEmpty
-                                ? NetworkImage(_profileImageUrl!)
-                                : null,
-                            child: _profileImageUrl == null ||
-                                    _profileImageUrl!.isEmpty
-                                ? Text(
-                                    _userName.isNotEmpty
-                                        ? _userName[0].toUpperCase()
-                                        : 'C',
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  )
-                                : null,
+                            fallbackText: _userName,
                           ),
                           if (_isUploadingImage)
                             Positioned.fill(

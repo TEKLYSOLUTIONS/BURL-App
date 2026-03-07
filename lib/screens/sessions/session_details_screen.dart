@@ -538,6 +538,17 @@ class _SessionDetailsScreenState extends State<SessionDetailsScreen> {
       duration = int.tryParse(firstTimeSlot['durationMinutes'].toString()) ?? 0;
     }
 
+    // Use the LAST slot's start time to decide if the session still has
+    // upcoming dates (for booking) or is fully in the past (for review).
+    DateTime lastSlotTime = startTime;
+    if (timeSlots.length > 1) {
+      try {
+        lastSlotTime = DateTime.parse(
+          timeSlots.last['startTime'].toString(),
+        ).toLocal();
+      } catch (_) {}
+    }
+
     final rawAssignedPlayers = (_session!['assignedPlayers'] as List?) ?? [];
     final List<dynamic> assignedPlayers = [];
     final Set<String> seenPlayerIds = {};
@@ -556,35 +567,22 @@ class _SessionDetailsScreenState extends State<SessionDetailsScreen> {
       if (!added) assignedPlayers.add(pData);
     }
 
-    // Handle coach data - backend might send it as 'coach' or 'createdBy'
+    // Handle coach data - always use the 'coach' field (populated User + coachProfile).
+    // NOTE: 'createdBy' is the user who made the booking (could be a player/guardian),
+    // NOT the coach — never use it for the coach display.
     Map<String, dynamic>? coach;
-    final createdByValue = _session!['createdBy'];
     final coachValue = _session!['coach'];
 
-    // Prefer createdBy (populated User with fullName), fall back to coach field.
-    // When coach has a nested coachProfile, merge its fields (e.g. coachTitle)
-    // into the parent map WITHOUT discarding fullName from the User level.
-    if (createdByValue is Map) {
-      coach = Map<String, dynamic>.from(createdByValue);
-      // Also pull coachTitle from the coach field's coachProfile if available
-      if (coachValue is Map) {
-        final coachMap = Map<String, dynamic>.from(coachValue);
-        if (coachMap['coachProfile'] is Map) {
-          final profile = Map<String, dynamic>.from(coachMap['coachProfile']);
-          coach['coachTitle'] = profile['coachTitle'];
-          coach['profilePhoto'] ??= profile['profilePhoto'];
-        }
-        // If createdBy has no fullName, fall back to coach.fullName
-        coach['fullName'] ??= coachMap['fullName'];
-      }
-    } else if (coachValue is Map) {
+    if (coachValue is Map) {
       final coachMap = Map<String, dynamic>.from(coachValue);
       coach = coachMap;
-      // Merge coachProfile fields (coachTitle etc.) WITHOUT discarding fullName
+      // Merge coachProfile fields (coachTitle, profilePhoto) into the top-level map
       if (coachMap['coachProfile'] is Map) {
         final profile = Map<String, dynamic>.from(coachMap['coachProfile']);
         coach['coachTitle'] ??= profile['coachTitle'];
         coach['profilePhoto'] ??= profile['profilePhoto'];
+        // coachProfile.fullName is a fallback if the User-level fullName is missing
+        coach['fullName'] ??= profile['fullName'];
       }
     }
 
@@ -829,6 +827,16 @@ class _SessionDetailsScreenState extends State<SessionDetailsScreen> {
                       : <String, dynamic>{};
                   final attended = pData['attended'] as bool? ?? false;
                   final playerId = player['_id']?.toString() ?? '';
+                  // Resolve name: PlayerProfile.fullName (minors) or
+                  // nested userId.fullName (registered players)
+                  final userIdMap = player['userId'] is Map
+                      ? Map<String, dynamic>.from(player['userId'] as Map)
+                      : null;
+                  final playerName = (player['fullName'] as String?)?.isNotEmpty == true
+                      ? player['fullName'] as String
+                      : (userIdMap?['fullName'] as String?) ?? 'Unknown Player';
+                  final playerPhoto = (player['profilePhoto'] as String?) ??
+                      (userIdMap?['profilePhoto'] as String?);
 
                   return Container(
                     decoration: BoxDecoration(
@@ -842,7 +850,7 @@ class _SessionDetailsScreenState extends State<SessionDetailsScreen> {
                     ),
                     child: SwitchListTile(
                       title: Text(
-                        (player['fullName']?.toString() ?? 'Unknown Player'),
+                        playerName,
                         style: GoogleFonts.inter(fontWeight: FontWeight.w600),
                       ),
                       subtitle: Column(
@@ -878,8 +886,7 @@ class _SessionDetailsScreenState extends State<SessionDetailsScreen> {
                       ),
                       secondary: CircleAvatar(
                         backgroundImage: NetworkImage(
-                          player['profilePhoto']?.toString() ??
-                              'https://i.pravatar.cc/150?u=$playerId',
+                          playerPhoto ?? 'https://i.pravatar.cc/150?u=$playerId',
                         ),
                       ),
                       value: attended,
@@ -934,8 +941,15 @@ class _SessionDetailsScreenState extends State<SessionDetailsScreen> {
                             assignedPlayers[index]['player'],
                           )
                         : <String, dynamic>{};
+                    final userIdMap2 = player['userId'] is Map
+                        ? Map<String, dynamic>.from(player['userId'] as Map)
+                        : null;
+                    final displayName =
+                        (player['fullName'] as String?)?.isNotEmpty == true
+                            ? player['fullName'] as String
+                            : (userIdMap2?['fullName'] as String?) ?? 'P';
                     return _buildAvatar(
-                      (player['fullName']?.toString() ?? 'P').split(' ')[0],
+                      displayName.split(' ')[0],
                       player['_id']?.toString() ?? '',
                     );
                   },
@@ -1159,7 +1173,7 @@ class _SessionDetailsScreenState extends State<SessionDetailsScreen> {
             const SizedBox(height: 32),
           ],
 
-          if (!isCoach && startTime.isAfter(DateTime.now())) ...[
+          if (!isCoach && lastSlotTime.isAfter(DateTime.now())) ...[
             const SizedBox(height: 20),
             SizedBox(
               width: double.infinity,
@@ -1232,7 +1246,7 @@ class _SessionDetailsScreenState extends State<SessionDetailsScreen> {
             ),
             const SizedBox(height: 32),
           ],
-          if (!isCoach && startTime.isBefore(DateTime.now())) ...[
+          if (!isCoach && _isBooked && lastSlotTime.isBefore(DateTime.now())) ...[
             const SizedBox(height: 20),
             SizedBox(
               width: double.infinity,

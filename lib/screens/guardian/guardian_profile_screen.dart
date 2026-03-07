@@ -11,6 +11,7 @@ import 'dart:io';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../providers/theme_provider.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 
 class GuardianProfileScreen extends ConsumerStatefulWidget {
   const GuardianProfileScreen({super.key});
@@ -26,11 +27,22 @@ class _GuardianProfileScreenState extends ConsumerState<GuardianProfileScreen> {
   String _userName = 'Guardian';
   String _userEmail = '';
   Map<String, dynamic>? _userProfile; // Store full profile data
+  String _appVersion = '';
 
   @override
   void initState() {
     super.initState();
     _fetchProfile();
+    _loadAppVersion();
+  }
+
+  Future<void> _loadAppVersion() async {
+    final info = await PackageInfo.fromPlatform();
+    if (mounted) {
+      setState(() {
+        _appVersion = 'Version ${info.version} (Build ${info.buildNumber})';
+      });
+    }
   }
 
   Future<void> _fetchProfile() async {
@@ -210,36 +222,34 @@ class _GuardianProfileScreenState extends ConsumerState<GuardianProfileScreen> {
                         child: GestureDetector(
                           onTap: () {
                             final photoUrl = _userProfile?['guardianProfile']
-                                ?['profilePhoto'];
+                                    ?['profilePhoto'] ??
+                                _userProfile?['profileImage'] ??
+                                _userProfile?['profileUrl'];
                             if (photoUrl != null &&
                                 photoUrl.toString().isNotEmpty) {
                               _showImagePreview(photoUrl.toString());
                             }
                           },
-                          child: CircleAvatar(
-                            radius: 35,
-                            backgroundColor: Colors.grey[200],
-                            backgroundImage: (_userProfile?['guardianProfile']
-                                            ?['profilePhoto'] !=
-                                        null &&
-                                    _userProfile!['guardianProfile']
-                                            ['profilePhoto']
-                                        .toString()
-                                        .isNotEmpty)
-                                ? NetworkImage(_userProfile!['guardianProfile']
-                                    ['profilePhoto'])
-                                : null,
-                            child: (_userProfile?['guardianProfile']
-                                            ?['profilePhoto'] ==
-                                        null ||
-                                    _userProfile!['guardianProfile']
-                                            ['profilePhoto']
-                                        .toString()
-                                        .isEmpty)
-                                ? const Icon(Icons.person,
-                                    size: 40, color: Colors.grey)
-                                : null,
-                          ),
+                          child: Builder(builder: (context) {
+                            final photoUrl = (_userProfile?['guardianProfile']
+                                        ?['profilePhoto'] ??
+                                    _userProfile?['profileImage'] ??
+                                    _userProfile?['profileUrl'])
+                                ?.toString();
+                            final hasPhoto =
+                                photoUrl != null && photoUrl.isNotEmpty;
+                            return CircleAvatar(
+                              radius: 35,
+                              backgroundColor: Colors.grey[200],
+                              backgroundImage: hasPhoto
+                                  ? NetworkImage(photoUrl)
+                                  : null,
+                              child: hasPhoto
+                                  ? null
+                                  : const Icon(Icons.person,
+                                      size: 40, color: Colors.grey),
+                            );
+                          }),
                         ),
                       ),
                       Positioned(
@@ -433,7 +443,7 @@ class _GuardianProfileScreenState extends ConsumerState<GuardianProfileScreen> {
               child: TextButton.icon(
                 onPressed: () async {
                   await AuthService.signOutCompletely();
-                  if (context.mounted) context.go('/welcome');
+                  if (context.mounted) context.go('/login');
                 },
                 style: TextButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 16),
@@ -481,7 +491,7 @@ class _GuardianProfileScreenState extends ConsumerState<GuardianProfileScreen> {
 
             const SizedBox(height: 16),
             Text(
-              'Version 2.4.0 (Build 345)',
+              _appVersion.isNotEmpty ? _appVersion : 'Version 2.4.0 (Build 345)',
               style: GoogleFonts.inter(color: Colors.grey[400], fontSize: 12),
             ),
             const SizedBox(height: 40),
@@ -751,18 +761,91 @@ class _GuardianProfileScreenState extends ConsumerState<GuardianProfileScreen> {
                       ? null
                       : () async {
                           setState(() => isLoading = true);
-                          final success = await AuthService.deleteAccount();
+                          final errorMsg = await AuthService.deleteAccount();
                           setState(() => isLoading = false);
 
                           if (context.mounted) {
-                            if (success) {
+                            if (errorMsg == null) {
                               Navigator.of(context).pop(); // Close dialog
-                              context.go('/welcome'); // Redirect
+                              showDialog(
+                                context: context,
+                                barrierDismissible: false,
+                                builder: (dialogContext) {
+                                  return AlertDialog(
+                                    backgroundColor:
+                                        Theme.of(dialogContext).cardColor,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(20),
+                                    ),
+                                    content: Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        const Icon(Icons.check_circle,
+                                            color: AppPalette.success,
+                                            size: 64),
+                                        const SizedBox(height: 16),
+                                        Text(
+                                          'Account Deleted',
+                                          style: GoogleFonts.inter(
+                                            fontSize: 20,
+                                            fontWeight: FontWeight.bold,
+                                            color: Theme.of(dialogContext)
+                                                .colorScheme
+                                                .onSurface,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 8),
+                                        Text(
+                                          'Your account has been successfully deleted.',
+                                          textAlign: TextAlign.center,
+                                          style: GoogleFonts.inter(
+                                            fontSize: 14,
+                                            color: Theme.of(dialogContext)
+                                                .colorScheme
+                                                .onSurface
+                                                .withValues(alpha: 0.7),
+                                          ),
+                                        ),
+                                        const SizedBox(height: 24),
+                                        SizedBox(
+                                          width: double.infinity,
+                                          child: ElevatedButton(
+                                            onPressed: () {
+                                              context.go('/login');
+                                            },
+                                            style: ElevatedButton.styleFrom(
+                                              backgroundColor:
+                                                  AppPalette.orangeAccent,
+                                              foregroundColor: Colors.white,
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(12),
+                                              ),
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                      vertical: 16),
+                                            ),
+                                            child: Text(
+                                              'Go to Login',
+                                              style: GoogleFonts.inter(
+                                                fontSize: 16,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                },
+                              );
                             } else {
                               ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                    content: Text(
-                                        'Failed to delete account. Please try again later.')),
+                                SnackBar(
+                                  content: Text(errorMsg),
+                                  backgroundColor: Colors.red,
+                                  duration: const Duration(seconds: 5),
+                                ),
                               );
                             }
                           }

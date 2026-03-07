@@ -148,35 +148,40 @@ class BookingService {
 
   /// Validate a promo code
   ///
-  /// [code] - Promo code to validate
-  /// Returns a map with 'valid', 'discount', and 'code' if valid
+  /// Returns a map with 'valid' bool; on success also 'code', 'discountType',
+  /// 'discountValue', 'minimumPrice'; on failure 'message'.
   static Future<Map<String, dynamic>> validatePromoCode(String code) async {
     try {
       final response = await ApiService.post('bookings/validate-promo', {
-        'promoCode': code,
+        'code': code.toUpperCase(), // backend key is 'code', not 'promoCode'
       });
 
       final data = json.decode(response.body);
 
-      if (response.statusCode == 200) {
+      if (response.statusCode == 200 && data['success'] == true) {
+        final promoData =
+            data['data']['promoCode'] as Map<String, dynamic>? ?? {};
+        final discountType =
+            promoData['discountType']?.toString() ?? 'fixed';
+        final discountValue =
+            (promoData['discountValue'] as num?)?.toDouble() ?? 0.0;
         return {
-          'valid': data['valid'],
-          'discount': data['discount'],
-          'code': data['code'],
-          'type': data['type'],
+          'valid': true,
+          'code': promoData['code']?.toString() ?? code.toUpperCase(),
+          'discountType': discountType,
+          'discountValue': discountValue,
+          'minimumPrice':
+              (promoData['minimumPrice'] as num?)?.toDouble() ?? 0.0,
         };
       } else {
-        // Return invalid response
         return {
           'valid': false,
-          'discount': 0.0,
-          'message': data['message'] ?? 'Invalid promo code',
+          'message': data['message']?.toString() ?? 'Invalid promo code',
         };
       }
     } catch (e) {
       return {
         'valid': false,
-        'discount': 0.0,
         'message': 'Error validating promo code',
       };
     }

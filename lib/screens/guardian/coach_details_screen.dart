@@ -4,9 +4,11 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 import '../../config/palette.dart';
 import '../../services/search_service.dart';
+import '../../widgets/navigation/role_based_bottom_nav_bar.dart';
 import '../../services/review_service.dart';
 import '../../utils/date_time_utils.dart';
 import '../../services/profile_service.dart';
+import '../../utils/currency_helper.dart';
 
 class CoachDetailsScreen extends StatefulWidget {
   final String coachId;
@@ -187,20 +189,33 @@ class _CoachDetailsScreenState extends State<CoachDetailsScreen>
     final hourlyRate = profile['defaultPricing']?['hourlyRate']?.toString() ??
         profile['pricing']?['hourlyRate']?.toString() ??
         'TBD';
+    final sessionDuration =
+        (profile['defaultPricing']?['sessionDuration'] as num?)?.toInt() ?? 60;
+    // Detect currency from coach's profile: saved currency > country > city
+    final savedCurrency = (profile['defaultPricing']?['currency'] as String?) ??
+        (profile['currency'] as String?);
+    final coachLocation = (profile['country'] as String?) ?? city;
+    final currencyCode = (savedCurrency != null && savedCurrency.isNotEmpty)
+        ? savedCurrency
+        : CurrencyHelper.getCurrencyFromLocation(coachLocation);
+    final currencySymbol = CurrencyHelper.getCurrencySymbol(currencyCode);
+    final sessionPrice = hourlyRate == 'TBD'
+        ? 'TBD'
+        : '$currencySymbol${((double.tryParse(hourlyRate) ?? 0) * (sessionDuration / 60.0)).toStringAsFixed(0)}';
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FE), // Light background
-
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      bottomNavigationBar: const RoleBasedBottomNavBar(),
       appBar: AppBar(
-        backgroundColor: const Color(0xFFF8F9FE),
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         elevation: 0,
         leading: Padding(
           padding: const EdgeInsets.only(left: 16.0),
           child: CircleAvatar(
-            backgroundColor: Colors.white,
+            backgroundColor: Theme.of(context).colorScheme.surface,
             child: IconButton(
               icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 18),
-              color: Colors.black,
+              color: Theme.of(context).colorScheme.onSurface,
               onPressed: () => context.pop(),
             ),
           ),
@@ -208,7 +223,7 @@ class _CoachDetailsScreenState extends State<CoachDetailsScreen>
         title: Text(
           fullName,
           style: GoogleFonts.inter(
-            color: Colors.black,
+            color: Theme.of(context).colorScheme.onSurface,
             fontWeight: FontWeight.bold,
             fontSize: 18,
           ),
@@ -218,7 +233,7 @@ class _CoachDetailsScreenState extends State<CoachDetailsScreen>
           Padding(
             padding: const EdgeInsets.only(right: 16.0),
             child: CircleAvatar(
-              backgroundColor: Colors.white,
+              backgroundColor: Theme.of(context).colorScheme.surface,
               child: IconButton(
                 icon: const Icon(Icons.share_outlined, size: 20),
                 color: Colors.orange,
@@ -244,7 +259,7 @@ class _CoachDetailsScreenState extends State<CoachDetailsScreen>
                         height: 120,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          border: Border.all(color: Colors.white, width: 4),
+                          border: Border.all(color: Theme.of(context).scaffoldBackgroundColor, width: 4),
                           boxShadow: [
                             BoxShadow(
                               color: Colors.black.withValues(alpha: 0.1),
@@ -266,7 +281,7 @@ class _CoachDetailsScreenState extends State<CoachDetailsScreen>
                           decoration: BoxDecoration(
                             color: Colors.green,
                             shape: BoxShape.circle,
-                            border: Border.all(color: Colors.white, width: 2),
+                            border: Border.all(color: Theme.of(context).scaffoldBackgroundColor, width: 2),
                           ),
                           child: const Icon(
                             Icons.check,
@@ -289,7 +304,7 @@ class _CoachDetailsScreenState extends State<CoachDetailsScreen>
                     style: GoogleFonts.inter(
                       fontSize: 24,
                       fontWeight: FontWeight.bold,
-                      color: AppPalette.navyPrimary,
+                      color: Theme.of(context).colorScheme.onSurface,
                     ),
                   ).animate().fadeIn().slideY(begin: 0.2),
 
@@ -323,7 +338,7 @@ class _CoachDetailsScreenState extends State<CoachDetailsScreen>
                     margin: const EdgeInsets.symmetric(horizontal: 24),
                     padding: const EdgeInsets.symmetric(vertical: 20),
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: Theme.of(context).cardColor,
                       borderRadius: BorderRadius.circular(20),
                       boxShadow: [
                         BoxShadow(
@@ -352,8 +367,8 @@ class _CoachDetailsScreenState extends State<CoachDetailsScreen>
                     margin: const EdgeInsets.symmetric(horizontal: 24),
                     child: TabBar(
                       controller: _tabController,
-                      labelColor: AppPalette.navyPrimary,
-                      unselectedLabelColor: Colors.grey,
+                      labelColor: Theme.of(context).colorScheme.onSurface,
+                      unselectedLabelColor: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
                       labelStyle: GoogleFonts.inter(
                         fontWeight: FontWeight.bold,
                         fontSize: 16,
@@ -362,7 +377,7 @@ class _CoachDetailsScreenState extends State<CoachDetailsScreen>
                         fontWeight: FontWeight.w600,
                         fontSize: 16,
                       ),
-                      indicatorColor: AppPalette.navyPrimary,
+                      indicatorColor: Theme.of(context).colorScheme.primary,
                       indicatorSize: TabBarIndicatorSize.tab,
                       indicatorWeight: 3,
                       padding: EdgeInsets.zero,
@@ -395,7 +410,7 @@ class _CoachDetailsScreenState extends State<CoachDetailsScreen>
                                   style: GoogleFonts.inter(
                                     fontSize: 18,
                                     fontWeight: FontWeight.bold,
-                                    color: AppPalette.navyPrimary,
+                                    color: Theme.of(context).colorScheme.onSurface,
                                   ),
                                 ),
                                 const SizedBox(height: 12),
@@ -403,7 +418,7 @@ class _CoachDetailsScreenState extends State<CoachDetailsScreen>
                                   bio,
                                   style: GoogleFonts.inter(
                                     fontSize: 14,
-                                    color: Colors.grey[600],
+                                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                                     height: 1.6,
                                   ),
                                 ),
@@ -423,7 +438,7 @@ class _CoachDetailsScreenState extends State<CoachDetailsScreen>
                                         city,
                                         style: GoogleFonts.inter(
                                           fontSize: 14,
-                                          color: Colors.grey[700],
+                                          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
                                         ),
                                       ),
                                     ],
@@ -438,7 +453,7 @@ class _CoachDetailsScreenState extends State<CoachDetailsScreen>
                                     coachingPhilosophy,
                                     style: GoogleFonts.inter(
                                       fontSize: 14,
-                                      color: Colors.grey[600],
+                                      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                                       height: 1.6,
                                       fontStyle: FontStyle.italic,
                                     ),
@@ -507,7 +522,7 @@ class _CoachDetailsScreenState extends State<CoachDetailsScreen>
                                           Text(
                                             "No reviews yet",
                                             style: GoogleFonts.inter(
-                                              color: Colors.grey[600],
+                                              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                                             ),
                                           ),
                                         ],
@@ -536,11 +551,11 @@ class _CoachDetailsScreenState extends State<CoachDetailsScreen>
                                         return Container(
                                           padding: const EdgeInsets.all(16),
                                           decoration: BoxDecoration(
-                                            color: Colors.white,
+                                            color: Theme.of(context).cardColor,
                                             borderRadius:
                                                 BorderRadius.circular(16),
                                             border: Border.all(
-                                              color: Colors.grey[200]!,
+                                              color: Theme.of(context).dividerColor,
                                             ),
                                           ),
                                           child: Column(
@@ -569,8 +584,7 @@ class _CoachDetailsScreenState extends State<CoachDetailsScreen>
                                                               GoogleFonts.inter(
                                                             fontWeight:
                                                                 FontWeight.bold,
-                                                            color: AppPalette
-                                                                .navyPrimary,
+                                                            color: Theme.of(context).colorScheme.onSurface,
                                                           ),
                                                         ),
                                                         Text(
@@ -631,7 +645,7 @@ class _CoachDetailsScreenState extends State<CoachDetailsScreen>
                                                 Text(
                                                   comment,
                                                   style: GoogleFonts.inter(
-                                                    color: Colors.grey[700],
+                                                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
                                                     height: 1.5,
                                                     fontSize: 14,
                                                   ),
@@ -662,7 +676,7 @@ class _CoachDetailsScreenState extends State<CoachDetailsScreen>
                                           Text(
                                             "No upcoming sessions",
                                             style: GoogleFonts.inter(
-                                              color: Colors.grey[600],
+                                              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                                             ),
                                           ),
                                         ],
@@ -696,8 +710,15 @@ class _CoachDetailsScreenState extends State<CoachDetailsScreen>
                                             final dateParam = startTime != null
                                                 ? '?date=${startTime.toIso8601String()}'
                                                 : '';
+                                            final isGuardian =
+                                                GoRouterState.of(context)
+                                                    .uri
+                                                    .toString()
+                                                    .startsWith('/guardian');
                                             context.push(
-                                              '/session-details/${session['_id']}$dateParam',
+                                              isGuardian
+                                                  ? '/guardian/session-details/${session['_id']}$dateParam'
+                                                  : '/session-details/${session['_id']}$dateParam',
                                             );
                                           },
                                           borderRadius:
@@ -705,13 +726,13 @@ class _CoachDetailsScreenState extends State<CoachDetailsScreen>
                                           child: Container(
                                             padding: const EdgeInsets.all(16),
                                             decoration: BoxDecoration(
-                                              color: Colors.white,
+                                              color: Theme.of(context).cardColor,
                                               borderRadius:
                                                   BorderRadius.circular(
                                                 16,
                                               ),
                                               border: Border.all(
-                                                color: Colors.grey[200]!,
+                                                color: Theme.of(context).dividerColor,
                                               ),
                                             ),
                                             child: Row(
@@ -720,15 +741,12 @@ class _CoachDetailsScreenState extends State<CoachDetailsScreen>
                                                   padding:
                                                       const EdgeInsets.all(12),
                                                   decoration: BoxDecoration(
-                                                    color: AppPalette
-                                                        .navyPrimary
-                                                        .withValues(alpha: 0.1),
+                                                    color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
                                                     shape: BoxShape.circle,
                                                   ),
                                                   child: Icon(
                                                     Icons.sports_cricket,
-                                                    color:
-                                                        AppPalette.navyPrimary,
+                                                    color: Theme.of(context).colorScheme.primary,
                                                   ),
                                                 ),
                                                 const SizedBox(width: 16),
@@ -745,8 +763,7 @@ class _CoachDetailsScreenState extends State<CoachDetailsScreen>
                                                           fontWeight:
                                                               FontWeight.w600,
                                                           fontSize: 16,
-                                                          color: AppPalette
-                                                              .navyPrimary,
+                                                          color: Theme.of(context).colorScheme.onSurface,
                                                         ),
                                                       ),
                                                       if (startTime != null)
@@ -754,8 +771,7 @@ class _CoachDetailsScreenState extends State<CoachDetailsScreen>
                                                           '${DateTimeUtils.formatDate(startTime)} • ${DateTimeUtils.formatTimeFromDateTime(startTime)}',
                                                           style:
                                                               GoogleFonts.inter(
-                                                            color: Colors
-                                                                .grey[600],
+                                                            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                                                             fontSize: 14,
                                                           ),
                                                         ),
@@ -789,7 +805,7 @@ class _CoachDetailsScreenState extends State<CoachDetailsScreen>
           Container(
             padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: Theme.of(context).cardColor,
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withValues(alpha: 0.05),
@@ -805,7 +821,7 @@ class _CoachDetailsScreenState extends State<CoachDetailsScreen>
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      'HOURLY RATE',
+                      'SESSION RATE',
                       style: GoogleFonts.inter(
                         fontSize: 12,
                         fontWeight: FontWeight.bold,
@@ -813,27 +829,15 @@ class _CoachDetailsScreenState extends State<CoachDetailsScreen>
                         letterSpacing: 1,
                       ),
                     ),
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.baseline,
-                      textBaseline: TextBaseline.alphabetic,
-                      children: [
-                        Text(
-                          '\$$hourlyRate',
-                          style: GoogleFonts.inter(
-                            fontSize: 28,
-                            fontWeight: FontWeight.bold,
-                            color: AppPalette.navyPrimary,
-                          ),
-                        ),
-                        Text(
-                          ' /hr',
-                          style: GoogleFonts.inter(
-                            fontSize: 14,
-                            color: Colors.grey[600],
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
+                    Text(
+                      sessionPrice == 'TBD'
+                          ? 'TBD'
+                          : '$sessionPrice / ${sessionDuration}min',
+                      style: GoogleFonts.inter(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Theme.of(context).colorScheme.onSurface,
+                      ),
                     ),
                   ],
                 ),
@@ -883,6 +887,7 @@ class _CoachDetailsScreenState extends State<CoachDetailsScreen>
                             'hourlyRate': rate,
                             'sessionDuration': sessionDuration,
                             'cancellationPolicy': cancellationPolicy,
+                            'currencySymbol': currencySymbol,
                           },
                         );
                       } else {
@@ -894,6 +899,7 @@ class _CoachDetailsScreenState extends State<CoachDetailsScreen>
                             'hourlyRate': rate,
                             'sessionDuration': sessionDuration,
                             'cancellationPolicy': cancellationPolicy,
+                            'currencySymbol': currencySymbol,
                           },
                         );
                       }
@@ -939,21 +945,21 @@ class _CoachDetailsScreenState extends State<CoachDetailsScreen>
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.grey[200]!),
+        border: Border.all(color: Theme.of(context).dividerColor),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 14, color: AppPalette.navyPrimary),
+          Icon(icon, size: 14, color: Theme.of(context).colorScheme.primary),
           const SizedBox(width: 6),
           Text(
             label,
             style: GoogleFonts.inter(
               fontSize: 12,
               fontWeight: FontWeight.w600,
-              color: AppPalette.navyPrimary,
+              color: Theme.of(context).colorScheme.onSurface,
             ),
           ),
         ],
@@ -973,7 +979,7 @@ class _CoachDetailsScreenState extends State<CoachDetailsScreen>
               style: GoogleFonts.inter(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
-                color: AppPalette.navyPrimary,
+                color: Theme.of(context).colorScheme.onSurface,
               ),
             ),
             if (isStar) ...[
@@ -997,7 +1003,7 @@ class _CoachDetailsScreenState extends State<CoachDetailsScreen>
   }
 
   Widget _buildDivider() {
-    return Container(height: 30, width: 1, color: Colors.grey[200]);
+    return Container(height: 30, width: 1, color: Theme.of(context).dividerColor);
   }
 
   Widget _buildSectionTitle(String title) {
@@ -1006,7 +1012,7 @@ class _CoachDetailsScreenState extends State<CoachDetailsScreen>
       style: GoogleFonts.inter(
         fontSize: 16,
         fontWeight: FontWeight.bold,
-        color: AppPalette.navyPrimary,
+        color: Theme.of(context).colorScheme.onSurface,
       ),
     );
   }
@@ -1022,7 +1028,7 @@ class _CoachDetailsScreenState extends State<CoachDetailsScreen>
           Expanded(
             child: Text(
               text,
-              style: GoogleFonts.inter(fontSize: 14, color: Colors.grey[700]),
+              style: GoogleFonts.inter(fontSize: 14, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7)),
             ),
           ),
         ],
@@ -1034,10 +1040,10 @@ class _CoachDetailsScreenState extends State<CoachDetailsScreen>
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: AppPalette.navyPrimary.withValues(alpha: 0.05),
+        color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: AppPalette.navyPrimary.withValues(alpha: 0.1),
+          color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
         ),
       ),
       child: Text(
@@ -1045,7 +1051,7 @@ class _CoachDetailsScreenState extends State<CoachDetailsScreen>
         style: GoogleFonts.inter(
           fontSize: 12,
           fontWeight: FontWeight.w500,
-          color: AppPalette.navyPrimary,
+          color: Theme.of(context).colorScheme.onSurface,
         ),
       ),
     );
