@@ -70,12 +70,17 @@ class _LoginScreenState extends State<LoginScreen> {
         return;
       } on Exception catch (firebaseError) {
         final msg = firebaseError.toString();
-        // If Firebase says "invalid credential" it's a real error — stop here.
-        // Only fall through to local auth if Firebase has no account at all.
-        if (!msg.contains('No user found') && !msg.contains('user-not-found')) {
+        // Fall through to local auth check for:
+        // - user-not-found (no Firebase account)
+        // - Invalid email or password (invalid-credential)
+        // - An internal error (Firebase account exists but may be deleted from our DB)
+        if (!msg.contains('No user found') &&
+            !msg.contains('user-not-found') &&
+            !msg.contains('Invalid email or password') &&
+            !msg.contains('An internal error')) {
           rethrow;
         }
-        debugPrint('⚠️ No Firebase account, trying local auth...');
+        debugPrint('⚠️ Firebase auth failed, trying local/backend check...');
       }
 
       // ── Slow/rare path: local-only MongoDB users ─────────────────────────
@@ -135,21 +140,22 @@ class _LoginScreenState extends State<LoginScreen> {
       debugPrint(
           '❌ Local auth failed: ${response.statusCode} - ${response.body}');
 
-      // Parse backend error messages explicitly
+      // Parse backend error messages and surface them directly
       try {
         final data = jsonDecode(response.body);
-        if (data['message'] != null) {
-          throw Exception(
-              data['message']); // "User not found." or "Invalid credentials."
+        final backendMessage = data['message'] as String?;
+        if (backendMessage != null && backendMessage.isNotEmpty) {
+          throw Exception(backendMessage); // "User not found." or "Invalid credentials."
         }
-      } catch (parseError) {
-        // Not JSON or another issue, we'll let it fail silently and proceed to Firebase
+      } catch (e) {
+        if (e is Exception) rethrow; // Re-throw backend messages
+        // If JSON parse fails, fall through to return false
       }
 
       return false;
     } catch (e) {
       debugPrint('❌ Local auth error: $e');
-      return false;
+      rethrow; // Propagate backend errors up to _handleLogin()
     }
   }
 

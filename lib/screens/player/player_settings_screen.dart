@@ -2,12 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../config/palette.dart';
+import 'dart:io';
+
+import '../../widgets/notification_button.dart';
 import '../../services/profile_service.dart';
 import '../../services/auth_service.dart';
+import '../../services/storage_service.dart';
 import '../../providers/theme_provider.dart';
+import '../../config/palette.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 
 class PlayerProfileScreen extends ConsumerStatefulWidget {
   const PlayerProfileScreen({super.key});
@@ -19,371 +23,136 @@ class PlayerProfileScreen extends ConsumerStatefulWidget {
 
 class _PlayerProfileScreenState extends ConsumerState<PlayerProfileScreen> {
   bool _isLoading = true;
+  bool _pushNotifications = true;
   String _userName = 'Player';
   String _userEmail = '';
+  Map<String, dynamic>? _userProfile;
+  String _appVersion = '';
 
   @override
   void initState() {
     super.initState();
     _fetchProfile();
+    _loadAppVersion();
+  }
+
+  Future<void> _loadAppVersion() async {
+    final info = await PackageInfo.fromPlatform();
+    if (mounted) {
+      setState(() {
+        _appVersion = 'Version ${info.version} (Build ${info.buildNumber})';
+      });
+    }
   }
 
   Future<void> _fetchProfile() async {
     try {
       final profile = await ProfileService.getProfile();
       setState(() {
+        _userProfile = profile;
         _userName = profile['fullName'] ?? 'Player';
         _userEmail = profile['email'] ?? '';
+
+        final prefs = profile['preferences'] as Map<String, dynamic>?;
+        if (prefs != null) {
+          _pushNotifications = prefs['pushNotifications'] ?? true;
+        }
+
         _isLoading = false;
       });
     } catch (e) {
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    if (_isLoading) {
-      return Scaffold(
-        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-        body: const Center(child: CircularProgressIndicator()),
-      );
-    }
+  void _showSnack(String message, {required bool isError}) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: isError ? AppPalette.error : AppPalette.success,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+    );
+  }
 
-    return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      body: Column(
-        children: [
-          // Light Header (Matching Sessions Screen)
-          Container(
-            padding: EdgeInsets.only(
-              top: MediaQuery.of(context).padding.top + 16,
-              bottom: 16,
-              left: 24,
-              right: 24,
-            ),
-            color: Colors.transparent,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const SizedBox(
-                  width: 40,
-                ), // Spacing to center title if needed, or just spacers
-                Expanded(
-                  child: Text(
-                    'Profile',
-                    textAlign: TextAlign.center,
-                    style: GoogleFonts.inter(
-                      fontSize: 24, // Matching Sessions screen font size
-                      fontWeight: FontWeight.bold,
-                      color: Theme.of(context).colorScheme.onSurface,
+  void _showImagePreview(String imageUrl) {
+    showDialog(
+      context: context,
+      barrierColor: Colors.black87,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: EdgeInsets.zero,
+        child: Stack(
+          fit: StackFit.loose,
+          alignment: Alignment.center,
+          children: [
+            InteractiveViewer(
+              panEnabled: true,
+              minScale: 0.5,
+              maxScale: 4.0,
+              child: Image.network(
+                imageUrl,
+                fit: BoxFit.contain,
+                loadingBuilder: (context, child, loadingProgress) {
+                  if (loadingProgress == null) return child;
+                  return const Center(
+                    child: CircularProgressIndicator(
+                      color: AppPalette.orangeAccent,
                     ),
-                  ),
-                ),
-                // Notification Button placeholder or actual button
-                const SizedBox(width: 40, height: 40),
-              ],
-            ),
-          ),
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                children: [
-                  // Profile Summary
-                  Container(
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).cardColor,
-                      borderRadius: BorderRadius.circular(20),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Theme.of(
-                            context,
-                          ).shadowColor.withValues(alpha: 0.05),
-                          blurRadius: 10,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: Row(
-                      children: [
-                        CircleAvatar(
-                          radius: 30,
-                          backgroundImage: NetworkImage(
-                            'https://i.pravatar.cc/150?img=11',
-                          ),
-                          backgroundColor: Theme.of(
-                            context,
-                          ).colorScheme.surfaceContainerHighest,
-                        ),
-                        const SizedBox(width: 16),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              _userName,
-                              style: GoogleFonts.inter(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: Theme.of(context).colorScheme.onSurface,
-                              ),
-                            ),
-                            Text(
-                              _userEmail.isNotEmpty
-                                  ? _userEmail
-                                  : 'player@example.com',
-                              style: GoogleFonts.inter(
-                                color: Theme.of(
-                                  context,
-                                ).colorScheme.onSurface.withValues(alpha: 0.7),
-                                fontSize: 14,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const Spacer(),
-                        IconButton(
-                          icon: Icon(
-                            Icons.edit_outlined,
-                            color: Theme.of(context).colorScheme.onSurface,
-                          ),
-                          onPressed: () {
-                            context.push('/edit-profile');
-                          },
-                        ),
-                      ],
-                    ),
-                  ).animate().fadeIn().slideY(),
-
-                  const SizedBox(height: 32),
-
-                  const SizedBox(height: 32),
-
-                  _buildSectionContainer(
-                    title: 'Account Settings',
-                    children: [
-                      _buildSettingsTile(
-                        icon: Icons.lock_outline,
-                        title: 'Change Password',
-                        onTap: () {},
-                      ),
-                      const SizedBox(height: 12),
-                      _buildSettingsTile(
-                        icon: Icons.notifications_none,
-                        title: 'Notifications',
-                        onTap: () {
-                          context.push('/player/notifications');
-                        },
-                      ),
-                      const SizedBox(height: 12),
-                      _buildSettingsTile(
-                        icon: Icons.payment,
-                        title: 'Payment Methods',
-                        onTap: () {},
-                      ),
-                    ],
-                  ),
-
-                  const SizedBox(height: 24),
-                  _buildSectionContainer(
-                    title: 'Preferences',
-                    children: [
-                      _buildSettingsTile(
-                        icon: Icons.language,
-                        title: 'Language',
-                        trailing: const Text('English'),
-                        onTap: () {},
-                      ),
-                      const SizedBox(height: 12),
-                      _buildSettingsTile(
-                        icon: Icons.palette_outlined,
-                        title: 'Appearance',
-                        trailing: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Consumer(
-                              builder: (context, ref, child) {
-                                final isDark =
-                                    ref.watch(themeProvider) == ThemeMode.dark;
-                                return Text(
-                                  isDark ? 'Dark Mode' : 'Light Mode',
-                                  style: GoogleFonts.inter(
-                                    color: Theme.of(context)
-                                        .colorScheme
-                                        .onSurface
-                                        .withValues(alpha: 0.7),
-                                    fontSize: 14,
-                                  ),
-                                );
-                              },
-                            ),
-                            const SizedBox(width: 8),
-                            const Icon(
-                              Icons.arrow_forward_ios,
-                              size: 16,
-                              color: Colors.orange,
-                            ),
-                          ],
-                        ),
-                        onTap: () => _showThemeBottomSheet(context, ref),
-                      ),
-                    ],
-                  ),
-
-                  const SizedBox(height: 24),
-                  _buildSectionContainer(
-                    title: 'Support',
-                    children: [
-                      _buildSettingsTile(
-                        icon: Icons.help_outline,
-                        title: 'Help Center',
-                        onTap: () {},
-                      ),
-                      const SizedBox(height: 12),
-                      _buildSettingsTile(
-                        icon: Icons.info_outline,
-                        title: 'About App',
-                        onTap: () {},
-                      ),
-                    ],
-                  ),
-
-                  const SizedBox(height: 48),
-
-                  // Logout
-                  SizedBox(
-                    width: double.infinity,
-                    child: TextButton.icon(
-                      onPressed: () async {
-                        await AuthService.signOutCompletely();
-                        if (context.mounted) context.go('/welcome');
-                      },
-                      icon: const Icon(Icons.logout, color: Colors.red),
-                      label: Text(
-                        'Log Out',
-                        style: GoogleFonts.inter(
-                          color: Colors.red,
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      style: TextButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        backgroundColor: Theme.of(
-                          context,
-                        ).colorScheme.error.withValues(alpha: 0.1),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                    ),
-                  ).animate().fadeIn(delay: 500.ms),
-
-                  const SizedBox(height: 16),
-
-                  // Delete Account
-                  SizedBox(
-                    width: double.infinity,
-                    child: TextButton.icon(
-                      onPressed: () => _showDeleteConfirmation(context),
-                      icon: const Icon(Icons.delete_forever, color: Colors.red),
-                      label: Text(
-                        'Delete Account',
-                        style: GoogleFonts.inter(
-                          color: Colors.red,
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      style: TextButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        backgroundColor: Colors.transparent,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          side: const BorderSide(color: Colors.red, width: 1),
-                        ),
-                      ),
-                    ),
-                  ).animate().fadeIn(delay: 600.ms),
-
-                  const SizedBox(height: 24),
-                ],
+                  );
+                },
               ),
             ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSectionContainer({
-    required String title,
-    required List<Widget> children,
-  }) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Theme.of(context).cardColor,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Theme.of(context).shadowColor.withValues(alpha: 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            style: GoogleFonts.inter(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: AppPalette.textSecondaryLight,
+            Positioned(
+              top: 40,
+              right: 20,
+              child: IconButton(
+                icon: const Icon(Icons.close, color: Colors.white, size: 30),
+                onPressed: () => Navigator.of(context).pop(),
+              ),
             ),
-          ),
-          const SizedBox(height: 16),
-          ...children,
-        ],
+          ],
+        ),
       ),
-    ).animate().fadeIn().slideY(begin: 0.1);
+    );
   }
 
-  Widget _buildSettingsTile({
-    required IconData icon,
-    required String title,
-    Widget? trailing,
-    required VoidCallback onTap,
-  }) {
-    return ListTile(
-      contentPadding: EdgeInsets.zero,
-      onTap: onTap,
-      leading: Container(
-        padding: const EdgeInsets.all(10),
-        decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.05),
-          shape: BoxShape.circle,
-        ),
-        child: Icon(icon, color: Colors.orange, size: 20),
-      ),
-      title: Text(
-        title,
-        style: GoogleFonts.inter(
-          fontWeight: FontWeight.w500,
-          color: ref.watch(themeProvider) == ThemeMode.dark
-              ? Colors.white
-              : AppPalette.textPrimaryLight,
-          fontSize: 15,
-        ),
-      ),
-      trailing: trailing ??
-          const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.orange),
-    );
+  Future<void> _changeProfilePhoto() async {
+    final userId = _userProfile?['_id'] ?? _userProfile?['id'];
+    if (userId == null) {
+      _showSnack('User ID not found. Please try again.', isError: true);
+      return;
+    }
+
+    try {
+      final pickedFile = await StorageService.showImageSourceSheet(context);
+      if (pickedFile == null) return;
+
+      setState(() => _isLoading = true);
+
+      final imageUrl = await StorageService.uploadProfilePicture(
+        userId: userId,
+        imageFile: File(pickedFile.path),
+      );
+
+      await ProfileService.updateProfileImage(imageUrl);
+
+      if (mounted) {
+        _showSnack('Profile photo updated successfully!', isError: false);
+        _fetchProfile();
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        _showSnack('Error uploading photo: $e', isError: true);
+      }
+    }
   }
 
   void _showThemeBottomSheet(BuildContext context, WidgetRef ref) {
@@ -455,13 +224,14 @@ class _PlayerProfileScreenState extends ConsumerState<PlayerProfileScreen> {
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: isSelected
-              ? AppPalette.orangeAccent.withValues(alpha: 0.1)
+              ? Colors.orange.withValues(alpha: 0.1)
               : Theme.of(context).cardColor,
           borderRadius: BorderRadius.circular(16),
           border: isSelected
               ? Border.all(color: Colors.orange, width: 2)
               : Border.all(
-                  color: Theme.of(context).dividerColor.withValues(alpha: 0.1),
+                  color:
+                      Theme.of(context).dividerColor.withValues(alpha: 0.1),
                   width: 1,
                 ),
           boxShadow: [
@@ -479,7 +249,7 @@ class _PlayerProfileScreenState extends ConsumerState<PlayerProfileScreen> {
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
                 color: isSelected
-                    ? AppPalette.orangeAccent
+                    ? Colors.orange
                     : Theme.of(context).disabledColor.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
@@ -499,13 +269,12 @@ class _PlayerProfileScreenState extends ConsumerState<PlayerProfileScreen> {
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
                   color: isSelected
-                      ? AppPalette.orangeAccent
+                      ? Colors.orange
                       : Theme.of(context).colorScheme.onSurface,
                 ),
               ),
             ),
-            if (isSelected)
-              const Icon(Icons.check_circle, color: AppPalette.orangeAccent),
+            if (isSelected) const Icon(Icons.check_circle, color: Colors.orange),
           ],
         ),
       ),
@@ -544,18 +313,91 @@ class _PlayerProfileScreenState extends ConsumerState<PlayerProfileScreen> {
                       ? null
                       : () async {
                           setState(() => isLoading = true);
-                          final success = await AuthService.deleteAccount();
+                          final errorMsg = await AuthService.deleteAccount();
                           setState(() => isLoading = false);
 
                           if (context.mounted) {
-                            if (success) {
-                              Navigator.of(context).pop(); // Close dialog
-                              context.go('/welcome'); // Redirect
+                            if (errorMsg == null) {
+                              Navigator.of(context).pop();
+                              showDialog(
+                                context: context,
+                                barrierDismissible: false,
+                                builder: (dialogContext) {
+                                  return AlertDialog(
+                                    backgroundColor:
+                                        Theme.of(dialogContext).cardColor,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(20),
+                                    ),
+                                    content: Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        const Icon(Icons.check_circle,
+                                            color: AppPalette.success,
+                                            size: 64),
+                                        const SizedBox(height: 16),
+                                        Text(
+                                          'Account Deleted',
+                                          style: GoogleFonts.inter(
+                                            fontSize: 20,
+                                            fontWeight: FontWeight.bold,
+                                            color: Theme.of(dialogContext)
+                                                .colorScheme
+                                                .onSurface,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 8),
+                                        Text(
+                                          'Your account has been successfully deleted.',
+                                          textAlign: TextAlign.center,
+                                          style: GoogleFonts.inter(
+                                            fontSize: 14,
+                                            color: Theme.of(dialogContext)
+                                                .colorScheme
+                                                .onSurface
+                                                .withValues(alpha: 0.7),
+                                          ),
+                                        ),
+                                        const SizedBox(height: 24),
+                                        SizedBox(
+                                          width: double.infinity,
+                                          child: ElevatedButton(
+                                            onPressed: () {
+                                              context.go('/login');
+                                            },
+                                            style: ElevatedButton.styleFrom(
+                                              backgroundColor:
+                                                  AppPalette.orangeAccent,
+                                              foregroundColor: Colors.white,
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(12),
+                                              ),
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                      vertical: 16),
+                                            ),
+                                            child: Text(
+                                              'Go to Login',
+                                              style: GoogleFonts.inter(
+                                                fontSize: 16,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                },
+                              );
                             } else {
                               ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                    content: Text(
-                                        'Failed to delete account. Please try again later.')),
+                                SnackBar(
+                                  content: Text(errorMsg),
+                                  backgroundColor: Colors.red,
+                                  duration: const Duration(seconds: 5),
+                                ),
                               );
                             }
                           }
@@ -581,4 +423,453 @@ class _PlayerProfileScreenState extends ConsumerState<PlayerProfileScreen> {
       },
     );
   }
-} // End of _PlayerProfileScreenState
+
+  @override
+  Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    return Scaffold(
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      appBar: AppBar(
+        title: Text(
+          'Profile',
+          style: GoogleFonts.inter(
+            color: Theme.of(context).colorScheme.onSurface,
+            fontWeight: FontWeight.bold,
+            fontSize: 24,
+          ),
+        ),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        centerTitle: true,
+        automaticallyImplyLeading: false,
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 16.0),
+            child: NotificationButton(
+              onTap: () => context.push('/player/notifications'),
+            ),
+          ),
+        ],
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(20.0),
+        child: Column(
+          children: [
+            // Profile Card
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: ref.watch(themeProvider) == ThemeMode.dark
+                    ? AppPalette.surfaceGlassDark
+                    : Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.05),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Row(
+                children: [
+                  Stack(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(3),
+                        decoration: const BoxDecoration(
+                          color: AppPalette.orangeAccent,
+                          shape: BoxShape.circle,
+                        ),
+                        child: GestureDetector(
+                          onTap: () {
+                            final photoUrl = _userProfile?['playerProfile']
+                                ?['profilePhoto'];
+                            if (photoUrl != null &&
+                                photoUrl.toString().isNotEmpty) {
+                              _showImagePreview(photoUrl.toString());
+                            }
+                          },
+                          child: CircleAvatar(
+                            radius: 35,
+                            backgroundColor: Colors.grey[200],
+                            backgroundImage:
+                                (_userProfile?['playerProfile']
+                                                ?['profilePhoto'] !=
+                                            null &&
+                                        _userProfile!['playerProfile']
+                                                ['profilePhoto']
+                                            .toString()
+                                            .isNotEmpty)
+                                    ? NetworkImage(_userProfile!['playerProfile']
+                                        ['profilePhoto'])
+                                    : null,
+                            child: (_userProfile?['playerProfile']
+                                            ?['profilePhoto'] ==
+                                        null ||
+                                    _userProfile!['playerProfile']
+                                            ['profilePhoto']
+                                        .toString()
+                                        .isEmpty)
+                                ? const Icon(Icons.person,
+                                    size: 40, color: Colors.grey)
+                                : null,
+                          ),
+                        ),
+                      ),
+                      Positioned(
+                        bottom: 0,
+                        right: 0,
+                        child: GestureDetector(
+                          onTap: () => _changeProfilePhoto(),
+                          child: Container(
+                            padding: const EdgeInsets.all(4),
+                            decoration: const BoxDecoration(
+                              color: AppPalette.orangeAccent,
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.edit,
+                              color: Colors.white,
+                              size: 14,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(width: 20),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          _userName,
+                          style: GoogleFonts.inter(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: ref.watch(themeProvider) == ThemeMode.dark
+                                ? Colors.white
+                                : AppPalette.navyPrimary,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          _userEmail.isNotEmpty ? _userEmail : 'Player',
+                          style: GoogleFonts.inter(
+                            fontSize: 13,
+                            color: Colors.grey[600],
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        GestureDetector(
+                          onTap: () async {
+                            final result = await context.push(
+                              '/edit-profile',
+                              extra: _userProfile,
+                            );
+                            if (result == true) {
+                              _fetchProfile();
+                            }
+                          },
+                          child: Text(
+                            'Edit Profile',
+                            style: GoogleFonts.inter(
+                              fontSize: 14,
+                              color: AppPalette.orangeAccent,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ).animate().fadeIn().slideY(begin: 0.1),
+            const SizedBox(height: 24),
+
+            // Account Section
+            _buildSectionHeader('ACCOUNT'),
+            _buildSettingsList([
+              _buildSettingsTile(
+                icon: Icons.lock_outline_rounded,
+                title: 'Change Password',
+                onTap: () => context.push('/change-password'),
+              ),
+              _buildSettingsTile(
+                icon: Icons.credit_card,
+                title: 'Payment Method',
+                onTap: () => context.push('/payment-methods'),
+              ),
+            ]),
+            const SizedBox(height: 24),
+
+            // Preferences Section
+            _buildSectionHeader('PREFERENCES'),
+            _buildSettingsList([
+              _buildSettingsTile(
+                icon: Icons.notifications_none_rounded,
+                title: 'Push Notifications',
+                isToggle: true,
+                switchValue: _pushNotifications,
+                onToggle: (val) => setState(() => _pushNotifications = val),
+              ),
+              _buildSettingsTile(
+                icon: Icons.palette_outlined,
+                title: 'Appearance',
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Consumer(
+                      builder: (context, ref, child) {
+                        final isDark =
+                            ref.watch(themeProvider) == ThemeMode.dark;
+                        return Text(
+                          isDark ? 'Dark Mode' : 'Light Mode',
+                          style: GoogleFonts.inter(
+                            color: Colors.grey[500],
+                            fontSize: 14,
+                          ),
+                        );
+                      },
+                    ),
+                    const SizedBox(width: 8),
+                    const Icon(
+                      Icons.arrow_forward_ios_rounded,
+                      size: 16,
+                      color: Colors.grey,
+                    ),
+                  ],
+                ),
+                onTap: () => _showThemeBottomSheet(context, ref),
+              ),
+              _buildSettingsTile(
+                icon: Icons.language,
+                title: 'Language',
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'English (US)',
+                      style: GoogleFonts.inter(
+                        color: Colors.grey[500],
+                        fontSize: 14,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    const Icon(
+                      Icons.arrow_forward_ios_rounded,
+                      size: 16,
+                      color: Colors.grey,
+                    ),
+                  ],
+                ),
+                onTap: () {},
+              ),
+            ]),
+            const SizedBox(height: 24),
+
+            // Support & Legal
+            _buildSectionHeader('SUPPORT & LEGAL'),
+            _buildSettingsList([
+              _buildSettingsTile(
+                icon: Icons.help_outline_rounded,
+                title: 'Help Center',
+                onTap: () => context.push('/help-center'),
+              ),
+              _buildSettingsTile(
+                icon: Icons.privacy_tip_outlined,
+                title: 'Privacy Policy',
+                onTap: () => context.push('/privacy-policy'),
+              ),
+              _buildSettingsTile(
+                icon: Icons.gavel_outlined,
+                title: 'Terms of Service',
+                onTap: () => context.push('/terms-of-service'),
+              ),
+            ]),
+
+            const SizedBox(height: 32),
+
+            // Logout
+            Container(
+              width: double.infinity,
+              decoration: BoxDecoration(
+                color: ref.watch(themeProvider) == ThemeMode.dark
+                    ? AppPalette.surfaceGlassDark
+                    : Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Colors.red.withValues(alpha: 0.1)),
+              ),
+              child: TextButton.icon(
+                onPressed: () async {
+                  await AuthService.signOutCompletely();
+                  if (context.mounted) context.go('/login');
+                },
+                style: TextButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  foregroundColor: Colors.red,
+                ),
+                icon: const Icon(Icons.logout_rounded),
+                label: Text(
+                  'Log Out',
+                  style: GoogleFonts.inter(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ).animate().fadeIn(delay: 200.ms),
+
+            const SizedBox(height: 16),
+
+            // Delete Account
+            Container(
+              width: double.infinity,
+              decoration: BoxDecoration(
+                color: ref.watch(themeProvider) == ThemeMode.dark
+                    ? AppPalette.surfaceGlassDark
+                    : Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Colors.red.withValues(alpha: 0.1)),
+              ),
+              child: TextButton.icon(
+                onPressed: () => _showDeleteConfirmation(context),
+                style: TextButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  foregroundColor: Colors.red,
+                ),
+                icon: const Icon(Icons.delete_forever),
+                label: Text(
+                  'Delete Account',
+                  style: GoogleFonts.inter(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ).animate().fadeIn(delay: 300.ms),
+
+            const SizedBox(height: 16),
+            Text(
+              _appVersion.isNotEmpty ? _appVersion : 'Version 2.4.0 (Build 345)',
+              style:
+                  GoogleFonts.inter(color: Colors.grey[400], fontSize: 12),
+            ),
+            const SizedBox(height: 40),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSectionHeader(String title) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12.0, left: 4),
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: Text(
+          title,
+          style: GoogleFonts.inter(
+            fontSize: 12,
+            fontWeight: FontWeight.bold,
+            letterSpacing: 1.0,
+            color: Colors.grey[500],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSettingsList(List<Widget> children) {
+    return Container(
+      decoration: BoxDecoration(
+        color: ref.watch(themeProvider) == ThemeMode.dark
+            ? AppPalette.surfaceGlassDark
+            : Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        children: children.asMap().entries.map((entry) {
+          final index = entry.key;
+          final child = entry.value;
+          return Column(
+            children: [
+              child,
+              if (index != children.length - 1)
+                Divider(
+                  color: Colors.grey[100],
+                  height: 1,
+                  indent: 16,
+                  endIndent: 16,
+                ),
+            ],
+          );
+        }).toList(),
+      ),
+    );
+  }
+
+  Widget _buildSettingsTile({
+    required IconData icon,
+    required String title,
+    VoidCallback? onTap,
+    Widget? trailing,
+    bool isToggle = false,
+    bool switchValue = false,
+    ValueChanged<bool>? onToggle,
+  }) {
+    return ListTile(
+      onTap: isToggle ? () => onToggle?.call(!switchValue) : onTap,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
+      leading: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: ref.watch(themeProvider) == ThemeMode.dark
+              ? Colors.white.withValues(alpha: 0.05)
+              : const Color(0xFFF5F7FA),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Icon(icon, color: Colors.orange, size: 22),
+      ),
+      title: Text(
+        title,
+        style: GoogleFonts.inter(
+          fontSize: 15,
+          fontWeight: FontWeight.w600,
+          color: ref.watch(themeProvider) == ThemeMode.dark
+              ? Colors.white
+              : AppPalette.navyPrimary,
+        ),
+      ),
+      trailing: isToggle
+          ? Switch.adaptive(
+              value: switchValue,
+              onChanged: onToggle,
+              activeTrackColor: AppPalette.orangeAccent,
+              activeThumbColor: Colors.white,
+            )
+          : (trailing ??
+              const Icon(
+                Icons.arrow_forward_ios_rounded,
+                size: 16,
+                color: Colors.grey,
+              )),
+    );
+  }
+}

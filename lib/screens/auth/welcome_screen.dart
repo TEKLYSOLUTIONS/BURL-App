@@ -20,17 +20,17 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
 
   final List<WelcomeSlide> _slides = [
     WelcomeSlide(
-      imageAsset: 'assets/images/welcome_england.png',
+      imageAsset: 'assets/images/welcome_england copy.jpg',
       title1: 'Master Your\n',
       title2: 'Game',
     ),
     WelcomeSlide(
-      imageAsset: 'assets/images/welcome_srilanka.png',
+      imageAsset: 'assets/images/welcome_srilanka copy.jpg',
       title1: 'Unleash Your\n',
       title2: 'Full Potential',
     ),
     WelcomeSlide(
-      imageAsset: 'assets/images/welcome_nz.png',
+      imageAsset: 'assets/images/welcome_newzeland.jpg',
       title1: 'Experience the\n',
       title2: 'Victory',
     ),

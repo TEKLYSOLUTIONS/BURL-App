@@ -148,6 +148,7 @@ class AppRouter {
             durationMinutes: extra['durationMinutes'],
             price: extra['price'],
             cancellationPolicy: extra['cancellationPolicy'] ?? 'flexible',
+            currencySymbol: extra['currencySymbol'] ?? '\$',
           );
         },
       ),
@@ -183,6 +184,7 @@ class AppRouter {
             hourlyRate: extra['hourlyRate'] ?? 60.0,
             sessionDuration: extra['sessionDuration'] ?? 60,
             cancellationPolicy: extra['cancellationPolicy'] ?? 'flexible',
+            currencySymbol: extra['currencySymbol'] ?? '\$',
           );
         },
       ),
@@ -345,7 +347,26 @@ class AppRouter {
             path: '/player/notifications',
             builder: (context, state) => const NotificationsScreen(),
           ),
+          GoRoute(
+            path: '/player/reports',
+            builder: (context, state) =>
+                const PlayerReportsScreen(playerId: ''),
+          ),
+          GoRoute(
+            path: '/player/session-details/:id',
+            builder: (context, state) => SessionDetailsScreen(
+              sessionId: state.pathParameters['id'] ?? '',
+              occurrenceDate: state.uri.queryParameters['date'],
+            ),
+          ),
         ],
+      ),
+
+      GoRoute(
+        path: '/player/coach/:id',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) =>
+            CoachDetailsScreen(coachId: state.pathParameters['id'] ?? ''),
       ),
 
       GoRoute(
@@ -423,7 +444,9 @@ class AppRouter {
           GoRoute(
             path: '/guardian/session-details/:id',
             builder: (context, state) => SessionDetailsScreen(
-                sessionId: state.pathParameters['id'] ?? ''),
+              sessionId: state.pathParameters['id'] ?? '',
+              occurrenceDate: state.uri.queryParameters['date'],
+            ),
           ),
           GoRoute(
             path: '/guardian/coach-details/:id',
@@ -442,6 +465,7 @@ class AppRouter {
                 hourlyRate: extra['hourlyRate'] ?? 60.0,
                 sessionDuration: extra['sessionDuration'] ?? 60,
                 cancellationPolicy: extra['cancellationPolicy'] ?? 'flexible',
+                currencySymbol: extra['currencySymbol'] ?? '\$',
               );
             },
           ),
@@ -457,6 +481,7 @@ class AppRouter {
                 durationMinutes: extra['durationMinutes'],
                 price: extra['price'],
                 cancellationPolicy: extra['cancellationPolicy'] ?? 'flexible',
+                currencySymbol: extra['currencySymbol'] ?? '\$',
               );
             },
           ),

@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'api_service.dart';
+import 'firebase_auth_service.dart';
 
 class AuthService {
   static Future<bool> login(String email, String password) async {
@@ -93,6 +94,9 @@ class AuthService {
       // Clear local session data
       final prefs = await SharedPreferences.getInstance();
       await prefs.clear();
+      // Sign out of Firebase to prevent Router redirects
+      final FirebaseAuthService firebaseAuthService = FirebaseAuthService();
+      await firebaseAuthService.signOut();
     } catch (_) {}
   }
 
@@ -144,19 +148,33 @@ class AuthService {
     }
   }
 
-  static Future<bool> deleteAccount() async {
+  /// Returns null on success, or an error message string if blocked/failed.
+  static Future<String?> deleteAccount() async {
     try {
       final response = await ApiService.delete('users/me');
 
       if (response.statusCode == 200) {
+        // Also delete the Firebase account so it can't be used to log in again
+        try {
+          final FirebaseAuthService firebaseAuthService = FirebaseAuthService();
+          await firebaseAuthService.deleteCurrentUser();
+        } catch (e) {
+          debugPrint('⚠️ Could not delete Firebase account: $e');
+        }
         await signOutCompletely();
-        return true;
+        return null; // success
       } else {
-        return false;
+        // Try to extract the server's message (e.g. the active-bookings block)
+        try {
+          final body = jsonDecode(response.body) as Map<String, dynamic>;
+          return (body['message'] as String?) ?? 'Failed to delete account.';
+        } catch (_) {
+          return 'Failed to delete account. Please try again later.';
+        }
       }
     } catch (e) {
       debugPrint('Delete account error: $e');
-      return false;
+      return 'Failed to delete account. Please try again later.';
     }
   }
 }

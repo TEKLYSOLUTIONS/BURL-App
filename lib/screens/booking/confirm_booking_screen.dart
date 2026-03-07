@@ -47,13 +47,20 @@ class _ConfirmBookingScreenState extends State<ConfirmBookingScreen> {
       setState(() {
         _isValidatingPromo = false;
         if (result['valid'] == true) {
-          _appliedPromoCode = result['code'];
-          _discountAmount = (result['discount'] as num).toDouble();
+          _appliedPromoCode = result['code'] as String? ?? code;
+          final discountType = result['discountType'] as String? ?? 'fixed';
+          final discountValue = (result['discountValue'] as num?)?.toDouble() ?? 0.0;
+          if (discountType == 'percentage') {
+            _discountAmount = _sessionFee * (discountValue / 100);
+          } else {
+            _discountAmount = discountValue;
+          }
+          _discountAmount = _discountAmount.clamp(0.0, _sessionFee);
           _promoError = null;
         } else {
           _appliedPromoCode = null;
           _discountAmount = 0.0;
-          _promoError = result['message'] ??
+          _promoError = result['message'] as String? ??
               "The code '$code' is invalid or has expired.";
         }
       });

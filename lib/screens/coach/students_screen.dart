@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import '../../widgets/cached_avatar.dart'; // Import CachedAvatar
 
 import '../../services/coach_service.dart';
 import '../../config/palette.dart';
@@ -116,74 +117,74 @@ class _StudentsScreenState extends State<StudentsScreen> {
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
-          : SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(
-                24,
-                10,
-                24,
-                100,
-              ), // Added bottom padding
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Stats Row
-                  SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Row(
+          : CustomScrollView(
+              slivers: [
+                SliverPadding(
+                  padding: const EdgeInsets.fromLTRB(24, 10, 24, 24),
+                  sliver: SliverToBoxAdapter(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        _buildSummaryCard(
-                          title: 'TOTAL',
-                          value: _totalCount.toString(),
-                          subtitle: '${_allStudents.length} Players',
-                          isDark: true,
+                        // Stats Row
+                        SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          child: Row(
+                            children: [
+                              _buildSummaryCard(
+                                title: 'TOTAL',
+                                value: _totalCount.toString(),
+                                subtitle: '${_allStudents.length} Players',
+                                isDark: true,
+                              ),
+                              const SizedBox(width: 12),
+                              _buildSummaryCard(
+                                title: 'ACTIVE',
+                                value: _activeCount.toString(),
+                                subtitle: 'Confirmed',
+                                subtitleColor: AppPalette.successGreen,
+                              ),
+                              const SizedBox(width: 12),
+                              _buildSummaryCard(
+                                title: 'PENDING',
+                                value: _needsReviewCount.toString(),
+                                subtitle: 'Needs Review',
+                                subtitleColor: AppPalette.warning,
+                              ),
+                            ],
+                          ),
                         ),
-                        const SizedBox(width: 12),
-                        _buildSummaryCard(
-                          title: 'ACTIVE',
-                          value: _activeCount.toString(),
-                          subtitle: 'Confirmed',
-                          subtitleColor: AppPalette.successGreen,
-                        ),
-                        const SizedBox(width: 12),
-                        _buildSummaryCard(
-                          title: 'PENDING',
-                          value: _needsReviewCount.toString(),
-                          subtitle: 'Needs Review',
-                          subtitleColor: AppPalette.warning,
+                        const SizedBox(height: 24),
+
+                        // Filter Chips
+                        SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          child: Row(
+                            children: [
+                              _buildFilterChip('All Students'),
+                              const SizedBox(width: 8),
+                              _buildFilterChip('Active'),
+                              const SizedBox(width: 8),
+                              _buildFilterChip(
+                                'Declined',
+                                hasDot: true,
+                                dotColor: Theme.of(context).colorScheme.error,
+                              ),
+                              const SizedBox(width: 8),
+                              _buildFilterChip(
+                                'Needs Review',
+                                hasDot: true,
+                                dotColor: AppPalette.warning,
+                              ),
+                            ],
+                          ),
                         ),
                       ],
                     ),
                   ),
-                  const SizedBox(height: 24),
-
-                  // Filter Chips
-                  SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Row(
-                      children: [
-                        _buildFilterChip('All Students'),
-                        const SizedBox(width: 8),
-                        _buildFilterChip('Active'),
-                        const SizedBox(width: 8),
-                        _buildFilterChip(
-                          'Declined',
-                          hasDot: true,
-                          dotColor: Theme.of(context).colorScheme.error,
-                        ),
-                        const SizedBox(width: 8),
-                        _buildFilterChip(
-                          'Needs Review',
-                          hasDot: true,
-                          dotColor: AppPalette.warning,
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-
-                  // Student List (Filtered)
-                  if (_filteredStudents.isEmpty)
-                    Center(
+                ),
+                if (_filteredStudents.isEmpty)
+                  SliverToBoxAdapter(
+                    child: Center(
                       child: Padding(
                         padding: const EdgeInsets.only(top: 40),
                         child: Text(
@@ -191,27 +192,36 @@ class _StudentsScreenState extends State<StudentsScreen> {
                           style: GoogleFonts.inter(color: Colors.grey),
                         ),
                       ),
-                    )
-                  else
-                    ..._filteredStudents.map((student) {
-                      final colors = _getStatusColors(
-                        student['rawStatus'] ?? 'confirmed',
-                        context,
-                      );
-                      return _buildStudentCard(
-                        name: student['name'],
-                        detail: student['detail'],
-                        avatarUrl: student['avatarUrl'],
-                        status: student['statusLabel'],
-                        statusColor: colors.background,
-                        statusTextColor: colors.text,
-                        showOnlineDot: student['showOnlineDot'] ?? false,
-                        onlineDotColor: student['onlineDotColor'] ??
-                            AppPalette.successGreen,
-                      );
-                    }),
-                ],
-              ),
+                    ),
+                  )
+                else
+                  SliverPadding(
+                    padding: const EdgeInsets.fromLTRB(24, 0, 24, 100),
+                    sliver: SliverList(
+                      delegate: SliverChildBuilderDelegate(
+                        (context, index) {
+                          final student = _filteredStudents[index];
+                          final colors = _getStatusColors(
+                            student['rawStatus'] ?? 'confirmed',
+                            context,
+                          );
+                          return _buildStudentCard(
+                            name: student['name'],
+                            detail: student['detail'],
+                            avatarUrl: student['avatarUrl'],
+                            status: student['statusLabel'],
+                            statusColor: colors.background,
+                            statusTextColor: colors.text,
+                            showOnlineDot: student['showOnlineDot'] ?? false,
+                            onlineDotColor: student['onlineDotColor'] ??
+                                AppPalette.successGreen,
+                          );
+                        },
+                        childCount: _filteredStudents.length,
+                      ),
+                    ),
+                  ),
+              ],
             ),
     );
   }
@@ -447,9 +457,10 @@ class _StudentsScreenState extends State<StudentsScreen> {
           children: [
             Stack(
               children: [
-                CircleAvatar(
+                CachedAvatar(
+                  imageUrl: avatarUrl,
                   radius: 28,
-                  backgroundImage: NetworkImage(avatarUrl),
+                  fallbackText: name,
                 ),
                 if (showOnlineDot)
                   Positioned(

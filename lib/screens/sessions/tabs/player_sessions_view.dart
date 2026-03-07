@@ -377,9 +377,14 @@ class _PlayerSessionsViewState extends State<PlayerSessionsView>
                     final sessionId = session['_id'] as String?;
                     if (sessionId != null && sessionId.isNotEmpty) {
                       final dateParam = occurrenceDate.toIso8601String();
-                      final result = await context.push(
-                        '/guardian/session-details/$sessionId?date=$dateParam',
-                      );
+                      final isGuardian = GoRouterState.of(context)
+                          .uri
+                          .toString()
+                          .startsWith('/guardian');
+                      final route = isGuardian
+                          ? '/guardian/session-details/$sessionId?date=$dateParam'
+                          : '/player/session-details/$sessionId?date=$dateParam';
+                      final result = await context.push(route);
                       if (result == true) _fetchSessions();
                     }
                   },

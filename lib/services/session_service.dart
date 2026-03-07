@@ -96,6 +96,103 @@ class SessionService {
     }
   }
 
+  /// Get sessions for the authenticated player, optionally filtered by date.
+  static Future<Map<String, dynamic>> getPlayerSessions({
+    int limit = 20,
+    int page = 1,
+    DateTime? date,
+  }) async {
+    try {
+      final queryParams = <String, String>{
+        'limit': limit.toString(),
+        'page': page.toString(),
+      };
+
+      if (date != null) {
+        final localMidnight = DateTime(date.year, date.month, date.day);
+        final localEndOfDay =
+            DateTime(date.year, date.month, date.day, 23, 59, 59, 999);
+        queryParams['startDate'] = localMidnight.toUtc().toIso8601String();
+        queryParams['endDate'] = localEndOfDay.toUtc().toIso8601String();
+      }
+
+      final queryString = queryParams.entries
+          .map((e) => '${e.key}=${Uri.encodeComponent(e.value)}')
+          .join('&');
+
+      final httpResponse = await ApiService.get('sessions/player?$queryString');
+      final responseData =
+          json.decode(httpResponse.body) as Map<String, dynamic>;
+
+      if (responseData['status'] == 'success') {
+        final sessions = (responseData['sessions'] ??
+            responseData['data'] ??
+            []) as List<dynamic>;
+        return {
+          'sessions': sessions,
+          'total': responseData['total'] ?? sessions.length,
+          'page': responseData['page'] ?? 1,
+          'pages': responseData['pages'] ?? 1,
+        };
+      } else {
+        throw Exception(
+            responseData['message'] ?? 'Failed to fetch player sessions');
+      }
+    } catch (e) {
+      debugPrint('Error fetching player sessions: $e');
+      rethrow;
+    }
+  }
+
+  /// Get sessions for the authenticated guardian's managed players, filtered by date.
+  static Future<Map<String, dynamic>> getGuardianSessions({
+    int limit = 20,
+    int page = 1,
+    DateTime? date,
+  }) async {
+    try {
+      final queryParams = <String, String>{
+        'limit': limit.toString(),
+        'page': page.toString(),
+      };
+
+      if (date != null) {
+        final localMidnight = DateTime(date.year, date.month, date.day);
+        final localEndOfDay =
+            DateTime(date.year, date.month, date.day, 23, 59, 59, 999);
+        queryParams['startDate'] = localMidnight.toUtc().toIso8601String();
+        queryParams['endDate'] = localEndOfDay.toUtc().toIso8601String();
+      }
+
+      final queryString = queryParams.entries
+          .map((e) => '${e.key}=${Uri.encodeComponent(e.value)}')
+          .join('&');
+
+      final httpResponse =
+          await ApiService.get('sessions/guardian?$queryString');
+      final responseData =
+          json.decode(httpResponse.body) as Map<String, dynamic>;
+
+      if (responseData['status'] == 'success') {
+        final sessions = (responseData['sessions'] ??
+            responseData['data'] ??
+            []) as List<dynamic>;
+        return {
+          'sessions': sessions,
+          'total': responseData['total'] ?? sessions.length,
+          'page': responseData['page'] ?? 1,
+          'pages': responseData['pages'] ?? 1,
+        };
+      } else {
+        throw Exception(
+            responseData['message'] ?? 'Failed to fetch guardian sessions');
+      }
+    } catch (e) {
+      debugPrint('Error fetching guardian sessions: $e');
+      rethrow;
+    }
+  }
+
   /// Get all sessions for the authenticated coach
   ///
   /// Parameters:

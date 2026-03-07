@@ -239,6 +239,7 @@ class _CreateSessionScreenState extends State<CreateSessionScreen> {
 
       // Construct Time Slots
       List<Map<String, dynamic>> timeSlots = [];
+      List<Map<String, dynamic>> explicitTimeSlots = [];
       List<String> selectedDays = [];
       Map<String, dynamic>? recurringPattern;
 
@@ -273,6 +274,14 @@ class _CreateSessionScreenState extends State<CreateSessionScreen> {
         // Add all valid selected dates to selectedDays list
         for (var date in validDates) {
           selectedDays.add(DateFormat('yyyy-MM-dd').format(date));
+
+          final localStart =
+              DateTime(date.year, date.month, date.day, startHour, startMinute);
+
+          explicitTimeSlots.add({
+            'startTime': localStart.toUtc().toIso8601String(),
+            'durationMinutes': duration,
+          });
         }
 
         // We do NOT set recurringPattern, triggering Backend 'Manual Day Selection' strategy
@@ -300,6 +309,14 @@ class _CreateSessionScreenState extends State<CreateSessionScreen> {
 
         selectedDays.add(DateFormat('yyyy-MM-dd').format(date));
 
+        final localStart =
+            DateTime(date.year, date.month, date.day, startHour, startMinute);
+
+        explicitTimeSlots.add({
+          'startTime': localStart.toUtc().toIso8601String(),
+          'durationMinutes': duration,
+        });
+
         timeSlots.add({
           'startTime': {'hour': startHour, 'minute': startMinute},
           'durationMinutes': duration,
@@ -309,6 +326,7 @@ class _CreateSessionScreenState extends State<CreateSessionScreen> {
       debugPrint('Submitting Session Form Data: $formData');
       debugPrint('Selected Days: $selectedDays');
       debugPrint('Time Slots: $timeSlots');
+      debugPrint('Explicit Time Slots: $explicitTimeSlots');
       debugPrint('Recurring Pattern: $recurringPattern');
 
       final sessionData = {
@@ -317,6 +335,7 @@ class _CreateSessionScreenState extends State<CreateSessionScreen> {
         'location': formData['location'] as String? ?? '',
         'capacity': (formData['capacity'] as num).toInt(),
         'timeSlots': timeSlots,
+        'explicitTimeSlots': explicitTimeSlots,
         'selectedDays': selectedDays,
         'isRecurring': isRecurring,
         'sessionType': sessionType,
@@ -351,6 +370,8 @@ class _CreateSessionScreenState extends State<CreateSessionScreen> {
           location: sessionData['location'] as String,
           capacity: sessionData['capacity'] as int,
           timeSlots: sessionData['timeSlots'] as List<Map<String, dynamic>>,
+          explicitTimeSlots:
+              sessionData['explicitTimeSlots'] as List<Map<String, dynamic>>,
           selectedDays: sessionData['selectedDays'] as List<String>,
           isRecurring: sessionData['isRecurring'] as bool,
           sessionType: sessionData['sessionType'] as String,

@@ -4,7 +4,11 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
 import '../../config/palette.dart';
 import '../../widgets/notification_button.dart';
+import '../../widgets/cached_avatar.dart'; // Import CachedAvatar
+import '../../widgets/calendar/horizontal_week_calendar.dart';
 import '../../services/auth_service.dart';
+import '../../services/profile_service.dart';
+import '../../services/session_service.dart';
 
 import '../../utils/date_time_utils.dart';
 import '../../utils/session_utils.dart';
@@ -24,13 +28,15 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen>
   bool get wantKeepAlive => true;
 
   int _selectedTabIndex = 0;
-  int _selectedDay = DateTime.now().day;
+  DateTime _selectedDate = DateTime.now();
   String _userName = 'Guardian';
+  String? _profileImageUrl;
   bool _isLoading = true;
+  bool _isLoadingSessions = false;
 
   // Dynamic Data
   List<dynamic> _managedPlayers = [];
-  List<dynamic> _upcomingSessions = [];
+  List<dynamic> _dateFilteredSessions = [];
   Map<String, dynamic>? _stats;
   // List<dynamic> _recentActivity = [];
 
@@ -61,29 +67,46 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen>
   }
 
   Future<void> _loadUserData() async {
-    final name = await AuthService.getUserName();
-    if (name != null) {
+    try {
+      final results = await Future.wait([
+        AuthService.getUserName(),
+        ProfileService.getProfile(),
+      ]);
+      final name = results[0] as String?;
+      final profileData = results[1] as Map<String, dynamic>?;
       if (mounted) {
         setState(() {
-          _userName = name.split(' ').first;
+          if (name != null) _userName = name.split(' ').first;
+          if (profileData != null) {
+            final guardianProfile =
+                profileData['guardianProfile'] as Map<String, dynamic>?;
+            _profileImageUrl = (guardianProfile?['profilePhoto'] ??
+                    profileData['profileImage'] ??
+                    profileData['profileUrl'])
+                ?.toString();
+          }
         });
       }
+    } catch (e) {
+      debugPrint('Error loading user data: $e');
     }
   }
 
   Future<void> _loadDashboardData() async {
     setState(() => _isLoading = true);
     try {
-      final data = await DashboardService.getGuardianDashboard();
+      final results = await Future.wait([
+        DashboardService.getGuardianDashboard(),
+        SessionService.getGuardianSessions(date: _selectedDate),
+      ]);
+      final data = results[0];
+      final sessionsData = results[1];
       if (data != null && mounted) {
         setState(() {
-          // Flatten the managed players structure if needed, depends on API
-          // API returns: managedPlayers: [{ player: { ... } }]
-          // Ensure we handle potential nulls or different structures gracefully
           _managedPlayers = (data['managedPlayers'] as List? ?? []);
-          _upcomingSessions = data['upcomingSessions'] ?? [];
           _stats = data['stats'];
-          // _recentActivity = data['recentActivity'] ?? [];
+          _dateFilteredSessions =
+              sessionsData?['sessions'] as List<dynamic>? ?? [];
           _isLoading = false;
         });
       } else {
@@ -95,41 +118,47 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen>
     }
   }
 
+  Future<void> _loadSessionsForDate(DateTime date) async {
+    setState(() => _isLoadingSessions = true);
+    try {
+      final result = await SessionService.getGuardianSessions(date: date);
+      if (mounted) {
+        setState(() {
+          _dateFilteredSessions =
+              result['sessions'] as List<dynamic>? ?? [];
+          _isLoadingSessions = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading sessions for date: $e');
+      if (mounted) setState(() => _isLoadingSessions = false);
+    }
+  }
+
+  bool _isToday(DateTime date) {
+    final now = DateTime.now();
+    return date.year == now.year &&
+        date.month == now.month &&
+        date.day == now.day;
+  }
+
+  String _formatDate(DateTime date) => '${date.day}/${date.month}';
+
   // Get filtered sessions for selected child
   List<dynamic> _getFilteredSessions() {
-    if (_selectedTabIndex == 0) return _upcomingSessions;
+    if (_selectedTabIndex == 0) return _dateFilteredSessions;
 
     // index 1 corresponds to _managedPlayers[0], index 2 to [1], etc.
     if (_selectedTabIndex - 1 < _managedPlayers.length) {
       final selectedPlayerId = _managedPlayers[_selectedTabIndex - 1]['_id'];
 
-      return _upcomingSessions.where((session) {
+      return _dateFilteredSessions.where((session) {
         final assigned = session['assignedPlayers'] as List?;
         if (assigned == null) return false;
         return assigned.any((ap) => ap['player']['_id'] == selectedPlayerId);
       }).toList();
     }
     return [];
-  }
-
-  // Get sessions filtered by the selected calendar day
-  List<dynamic> _getSessionsForSelectedDay() {
-    final filtered = _upcomingSessions.where((session) {
-      if (session['timeSlots'] == null ||
-          (session['timeSlots'] as List).isEmpty) {
-        return false;
-      }
-      final startTimeStr = session['timeSlots'][0]['startTime'];
-      if (startTimeStr == null) return false;
-      try {
-        final sessionDate = DateTime.parse(startTimeStr.toString()).toLocal();
-        return sessionDate.day == _selectedDay;
-      } catch (_) {
-        return false;
-      }
-    }).toList();
-    // If no sessions on selected day, show all upcoming
-    return filtered.isEmpty ? _upcomingSessions : filtered;
   }
 
   @override
@@ -153,12 +182,29 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen>
                     // Profile Header
                     _ProfileHeader(
                       userName: _userName,
+                      profileImageUrl: _profileImageUrl,
                     ).animate().fadeIn(duration: 600.ms),
                     const SizedBox(height: 20),
 
                     // Child Selection Tabs
                     _buildChildTabs().animate().fadeIn(delay: 200.ms),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 12),
+
+                    // 📅 Horizontal Calendar
+                    Transform.translate(
+                      offset: const Offset(-20, 0),
+                      child: SizedBox(
+                        width: MediaQuery.of(context).size.width,
+                        child: HorizontalWeekCalendar(
+                          initialDate: _selectedDate,
+                          onDateSelected: (date) {
+                            setState(() => _selectedDate = date);
+                            _loadSessionsForDate(date);
+                          },
+                        ),
+                      ),
+                    ).animate().fadeIn(delay: 200.ms),
+                    const SizedBox(height: 16),
 
                     if (_selectedTabIndex == 0)
                       _buildOverviewView()
@@ -175,11 +221,15 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Up Next Section (Carousel)
+        // Sessions Header
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const _SectionHeader(title: 'Up Next'),
+            _SectionHeader(
+              title: _isToday(_selectedDate)
+                  ? 'Up Next'
+                  : 'Sessions on ${_formatDate(_selectedDate)}',
+            ),
             TextButton(
               onPressed: () {
                 context.go('/guardian/sessions');
@@ -196,61 +246,70 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen>
           ],
         ).animate().fadeIn(delay: 300.ms),
         const SizedBox(height: 12),
-        const SizedBox(height: 12),
         Builder(
           builder: (context) {
-            final dayFilteredSessions = _getSessionsForSelectedDay();
-            return _upcomingSessions.isEmpty
-                ? const Center(child: Text('No upcoming sessions'))
-                : Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+            if (_isLoadingSessions) {
+              return const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(40.0),
+                  child: CircularProgressIndicator(),
+                ),
+              );
+            }
+            if (_dateFilteredSessions.isEmpty) {
+              return Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(32),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).cardColor,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Center(
+                  child: Column(
                     children: [
-                      if (dayFilteredSessions.length < _upcomingSessions.length)
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 8.0),
-                          child: Text(
-                            '${dayFilteredSessions.length} session${dayFilteredSessions.length == 1 ? '' : 's'} on this day',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .onSurface
-                                  .withValues(alpha: 0.5),
-                            ),
-                          ),
-                        ),
-                      SizedBox(
-                        height: 220,
-                        child: PageView.builder(
-                          itemCount: dayFilteredSessions.length,
-                          controller: PageController(),
-                          itemBuilder: (context, index) {
-                            return _UpNextCard(
-                              session: dayFilteredSessions[index],
-                            );
-                          },
+                      Icon(
+                        Icons.event_busy,
+                        size: 48,
+                        color: Theme.of(context)
+                            .colorScheme
+                            .onSurface
+                            .withValues(alpha: 0.3),
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        _isToday(_selectedDate)
+                            ? 'No sessions today'
+                            : 'No sessions on ${_formatDate(_selectedDate)}',
+                        style: TextStyle(
+                          color: Theme.of(context)
+                              .colorScheme
+                              .onSurface
+                              .withValues(alpha: 0.5),
                         ),
                       ),
                     ],
-                  );
+                  ),
+                ),
+              );
+            }
+            return Column(
+              children: _dateFilteredSessions.map((session) {
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: _UpNextCard(session: session),
+                );
+              }).toList(),
+            );
           },
         ).animate().fadeIn(delay: 400.ms).slideY(begin: 0.1),
         const SizedBox(height: 24),
 
-        // This Week Calendar (Styled Container)
-        const _SectionHeader(
-          title: 'This Week',
-        ).animate().fadeIn(delay: 500.ms),
-        const SizedBox(height: 12),
-        _buildWeekCalendar().animate().fadeIn(delay: 600.ms),
-        const SizedBox(height: 24),
-
-        // Performance Section - Using Stats instead
+        // Overview Stats
         const _SectionHeader(
           title: 'Overview Stats',
-        ).animate().fadeIn(delay: 700.ms),
+        ).animate().fadeIn(delay: 500.ms),
         const SizedBox(height: 12),
-        _buildStatsSection().animate().fadeIn(delay: 800.ms).slideY(begin: 0.1),
+        _buildStatsSection().animate().fadeIn(delay: 600.ms).slideY(begin: 0.1),
       ],
     );
   }
@@ -376,20 +435,55 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen>
               ],
             ),
           ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            decoration: BoxDecoration(
-              color: Colors.green[50], // Defaulting to confirmed/green
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Text(
-              'Confirmed', // Placeholder status
-              style: TextStyle(
-                color: Colors.green[700],
-                fontWeight: FontWeight.bold,
-                fontSize: 11,
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.green[50],
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  'Confirmed',
+                  style: TextStyle(
+                    color: Colors.green[700],
+                    fontWeight: FontWeight.bold,
+                    fontSize: 11,
+                  ),
+                ),
               ),
-            ),
+              const SizedBox(height: 8),
+              GestureDetector(
+                onTap: () {
+                  final sessionId = session['_id']?.toString();
+                  if (sessionId != null && sessionId.isNotEmpty) {
+                    String dateParam = '';
+                    if (session['timeSlots'] != null &&
+                        (session['timeSlots'] as List).isNotEmpty) {
+                      final slotStart = session['timeSlots'][0]['startTime'];
+                      if (slotStart != null) {
+                        final dt = DateTime.tryParse(slotStart.toString())
+                            ?.toLocal();
+                        if (dt != null) {
+                          dateParam = '?date=${dt.toIso8601String()}';
+                        }
+                      }
+                    }
+                    context.push(
+                        '/guardian/session-details/$sessionId$dateParam');
+                  }
+                },
+                child: Text(
+                  'View Session',
+                  style: TextStyle(
+                    color: AppPalette.orangeAccent,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 12,
+                  ),
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -626,25 +720,15 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen>
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    CircleAvatar(
+                    CachedAvatar(
+                      imageUrl: playerImage ?? '',
                       radius: 18,
                       backgroundColor:
                           isSelected ? Colors.white : AppPalette.orangeAccent,
-                      backgroundImage: playerImage != null
-                          ? NetworkImage(playerImage)
-                          : null,
-                      child: playerImage == null
-                          ? Text(
-                              playerName[0],
-                              style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.bold,
-                                color: isSelected
-                                    ? Theme.of(context).colorScheme.primary
-                                    : Colors.white,
-                              ),
-                            )
-                          : null,
+                      fallbackText: playerName,
+                      foregroundColor: isSelected
+                          ? Theme.of(context).colorScheme.primary
+                          : Colors.white,
                     ),
                     const SizedBox(width: 10),
                     Text(
@@ -666,146 +750,34 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen>
       ),
     );
   }
-
-  Widget _buildWeekCalendar() {
-    final now = DateTime.now();
-    final startOfWeek = now.subtract(Duration(days: now.weekday - 1));
-
-    // Build a set of day-numbers that have sessions this week
-    final daysWithSessions = <int>{};
-    for (final session in _upcomingSessions) {
-      if (session['timeSlots'] == null ||
-          (session['timeSlots'] as List).isEmpty) {
-        continue;
-      }
-      final startTimeStr = session['timeSlots'][0]['startTime'];
-      if (startTimeStr == null) continue;
-      try {
-        final sessionDate = DateTime.parse(startTimeStr.toString()).toLocal();
-        // Only mark days within the current week
-        if (sessionDate
-                .isAfter(startOfWeek.subtract(const Duration(days: 1))) &&
-            sessionDate.isBefore(startOfWeek.add(const Duration(days: 7)))) {
-          daysWithSessions.add(sessionDate.day);
-        }
-      } catch (_) {}
-    }
-
-    final days = List.generate(7, (index) {
-      final date = startOfWeek.add(Duration(days: index));
-      final dayName = [
-        'Mon',
-        'Tue',
-        'Wed',
-        'Thu',
-        'Fri',
-        'Sat',
-        'Sun',
-      ][date.weekday - 1];
-      return {
-        'date': date.day,
-        'day': dayName,
-        'fullDate': date,
-      };
-    });
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
-      decoration: BoxDecoration(
-        color: Theme.of(context).cardColor,
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: Theme.of(context).shadowColor.withValues(alpha: 0.04),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: days.map((day) {
-          final date = day['date'] as int;
-          final isSelected = _selectedDay == date;
-          final hasSession = daysWithSessions.contains(date);
-
-          return GestureDetector(
-            onTap: () {
-              setState(() {
-                _selectedDay = date;
-              });
-            },
-            child: Container(
-              width: 40,
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              decoration: BoxDecoration(
-                color:
-                    isSelected ? AppPalette.orangeAccent : Colors.transparent,
-                borderRadius: BorderRadius.circular(12),
-                // No border for unselected
-              ),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    day['day'] as String,
-                    style: TextStyle(
-                      color: isSelected
-                          ? Colors.white
-                          : Theme.of(
-                              context,
-                            ).colorScheme.onSurface.withValues(alpha: 0.7),
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    '$date',
-                    style: TextStyle(
-                      color: isSelected
-                          ? Colors.white
-                          : Theme.of(context).colorScheme.primary,
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  // Dot Indicator
-                  Container(
-                    width: 4,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: isSelected
-                          ? Colors.white.withValues(alpha: 0.5)
-                          : (hasSession
-                              ? AppPalette.orangeAccent
-                              : Theme.of(context).dividerColor),
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          );
-        }).toList(),
-      ),
-    );
-  }
 }
 
 class _ProfileHeader extends StatelessWidget {
   final String userName;
-  const _ProfileHeader({required this.userName});
+  final String? profileImageUrl;
+  const _ProfileHeader({required this.userName, this.profileImageUrl});
 
   @override
   Widget build(BuildContext context) {
+    final hasPhoto =
+        profileImageUrl != null && profileImageUrl!.isNotEmpty;
     return Row(
       children: [
-        const CircleAvatar(
+        CircleAvatar(
           radius: 28,
           backgroundColor: AppPalette.orangeAccent,
-          backgroundImage: NetworkImage('https://i.pravatar.cc/150?u=sarah'),
+          backgroundImage:
+              hasPhoto ? NetworkImage(profileImageUrl!) : null,
+          child: hasPhoto
+              ? null
+              : Text(
+                  userName.isNotEmpty ? userName[0].toUpperCase() : 'G',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 20,
+                  ),
+                ),
         ),
         const SizedBox(width: 12),
         Expanded(
@@ -1039,20 +1011,9 @@ class _UpNextCard extends StatelessWidget {
                         ],
                       ),
                     ),
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(12),
-                      child: Container(
-                        width: 60,
-                        height: 60,
-                        color: Theme.of(context)
-                            .colorScheme
-                            .onSurface
-                            .withValues(alpha: 0.08),
-                      ),
-                    ),
                   ],
                 ),
-                const Spacer(),
+                const SizedBox(height: 16),
                 Row(
                   children: [
                     Icon(Icons.access_time, size: 16, color: subtleColor),

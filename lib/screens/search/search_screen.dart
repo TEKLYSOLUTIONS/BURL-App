@@ -266,7 +266,7 @@ class _SearchScreenState extends State<SearchScreen> {
                                 ).animate().fadeIn(delay: 300.ms),
                                 const SizedBox(height: 16),
                                 SizedBox(
-                                  height: 160,
+                                  height: 180,
                                   child: ListView.separated(
                                     scrollDirection: Axis.horizontal,
                                     itemCount: _coaches.length,
@@ -284,6 +284,7 @@ class _SearchScreenState extends State<SearchScreen> {
                                         rating: coach['ratings']?['overall']
                                                 ?.toStringAsFixed(1) ??
                                             '0.0',
+                                        city: coach['city'] as String?,
                                         imageUrl: user?['profilePhoto'] ??
                                             coach['profilePhoto'] ??
                                             coach['profileImage'] ??
@@ -364,7 +365,7 @@ class _SearchScreenState extends State<SearchScreen> {
                                             );
                                           } else {
                                             context.push(
-                                              '/session-details/${session['_id']}$dateParam',
+                                              '/player/session-details/${session['_id']}$dateParam',
                                             );
                                           }
                                         },
@@ -460,6 +461,7 @@ class _CoachCard extends StatelessWidget {
   final String role;
   final String rating;
   final String imageUrl;
+  final String? city;
   final VoidCallback onTap;
 
   const _CoachCard({
@@ -467,6 +469,7 @@ class _CoachCard extends StatelessWidget {
     required this.role,
     required this.rating,
     required this.imageUrl,
+    this.city,
     required this.onTap,
   });
 
@@ -511,6 +514,35 @@ class _CoachCard extends StatelessWidget {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
+            if (city != null && city!.isNotEmpty) ...[  
+              const SizedBox(height: 2),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.location_on_rounded,
+                      size: 10,
+                      color: Theme.of(context)
+                          .colorScheme
+                          .onSurface
+                          .withValues(alpha: 0.45)),
+                  const SizedBox(width: 2),
+                  Flexible(
+                    child: Text(
+                      city!,
+                      style: GoogleFonts.inter(
+                        fontSize: 10,
+                        color: Theme.of(context)
+                            .colorScheme
+                            .onSurface
+                            .withValues(alpha: 0.45),
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+            ],
             const SizedBox(height: 4),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),

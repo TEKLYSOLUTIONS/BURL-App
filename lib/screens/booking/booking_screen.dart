@@ -112,17 +112,16 @@ class _BookingScreenState extends State<BookingScreen> {
     }
 
     Map<String, dynamic>? coachData;
-    final createdByValue = _session!['createdBy'];
     final coachValue = _session!['coach'];
-    if (createdByValue is Map) {
-      coachData = Map<String, dynamic>.from(createdByValue);
-    } else if (coachValue is Map) {
+    if (coachValue is Map) {
       final m = Map<String, dynamic>.from(coachValue);
+      // Merge coachProfile fields (profilePhoto, fullName) into the top-level map
       if (m['coachProfile'] is Map) {
-        coachData = Map<String, dynamic>.from(m['coachProfile']);
-      } else {
-        coachData = m;
+        final profile = Map<String, dynamic>.from(m['coachProfile'] as Map);
+        m['profilePhoto'] ??= profile['profilePhoto'];
+        m['fullName'] ??= profile['fullName'];
       }
+      coachData = m;
     }
 
     final sessionTitle = _session!['title'] ?? 'Session';
@@ -218,7 +217,7 @@ class _BookingScreenState extends State<BookingScreen> {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          'with Coach $coachName',
+                          'with $coachName',
                           style: GoogleFonts.inter(
                             fontSize: 14,
                             color: Theme.of(

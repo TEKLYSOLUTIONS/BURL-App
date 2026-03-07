@@ -5,6 +5,7 @@ import 'firebase_options.dart';
 import 'config/theme.dart';
 import 'navigation/app_router.dart';
 import 'providers/theme_provider.dart';
+import 'widgets/offline_banner.dart';
 
 import 'package:flutter_stripe/flutter_stripe.dart';
 
@@ -35,6 +36,14 @@ class CoachingApp extends ConsumerWidget {
       darkTheme: AppTheme.darkTheme,
       themeMode: themeMode,
       routerConfig: AppRouter.router,
+      builder: (context, child) {
+        return Column(
+          children: [
+            const GlobalOfflineBanner(),
+            Expanded(child: child ?? const SizedBox.shrink()),
+          ],
+        );
+      },
     );
   }
 }
