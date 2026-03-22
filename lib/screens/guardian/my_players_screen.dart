@@ -6,6 +6,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import '../../config/palette.dart';
 import '../../services/guardian_service.dart';
 import '../../widgets/notification_button.dart';
+import '../../utils/date_time_utils.dart';
 
 class MyPlayersScreen extends StatefulWidget {
   const MyPlayersScreen({super.key});
@@ -282,7 +283,7 @@ class _PlayerCard extends StatelessWidget {
                       const SizedBox(height: 6),
                       // Mock Status Row
                       Text(
-                        'Age: ${playerData['age'] ?? 'N/A'}',
+                          'Age: ${DateTimeUtils.calculateAge(playerData['dateOfBirth'], playerData['age']?.toString())}',
                         style: GoogleFonts.inter(
                           fontSize: 12,
                           color: Theme.of(context).disabledColor,

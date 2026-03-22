@@ -159,9 +159,6 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                         padding: const EdgeInsets.all(24.0),
                         decoration: BoxDecoration(
                           color: Colors.white.withValues(alpha: 0.1),
-                          border: Border.all(
-                            color: Colors.white.withValues(alpha: 0.2),
-                          ),
                           gradient: LinearGradient(
                             begin: Alignment.topLeft,
                             end: Alignment.bottomRight,

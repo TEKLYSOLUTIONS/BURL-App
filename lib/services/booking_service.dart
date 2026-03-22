@@ -2,7 +2,31 @@ import 'dart:convert';
 import 'api_service.dart';
 
 /// Service for managing booking-related API calls
+class _BookingCacheEntry {
+  final Map<String, dynamic> data;
+  final DateTime timestamp;
+
+  _BookingCacheEntry({required this.data, required this.timestamp});
+}
+
 class BookingService {
+  // ─── Cache ───────────────────────────────────────────────────────────────
+  static final Map<String, _BookingCacheEntry> _playerBookingsCache = {};
+  static final Map<String, _BookingCacheEntry> _coachBookingsCache = {};
+  static const _cacheTtl = Duration(minutes: 5);
+
+  static void invalidatePlayerBookingsCache() {
+    _playerBookingsCache.clear();
+  }
+
+  static void invalidateCoachBookingsCache() {
+    _coachBookingsCache.clear();
+  }
+
+  static String _buildCacheKey(String type, int limit, int page) {
+    return '${type}_${limit}_$page';
+  }
+  // ─────────────────────────────────────────────────────────────────────────
   /// Create a new booking
   ///
   /// [sessionId] - ID of the session to book
@@ -30,6 +54,8 @@ class BookingService {
       final data = json.decode(response.body);
 
       if (response.statusCode == 201) {
+        invalidatePlayerBookingsCache();
+        invalidateCoachBookingsCache();
         return data['booking'];
       } else {
         throw Exception(data['message'] ?? 'Failed to create booking');
@@ -60,6 +86,8 @@ class BookingService {
       final data = json.decode(response.body);
 
       if (response.statusCode == 201) {
+        invalidatePlayerBookingsCache();
+        invalidateCoachBookingsCache();
         return data['bookings'] != null &&
                 data['bookings'] is List &&
                 (data['bookings'] as List).isNotEmpty
@@ -84,6 +112,13 @@ class BookingService {
     int limit = 10,
     int page = 1,
   }) async {
+    final cacheKey = _buildCacheKey(type, limit, page);
+    final cached = _playerBookingsCache[cacheKey];
+    if (cached != null &&
+        DateTime.now().difference(cached.timestamp) < _cacheTtl) {
+      return Map<String, dynamic>.from(cached.data);
+    }
+
     try {
       final response = await ApiService.get(
         'bookings?type=$type&limit=$limit&page=$page',
@@ -92,10 +127,15 @@ class BookingService {
       final data = json.decode(response.body);
 
       if (response.statusCode == 200) {
-        return {
+        final result = {
           'bookings': data['bookings'] as List<dynamic>,
           'pagination': data['pagination'],
         };
+        _playerBookingsCache[cacheKey] = _BookingCacheEntry(
+          data: result,
+          timestamp: DateTime.now(),
+        );
+        return result;
       } else {
         throw Exception(data['message'] ?? 'Failed to fetch bookings');
       }
@@ -137,6 +177,8 @@ class BookingService {
       final data = json.decode(response.body);
 
       if (response.statusCode == 200) {
+        invalidatePlayerBookingsCache();
+        invalidateCoachBookingsCache();
         return true;
       } else {
         throw Exception(data['message'] ?? 'Failed to cancel booking');
@@ -197,6 +239,13 @@ class BookingService {
     int limit = 20,
     int page = 1,
   }) async {
+    final cacheKey = _buildCacheKey(type, limit, page);
+    final cached = _coachBookingsCache[cacheKey];
+    if (cached != null &&
+        DateTime.now().difference(cached.timestamp) < _cacheTtl) {
+      return Map<String, dynamic>.from(cached.data);
+    }
+
     try {
       final response = await ApiService.get(
         'bookings/coach?type=$type&limit=$limit&page=$page',
@@ -205,10 +254,15 @@ class BookingService {
       final data = json.decode(response.body);
 
       if (response.statusCode == 200) {
-        return {
+        final result = {
           'bookings': data['bookings'] as List<dynamic>,
           'pagination': data['pagination'],
         };
+        _coachBookingsCache[cacheKey] = _BookingCacheEntry(
+          data: result,
+          timestamp: DateTime.now(),
+        );
+        return result;
       } else {
         throw Exception(data['message'] ?? 'Failed to fetch coach bookings');
       }
@@ -236,6 +290,8 @@ class BookingService {
       final data = json.decode(response.body);
 
       if (response.statusCode == 200) {
+        invalidatePlayerBookingsCache();
+        invalidateCoachBookingsCache();
         return data['booking'];
       } else {
         throw Exception(data['message'] ?? 'Failed to update booking status');

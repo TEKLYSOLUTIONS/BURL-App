@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../config/palette.dart';
 import '../../services/guardian_service.dart';
 import '../../services/storage_service.dart';
+import '../../utils/date_time_utils.dart';
 import 'dart:io';
 
 class EditPlayerScreen extends StatefulWidget {
@@ -66,7 +67,7 @@ class _EditPlayerScreenState extends State<EditPlayerScreen> {
     _medicalIssuesController = TextEditingController(
       text: data?['medicalIssues'] ?? '',
     );
-    _ageController = TextEditingController(text: data?['age'] ?? '10');
+    _ageController = TextEditingController(text: DateTimeUtils.calculateAge(data?['dateOfBirth'], data?['age']?.toString() ?? '10'));
 
     // Cricket-specific fields — fall back to first item if stored value not in list
     final rawRole = data?['role'] ?? '';

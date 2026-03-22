@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
 import '../../config/palette.dart';
 import '../../services/booking_service.dart';
+import '../../services/commission_service.dart';
 
 class ConfirmBookingScreen extends StatefulWidget {
   final Map<String, dynamic> bookingDetails;
@@ -22,15 +23,59 @@ class _ConfirmBookingScreenState extends State<ConfirmBookingScreen> {
   bool _isValidatingPromo = false;
   bool _isProcessingPayment = false;
 
-  // Pricing values
-  final double _sessionFee = 60.00;
-  final double _serviceFee = 2.50;
+  // Pricing values — loaded dynamically from the backend
+  bool _isLoadingCommission = true;
+  double _sessionFee = 60.0;
+  CommissionResult? _commissionResult;
+
+  double get _serviceFee => _commissionResult?.commissionAmount ?? 0.0;
+  String get _serviceFeeLabel => _commissionResult?.label ?? 'Platform Fee';
   final double _tax = 0.00;
 
   // Payment methods
   int _selectedPaymentMethod = 0; // 0: Card, 1: Apple Pay
 
   double get _totalAmount => _sessionFee + _serviceFee + _tax - _discountAmount;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCommission();
+  }
+
+  Future<void> _loadCommission() async {
+    final session = widget.bookingDetails['session'];
+    final rawFee =
+        (session?['pricing']?['amount'] as num?)?.toDouble() ??
+        (widget.bookingDetails['sessionFee'] as num?)?.toDouble() ??
+        60.0;
+
+    final sportName = session?['sport']?.toString() ??
+        session?['category']?.toString() ??
+        session?['title']?.toString();
+
+    try {
+      final result = await CommissionService.calculate(
+        rawFee,
+        sportName: sportName,
+      );
+      if (mounted) {
+        setState(() {
+          _sessionFee = rawFee;
+          _commissionResult = result;
+          _isLoadingCommission = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _sessionFee = rawFee;
+          _commissionResult = CommissionResult.fromFallback(rawFee);
+          _isLoadingCommission = false;
+        });
+      }
+    }
+  }
 
   Future<void> _applyPromoCode() async {
     final code = _promoController.text.trim().toUpperCase();
@@ -49,7 +94,8 @@ class _ConfirmBookingScreenState extends State<ConfirmBookingScreen> {
         if (result['valid'] == true) {
           _appliedPromoCode = result['code'] as String? ?? code;
           final discountType = result['discountType'] as String? ?? 'fixed';
-          final discountValue = (result['discountValue'] as num?)?.toDouble() ?? 0.0;
+          final discountValue =
+              (result['discountValue'] as num?)?.toDouble() ?? 0.0;
           if (discountType == 'percentage') {
             _discountAmount = _sessionFee * (discountValue / 100);
           } else {
@@ -87,7 +133,6 @@ class _ConfirmBookingScreenState extends State<ConfirmBookingScreen> {
     });
 
     try {
-      // Get booking details from widget
       final sessionId = widget.bookingDetails['sessionId'];
       final occurrenceDate = widget.bookingDetails['occurrenceDate'];
       final List<String>? selectedDates =
@@ -98,10 +143,8 @@ class _ConfirmBookingScreenState extends State<ConfirmBookingScreen> {
         throw Exception('Missing booking details');
       }
 
-      // Determine payment method
       final paymentMethod = _selectedPaymentMethod == 0 ? 'card' : 'apple_pay';
 
-      // Create booking
       final booking = await BookingService.createBooking(
         sessionId: sessionId,
         occurrenceDate: occurrenceDate,
@@ -114,7 +157,6 @@ class _ConfirmBookingScreenState extends State<ConfirmBookingScreen> {
         _isProcessingPayment = false;
       });
 
-      // Navigate to success screen with booking ID
       if (mounted) {
         context.push(
           '/booking-success',
@@ -145,6 +187,32 @@ class _ConfirmBookingScreenState extends State<ConfirmBookingScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Show loading while commission is being fetched
+    if (_isLoadingCommission) {
+      return Scaffold(
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+        appBar: AppBar(
+          title: Text(
+            'Confirm Booking',
+            style: GoogleFonts.inter(
+              fontWeight: FontWeight.bold,
+              color: Theme.of(context).colorScheme.onSurface,
+            ),
+          ),
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          leading: IconButton(
+            icon: Icon(
+              Icons.arrow_back_ios_new,
+              color: Theme.of(context).iconTheme.color,
+            ),
+            onPressed: () => context.pop(),
+          ),
+        ),
+        body: const Center(child: CircularProgressIndicator()),
+      );
+    }
+
     // Determine dynamic values with fallbacks
     final session = widget.bookingDetails['session'];
     Map<String, dynamic>? coachData;
@@ -290,7 +358,7 @@ class _ConfirmBookingScreenState extends State<ConfirmBookingScreen> {
                                 backgroundImage: NetworkImage(coachImage ??
                                     'https://i.pravatar.cc/150?img=12'),
                                 onBackgroundImageError:
-                                    (exception, stackTrace) {}, // Prevent crash
+                                    (exception, stackTrace) {},
                                 backgroundColor: Theme.of(
                                   context,
                                 ).colorScheme.surfaceContainerHighest,
@@ -311,7 +379,7 @@ class _ConfirmBookingScreenState extends State<ConfirmBookingScreen> {
                                       ),
                                     ),
                                     Text(
-                                      'Tennis Coaching • Private Session',
+                                      'Cricket Coaching • Session',
                                       style: GoogleFonts.inter(
                                         fontSize: 13,
                                         color: Theme.of(
@@ -483,9 +551,9 @@ class _ConfirmBookingScreenState extends State<ConfirmBookingScreen> {
                       ),
                       child: Column(
                         children: [
-                          _buildPriceRow('Session Fee (1hr)', _sessionFee),
+                          _buildPriceRow('Session Fee', _sessionFee),
                           const SizedBox(height: 12),
-                          _buildPriceRow('Service Fee', _serviceFee),
+                          _buildPriceRow(_serviceFeeLabel, _serviceFee),
                           const SizedBox(height: 12),
                           _buildPriceRow('Tax', _tax),
                           if (_appliedPromoCode != null) ...[
@@ -495,7 +563,7 @@ class _ConfirmBookingScreenState extends State<ConfirmBookingScreen> {
                               children: [
                                 Row(
                                   children: [
-                                    Icon(
+                                    const Icon(
                                       Icons.local_offer,
                                       size: 16,
                                       color: Colors.green,
@@ -805,8 +873,6 @@ class _ConfirmBookingScreenState extends State<ConfirmBookingScreen> {
                           style: BorderStyle.solid,
                         ),
                         borderRadius: BorderRadius.circular(16),
-                        // Dotted border effect is usually done with custom painter,
-                        // using standard border for simplicity but focusing on clean UI
                         color: Theme.of(context).scaffoldBackgroundColor,
                       ),
                       child: Center(
@@ -834,7 +900,7 @@ class _ConfirmBookingScreenState extends State<ConfirmBookingScreen> {
                       ),
                     ),
 
-                    const SizedBox(height: 40), // Spacing for bottom button
+                    const SizedBox(height: 40),
                   ],
                 ),
               ),
@@ -868,7 +934,8 @@ class _ConfirmBookingScreenState extends State<ConfirmBookingScreen> {
                         'Payments are secure and encrypted',
                         style: GoogleFonts.inter(
                           fontSize: 12,
-                          color: Theme.of(context).textTheme.bodyMedium?.color,
+                          color:
+                              Theme.of(context).textTheme.bodyMedium?.color,
                         ),
                       ),
                     ],
@@ -887,27 +954,36 @@ class _ConfirmBookingScreenState extends State<ConfirmBookingScreen> {
                           borderRadius: BorderRadius.circular(16),
                         ),
                       ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            'Pay Total',
-                            style: GoogleFonts.inter(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
+                      child: _isProcessingPayment
+                          ? const SizedBox(
+                              width: 24,
+                              height: 24,
+                              child: CircularProgressIndicator(
+                                color: Colors.white,
+                                strokeWidth: 2.5,
+                              ),
+                            )
+                          : Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  'Pay Total',
+                                  style: GoogleFonts.inter(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                                Text(
+                                  '\$ ${_totalAmount.toStringAsFixed(2)}',
+                                  style: GoogleFonts.inter(
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ],
                             ),
-                          ),
-                          Text(
-                            '\$ ${_totalAmount.toStringAsFixed(2)}',
-                            style: GoogleFonts.inter(
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ],
-                      ),
                     ),
                   ),
                 ],

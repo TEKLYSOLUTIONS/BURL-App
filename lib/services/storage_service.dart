@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:image_picker/image_picker.dart';
@@ -96,10 +97,13 @@ class StorageService {
         fileToUpload = compressedFile;
       }
 
+      // Use Firebase Auth UID to satisfy Firebase Storage rules. Fallback to passed userId.
+      final String authUid = FirebaseAuth.instance.currentUser?.uid ?? userId;
+
       // Create a unique file name
       final String extension = fileToUpload.path.substring(fileToUpload.path.lastIndexOf('.'));
       final String fileName =
-          'profile_${userId}_${DateTime.now().millisecondsSinceEpoch}$extension';
+          'profile_${authUid}_${DateTime.now().millisecondsSinceEpoch}$extension';
 
       debugPrint('📤 Uploading file: ${fileToUpload.path}');
 
@@ -113,7 +117,8 @@ class StorageService {
         SettableMetadata(
           contentType: 'image/jpeg',
           customMetadata: {
-            'userId': userId,
+            'userId': authUid,
+            'mongodbId': userId, // Keep MongoDB ID in metadata just in case
             'uploadedAt': DateTime.now().toIso8601String(),
           },
         ),

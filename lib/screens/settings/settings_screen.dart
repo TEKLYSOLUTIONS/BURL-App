@@ -460,8 +460,35 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                                     ?['pushNotifications'] ??
                                 true,
                             activeTrackColor: Colors.orange,
-                            onChanged: (value) {
-                              // Update preferences
+                            onChanged: (value) async {
+                              // Optimistic UI update
+                              setState(() {
+                                _userData ??= {};
+                                _userData!['preferences'] ??= {};
+                                _userData!['preferences']
+                                    ['pushNotifications'] = value;
+                              });
+
+                              try {
+                                await ProfileService.updateProfile({
+                                  'preferences': {
+                                    'pushNotifications': value,
+                                    'darkMode': _userData?['preferences']?['darkMode'] ?? false,
+                                    'language': _userData?['preferences']?['language'] ?? 'en-US',
+                                  }
+                                });
+                              } catch (e) {
+                                // Revert on error
+                                setState(() {
+                                  _userData!['preferences']
+                                      ['pushNotifications'] = !value;
+                                });
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: Text('Failed to update preference: $e')),
+                                  );
+                                }
+                              }
                             },
                           ),
                           onTap: null,

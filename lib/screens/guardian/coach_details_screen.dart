@@ -4,7 +4,6 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 import '../../config/palette.dart';
 import '../../services/search_service.dart';
-import '../../widgets/navigation/role_based_bottom_nav_bar.dart';
 import '../../services/review_service.dart';
 import '../../utils/date_time_utils.dart';
 import '../../services/profile_service.dart';
@@ -30,6 +29,7 @@ class _CoachDetailsScreenState extends State<CoachDetailsScreen>
 
   List<dynamic> _reviews = [];
   bool _isLoadingReviews = true;
+  DateTime _lastTap = DateTime.fromMillisecondsSinceEpoch(0);
 
   @override
   void initState() {
@@ -205,7 +205,7 @@ class _CoachDetailsScreenState extends State<CoachDetailsScreen>
 
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      bottomNavigationBar: const RoleBasedBottomNavBar(),
+      /* bottomNavigationBar removed to prevent nesting with ShellRoute */
       appBar: AppBar(
         backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         elevation: 0,
@@ -718,7 +718,7 @@ class _CoachDetailsScreenState extends State<CoachDetailsScreen>
                                             context.push(
                                               isGuardian
                                                   ? '/guardian/session-details/${session['_id']}$dateParam'
-                                                  : '/session-details/${session['_id']}$dateParam',
+                                                  : '/player/session-details/${session['_id']}$dateParam',
                                             );
                                           },
                                           borderRadius:
@@ -845,6 +845,10 @@ class _CoachDetailsScreenState extends State<CoachDetailsScreen>
                 Expanded(
                   child: ElevatedButton(
                     onPressed: () async {
+                      final now = DateTime.now();
+                      if (now.difference(_lastTap).inMilliseconds < 1500) return;
+                      _lastTap = now;
+
                       final ScaffoldMessengerState messenger =
                           ScaffoldMessenger.of(context);
                       final dynamic localRouter = GoRouter.of(context);
@@ -879,7 +883,7 @@ class _CoachDetailsScreenState extends State<CoachDetailsScreen>
                           currentRouteUri.toString().startsWith('/guardian');
 
                       if (isGuardian) {
-                        localRouter.push(
+                        await localRouter.push(
                           '/guardian/coach/${widget.coachId}/book',
                           extra: <String, dynamic>{
                             'coachName': fullName,
@@ -891,8 +895,8 @@ class _CoachDetailsScreenState extends State<CoachDetailsScreen>
                           },
                         );
                       } else {
-                        localRouter.push(
-                          '/coach/${widget.coachId}/book',
+                        await localRouter.push(
+                          '/player/coach/${widget.coachId}/book',
                           extra: <String, dynamic>{
                             'coachName': fullName,
                             'coachImageUrl': profilePhoto,

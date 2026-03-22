@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Light mode app background — matches Flutter splash screen, eliminates white flash -->
+    <color name="app_background_light">#F8FAFC</color>
+</resources>

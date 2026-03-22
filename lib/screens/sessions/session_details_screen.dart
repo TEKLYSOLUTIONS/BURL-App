@@ -38,6 +38,7 @@ class _SessionDetailsScreenState extends State<SessionDetailsScreen> {
   bool _isBooked = false;
   String? _bookingId;
   bool _isCancelling = false;
+  DateTime _lastTap = DateTime.fromMillisecondsSinceEpoch(0);
 
   @override
   void initState() {
@@ -1207,15 +1208,17 @@ class _SessionDetailsScreenState extends State<SessionDetailsScreen> {
                     )
                   : ElevatedButton(
                       onPressed: () async {
-                        final ScaffoldMessengerState messenger =
-                            ScaffoldMessenger.of(context);
-                        final dynamic localRouter = GoRouter.of(context);
+                        final now = DateTime.now();
+                        if (now.difference(_lastTap).inMilliseconds < 1500) return;
+                        _lastTap = now;
+
+                        // Check if user profile is complete
                         final isComplete =
                             await ProfileService.isProfileComplete();
                         if (!mounted) return;
 
                         if (!isComplete) {
-                          messenger.showSnackBar(
+                          ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(
                               content: Text(
                                   'Please complete your profile (Location and Phone Number) before booking.'),
@@ -1225,7 +1228,9 @@ class _SessionDetailsScreenState extends State<SessionDetailsScreen> {
                           return;
                         }
 
-                        localRouter.push('/booking/${widget.sessionId}');
+                        final dynamic localRouter = GoRouter.of(context);
+                        final prefix = _userRole == 'guardian' ? '/guardian' : '/player';
+                        await localRouter.push('$prefix/booking/${widget.sessionId}');
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppPalette.orangeAccent,

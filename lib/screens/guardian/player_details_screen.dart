@@ -116,7 +116,7 @@ class _PlayerDetailsScreenState extends State<PlayerDetailsScreen>
     final player = _playerData!;
     final String fullName = player['fullName'] ?? 'Unknown';
     final String role = player['role'] ?? 'Athlete';
-    final String age = player['age']?.toString() ?? 'N/A';
+    final String age = DateTimeUtils.calculateAge(player['dateOfBirth'], player['age']?.toString());
     final String? profilePhoto = player['profilePhoto'] ?? player['profileUrl'];
     final stats = player['stats'] as Map<String, dynamic>?;
 

@@ -342,45 +342,48 @@ class _GroupSessionsTabState extends State<GroupSessionsTab>
                   children: [
                     // Start button — only for upcoming (not yet finished)
                     if (!isFinished) ...[
-                      InkWell(
-                        onTap: () => context.push(
-                          '/session-attendance/${session['_id']}',
-                        ),
-                        borderRadius: BorderRadius.circular(8),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 10,
+                      Expanded(
+                        child: InkWell(
+                          onTap: () => context.push(
+                            '/session-attendance/${session['_id']}',
                           ),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFFF6B35),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(
-                                Icons.play_arrow_rounded,
-                                size: 16,
-                                color: Colors.white,
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                'Start',
-                                style: GoogleFonts.inter(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w600,
+                          borderRadius: BorderRadius.circular(8),
+                          child: Container(
+                            alignment: Alignment.center,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 10,
+                            ),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFFF6B35),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(
+                                  Icons.play_arrow_rounded,
+                                  size: 16,
                                   color: Colors.white,
                                 ),
-                              ),
-                            ],
+                                const SizedBox(width: 4),
+                                Text(
+                                  'Start',
+                                  style: GoogleFonts.inter(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                       ),
                       const SizedBox(width: 8),
                     ],
                     // Details / View Plan button
-                    Flexible(
+                    Expanded(
                       child: InkWell(
                         onTap: () async {
                           final dateParam = startTime.toIso8601String();
@@ -391,6 +394,7 @@ class _GroupSessionsTabState extends State<GroupSessionsTab>
                         },
                         borderRadius: BorderRadius.circular(8),
                         child: Container(
+                          alignment: Alignment.center,
                           padding: const EdgeInsets.symmetric(
                             horizontal: 12,
                             vertical: 10,
@@ -428,20 +432,6 @@ class _GroupSessionsTabState extends State<GroupSessionsTab>
                   ],
                 ),
               ],
-            ),
-          ),
-          const SizedBox(width: 16),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(20),
-            child: Container(
-              width: 110,
-              height: 110,
-              color: Theme.of(context).colorScheme.surfaceContainerHighest,
-              child: Icon(
-                Icons.sports_cricket,
-                size: 40,
-                color: primaryColor,
-              ),
             ),
           ),
         ],

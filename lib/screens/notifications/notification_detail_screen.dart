@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../../config/palette.dart';
 
 class NotificationDetailScreen extends StatelessWidget {
@@ -202,7 +201,7 @@ class NotificationDetailScreen extends StatelessWidget {
                           SizedBox(
                             width: double.infinity,
                             child: ElevatedButton(
-                              onPressed: () async {
+                              onPressed: () {
                                 if (actionUrl != null) {
                                   if (actionUrl == '/add-review' &&
                                       metadata != null) {
@@ -220,12 +219,11 @@ class NotificationDetailScreen extends StatelessWidget {
                                     }
                                   } else if (actionUrl == '/profile/edit' ||
                                       actionUrl == '/edit-profile') {
-                                    final prefs =
-                                        await SharedPreferences.getInstance();
-                                    final role = prefs.getString('user_role');
+                                    // Navigate to edit profile without any extra —
+                                    // EditProfileScreen will fetch the profile from
+                                    // the API and display the correct form for the role.
                                     if (context.mounted) {
-                                      context.push('/edit-profile',
-                                          extra: {'role': role});
+                                      context.push('/edit-profile');
                                     }
                                   } else {
                                     if (context.mounted) {

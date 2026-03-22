@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 
 import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
@@ -16,6 +16,7 @@ import '../../services/notification_service.dart';
 import '../../providers/theme_provider.dart';
 import '../../utils/currency_helper.dart';
 import '../../utils/country_codes.dart';
+import '../../widgets/navigation/coach_bottom_bar.dart';
 
 class CompleteCoachProfileScreen extends ConsumerStatefulWidget {
   final Map<String, dynamic>? profileData;
@@ -133,12 +134,6 @@ class _CompleteCoachProfileScreenState
     super.initState();
     if (widget.profileData != null) {
       _initializeWithData(widget.profileData!);
-      // Auto-detect only if no country saved
-      if (_country == null || _country!.isEmpty) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          _autoDetectLocation();
-        });
-      }
     } else {
       _fetchAndInitialize();
     }
@@ -153,7 +148,16 @@ class _CompleteCoachProfileScreenState
       // Check if location services are enabled
       final serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
-        if (mounted) setState(() => _isDetectingLocation = false);
+        if (mounted) {
+          setState(() => _isDetectingLocation = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                  'Location services are disabled. Please enable them in Settings.'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        }
         return;
       }
 
@@ -161,23 +165,41 @@ class _CompleteCoachProfileScreenState
       LocationPermission permission = await Geolocator.checkPermission();
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
-        if (permission == LocationPermission.denied ||
-            permission == LocationPermission.deniedForever) {
-          if (mounted) setState(() => _isDetectingLocation = false);
-          return;
-        }
       }
+
       if (permission == LocationPermission.deniedForever) {
+        // On iOS, user must go to Settings manually to re-enable
+        if (mounted) {
+          setState(() => _isDetectingLocation = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text(
+                  'Location permission permanently denied. Please enable it in Settings.'),
+              backgroundColor: Colors.orange,
+              action: SnackBarAction(
+                label: 'Open Settings',
+                textColor: Colors.white,
+                onPressed: () => Geolocator.openAppSettings(),
+              ),
+            ),
+          );
+        }
+        return;
+      }
+
+      if (permission == LocationPermission.denied) {
         if (mounted) setState(() => _isDetectingLocation = false);
         return;
       }
 
-      // Get position
+      // Get position — use Dart timeout instead of timeLimit (unsupported on iOS)
       final position = await Geolocator.getCurrentPosition(
         locationSettings: const LocationSettings(
-          accuracy: LocationAccuracy.low,
-          timeLimit: Duration(seconds: 10),
+          accuracy: LocationAccuracy.medium,
         ),
+      ).timeout(
+        const Duration(seconds: 15),
+        onTimeout: () => throw Exception('Location request timed out'),
       );
 
       // Reverse geocode
@@ -188,7 +210,7 @@ class _CompleteCoachProfileScreenState
 
       if (placemarks.isNotEmpty && mounted) {
         final placemark = placemarks.first;
-        // Pick city: prefer locality â†’ subAdminArea â†’ adminArea
+        // Pick city: prefer locality → subAdminArea → adminArea
         final city = (placemark.locality?.isNotEmpty == true
                 ? placemark.locality
                 : placemark.subAdministrativeArea?.isNotEmpty == true
@@ -303,10 +325,6 @@ class _CompleteCoachProfileScreenState
       final profile = await ProfileService.getProfile();
       _initializeWithData(profile);
       setState(() => _isLoading = false);
-      // Auto-detect country if none was saved
-      if (_country == null || _country!.isEmpty) {
-        _autoDetectLocation();
-      }
     } catch (e) {
       setState(() => _isLoading = false);
       if (mounted) {
@@ -336,6 +354,40 @@ class _CompleteCoachProfileScreenState
     super.dispose();
   }
 
+  Future<Map<String, String?>> _resolveLocationData(String city) async {
+    String currencyToSave = CurrencyHelper.getCurrencyFromLocation(city);
+    String? resolvedCountry = _country ?? CurrencyHelper.extractCountry(city);
+
+    // If synchronous detection fails, try async geocoding
+    if (currencyToSave == CurrencyHelper.defaultCurrency) {
+      try {
+        final locations = await locationFromAddress(city);
+        if (locations.isNotEmpty) {
+          final placemarks = await placemarkFromCoordinates(
+            locations.first.latitude,
+            locations.first.longitude,
+          );
+          if (placemarks.isNotEmpty) {
+            final detectedCountry = placemarks.first.country ?? '';
+            if (detectedCountry.isNotEmpty) {
+              resolvedCountry = detectedCountry;
+              currencyToSave = CurrencyHelper.getCurrencyFromLocation(detectedCountry);
+            }
+          }
+        }
+      } catch (_) {
+        // Ignore geocoding errors
+      }
+    }
+    
+    // Give precedence over prior defaults
+    if (currencyToSave == CurrencyHelper.defaultCurrency && _userCurrency != null && _userCurrency != CurrencyHelper.defaultCurrency) {
+      currencyToSave = _userCurrency!;
+    }
+
+    return {'country': resolvedCountry, 'currency': currencyToSave};
+  }
+
   Future<void> _saveChanges() async {
     // NOTE: validation is handled by the Stepper controls
     setState(() => _isSaving = true);
@@ -343,14 +395,20 @@ class _CompleteCoachProfileScreenState
     try {
       final String fullPhone =
           '$_selectedCountryCode ${_phoneController.text.trim()}';
+          
+      final finalCity = _cityController.text.trim();
+      
+      final locationData = await _resolveLocationData(finalCity);
+      final currencyToSave = locationData['currency'] ?? CurrencyHelper.defaultCurrency;
+      final countryToSave = locationData['country'];
 
       final updateData = {
         'fullName': _nameController.text.trim(),
         'email': _emailController.text.trim(),
         'phone': fullPhone,
-        'city': _cityController.text.trim(),
-        'country': _country,
-        'currency': _userCurrency ?? CurrencyHelper.defaultCurrency,
+        'city': finalCity,
+        'country': countryToSave,
+        'currency': currencyToSave,
         'coachTitle': _coachTitleController.text.trim(),
         'bio': _bioController.text.trim(),
         'experienceYears': int.tryParse(_experienceController.text) ?? 0,
@@ -400,6 +458,39 @@ class _CompleteCoachProfileScreenState
           ),
         );
       }
+    }
+  }
+
+  Future<void> _autoSaveProgress() async {
+    try {
+      final String fullPhone = '$_selectedCountryCode ${_phoneController.text.trim()}';
+      final finalCity = _cityController.text.trim();
+      
+      final locationData = await _resolveLocationData(finalCity);
+      final currencyToSave = locationData['currency'] ?? CurrencyHelper.defaultCurrency;
+      final countryToSave = locationData['country'];
+          
+      final updateData = {
+        'fullName': _nameController.text.trim(),
+        'phone': fullPhone,
+        'city': finalCity,
+        'country': countryToSave,
+        'currency': currencyToSave,
+        'coachTitle': _coachTitleController.text.trim(),
+        'bio': _bioController.text.trim(),
+        'experienceYears': int.tryParse(_experienceController.text) ?? 0,
+        'primarySpecialization': _primarySpecialization,
+        'specialties': _selectedSpecialties,
+        'certifications': _certifications,
+        'coachingPhilosophy': _philosophyController.text.trim(),
+        'notableAchievements': _achievements,
+        'playingCareerBackground': _playingCareerController.text.trim(),
+        'ageGroupsCoached': _ageGroups,
+        'sessionTypesOffered': _sessionTypes,
+      };
+      await ProfileService.updateProfile(updateData);
+    } catch (e) {
+      debugPrint('Auto-save failed: $e');
     }
   }
 
@@ -491,6 +582,7 @@ class _CompleteCoachProfileScreenState
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
+      bottomNavigationBar: const CoachBottomBar(),
       body: Column(
         children: [
           _buildCustomHeader(),
@@ -1249,18 +1341,47 @@ class _CompleteCoachProfileScreenState
     _overlayEntry = null;
   }
 
-  void _onPredictionSelected(PlacePrediction prediction) {
+  void _onPredictionSelected(PlacePrediction prediction) async {
     _removeOverlay();
+    
+    // Display the full address (e.g., "Hapugala, Sri Lanka")
     _cityController.text = prediction.description;
 
-    // Extract country and currency from selected location
+    // Initial fallback detection
     setState(() {
       _country = CurrencyHelper.extractCountry(prediction.description);
       _userCurrency =
           CurrencyHelper.getCurrencyFromLocation(prediction.description);
+      _isDetectingLocation = true; // Shows loading spinner
     });
 
     _cityFocus.unfocus();
+    
+    // Background geocoding lookup
+    try {
+      final locations = await locationFromAddress(prediction.description);
+      if (locations.isNotEmpty) {
+        final placemarks = await placemarkFromCoordinates(
+          locations.first.latitude,
+          locations.first.longitude,
+        );
+        if (placemarks.isNotEmpty && mounted) {
+          final country = placemarks.first.country ?? '';
+          if (country.isNotEmpty) {
+            setState(() {
+              _country = country;
+              _userCurrency = CurrencyHelper.getCurrencyFromLocation(country);
+            });
+          }
+        }
+      }
+    } catch (e) {
+      // Ignore background geocoding failure, keep initial detection 
+    } finally {
+      if (mounted) {
+        setState(() => _isDetectingLocation = false);
+      }
+    }
   }
 
   Future<void> _showAddDialog(
@@ -1368,7 +1489,7 @@ class _CompleteCoachProfileScreenState
                               ),
                               const SizedBox(width: 4),
                               Text(
-                                'Detect',
+                                'Locate Me',
                                 style: GoogleFonts.inter(
                                   fontSize: 12,
                                   color: AppPalette.orangeAccent,
@@ -1602,6 +1723,7 @@ class _CompleteCoachProfileScreenState
                   if (isLastStep) {
                     _saveChanges();
                   } else {
+                    _autoSaveProgress();
                     _pageController.nextPage(
                       duration: const Duration(milliseconds: 300),
                       curve: Curves.easeInOut,

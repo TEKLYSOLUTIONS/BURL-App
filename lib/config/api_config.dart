@@ -6,14 +6,14 @@ class ApiConfig {
   static const bool isProduction = true; // 🔧 LOCAL DEV MODE
 
   // 🔧 PHYSICAL DEVICE TESTING
-  // Set to true when testing on a physical Android device via USB
+  // Set to true when testing on a physical Android device via USBS
   // Set to false when testing on Android Emulator
   static const bool isPhysicalDevice = true;
 
   // Development URLs (for emulator/simulator testing)
   static const String _baseUrlEmulator = 'http://10.0.2.2:4000/api';
-  // Physical device uses localhost via ADB reverse tunnel (run: adb reverse tcp:4000 tcp:4000)
-  static const String _baseUrlPhysicalDevice = 'http://localhost:4000/api';
+  // Physical device using adb reverse tunnel
+  static const String _baseUrlPhysicalDevice = 'http://127.0.0.1:4000/api';
   static const String _baseUrlIOS = 'http://localhost:4000/api';
   static const String _baseUrlWindows = 'http://localhost:4000/api';
 

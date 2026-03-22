@@ -12,6 +12,7 @@ import '../settings/change_password_screen.dart';
 import '../../services/profile_service.dart';
 import '../../services/auth_service.dart';
 import '../../services/storage_service.dart';
+import '../../widgets/cached_avatar.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../providers/theme_provider.dart';
@@ -64,6 +65,7 @@ class _CoachProfileScreenState extends ConsumerState<CoachProfileScreen> {
         // Get preferences if they exist
         final prefs = profile['preferences'] as Map<String, dynamic>?;
         if (prefs != null) {
+          _pushNotifications = prefs['pushNotifications'] ?? true;
           _language = prefs['language'] == 'en-US'
               ? 'English (US)'
               : prefs['language'] ?? 'English (US)';
@@ -107,15 +109,11 @@ class _CoachProfileScreenState extends ConsumerState<CoachProfileScreen> {
                 shape: BoxShape.circle,
                 border: Border.all(color: Colors.white, width: 3),
               ),
-              child: CircleAvatar(
+              child: CachedAvatar(
+                imageUrl: imageUrl ?? '',
                 radius: 100,
                 backgroundColor: AppPalette.navyPrimary,
-                backgroundImage: imageUrl != null && imageUrl.isNotEmpty
-                    ? NetworkImage(imageUrl)
-                    : null,
-                child: imageUrl == null || imageUrl.isEmpty
-                    ? const Icon(Icons.person, size: 100, color: Colors.white)
-                    : null,
+                fallbackText: _userName,
               ),
             ),
             const SizedBox(height: 24),
@@ -200,7 +198,7 @@ class _CoachProfileScreenState extends ConsumerState<CoachProfileScreen> {
   Widget build(BuildContext context) {
     if (_isLoading) {
       return Scaffold(
-        backgroundColor: Colors.white,
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         body: const Center(child: CircularProgressIndicator()),
       );
     }
@@ -273,19 +271,11 @@ class _CoachProfileScreenState extends ConsumerState<CoachProfileScreen> {
                           onTap: _showProfilePicturePreview,
                           child: Stack(
                             children: [
-                              CircleAvatar(
+                              CachedAvatar(
+                                imageUrl: _getProfileImageUrl() ?? '',
                                 radius: 35,
                                 backgroundColor: AppPalette.navyPrimary,
-                                backgroundImage:
-                                    _getProfileImageUrl() != null &&
-                                            _getProfileImageUrl()!.isNotEmpty
-                                        ? NetworkImage(_getProfileImageUrl()!)
-                                        : null,
-                                child: _getProfileImageUrl() == null ||
-                                        _getProfileImageUrl()!.isEmpty
-                                    ? const Icon(Icons.person,
-                                        size: 35, color: Colors.white)
-                                    : null,
+                                fallbackText: _userName,
                               ),
                               Positioned(
                                 bottom: 0,
@@ -346,10 +336,15 @@ class _CoachProfileScreenState extends ConsumerState<CoachProfileScreen> {
                               ),
                               const SizedBox(height: 4),
                               GestureDetector(
-                                onTap: () => context.push(
-                                  '/edit-profile',
-                                  extra: _profileData,
-                                ),
+                                onTap: () async {
+                                  final result = await context.push(
+                                    '/edit-profile',
+                                    extra: _profileData,
+                                  );
+                                  if (result == true) {
+                                    _fetchProfile();
+                                  }
+                                },
                                 child: Text(
                                   'Edit Profile',
                                   style: GoogleFonts.inter(
@@ -425,8 +420,24 @@ class _CoachProfileScreenState extends ConsumerState<CoachProfileScreen> {
                           title: 'Push Notifications',
                           trailing: Switch(
                             value: _pushNotifications,
-                            onChanged: (val) {
+                            onChanged: (val) async {
                               setState(() => _pushNotifications = val);
+                              try {
+                                await ProfileService.updateProfile({
+                                  'preferences': {
+                                    'pushNotifications': val,
+                                    'darkMode': _profileData?['preferences']?['darkMode'] ?? false,
+                                    'language': _profileData?['preferences']?['language'] ?? 'en',
+                                  }
+                                });
+                              } catch (e) {
+                                setState(() => _pushNotifications = !val);
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: Text('Failed to update preference: $e')),
+                                  );
+                                }
+                              }
                             },
                             activeTrackColor: Colors.orange,
                             activeThumbColor: Colors.white,
@@ -847,13 +858,13 @@ class _CoachProfileScreenState extends ConsumerState<CoachProfileScreen> {
     );
   }
 
-  Future<void> _showDeleteConfirmation(BuildContext context) async {
+  Future<void> _showDeleteConfirmation(BuildContext screenContext) async {
     return showDialog(
-      context: context,
-      builder: (context) {
+      context: screenContext,
+      builder: (dialogCtx) {
         bool isLoading = false;
         return StatefulBuilder(
-          builder: (context, setState) {
+          builder: (stateCtx, setState) {
             return AlertDialog(
               titlePadding: const EdgeInsets.fromLTRB(24, 16, 8, 0),
               title: Row(
@@ -864,7 +875,7 @@ class _CoachProfileScreenState extends ConsumerState<CoachProfileScreen> {
                   IconButton(
                     icon: const Icon(Icons.close, color: Colors.grey),
                     onPressed:
-                        isLoading ? null : () => Navigator.of(context).pop(),
+                        isLoading ? null : () => Navigator.of(dialogCtx).pop(),
                     padding: EdgeInsets.zero,
                     constraints: const BoxConstraints(),
                   ),
@@ -882,16 +893,16 @@ class _CoachProfileScreenState extends ConsumerState<CoachProfileScreen> {
                           final errorMsg = await AuthService.deleteAccount();
                           setState(() => isLoading = false);
 
-                          if (context.mounted) {
+                          if (screenContext.mounted) {
                             if (errorMsg == null) {
-                              Navigator.of(context).pop(); // Close dialog
+                              Navigator.of(dialogCtx).pop(); // Close dialog
                               showDialog(
-                                context: context,
+                                context: screenContext,
                                 barrierDismissible: false,
-                                builder: (dialogContext) {
+                                builder: (successDialogCtx) {
                                   return AlertDialog(
                                     backgroundColor:
-                                        Theme.of(dialogContext).cardColor,
+                                        Theme.of(successDialogCtx).cardColor,
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(20),
                                     ),
@@ -906,7 +917,7 @@ class _CoachProfileScreenState extends ConsumerState<CoachProfileScreen> {
                                           style: GoogleFonts.inter(
                                             fontSize: 20,
                                             fontWeight: FontWeight.bold,
-                                            color: Theme.of(dialogContext)
+                                            color: Theme.of(successDialogCtx)
                                                 .colorScheme
                                                 .onSurface,
                                           ),
@@ -917,7 +928,7 @@ class _CoachProfileScreenState extends ConsumerState<CoachProfileScreen> {
                                           textAlign: TextAlign.center,
                                           style: GoogleFonts.inter(
                                             fontSize: 14,
-                                            color: Theme.of(dialogContext)
+                                            color: Theme.of(successDialogCtx)
                                                 .colorScheme
                                                 .onSurface
                                                 .withValues(alpha: 0.7),
@@ -928,7 +939,9 @@ class _CoachProfileScreenState extends ConsumerState<CoachProfileScreen> {
                                           width: double.infinity,
                                           child: ElevatedButton(
                                             onPressed: () {
-                                              context.go('/login');
+                                              if (screenContext.mounted) {
+                                                screenContext.go('/login');
+                                              }
                                             },
                                             style: ElevatedButton.styleFrom(
                                               backgroundColor:
@@ -957,7 +970,7 @@ class _CoachProfileScreenState extends ConsumerState<CoachProfileScreen> {
                                 },
                               );
                             } else {
-                              ScaffoldMessenger.of(context).showSnackBar(
+                              ScaffoldMessenger.of(screenContext).showSnackBar(
                                 SnackBar(
                                   content: Text(errorMsg),
                                   backgroundColor: Colors.red,

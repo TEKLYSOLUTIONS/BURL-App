@@ -195,4 +195,22 @@ class DateTimeUtils {
   static bool isSameDay(DateTime a, DateTime b) {
     return a.year == b.year && a.month == b.month && a.day == b.day;
   }
+
+  /// Calculate age from date of birth string (e.g. "2005-12-25")
+  static String calculateAge(String? dateOfBirth, [String? fallbackAge]) {
+    if (dateOfBirth == null || dateOfBirth.isEmpty) {
+      return fallbackAge?.isNotEmpty == true ? fallbackAge! : 'N/A';
+    }
+    try {
+      final dob = DateTime.parse(dateOfBirth);
+      final today = DateTime.now();
+      int age = today.year - dob.year;
+      if (today.month < dob.month || (today.month == dob.month && today.day < dob.day)) {
+        age--;
+      }
+      return age.toString();
+    } catch (e) {
+      return fallbackAge?.isNotEmpty == true ? fallbackAge! : 'N/A';
+    }
+  }
 }
