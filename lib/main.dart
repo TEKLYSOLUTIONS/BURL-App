@@ -21,11 +21,20 @@ void main() async {
   }
 
   // Initialize Firebase
-  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  try {
+    await Firebase.initializeApp(
+        options: DefaultFirebaseOptions.currentPlatform);
+  } catch (e) {
+    debugPrint('Firebase init error: $e');
+  }
 
   // Initialize push notifications (permission + background handler)
   // and prompt for location permission if it's the first time
-  await StartupService.initializeAppStartup();
+  try {
+    await StartupService.initializeAppStartup();
+  } catch (e) {
+    debugPrint('Startup service error: $e');
+  }
 
   runApp(const ProviderScope(child: CoachingApp()));
 }

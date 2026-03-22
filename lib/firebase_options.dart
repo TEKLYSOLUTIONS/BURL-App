@@ -60,20 +60,20 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions ios = FirebaseOptions(
     apiKey: 'AIzaSyCiFBPTXI6uSxhFX0LCrz210xazQnrsvv0',
-    appId: '1:718597555031:ios:d301546333fec65762f412',
+    appId: '1:718597555031:ios:fb11b5cbd5df506b62f412',
     messagingSenderId: '718597555031',
     projectId: 'burl-ad60f',
     storageBucket: 'burl-ad60f.firebasestorage.app',
-    iosBundleId: 'com.example.cricketcoachflutter',
+    iosBundleId: 'com.burlcoachbookingapp.app',
   );
 
   static const FirebaseOptions macos = FirebaseOptions(
     apiKey: 'AIzaSyCiFBPTXI6uSxhFX0LCrz210xazQnrsvv0',
-    appId: '1:718597555031:ios:d301546333fec65762f412',
+    appId: '1:718597555031:ios:fb11b5cbd5df506b62f412',
     messagingSenderId: '718597555031',
     projectId: 'burl-ad60f',
     storageBucket: 'burl-ad60f.firebasestorage.app',
-    iosBundleId: 'com.example.cricketcoachflutter',
+    iosBundleId: 'com.burlcoachbookingapp.app',
   );
 
   static const FirebaseOptions windows = FirebaseOptions(
