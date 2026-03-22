@@ -5,7 +5,7 @@ import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../config/palette.dart';
 import '../../services/booking_service.dart';
-import '../../widgets/navigation/role_based_bottom_nav_bar.dart';
+import '../../services/commission_service.dart';
 import '../../services/guardian_service.dart';
 
 class ConfirmPrivateBookingScreen extends StatefulWidget {
@@ -52,6 +52,10 @@ class _ConfirmPrivateBookingScreenState
   List<String> _selectedPlayerIds = [];
   bool _isLoadingPlayers = false;
 
+  // Commission state — loaded dynamically
+  bool _isLoadingCommission = true;
+  CommissionResult? _commissionResult;
+
   // Pricing
   double get _sessionFee {
     if (!_isGuardian) return widget.price;
@@ -59,7 +63,8 @@ class _ConfirmPrivateBookingScreenState
         (_selectedPlayerIds.isEmpty ? 1 : _selectedPlayerIds.length);
   }
 
-  final double _serviceFee = 2.50;
+  double get _serviceFee => _commissionResult?.commissionAmount ?? 0.0;
+  String get _serviceFeeLabel => _commissionResult?.label ?? 'Platform Fee';
   final double _tax = 0.00;
   double get _totalAmount => _sessionFee + _serviceFee + _tax - _discountAmount;
 
@@ -67,6 +72,29 @@ class _ConfirmPrivateBookingScreenState
   void initState() {
     super.initState();
     _checkUserRole();
+    _loadCommission();
+  }
+
+  Future<void> _loadCommission() async {
+    try {
+      final result = await CommissionService.calculate(
+        widget.price,
+        sportName: 'Cricket',
+      );
+      if (mounted) {
+        setState(() {
+          _commissionResult = result;
+          _isLoadingCommission = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _commissionResult = CommissionResult.fromFallback(widget.price);
+          _isLoadingCommission = false;
+        });
+      }
+    }
   }
 
   Future<void> _checkUserRole() async {
@@ -150,6 +178,8 @@ class _ConfirmPrivateBookingScreenState
   }
 
   Future<void> _confirmBooking() async {
+    if (_isProcessing) return;
+
     if (_isGuardian && _selectedPlayerIds.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -223,9 +253,10 @@ class _ConfirmPrivateBookingScreenState
         ? '${widget.durationMinutes ~/ 60}hr'
         : '${widget.durationMinutes}min';
 
-    return Scaffold(
+    return _isLoadingCommission
+        ? const Scaffold(body: Center(child: CircularProgressIndicator()))
+        : Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      bottomNavigationBar: const RoleBasedBottomNavBar(),
       appBar: AppBar(
         title: Text(
           'Confirm Booking',
@@ -808,7 +839,7 @@ class _ConfirmPrivateBookingScreenState
               'Session Fee ($durationLabel)${_isGuardian && _selectedPlayerIds.length > 1 ? ' x ${_selectedPlayerIds.length}' : ''}',
               _sessionFee),
           const SizedBox(height: 10),
-          _buildPriceRow('Service Fee', _serviceFee),
+          _buildPriceRow(_serviceFeeLabel, _serviceFee),
           const SizedBox(height: 10),
           _buildPriceRow('Tax', _tax),
           if (_appliedPromoCode != null) ...[

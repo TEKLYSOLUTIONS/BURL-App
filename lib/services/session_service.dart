@@ -3,6 +3,13 @@ import 'package:flutter/foundation.dart';
 import 'api_service.dart';
 
 /// Service for managing cricket coaching sessions
+class _SessionCacheEntry {
+  final Map<String, dynamic> data;
+  final DateTime timestamp;
+
+  _SessionCacheEntry({required this.data, required this.timestamp});
+}
+
 class SessionService {
   /// Create a new coaching session
   ///
@@ -86,6 +93,9 @@ class SessionService {
         debugPrint(
           'Session created successfully: ${responseData['data']['_id']}',
         );
+        invalidateCoachSessionsCache();
+        invalidatePlayerSessionsCache();
+        invalidateGuardianSessionsCache();
         return responseData['data'] as Map<String, dynamic>;
       } else {
         throw Exception(responseData['message'] ?? 'Failed to create session');
@@ -102,6 +112,13 @@ class SessionService {
     int page = 1,
     DateTime? date,
   }) async {
+    final cacheKey = _buildCacheKey('player', limit, page, null, date);
+    final cached = _playerSessionsCache[cacheKey];
+    if (cached != null &&
+        DateTime.now().difference(cached.timestamp) < _cacheTtl) {
+      return Map<String, dynamic>.from(cached.data);
+    }
+
     try {
       final queryParams = <String, String>{
         'limit': limit.toString(),
@@ -128,12 +145,19 @@ class SessionService {
         final sessions = (responseData['sessions'] ??
             responseData['data'] ??
             []) as List<dynamic>;
-        return {
+        final result = {
           'sessions': sessions,
           'total': responseData['total'] ?? sessions.length,
           'page': responseData['page'] ?? 1,
           'pages': responseData['pages'] ?? 1,
         };
+
+        _playerSessionsCache[cacheKey] = _SessionCacheEntry(
+          data: result,
+          timestamp: DateTime.now(),
+        );
+
+        return result;
       } else {
         throw Exception(
             responseData['message'] ?? 'Failed to fetch player sessions');
@@ -150,6 +174,13 @@ class SessionService {
     int page = 1,
     DateTime? date,
   }) async {
+    final cacheKey = _buildCacheKey('guardian', limit, page, null, date);
+    final cached = _guardianSessionsCache[cacheKey];
+    if (cached != null &&
+        DateTime.now().difference(cached.timestamp) < _cacheTtl) {
+      return Map<String, dynamic>.from(cached.data);
+    }
+
     try {
       final queryParams = <String, String>{
         'limit': limit.toString(),
@@ -177,12 +208,19 @@ class SessionService {
         final sessions = (responseData['sessions'] ??
             responseData['data'] ??
             []) as List<dynamic>;
-        return {
+        final result = {
           'sessions': sessions,
           'total': responseData['total'] ?? sessions.length,
           'page': responseData['page'] ?? 1,
           'pages': responseData['pages'] ?? 1,
         };
+
+        _guardianSessionsCache[cacheKey] = _SessionCacheEntry(
+          data: result,
+          timestamp: DateTime.now(),
+        );
+
+        return result;
       } else {
         throw Exception(
             responseData['message'] ?? 'Failed to fetch guardian sessions');
@@ -192,6 +230,35 @@ class SessionService {
       rethrow;
     }
   }
+
+  // ─── Cache ───────────────────────────────────────────────────────────────
+  static final Map<String, _SessionCacheEntry> _coachSessionsCache = {};
+  static final Map<String, _SessionCacheEntry> _playerSessionsCache = {};
+  static final Map<String, _SessionCacheEntry> _guardianSessionsCache = {};
+  static final Map<String, _SessionCacheEntry> _playerReportsCache = {};
+  static const _cacheTtl = Duration(minutes: 5);
+
+  static void invalidateCoachSessionsCache() {
+    _coachSessionsCache.clear();
+  }
+
+  static void invalidatePlayerSessionsCache() {
+    _playerSessionsCache.clear();
+  }
+
+  static void invalidateGuardianSessionsCache() {
+    _guardianSessionsCache.clear();
+  }
+
+  static void invalidatePlayerReportsCache() {
+    _playerReportsCache.clear();
+  }
+
+  static String _buildCacheKey(
+      String type, int limit, int page, String? status, DateTime? date) {
+    return '${type}_${limit}_${page}_${status ?? 'none'}_${date?.toIso8601String() ?? 'none'}';
+  }
+  // ─────────────────────────────────────────────────────────────────────────
 
   /// Get all sessions for the authenticated coach
   ///
@@ -207,6 +274,13 @@ class SessionService {
     String? status,
     DateTime? date,
   }) async {
+    final cacheKey = _buildCacheKey(type, limit, page, status, date);
+    final cached = _coachSessionsCache[cacheKey];
+    if (cached != null &&
+        DateTime.now().difference(cached.timestamp) < _cacheTtl) {
+      return Map<String, dynamic>.from(cached.data);
+    }
+
     try {
       final queryParams = <String, String>{
         'type': type,
@@ -245,12 +319,19 @@ class SessionService {
         final sessions = responseData['data'] as List<dynamic>;
         debugPrint('Fetched ${sessions.length} sessions (type: $type)');
         // Return in the format expected by the calling code
-        return {
+        final result = {
           'sessions': sessions,
           'total': responseData['total'] ?? sessions.length,
           'page': responseData['page'] ?? 1,
           'pages': responseData['pages'] ?? 1,
         };
+
+        _coachSessionsCache[cacheKey] = _SessionCacheEntry(
+          data: result,
+          timestamp: DateTime.now(),
+        );
+
+        return result;
       } else {
         throw Exception(responseData['message'] ?? 'Failed to fetch sessions');
       }
@@ -293,6 +374,12 @@ class SessionService {
 
       if (responseData['status'] == 'success') {
         debugPrint('Session updated successfully: $sessionId');
+        
+        // Invalidate all session caches
+        invalidateCoachSessionsCache();
+        invalidatePlayerSessionsCache();
+        invalidateGuardianSessionsCache();
+        
         return responseData['data'] as Map<String, dynamic>;
       } else {
         throw Exception(responseData['message'] ?? 'Failed to update session');
@@ -313,6 +400,9 @@ class SessionService {
       // 204 No Content indicates success
       if (httpResponse.statusCode == 204) {
         debugPrint('Session deleted successfully: $sessionId');
+        invalidateCoachSessionsCache();
+        invalidatePlayerSessionsCache();
+        invalidateGuardianSessionsCache();
         return true;
       }
 
@@ -321,6 +411,9 @@ class SessionService {
 
       if (responseData['status'] == 'success') {
         debugPrint('Session deleted successfully: $sessionId');
+        invalidateCoachSessionsCache();
+        invalidatePlayerSessionsCache();
+        invalidateGuardianSessionsCache();
         return true;
       } else {
         throw Exception(responseData['message'] ?? 'Failed to delete session');
@@ -350,6 +443,11 @@ class SessionService {
 
       if (responseData['status'] == 'success') {
         debugPrint('Added ${playerIds.length} players to session $sessionId');
+        
+        invalidateCoachSessionsCache();
+        invalidatePlayerSessionsCache();
+        invalidateGuardianSessionsCache();
+        
         return responseData['data'] as Map<String, dynamic>;
       } else {
         throw Exception(responseData['message'] ?? 'Failed to add players');
@@ -403,6 +501,9 @@ class SessionService {
 
       if (responseData['status'] == 'success') {
         debugPrint('Attendance updated: $playerId -> $attended');
+        invalidateCoachSessionsCache();
+        invalidatePlayerSessionsCache();
+        invalidateGuardianSessionsCache();
         return responseData['data'] as Map<String, dynamic>;
       } else {
         throw Exception(
@@ -431,6 +532,9 @@ class SessionService {
 
       if (responseData['status'] == 'success') {
         debugPrint('Player report updated: $playerId');
+        invalidateCoachSessionsCache();
+        invalidatePlayerSessionsCache();
+        invalidateGuardianSessionsCache();
         return responseData['data'] as Map<String, dynamic>;
       } else {
         throw Exception(
@@ -455,6 +559,9 @@ class SessionService {
 
       if (responseData['status'] == 'success') {
         debugPrint('Session started: $sessionId');
+        invalidateCoachSessionsCache();
+        invalidatePlayerSessionsCache();
+        invalidateGuardianSessionsCache();
         return responseData['data'] as Map<String, dynamic>;
       } else {
         throw Exception(responseData['message'] ?? 'Failed to start session');
@@ -467,6 +574,13 @@ class SessionService {
 
   /// Get all session reports for a specific player
   static Future<List<dynamic>> getPlayerSessionReports(String playerId) async {
+    final cacheKey = 'reports_$playerId';
+    final cached = _playerReportsCache[cacheKey];
+    if (cached != null &&
+        DateTime.now().difference(cached.timestamp) < _cacheTtl) {
+      return cached.data['reports'] as List<dynamic>;
+    }
+
     try {
       final httpResponse = await ApiService.get(
         'sessions/player-reports/$playerId',
@@ -475,7 +589,12 @@ class SessionService {
           json.decode(httpResponse.body) as Map<String, dynamic>;
 
       if (httpResponse.statusCode == 200) {
-        return (responseData['data'] as List<dynamic>?) ?? [];
+        final reports = (responseData['data'] as List<dynamic>?) ?? [];
+        _playerReportsCache[cacheKey] = _SessionCacheEntry(
+          data: {'reports': reports},
+          timestamp: DateTime.now(),
+        );
+        return reports;
       } else {
         throw Exception(
           responseData['message'] ?? 'Failed to fetch player reports',
@@ -502,6 +621,9 @@ class SessionService {
 
       if (responseData['status'] == 'success') {
         debugPrint('Session completed: $sessionId');
+        invalidateCoachSessionsCache();
+        invalidatePlayerSessionsCache();
+        invalidateGuardianSessionsCache();
         return responseData['data'] as Map<String, dynamic>;
       } else {
         throw Exception(

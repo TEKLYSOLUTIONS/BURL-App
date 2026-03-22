@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../config/palette.dart';
 
@@ -9,7 +10,6 @@ import '../../widgets/headers/coach_app_bar.dart';
 import '../../widgets/calendar/horizontal_week_calendar.dart'; // Import Calendar
 import '../../widgets/cached_avatar.dart'; // Import CachedAvatar
 
-import '../../services/auth_service.dart';
 import '../../services/dashboard_service.dart';
 import '../../services/session_service.dart'; // Import SessionService
 import '../../services/earnings_service.dart'; // Import EarningsService
@@ -28,13 +28,14 @@ class CoachHomeScreen extends StatefulWidget {
   State<CoachHomeScreen> createState() => _CoachHomeScreenState();
 }
 
-class _CoachHomeScreenState extends State<CoachHomeScreen> with RouteAware {
+class _CoachHomeScreenState extends State<CoachHomeScreen> with RouteAware, WidgetsBindingObserver {
   String _userName = 'Coach';
   String? _profileImageUrl;
   String? _userId;
   bool _isUploadingImage = false;
   bool _isLoading = true;
   DateTime _selectedDate = DateTime.now(); // Track selected date
+  Timer? _refreshTimer;
 
   // Dashboard data
   int _todaySessionsCount = 0;
@@ -46,9 +47,10 @@ class _CoachHomeScreenState extends State<CoachHomeScreen> with RouteAware {
   @override
   void initState() {
     super.initState();
-    _loadUserData();
-    _loadUserCurrency();
+    WidgetsBinding.instance.addObserver(this);
+    _loadUserAndCurrency();
     _loadDashboardData();
+    _startAutoRefreshTimer();
   }
 
   @override
@@ -63,13 +65,33 @@ class _CoachHomeScreenState extends State<CoachHomeScreen> with RouteAware {
   @override
   void dispose() {
     AppRouter.routeObserver.unsubscribe(this);
+    WidgetsBinding.instance.removeObserver(this);
+    _refreshTimer?.cancel();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      if (mounted) {
+        _loadDashboardData(forceRefresh: true);
+      }
+    }
+  }
+
+  void _startAutoRefreshTimer() {
+    _refreshTimer?.cancel();
+    _refreshTimer = Timer.periodic(const Duration(minutes: 1), (_) {
+      if (_isToday(_selectedDate) && mounted) {
+        _loadDashboardData(forceRefresh: true);
+      }
+    });
   }
 
   @override
   void didPopNext() {
     // Refresh data when returning to this screen
-    _loadUserData();
+    _loadUserAndCurrency();
     _loadDashboardData();
     // Also reload sessions for the selected date if it's not today
     if (!_isToday(_selectedDate)) {
@@ -112,23 +134,24 @@ class _CoachHomeScreenState extends State<CoachHomeScreen> with RouteAware {
     }
   }
 
-  Future<void> _loadUserData() async {
-    final name = await AuthService.getUserName();
-    if (name != null && mounted) {
-      setState(() => _userName = name.split(' ').first);
-    }
+  // Merged method: loads user name, profile image, userId AND currency in a single API call
+  Future<void> _loadUserAndCurrency() async {
     try {
       final profile = await ProfileService.getProfile();
+      final detectedCurrency = await CurrencyHelper.loadUserCurrency();
       if (mounted) {
+        final name = profile['fullName'] as String?;
         setState(() {
+          if (name != null) _userName = name.split(' ').first;
           _userId = profile['_id'] ?? profile['id'];
           _profileImageUrl = profile['coachProfile']?['profilePhoto'] ??
               profile['profileImage'] ??
               profile['profileUrl'];
+          _currency = detectedCurrency;
         });
       }
     } catch (e) {
-      debugPrint('Error loading profile image: $e');
+      debugPrint('Error loading user profile: $e');
     }
   }
 
@@ -168,23 +191,15 @@ class _CoachHomeScreenState extends State<CoachHomeScreen> with RouteAware {
     }
   }
 
-  Future<void> _loadUserCurrency() async {
-    try {
-      final currency = await CurrencyHelper.loadUserCurrency();
-      if (mounted) {
-        setState(() {
-          _currency = currency;
-        });
-      }
-    } catch (e) {
-      debugPrint('Error loading user currency: $e');
-    }
-  }
-
-  Future<void> _loadDashboardData() async {
+  Future<void> _loadDashboardData({bool forceRefresh = false}) async {
     setState(() => _isLoading = true);
 
     try {
+      if (forceRefresh) {
+        DashboardService.invalidateCache();
+        SessionService.invalidateCoachSessionsCache();
+      }
+
       final results = await Future.wait([
         DashboardService.getCoachDashboard(),
         SessionService.getCoachSessions(date: DateTime.now()),
@@ -272,31 +287,34 @@ class _CoachHomeScreenState extends State<CoachHomeScreen> with RouteAware {
                       ),
                     ),
                     SizedBox(width: context.spacing.sm),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          DateTimeUtils.getCurrentDateFormatted(),
-                          style: GoogleFonts.inter(
-                            fontSize: context.text.tiny,
-                            fontWeight: FontWeight.w600,
-                            color: Theme.of(
-                              context,
-                            ).colorScheme.onPrimary.withValues(alpha: 0.7),
-                            letterSpacing: 1,
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            DateTimeUtils.getCurrentDateFormatted(),
+                            style: GoogleFonts.inter(
+                              fontSize: context.text.tiny,
+                              fontWeight: FontWeight.w600,
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onPrimary.withValues(alpha: 0.7),
+                              letterSpacing: 1,
+                            ),
                           ),
-                        ),
-                        Text(
-                          '${DateTimeUtils.getGreeting()}, $_userName',
-                          style: GoogleFonts.inter(
-                            fontSize: context.text.h4,
-                            fontWeight: FontWeight.bold,
-                            color: Theme.of(context).colorScheme.onPrimary,
+                          Text(
+                            '${DateTimeUtils.getGreeting()}, $_userName',
+                            style: GoogleFonts.inter(
+                              fontSize: context.text.h4,
+                              fontWeight: FontWeight.bold,
+                              color: Theme.of(context).colorScheme.onPrimary,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 1,
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                    const Spacer(),
                     NotificationButton(
                       onTap: () => context.push('/coach/notifications'),
                       iconColor: Theme.of(context)
@@ -314,10 +332,14 @@ class _CoachHomeScreenState extends State<CoachHomeScreen> with RouteAware {
 
           // Scrollable Content
           Expanded(
-            child: SingleChildScrollView(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
+            child: RefreshIndicator(
+              onRefresh: () => _loadDashboardData(forceRefresh: true),
+              color: Theme.of(context).colorScheme.primary,
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
                   // 📅 Horizontal Calendar
                   Padding(
                     padding: EdgeInsets.symmetric(vertical: context.spacing.md),
@@ -465,10 +487,11 @@ class _CoachHomeScreenState extends State<CoachHomeScreen> with RouteAware {
               ),
             ),
           ),
-        ],
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => context.push('/coach/create-session'),
+        ),
+      ],
+    ),
+    floatingActionButton: FloatingActionButton(
+      onPressed: () => context.push('/coach/create-session'),
         backgroundColor: AppPalette.orangeAccent,
         child: const Icon(Icons.add, color: Colors.white),
       ),
@@ -1049,37 +1072,6 @@ class _CoachHomeScreenState extends State<CoachHomeScreen> with RouteAware {
                   ],
                 ),
               ],
-            ),
-          ),
-          SizedBox(width: context.spacing.sm),
-          // Image
-          ClipRRect(
-            borderRadius: BorderRadius.circular(context.responsive.radius(16)),
-            child: Image.network(
-              SessionUtils.getSessionImage(session), // Dynamic Image
-              width: context.responsive.circularSize(100, min: 80, max: 120),
-              height: context.responsive.circularSize(100, min: 80, max: 120),
-              fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) {
-                return Container(
-                  width: context.responsive.circularSize(
-                    100,
-                    min: 80,
-                    max: 120,
-                  ),
-                  height: context.responsive.circularSize(
-                    100,
-                    min: 80,
-                    max: 120,
-                  ),
-                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                  child: Icon(
-                    Icons.sports_cricket,
-                    size: context.responsive.iconSize(40),
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
-                );
-              },
             ),
           ),
         ],

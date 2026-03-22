@@ -22,6 +22,7 @@ class _SearchScreenState extends State<SearchScreen> {
   String? _error;
   List<dynamic> _coaches = [];
   List<dynamic> _sessions = [];
+  DateTime _lastTap = DateTime.fromMillisecondsSinceEpoch(0);
 
   @override
   void initState() {
@@ -289,7 +290,10 @@ class _SearchScreenState extends State<SearchScreen> {
                                             coach['profilePhoto'] ??
                                             coach['profileImage'] ??
                                             'https://ui-avatars.com/api/?name=${Uri.encodeComponent(user?['fullName'] ?? 'Unknown')}&background=random',
-                                        onTap: () {
+                                        onTap: () async {
+                                          final now = DateTime.now();
+                                          if (now.difference(_lastTap).inMilliseconds < 1500) return;
+                                          _lastTap = now;
                                           // Navigate to coach details based on current tree
                                           final isGuardian = GoRouterState.of(
                                             context,
@@ -298,12 +302,12 @@ class _SearchScreenState extends State<SearchScreen> {
                                               .toString()
                                               .startsWith('/guardian');
                                           if (isGuardian) {
-                                            context.push(
+                                            await context.push(
                                               '/guardian/coach-details/${coach['_id']}',
                                             );
                                           } else {
-                                            context.push(
-                                              '/coach-details/${coach['_id']}',
+                                            await context.push(
+                                              '/player/coach-details/${coach['_id']}',
                                             );
                                           }
                                         },
@@ -349,7 +353,11 @@ class _SearchScreenState extends State<SearchScreen> {
                                         imageUrl: session['imageUrl'] ??
                                             session['coverImage'],
                                         icon: Icons.sports_cricket,
-                                        onTap: () {
+                                        onTap: () async {
+                                          final now = DateTime.now();
+                                          if (now.difference(_lastTap).inMilliseconds < 1500) return;
+                                          _lastTap = now;
+                                          
                                           final isGuardian = GoRouterState.of(
                                             context,
                                           )
@@ -360,11 +368,11 @@ class _SearchScreenState extends State<SearchScreen> {
                                               ? '?date=${startTime.toIso8601String()}'
                                               : '';
                                           if (isGuardian) {
-                                            context.push(
+                                            await context.push(
                                               '/guardian/session-details/${session['_id']}$dateParam',
                                             );
                                           } else {
-                                            context.push(
+                                            await context.push(
                                               '/player/session-details/${session['_id']}$dateParam',
                                             );
                                           }

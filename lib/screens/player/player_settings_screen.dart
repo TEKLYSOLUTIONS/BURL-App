@@ -281,13 +281,13 @@ class _PlayerProfileScreenState extends ConsumerState<PlayerProfileScreen> {
     );
   }
 
-  Future<void> _showDeleteConfirmation(BuildContext context) async {
+  Future<void> _showDeleteConfirmation(BuildContext screenContext) async {
     return showDialog(
-      context: context,
-      builder: (context) {
+      context: screenContext,
+      builder: (dialogCtx) {
         bool isLoading = false;
         return StatefulBuilder(
-          builder: (context, setState) {
+          builder: (stateCtx, setState) {
             return AlertDialog(
               titlePadding: const EdgeInsets.fromLTRB(24, 16, 8, 0),
               title: Row(
@@ -298,7 +298,7 @@ class _PlayerProfileScreenState extends ConsumerState<PlayerProfileScreen> {
                   IconButton(
                     icon: const Icon(Icons.close, color: Colors.grey),
                     onPressed:
-                        isLoading ? null : () => Navigator.of(context).pop(),
+                        isLoading ? null : () => Navigator.of(dialogCtx).pop(),
                     padding: EdgeInsets.zero,
                     constraints: const BoxConstraints(),
                   ),
@@ -316,16 +316,16 @@ class _PlayerProfileScreenState extends ConsumerState<PlayerProfileScreen> {
                           final errorMsg = await AuthService.deleteAccount();
                           setState(() => isLoading = false);
 
-                          if (context.mounted) {
+                          if (screenContext.mounted) {
                             if (errorMsg == null) {
-                              Navigator.of(context).pop();
+                              Navigator.of(dialogCtx).pop();
                               showDialog(
-                                context: context,
+                                context: screenContext,
                                 barrierDismissible: false,
-                                builder: (dialogContext) {
+                                builder: (successDialogCtx) {
                                   return AlertDialog(
                                     backgroundColor:
-                                        Theme.of(dialogContext).cardColor,
+                                        Theme.of(successDialogCtx).cardColor,
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(20),
                                     ),
@@ -341,7 +341,7 @@ class _PlayerProfileScreenState extends ConsumerState<PlayerProfileScreen> {
                                           style: GoogleFonts.inter(
                                             fontSize: 20,
                                             fontWeight: FontWeight.bold,
-                                            color: Theme.of(dialogContext)
+                                            color: Theme.of(successDialogCtx)
                                                 .colorScheme
                                                 .onSurface,
                                           ),
@@ -352,7 +352,7 @@ class _PlayerProfileScreenState extends ConsumerState<PlayerProfileScreen> {
                                           textAlign: TextAlign.center,
                                           style: GoogleFonts.inter(
                                             fontSize: 14,
-                                            color: Theme.of(dialogContext)
+                                            color: Theme.of(successDialogCtx)
                                                 .colorScheme
                                                 .onSurface
                                                 .withValues(alpha: 0.7),
@@ -363,7 +363,9 @@ class _PlayerProfileScreenState extends ConsumerState<PlayerProfileScreen> {
                                           width: double.infinity,
                                           child: ElevatedButton(
                                             onPressed: () {
-                                              context.go('/login');
+                                              if (screenContext.mounted) {
+                                                screenContext.go('/login');
+                                              }
                                             },
                                             style: ElevatedButton.styleFrom(
                                               backgroundColor:
@@ -392,7 +394,7 @@ class _PlayerProfileScreenState extends ConsumerState<PlayerProfileScreen> {
                                 },
                               );
                             } else {
-                              ScaffoldMessenger.of(context).showSnackBar(
+                              ScaffoldMessenger.of(screenContext).showSnackBar(
                                 SnackBar(
                                   content: Text(errorMsg),
                                   backgroundColor: Colors.red,
@@ -572,7 +574,7 @@ class _PlayerProfileScreenState extends ConsumerState<PlayerProfileScreen> {
                         GestureDetector(
                           onTap: () async {
                             final result = await context.push(
-                              '/edit-profile',
+                              '/player/edit-profile',
                               extra: _userProfile,
                             );
                             if (result == true) {
@@ -620,7 +622,26 @@ class _PlayerProfileScreenState extends ConsumerState<PlayerProfileScreen> {
                 title: 'Push Notifications',
                 isToggle: true,
                 switchValue: _pushNotifications,
-                onToggle: (val) => setState(() => _pushNotifications = val),
+                onToggle: (val) async {
+                  // Optimistic UI update
+                  setState(() => _pushNotifications = val);
+
+                  try {
+                    await ProfileService.updateProfile({
+                      'preferences': {
+                        'pushNotifications': val,
+                        'darkMode': _userProfile?['preferences']?['darkMode'] ?? false,
+                        'language': _userProfile?['preferences']?['language'] ?? 'en-US',
+                      }
+                    });
+                  } catch (e) {
+                    // Revert on error
+                    setState(() => _pushNotifications = !val);
+                    if (context.mounted) {
+                      _showSnack('Failed to update preference: $e', isError: true);
+                    }
+                  }
+                },
               ),
               _buildSettingsTile(
                 icon: Icons.palette_outlined,

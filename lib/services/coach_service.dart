@@ -50,14 +50,47 @@ class CoachService {
     }
   }
 
+  // ─── Cache ───────────────────────────────────────────────────────────────
+  static Map<String, dynamic>? _availabilityCache;
+  static DateTime? _availabilityCacheTime;
+  
+  static Map<String, dynamic>? _sessionSettingsCache;
+  static DateTime? _sessionSettingsCacheTime;
+  
+  static const _cacheTtl = Duration(minutes: 5);
+
+  static bool _isAvailabilityCacheValid() =>
+      _availabilityCacheTime != null &&
+      DateTime.now().difference(_availabilityCacheTime!) < _cacheTtl;
+
+  static bool _isSessionSettingsCacheValid() =>
+      _sessionSettingsCacheTime != null &&
+      DateTime.now().difference(_sessionSettingsCacheTime!) < _cacheTtl;
+
+  static void invalidateAvailabilityCache() {
+    _availabilityCache = null;
+    _availabilityCacheTime = null;
+  }
+
+  static void invalidateSessionSettingsCache() {
+    _sessionSettingsCache = null;
+    _sessionSettingsCacheTime = null;
+  }
+  // ─────────────────────────────────────────────────────────────────────────
+
   /// Get coach availability
   static Future<Map<String, dynamic>> getCoachAvailability() async {
+    if (_availabilityCache != null && _isAvailabilityCacheValid()) {
+      return Map<String, dynamic>.from(_availabilityCache!);
+    }
     try {
       final response = await ApiService.get('coach/availability');
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        return data['data'] ?? {};
+        _availabilityCache = data['data'] ?? {};
+        _availabilityCacheTime = DateTime.now();
+        return _availabilityCache!;
       } else {
         throw Exception('Failed to fetch availability: ${response.statusCode}');
       }
@@ -77,6 +110,7 @@ class CoachService {
       );
 
       if (response.statusCode == 200) {
+        invalidateAvailabilityCache();
         final data = json.decode(response.body);
         return data['data'] ?? {};
       } else {
@@ -100,6 +134,7 @@ class CoachService {
       );
 
       if (response.statusCode == 201 || response.statusCode == 200) {
+        invalidateAvailabilityCache();
         final data = json.decode(response.body);
         return data['data'] ?? {};
       } else {
@@ -122,6 +157,7 @@ class CoachService {
           'Failed to remove blocked date: ${response.statusCode}',
         );
       }
+      invalidateAvailabilityCache();
     } catch (e) {
       throw Exception('Error removing blocked date: $e');
     }
@@ -129,11 +165,16 @@ class CoachService {
 
   /// Get session settings
   static Future<Map<String, dynamic>> getSessionSettings() async {
+    if (_sessionSettingsCache != null && _isSessionSettingsCacheValid()) {
+      return Map<String, dynamic>.from(_sessionSettingsCache!);
+    }
     try {
       final response = await ApiService.get('coach/settings/session');
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        return data['data'] ?? {};
+        _sessionSettingsCache = data['data'] ?? {};
+        _sessionSettingsCacheTime = DateTime.now();
+        return _sessionSettingsCache!;
       } else {
         throw Exception(
           'Failed to fetch session settings: ${response.statusCode}',
@@ -154,6 +195,7 @@ class CoachService {
         settingsData,
       );
       if (response.statusCode == 200) {
+        invalidateSessionSettingsCache();
         final data = json.decode(response.body);
         return data['data'] ?? {};
       } else {

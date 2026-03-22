@@ -43,11 +43,29 @@ class GuardianNavigation extends StatelessWidget {
 
   static int _calculateSelectedIndex(BuildContext context) {
     final String location = GoRouterState.of(context).uri.toString();
-    if (location.startsWith('/guardian/home')) return 0;
-    if (location.startsWith('/guardian/book')) return 1;
-    if (location.startsWith('/guardian/players')) return 2;
-    if (location.startsWith('/guardian/sessions')) return 3;
-    if (location.startsWith('/guardian/profile')) return 4;
+    if (location.startsWith('/guardian/home')) {
+      return 0;
+    }
+    if (location.startsWith('/guardian/book') ||
+        location.startsWith('/guardian/coach-details') ||
+        location.startsWith('/guardian/session-details') ||
+        location.startsWith('/guardian/booking') ||
+        location.startsWith('/guardian/confirm-booking')) {
+      return 1;
+    }
+    if (location.startsWith('/guardian/players') ||
+        location.startsWith('/guardian/player-details') ||
+        location.startsWith('/guardian/add-player') ||
+        location.startsWith('/guardian/edit-player')) {
+      return 2;
+    }
+    if (location.startsWith('/guardian/sessions') ||
+        location.startsWith('/guardian/booking-success')) {
+      return 3;
+    }
+    if (location.startsWith('/guardian/profile')) {
+      return 4;
+    }
     return 0;
   }
 

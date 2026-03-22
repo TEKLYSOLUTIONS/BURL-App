@@ -3,8 +3,30 @@ import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'api_service.dart';
 import 'firebase_auth_service.dart';
+import 'profile_service.dart';
+import 'dashboard_service.dart';
+import 'session_service.dart';
+import 'coach_service.dart';
+import 'booking_service.dart';
 
 class AuthService {
+  // Helper to clear all static caches to prevent cross-account data leaks
+  static void _clearAllStaticCaches() {
+    ProfileService.invalidateCache();
+    DashboardService.invalidateCache();
+    
+    SessionService.invalidateCoachSessionsCache();
+    SessionService.invalidatePlayerSessionsCache();
+    SessionService.invalidateGuardianSessionsCache();
+    SessionService.invalidatePlayerReportsCache();
+    
+    CoachService.invalidateAvailabilityCache();
+    CoachService.invalidateSessionSettingsCache();
+    
+    BookingService.invalidatePlayerBookingsCache();
+    BookingService.invalidateCoachBookingsCache();
+  }
+
   static Future<bool> login(String email, String password) async {
     try {
       final response = await ApiService.post('auth/login', {
@@ -85,6 +107,7 @@ class AuthService {
   static Future<void> logout() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.clear(); // Clear all data (token, name, role, id)
+    _clearAllStaticCaches(); // Prevent cross-account data leak
   }
 
   /// Full sign-out: clears SharedPreferences AND signs out of Firebase/Google.
@@ -94,6 +117,7 @@ class AuthService {
       // Clear local session data
       final prefs = await SharedPreferences.getInstance();
       await prefs.clear();
+      _clearAllStaticCaches(); // Prevent cross-account data leak
       // Sign out of Firebase to prevent Router redirects
       final FirebaseAuthService firebaseAuthService = FirebaseAuthService();
       await firebaseAuthService.signOut();

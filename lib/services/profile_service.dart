@@ -3,9 +3,28 @@ import 'api_service.dart';
 
 /// Service for managing user profile operations
 class ProfileService {
-  /// Get current user's profile
-  /// Returns user object with populated role-specific profile
+  // ─── In-memory cache ────────────────────────────────────────────────────────
+  static Map<String, dynamic>? _cachedProfile;
+  static DateTime? _cacheTime;
+  static const _cacheTtl = Duration(minutes: 5);
+
+  static bool get _isCacheValid =>
+      _cachedProfile != null &&
+      _cacheTime != null &&
+      DateTime.now().difference(_cacheTime!) < _cacheTtl;
+
+  /// Invalidate the cached profile (call after any write operation).
+  static void invalidateCache() {
+    _cachedProfile = null;
+    _cacheTime = null;
+  }
+  // ────────────────────────────────────────────────────────────────────────────
+
+  /// Get current user's profile.
+  /// Returns cached data if available and fresh (< 5 min old).
   static Future<Map<String, dynamic>> getProfile() async {
+    if (_isCacheValid) return Map<String, dynamic>.from(_cachedProfile!);
+
     try {
       final response = await ApiService.get('users/profile');
 
@@ -31,6 +50,10 @@ class ProfileService {
             user['guardianProfile'] = profile;
           }
         }
+
+        // Store in cache
+        _cachedProfile = Map<String, dynamic>.from(user);
+        _cacheTime = DateTime.now();
 
         return user;
       } else {
@@ -62,6 +85,7 @@ class ProfileService {
       final data = json.decode(response.body);
 
       if (response.statusCode == 200) {
+        invalidateCache(); // Bust the cache so next getProfile() is fresh
         return data['user'];
       } else {
         throw Exception(data['message'] ?? 'Failed to update profile');

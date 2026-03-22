@@ -56,7 +56,7 @@ class CoachBottomBar extends StatelessWidget {
     if (location.startsWith('/coach/earnings')) {
       return 3;
     }
-    if (location.startsWith('/coach/profile')) {
+    if (location.startsWith('/coach/profile') || location.startsWith('/edit-profile')) {
       return 4;
     }
     return 0;

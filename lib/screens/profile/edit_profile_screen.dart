@@ -14,6 +14,7 @@ import '../../config/palette.dart';
 import '../../services/profile_service.dart';
 import '../../services/auth_service.dart';
 import '../../services/storage_service.dart';
+import '../../services/notification_service.dart';
 import '../../utils/country_codes.dart';
 
 const _kMapsApiKey = 'AIzaSyA49gBcEHS6benjXtwA2rakOLejlmDFd-0';
@@ -43,7 +44,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   String _selectedCountryCode = '+94';
 
   // ── Step 2 controllers ────────────────────────────────────────────────────
-  final _ageController = TextEditingController();
+  final _dobController = TextEditingController();
   final _medicalController = TextEditingController();
   String _selectedCricketRole = 'Batsman';
   String _selectedBattingStyle = 'Right-hand bat';
@@ -119,7 +120,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     // Player-specific
     if (playerProfile != null) {
       _addressController.text = playerProfile['address'] ?? '';
-      _ageController.text = playerProfile['age']?.toString() ?? '';
+      _dobController.text = playerProfile['dateOfBirth'] ?? playerProfile['dob'] ?? '';
       _medicalController.text = playerProfile['medicalIssues'] ?? '';
 
       final role = playerProfile['role'] as String?;
@@ -159,7 +160,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     _addressController.dispose();
     _addressFocus.dispose();
     _mapController?.dispose();
-    _ageController.dispose();
+    _dobController.dispose();
     _medicalController.dispose();
     super.dispose();
   }
@@ -285,6 +286,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
   void _goToStep2() {
     if (!_formKeyStep1.currentState!.validate()) return;
+    _autoSaveProgress();
     setState(() => _currentStep = 1);
     _pageController.animateToPage(
       1,
@@ -302,6 +304,20 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     );
   }
 
+  Future<void> _autoSaveProgress() async {
+    try {
+      final String fullPhone = '$_selectedCountryCode ${_phoneController.text.trim()}';
+      await ProfileService.updateProfile({
+        'fullName': _nameController.text.trim(),
+        'phone': fullPhone,
+        'address': _addressController.text.trim(),
+      });
+      await AuthService.updateStoredUserData(_nameController.text.trim(), _userRole);
+    } catch (e) {
+      debugPrint('Auto-save failed: $e');
+    }
+  }
+
   // ── Save ──────────────────────────────────────────────────────────────────
 
   Future<void> _saveChanges() async {
@@ -316,7 +332,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         'phone': fullPhone,
         // Player profile fields
         'address': _addressController.text.trim(),
-        'age': _ageController.text.trim(),
+        'dateOfBirth': _dobController.text.trim(),
         'role': _selectedCricketRole,
         'battingStyle': _selectedBattingStyle,
         'bowlingStyle': _selectedBowlingStyle,
@@ -324,6 +340,13 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       });
 
       await AuthService.updateStoredUserData(_nameController.text.trim(), _userRole);
+
+      // Dismiss profile completion notification now that profile is saved
+      try {
+        await NotificationService.markAllAsRead();
+      } catch (e) {
+        debugPrint('Could not clear notifications: $e');
+      }
 
       if (mounted) {
         _showSnack('Profile updated successfully!', isError: false);
@@ -576,14 +599,45 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             _buildSectionLabel('PLAYER DETAILS', subColor),
             const SizedBox(height: 12),
 
-            // Age
+            // Date of Birth
             _buildField(
-              label: 'Age',
-              controller: _ageController,
+              label: 'Date of Birth',
+              controller: _dobController,
               icon: Icons.cake_outlined,
               isDark: isDark, cardColor: cardColor, borderColor: borderColor, labelColor: labelColor,
-              keyboardType: TextInputType.number,
-              validator: (v) => (v == null || v.trim().isEmpty) ? 'Age is required' : null,
+              readOnly: true,
+              onTap: () async {
+                final picked = await showDatePicker(
+                  context: context,
+                  initialDate: DateTime.now().subtract(const Duration(days: 365 * 10)),
+                  firstDate: DateTime(1900),
+                  lastDate: DateTime.now(),
+                  builder: (context, child) {
+                    return Theme(
+                      data: Theme.of(context).copyWith(
+                        colorScheme: isDark
+                            ? const ColorScheme.dark(
+                                primary: AppPalette.orangeAccent,
+                                onPrimary: Colors.white,
+                                surface: Color(0xFF1E2340),
+                                onSurface: Colors.white,
+                              )
+                            : const ColorScheme.light(
+                                primary: AppPalette.orangeAccent,
+                                onPrimary: Colors.white,
+                                surface: Colors.white,
+                                onSurface: Colors.black87,
+                              ),
+                      ),
+                      child: child!,
+                    );
+                  },
+                );
+                if (picked != null) {
+                  _dobController.text = "${picked.year}-${picked.month.toString().padLeft(2, '0')}-${picked.day.toString().padLeft(2, '0')}";
+                }
+              },
+              validator: (v) => (v == null || v.trim().isEmpty) ? 'Date of Birth is required' : null,
             ),
             const SizedBox(height: 28),
 
@@ -746,6 +800,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     bool readOnly = false,
     TextInputType? keyboardType,
     String? Function(String?)? validator,
+    VoidCallback? onTap,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -762,6 +817,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           child: TextFormField(
             controller: controller,
             readOnly: readOnly,
+            onTap: onTap,
             keyboardType: keyboardType,
             validator: validator,
             style: GoogleFonts.inter(color: readOnly ? labelColor.withValues(alpha: 0.5) : labelColor, fontSize: 14),
@@ -1075,7 +1131,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               icon: _isDetectingLocation
                   ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: AppPalette.orangeAccent))
                   : const Icon(Icons.my_location, size: 18, color: AppPalette.orangeAccent),
-              label: Text('Detect', style: GoogleFonts.inter(color: AppPalette.orangeAccent, fontSize: 13, fontWeight: FontWeight.w600)),
+              label: Text('Locate Me', style: GoogleFonts.inter(color: AppPalette.orangeAccent, fontSize: 13, fontWeight: FontWeight.w600)),
               style: TextButton.styleFrom(padding: EdgeInsets.zero, minimumSize: Size.zero, tapTargetSize: MaterialTapTargetSize.shrinkWrap),
             ),
           ],

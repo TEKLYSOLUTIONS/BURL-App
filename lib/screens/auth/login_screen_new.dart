@@ -154,15 +154,18 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<void> _handleGoogleSignIn() async {
     setState(() => _isLoading = true);
     try {
-      final userCredential = await _authService.signInWithGoogle(
-        role: widget.role,
-      );
+      final userCredential = await _authService.signInWithGoogle();
       final token = await userCredential.user?.getIdToken();
       if (token != null) {
         await _saveUserDataAndNavigate(token);
       }
     } catch (e) {
-      _showSnackBar(e.toString(), isError: true);
+      if (!mounted) return;
+      if (e is SocialRoleRequiredException) {
+        context.push('/social-role-selection', extra: e.credential);
+      } else if (e.toString() != 'Exception: Google sign-in cancelled') {
+        _showSnackBar(e.toString(), isError: true);
+      }
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
@@ -173,15 +176,18 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<void> _handleAppleSignIn() async {
     setState(() => _isLoading = true);
     try {
-      final userCredential = await _authService.signInWithApple(
-        role: widget.role,
-      );
+      final userCredential = await _authService.signInWithApple();
       final token = await userCredential.user?.getIdToken();
       if (token != null) {
         await _saveUserDataAndNavigate(token);
       }
     } catch (e) {
-      _showSnackBar(e.toString(), isError: true);
+      if (!mounted) return;
+      if (e is SocialRoleRequiredException) {
+        context.push('/social-role-selection', extra: e.credential);
+      } else if (e.toString() != 'Exception: SignInWithAppleAuthorizationException(AuthorizationErrorCode.canceled, The user canceled the authorization attempt.)') {
+        _showSnackBar(e.toString(), isError: true);
+      }
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);

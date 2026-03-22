@@ -203,7 +203,7 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _isLoading = true);
 
     try {
-      await _authService.signInWithGoogle(loginOnly: true);
+      await _authService.signInWithGoogle();
 
       // Save the fresh token to SharedPreferences for ApiService to use
       final firebaseToken = await _authService.getIdToken();
@@ -220,7 +220,11 @@ class _LoginScreenState extends State<LoginScreen> {
       _navigateToHome();
     } catch (e) {
       if (!mounted) return;
-      _showSnackBar(e.toString().replaceAll('Exception: ', ''), isError: true);
+      if (e is SocialRoleRequiredException) {
+        context.push('/social-role-selection', extra: e.credential);
+      } else if (e.toString() != 'Exception: Google sign-in cancelled') {
+        _showSnackBar(e.toString().replaceAll('Exception: ', ''), isError: true);
+      }
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
@@ -249,7 +253,11 @@ class _LoginScreenState extends State<LoginScreen> {
       _navigateToHome();
     } catch (e) {
       if (!mounted) return;
-      _showSnackBar(e.toString().replaceAll('Exception: ', ''), isError: true);
+      if (e is SocialRoleRequiredException) {
+        context.push('/social-role-selection', extra: e.credential);
+      } else if (e.toString() != 'Exception: SignInWithAppleAuthorizationException(AuthorizationErrorCode.canceled, The user canceled the authorization attempt.)') {
+        _showSnackBar(e.toString().replaceAll('Exception: ', ''), isError: true);
+      }
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
@@ -301,31 +309,13 @@ class _LoginScreenState extends State<LoginScreen> {
               const SizedBox(height: 30),
 
               // Logo/Icon
-              Container(
-                width: 80,
-                height: 80,
-                decoration: BoxDecoration(
-                  color: Theme.of(context).cardColor,
-                  borderRadius: BorderRadius.circular(20),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.05),
-                      blurRadius: 15,
-                      offset: const Offset(0, 5),
-                    ),
-                  ],
-                  border: Border.all(
-                    color: Theme.of(
-                      context,
-                    ).dividerColor.withValues(alpha: 0.1),
-                  ),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.all(12.0),
-                  child: Image.asset(
-                    'assets/images/burl_icon.png',
-                    fit: BoxFit.contain,
-                  ),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(20),
+                child: Image.asset(
+                  'assets/images/burl_icon.png',
+                  width: 80,
+                  height: 80,
+                  fit: BoxFit.cover,
                 ),
               ).animate().scale(delay: 100.ms),
 

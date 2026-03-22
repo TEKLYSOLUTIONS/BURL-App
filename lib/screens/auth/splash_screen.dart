@@ -77,9 +77,13 @@ class _SplashScreenState extends State<SplashScreen>
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bgColor = isDark 
+        ? const Color(0xFF0E1A2C) 
+        : Theme.of(context).scaffoldBackgroundColor;
+
     return Scaffold(
-      backgroundColor: Theme.of(context)
-          .scaffoldBackgroundColor, // Adapts to Light/Dark Mode
+      backgroundColor: bgColor,
       body: FadeTransition(
         opacity: _fadeAnimation,
         child: ScaleTransition(
@@ -88,45 +92,34 @@ class _SplashScreenState extends State<SplashScreen>
             width: double.infinity,
             height: double.infinity,
             decoration: BoxDecoration(
-              color: Theme.of(context).scaffoldBackgroundColor,
-              gradient: Theme.of(context).brightness == Brightness.dark
-                  ? const RadialGradient(
-                      center: Alignment.center,
-                      radius: 1.5, // Spread the glow out smoother
-                      colors: [
-                        Color(
-                            0xFF2962FF), // Bright, vivid whitish-blue glow at the center
-                        Color(
-                            0xFF010613), // Deep, dark navy almost-black at the edges
-                      ],
-                    )
-                  : null,
+              color: bgColor,
             ),
             child: Stack(
               fit: StackFit.expand,
               children: [
-                // Central Content: Logo and Spaced Loading Spinner
-                Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Image.asset(
-                        'assets/images/burl_splash_logo.png',
-                        width: 250, // Adjust width as necessary
-                      ),
-                      const SizedBox(
-                          height: 40), // Space between logo and spinner
-                      SizedBox(
-                        width: 40,
-                        height: 40,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 3,
-                          valueColor: AlwaysStoppedAnimation<Color>(
-                            Theme.of(context).colorScheme.primary,
-                          ),
+                // Full-height splash image
+                Image.asset(
+                  Theme.of(context).brightness == Brightness.dark
+                      ? 'assets/images/burl_splash_dark.jpg'
+                      : 'assets/images/burl_splash_light.jpg',
+                  fit: BoxFit.fitHeight,
+                ),
+                // Overlay loading spinner
+                Positioned(
+                  bottom: 100, // Adjust distance from bottom as needed
+                  left: 0,
+                  right: 0,
+                  child: Center(
+                    child: SizedBox(
+                      width: 40,
+                      height: 40,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 3,
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          Theme.of(context).colorScheme.primary,
                         ),
                       ),
-                    ],
+                    ),
                   ),
                 ),
               ],

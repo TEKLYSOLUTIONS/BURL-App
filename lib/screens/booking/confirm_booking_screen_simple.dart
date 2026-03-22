@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../config/palette.dart';
 import '../../services/booking_service.dart';
 import '../../services/guardian_service.dart';
+import '../../services/commission_service.dart';
 
 class ConfirmBookingScreenSimple extends StatefulWidget {
   final Map<String, dynamic> bookingDetails;
@@ -33,7 +34,11 @@ class _ConfirmBookingScreenSimpleState
   String? _selectedPlayerId;
   bool _isLoadingPlayers = false;
 
-  // Pricing
+  // Pricing values - loaded dynamically
+  bool _isLoadingCommission = true;
+  double _sessionFeeVal = 60.0;
+  CommissionResult? _commissionResult;
+
   double get _sessionFee {
     try {
       final session = widget.bookingDetails['session'];
@@ -57,9 +62,11 @@ class _ConfirmBookingScreenSimpleState
     }
   }
 
-  final double _serviceFee = 2.50;
+  double get _serviceFee => _commissionResult?.commissionAmount ?? 0.0;
+  String get _serviceFeeLabel => _commissionResult?.label ?? 'Service Fee';
   final double _tax = 0.00;
-  double get _totalAmount => _sessionFee + _serviceFee + _tax - _discountAmount;
+
+  double get _totalAmount => _sessionFeeVal + _serviceFee + _tax - _discountAmount;
 
   String get _sessionFeeLabel {
     try {
@@ -78,7 +85,36 @@ class _ConfirmBookingScreenSimpleState
   @override
   void initState() {
     super.initState();
+    _sessionFeeVal = _sessionFee;
     _checkUserRole();
+    _loadCommission();
+  }
+
+  Future<void> _loadCommission() async {
+    final session = widget.bookingDetails['session'];
+    final sportName = session?['sport']?.toString() ??
+        session?['category']?.toString() ??
+        session?['title']?.toString();
+
+    try {
+      final result = await CommissionService.calculate(
+        _sessionFeeVal,
+        sportName: sportName,
+      );
+      if (mounted) {
+        setState(() {
+          _commissionResult = result;
+          _isLoadingCommission = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _commissionResult = CommissionResult.fromFallback(_sessionFeeVal);
+          _isLoadingCommission = false;
+        });
+      }
+    }
   }
 
   Future<void> _checkUserRole() async {
@@ -124,11 +160,11 @@ class _ConfirmBookingScreenSimpleState
         final discountValue = (result['discountValue'] as num?)?.toDouble() ?? 0.0;
         double computedDiscount;
         if (discountType == 'percentage') {
-          computedDiscount = _sessionFee * (discountValue / 100);
+          computedDiscount = _sessionFeeVal * (discountValue / 100);
         } else {
           computedDiscount = discountValue;
         }
-        computedDiscount = computedDiscount.clamp(0.0, _sessionFee);
+        computedDiscount = computedDiscount.clamp(0.0, _sessionFeeVal);
         setState(() {
           _appliedPromoCode = result['code'] as String? ?? code.toUpperCase();
           _discountAmount = computedDiscount;
@@ -162,6 +198,8 @@ class _ConfirmBookingScreenSimpleState
   }
 
   Future<void> _confirmBooking() async {
+    if (_isProcessing) return;
+    
     if (_isGuardian && _selectedPlayerId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -195,8 +233,12 @@ class _ConfirmBookingScreenSimpleState
       );
 
       if (mounted) {
+        final currentUri = GoRouterState.of(context).uri.toString();
+        final successPath = currentUri.startsWith('/guardian')
+            ? '/guardian/booking-success'
+            : '/player/booking-success';
         context.push(
-          '/booking-success',
+          successPath,
           extra: {
             ...widget.bookingDetails,
             'booking': booking,
@@ -244,6 +286,31 @@ class _ConfirmBookingScreenSimpleState
     final sessionTitle = session is Map<String, dynamic>
         ? (session['title'] ?? 'Cricket Coaching')
         : 'Cricket Coaching';
+
+    if (_isLoadingCommission) {
+      return Scaffold(
+        backgroundColor: const Color(0xFFF8F9FE),
+        appBar: AppBar(
+          title: Text(
+            'Confirm Booking',
+            style: GoogleFonts.inter(
+              fontWeight: FontWeight.bold,
+              color: AppPalette.navyPrimary,
+              fontSize: 18,
+            ),
+          ),
+          backgroundColor: Colors.white,
+          elevation: 0,
+          centerTitle: true,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back_ios_new, size: 18),
+            color: AppPalette.navyPrimary,
+            onPressed: () => context.pop(),
+          ),
+        ),
+        body: const Center(child: CircularProgressIndicator()),
+      );
+    }
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FE),
@@ -767,9 +834,9 @@ class _ConfirmBookingScreenSimpleState
       ),
       child: Column(
         children: [
-          _buildPriceRow(_sessionFeeLabel, _sessionFee),
+          _buildPriceRow(_sessionFeeLabel, _sessionFeeVal),
           const SizedBox(height: 10),
-          _buildPriceRow('Service Fee', _serviceFee),
+          _buildPriceRow(_serviceFeeLabel, _serviceFee),
           const SizedBox(height: 10),
           _buildPriceRow('Tax', _tax),
           if (_appliedPromoCode != null) ...[

@@ -21,6 +21,7 @@ class ProfileScreen extends ConsumerStatefulWidget {
 
 class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   bool _isLoading = true;
+  bool _pushNotifications = true;
   Map<String, dynamic>? _userData;
   Map<String, dynamic>? _profileData;
 
@@ -40,6 +41,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         setState(() {
           _userData = data['user'] as Map<String, dynamic>?;
           _profileData = data['profile'] as Map<String, dynamic>?;
+          if (_userData?['preferences'] != null) {
+            _pushNotifications = _userData!['preferences']['pushNotifications'] ?? true;
+          }
           _isLoading = false;
         });
       }
@@ -248,8 +252,26 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   _ProfileToggleItem(
                     icon: Icons.notifications_active_outlined,
                     label: 'Push Notifications',
-                    value: true,
-                    onChanged: (val) {},
+                    value: _pushNotifications,
+                    onChanged: (val) async {
+                      setState(() => _pushNotifications = val);
+                      try {
+                        await ProfileService.updateProfile({
+                          'preferences': {
+                            'pushNotifications': val,
+                            'darkMode': _userData?['preferences']?['darkMode'] ?? false,
+                            'language': _userData?['preferences']?['language'] ?? 'en-US',
+                          }
+                        });
+                      } catch (e) {
+                        setState(() => _pushNotifications = !val);
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('Error updating setting: $e')),
+                          );
+                        }
+                      }
+                    },
                   ),
                   _ProfileMenuItem(
                     icon: Icons.palette_outlined,
@@ -312,13 +334,13 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     );
   }
 
-  Future<void> _showDeleteConfirmation(BuildContext context) async {
+  Future<void> _showDeleteConfirmation(BuildContext screenContext) async {
     return showDialog(
-      context: context,
-      builder: (context) {
+      context: screenContext,
+      builder: (dialogCtx) {
         bool isLoading = false;
         return StatefulBuilder(
-          builder: (context, setState) {
+          builder: (stateCtx, setState) {
             return AlertDialog(
               titlePadding: const EdgeInsets.fromLTRB(24, 16, 8, 0),
               title: Row(
@@ -329,7 +351,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   IconButton(
                     icon: const Icon(Icons.close, color: Colors.grey),
                     onPressed:
-                        isLoading ? null : () => Navigator.of(context).pop(),
+                        isLoading ? null : () => Navigator.of(dialogCtx).pop(),
                     padding: EdgeInsets.zero,
                     constraints: const BoxConstraints(),
                   ),
@@ -347,16 +369,16 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                           final errorMsg = await AuthService.deleteAccount();
                           setState(() => isLoading = false);
 
-                          if (context.mounted) {
+                          if (screenContext.mounted) {
                             if (errorMsg == null) {
-                              Navigator.of(context).pop(); // Close dialog
+                              Navigator.of(dialogCtx).pop(); // Close dialog
                               showDialog(
-                                context: context,
+                                context: screenContext,
                                 barrierDismissible: false,
-                                builder: (dialogContext) {
+                                builder: (successDialogCtx) {
                                   return AlertDialog(
                                     backgroundColor:
-                                        Theme.of(dialogContext).cardColor,
+                                        Theme.of(successDialogCtx).cardColor,
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(20),
                                     ),
@@ -371,7 +393,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                           style: GoogleFonts.inter(
                                             fontSize: 20,
                                             fontWeight: FontWeight.bold,
-                                            color: Theme.of(dialogContext)
+                                            color: Theme.of(successDialogCtx)
                                                 .colorScheme
                                                 .onSurface,
                                           ),
@@ -382,7 +404,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                           textAlign: TextAlign.center,
                                           style: GoogleFonts.inter(
                                             fontSize: 14,
-                                            color: Theme.of(dialogContext)
+                                            color: Theme.of(successDialogCtx)
                                                 .colorScheme
                                                 .onSurface
                                                 .withValues(alpha: 0.7),
@@ -394,10 +416,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                           child: ElevatedButton(
                                             onPressed: () async {
                                                 // Close the success dialog first
-                                                Navigator.of(dialogContext).pop();
+                                                Navigator.of(successDialogCtx).pop();
                                                 await AuthService.signOutCompletely();
-                                                if (context.mounted) {
-                                                  context.go('/login');
+                                                if (screenContext.mounted) {
+                                                  screenContext.go('/login');
                                                 }
                                               },
                                             style: ElevatedButton.styleFrom(
@@ -427,7 +449,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                 },
                               );
                             } else {
-                              ScaffoldMessenger.of(context).showSnackBar(
+                              ScaffoldMessenger.of(screenContext).showSnackBar(
                                 SnackBar(
                                   content: Text(errorMsg),
                                   backgroundColor: Colors.red,

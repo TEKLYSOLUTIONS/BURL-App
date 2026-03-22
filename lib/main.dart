@@ -6,18 +6,26 @@ import 'config/theme.dart';
 import 'navigation/app_router.dart';
 import 'providers/theme_provider.dart';
 import 'widgets/offline_banner.dart';
+import 'services/startup_service.dart';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_stripe/flutter_stripe.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Initialize Stripe
-  Stripe.publishableKey =
-      'pk_test_51SuC7930IZOlKyebl2FVo2GzcjPwoYVcT4rDBh1mXeLlLkj52RXfuVvSwTdUztN4aVgPM2yoXm0DxlxoZIAhzhyN00cgqZiTyU';
+  // Initialize Stripe (only on mobile, as web throws UnsupportedError without flutter_stripe_web)
+  if (!kIsWeb) {
+    Stripe.publishableKey =
+        'pk_test_51SuC7930IZOlKyebl2FVo2GzcjPwoYVcT4rDBh1mXeLlLkj52RXfuVvSwTdUztN4aVgPM2yoXm0DxlxoZIAhzhyN00cgqZiTyU';
+  }
 
   // Initialize Firebase
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+
+  // Initialize push notifications (permission + background handler)
+  // and prompt for location permission if it's the first time
+  await StartupService.initializeAppStartup();
 
   runApp(const ProviderScope(child: CoachingApp()));
 }

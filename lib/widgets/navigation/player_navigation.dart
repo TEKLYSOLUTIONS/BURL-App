@@ -36,10 +36,26 @@ class PlayerNavigation extends StatelessWidget {
 
   static int _calculateSelectedIndex(BuildContext context) {
     final String location = GoRouterState.of(context).uri.toString();
-    if (location.startsWith('/player/home')) return 0;
-    if (location.startsWith('/player/search')) return 1;
-    if (location.startsWith('/player/sessions')) return 2;
-    if (location.startsWith('/player/profile')) return 3;
+    if (location.startsWith('/player/home')) {
+      return 0;
+    }
+    if (location.startsWith('/player/search') ||
+        location.startsWith('/player/coach-details') ||
+        location.startsWith('/player/coach') ||
+        location.startsWith('/player/booking') ||
+        location.startsWith('/player/confirm-booking')) {
+      return 1;
+    }
+    if (location.startsWith('/player/sessions') ||
+        location.startsWith('/player/booking-success') ||
+        location.startsWith('/player/session-details') ||
+        location.startsWith('/player/my-bookings')) {
+      return 2;
+    }
+    if (location.startsWith('/player/profile') ||
+        location.startsWith('/player/edit-profile')) {
+      return 3;
+    }
     return 0;
   }
 

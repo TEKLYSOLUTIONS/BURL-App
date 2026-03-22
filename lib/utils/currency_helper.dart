@@ -36,6 +36,8 @@ class CurrencyHelper {
     'centurion': 'ZAR', 'paarl': 'ZAR', 'east london': 'ZAR',
     // Sri Lankan cities
     'colombo': 'LKR', 'kandy': 'LKR', 'galle': 'LKR', 'dambulla': 'LKR',
+    'hapugala': 'LKR', 'kurunegala': 'LKR', 'jaffna': 'LKR', 'negombo': 'LKR',
+    'matara': 'LKR', 'gampaha': 'LKR', 'nuwara eliya': 'LKR', 'anuradhapura': 'LKR',
     // Bangladeshi cities
     'dhaka': 'BDT', 'chittagong': 'BDT', 'sylhet': 'BDT', 'khulna': 'BDT',
     // UAE cities
@@ -105,6 +107,7 @@ class CurrencyHelper {
     
     // Sri Lanka
     'sri lanka': 'LKR',
+    'srilanka': 'LKR',
     
     // UAE
     'united arab emirates': 'AED',
@@ -318,7 +321,9 @@ class CurrencyHelper {
         final location = country ?? city;
         if (location != null && location.isNotEmpty) {
           final detected = getCurrencyFromLocation(location);
-          if (detected != defaultCurrency) return detected;
+          if (detected != defaultCurrency || (location.toLowerCase().contains('uk') || location.toLowerCase().contains('united kingdom') || location.toLowerCase().contains('england'))) {
+             return detected;
+          }
         }
       }
     } catch (_) {}

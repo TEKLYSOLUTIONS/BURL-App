@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import '../../config/palette.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -40,6 +40,7 @@ class _PlayerHomeScreenState extends State<PlayerHomeScreen> {
   double _avgPhysical = 0.0;
   double _avgMental = 0.0;
   int _totalReports = 0;
+  DateTime _lastTap = DateTime.fromMillisecondsSinceEpoch(0);
 
   // Featured coaches
   List<dynamic> _featuredCoaches = [];
@@ -948,7 +949,12 @@ class _PlayerHomeScreenState extends State<PlayerHomeScreen> {
 
     return GestureDetector(
       onTap: coachId.isNotEmpty
-          ? () => context.push('/player/coach/$coachId')
+          ? () async {
+              final now = DateTime.now();
+              if (now.difference(_lastTap).inMilliseconds < 1500) return;
+              _lastTap = now;
+              await context.push('/player/coach-details/$coachId');
+            }
           : null,
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),

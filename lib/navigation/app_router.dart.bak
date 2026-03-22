@@ -167,9 +167,21 @@ class AppRouter {
         builder: (context, state) => const PrivacyPolicyScreen(),
       ),
 
-      /* Removed root-level coach-details/:id to prevent key collisions with shell routes */
+      GoRoute(
+        path: '/coach-details/:id',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) =>
+            CoachDetailsScreen(coachId: state.pathParameters['id'] ?? '1'),
+      ),
 
-      /* Removed root-level session-details/:id - now shell-based */
+      GoRoute(
+        path: '/session-details/:id',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => SessionDetailsScreen(
+          sessionId: state.pathParameters['id'] ?? '',
+          occurrenceDate: state.uri.queryParameters['date'],
+        ),
+      ),
 
       GoRoute(
         path: '/session-attendance/:id',
@@ -189,9 +201,9 @@ class AppRouter {
             coachId: extra['coachId'],
             coachName: extra['coachName'],
             coachImageUrl: extra['coachImageUrl'],
-            startTime: extra['startTime'] is String ? DateTime.parse(extra['startTime']) : extra['startTime'],
+            startTime: extra['startTime'],
             durationMinutes: extra['durationMinutes'],
-            price: (extra['price'] as num?)?.toDouble() ?? 0.0,
+            price: extra['price'],
             cancellationPolicy: extra['cancellationPolicy'] ?? 'flexible',
             currencySymbol: extra['currencySymbol'] ?? '\$',
           );
@@ -216,7 +228,23 @@ class AppRouter {
         },
       ),
 
-      /* Removed root-level coach/:id/book - now shell-based */
+      GoRoute(
+        path: '/coach/:id/book',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) {
+          final coachId = state.pathParameters['id']!;
+          final extra = state.extra as Map<String, dynamic>? ?? {};
+          return CoachBookingScreen(
+            coachId: coachId,
+            coachName: extra['coachName'] ?? 'Coach',
+            coachImageUrl: extra['coachImageUrl'],
+            hourlyRate: extra['hourlyRate'] ?? 60.0,
+            sessionDuration: extra['sessionDuration'] ?? 60,
+            cancellationPolicy: extra['cancellationPolicy'] ?? 'flexible',
+            currencySymbol: extra['currencySymbol'] ?? '\$',
+          );
+        },
+      ),
 
       GoRoute(
         path: '/settings',
@@ -366,78 +394,16 @@ class AppRouter {
               occurrenceDate: state.uri.queryParameters['date'],
             ),
           ),
-          GoRoute(
-            path: '/player/booking/confirm-private',
-            builder: (context, state) {
-              final extra = state.extra as Map<String, dynamic>? ?? {};
-              return ConfirmPrivateBookingScreen(
-                coachId: extra['coachId'],
-                coachName: extra['coachName'],
-                coachImageUrl: extra['coachImageUrl'],
-                startTime: extra['startTime'] is String ? DateTime.parse(extra['startTime']) : extra['startTime'],
-                durationMinutes: extra['durationMinutes'],
-                price: (extra['price'] as num?)?.toDouble() ?? 0.0,
-                cancellationPolicy: extra['cancellationPolicy'] ?? 'flexible',
-                currencySymbol: extra['currencySymbol'] ?? '\$',
-              );
-            },
-          ),
-          GoRoute(
-            path: '/player/booking/:sessionId',
-            builder: (context, state) {
-              final sessionId = state.pathParameters['sessionId']!;
-              return BookingScreen(sessionId: sessionId);
-            },
-          ),
-          GoRoute(
-            path: '/player/confirm-booking',
-            builder: (context, state) {
-              final extra = state.extra as Map<String, dynamic>? ?? {};
-              return ConfirmBookingScreenSimple(bookingDetails: extra);
-            },
-          ),
-          GoRoute(
-            path: '/player/booking-success',
-            builder: (context, state) {
-              final extra = state.extra as Map<String, dynamic>? ?? {};
-              return BookingSuccessScreen(bookingDetails: extra);
-            },
-          ),
-          GoRoute(
-            path: '/player/coach/:id/book',
-            builder: (context, state) {
-              final coachId = state.pathParameters['id']!;
-              final extra = state.extra as Map<String, dynamic>? ?? {};
-              return CoachBookingScreen(
-                coachId: coachId,
-                coachName: extra['coachName'] ?? 'Coach',
-                coachImageUrl: extra['coachImageUrl'],
-                hourlyRate: extra['hourlyRate'] ?? 60.0,
-                sessionDuration: extra['sessionDuration'] ?? 60,
-                cancellationPolicy: extra['cancellationPolicy'] ?? 'flexible',
-                currencySymbol: extra['currencySymbol'] ?? '\$',
-              );
-            },
-          ),
-          GoRoute(
-            path: '/player/edit-profile',
-            builder: (context, state) {
-              final profileData = state.extra as Map<String, dynamic>?;
-              return EditProfileScreen(profileData: profileData);
-            },
-          ),
-          GoRoute(
-            path: '/player/coach-details/:id',
-            builder: (context, state) =>
-                CoachDetailsScreen(coachId: state.pathParameters['id'] ?? ''),
-          ),
         ],
       ),
 
-      /* Removed redundant /player/coach/:id route */
+      GoRoute(
+        path: '/player/coach/:id',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) =>
+            CoachDetailsScreen(coachId: state.pathParameters['id'] ?? ''),
+      ),
 
-      // Legacy root-level confirm-booking kept for backwards compatibility
-      // (navigated from BookingScreen before it was fixed)
       GoRoute(
         path: '/confirm-booking',
         parentNavigatorKey: _rootNavigatorKey,
@@ -546,9 +512,9 @@ class AppRouter {
                 coachId: extra['coachId'],
                 coachName: extra['coachName'],
                 coachImageUrl: extra['coachImageUrl'],
-                startTime: extra['startTime'] is String ? DateTime.parse(extra['startTime']) : extra['startTime'],
+                startTime: extra['startTime'],
                 durationMinutes: extra['durationMinutes'],
-                price: (extra['price'] as num?)?.toDouble() ?? 0.0,
+                price: extra['price'],
                 cancellationPolicy: extra['cancellationPolicy'] ?? 'flexible',
                 currencySymbol: extra['currencySymbol'] ?? '\$',
               );

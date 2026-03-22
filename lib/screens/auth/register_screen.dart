@@ -7,6 +7,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 import 'package:ionicons/ionicons.dart';
 import 'dart:io';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class RegisterScreen extends StatefulWidget {
   final String? role;
@@ -118,21 +119,30 @@ class _RegisterScreenState extends State<RegisterScreen> {
     setState(() => _isLoading = true);
 
     try {
-      await _authService.signInWithGoogle(role: widget.role ?? 'player');
+      await _authService.signInWithGoogle();
 
       if (!mounted) return;
 
       // Navigate based on role
-      if (widget.role == 'coach') {
+      final prefs = await SharedPreferences.getInstance();
+      final role = prefs.getString('user_role') ?? widget.role;
+
+      if (!mounted) return;
+
+      if (role == 'coach') {
         context.go('/coach/home');
-      } else if (widget.role == 'player') {
+      } else if (role == 'player') {
         context.go('/player/home');
       } else {
         context.go('/guardian/add-player');
       }
     } catch (e) {
       if (!mounted) return;
-      _showSnackBar(e.toString(), isError: true);
+      if (e is SocialRoleRequiredException) {
+        context.push('/social-role-selection', extra: e.credential);
+      } else {
+        _showSnackBar(e.toString(), isError: true);
+      }
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
@@ -144,21 +154,30 @@ class _RegisterScreenState extends State<RegisterScreen> {
     setState(() => _isLoading = true);
 
     try {
-      await _authService.signInWithApple(role: widget.role ?? 'player');
+      await _authService.signInWithApple();
 
       if (!mounted) return;
 
       // Navigate based on role
-      if (widget.role == 'coach') {
+      final prefs = await SharedPreferences.getInstance();
+      final role = prefs.getString('user_role') ?? widget.role;
+
+      if (!mounted) return;
+
+      if (role == 'coach') {
         context.go('/coach/home');
-      } else if (widget.role == 'player') {
+      } else if (role == 'player') {
         context.go('/player/home');
       } else {
         context.go('/guardian/add-player');
       }
     } catch (e) {
       if (!mounted) return;
-      _showSnackBar(e.toString(), isError: true);
+      if (e is SocialRoleRequiredException) {
+        context.push('/social-role-selection', extra: e.credential);
+      } else {
+        _showSnackBar(e.toString(), isError: true);
+      }
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);

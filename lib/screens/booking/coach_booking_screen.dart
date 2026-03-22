@@ -6,7 +6,6 @@ import 'package:intl/intl.dart';
 import '../../config/palette.dart';
 import '../../services/search_service.dart';
 import '../../services/profile_service.dart';
-import '../../widgets/navigation/role_based_bottom_nav_bar.dart';
 
 class CoachBookingScreen extends StatefulWidget {
   final String coachId;
@@ -44,8 +43,9 @@ class _CoachBookingScreenState extends State<CoachBookingScreen> {
   // API returns list of { startTime, endTime }.
   List<dynamic> _availability = [];
   bool _isLoading = false;
-
   Map<String, dynamic>? _selectedSlot;
+  DateTime _lastTap = DateTime.fromMillisecondsSinceEpoch(0);
+  final int _selectedDuration = 60; // Default 60 mins
 
   @override
   void initState() {
@@ -101,7 +101,6 @@ class _CoachBookingScreenState extends State<CoachBookingScreen> {
 
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      bottomNavigationBar: const RoleBasedBottomNavBar(),
       appBar: AppBar(
         title: Text(
           "Book Session",
@@ -382,14 +381,21 @@ class _CoachBookingScreenState extends State<CoachBookingScreen> {
                   const SizedBox(width: 24),
                   Expanded(
                     child: ElevatedButton(
-                      onPressed: _selectedSlot != null
-                          ? () async {
+                      onPressed: _selectedSlot == null
+                          ? null
+                          : () async {
+                              final now = DateTime.now();
+                              if (now.difference(_lastTap).inMilliseconds < 1500) return;
+                              _lastTap = now;
+
                               final ScaffoldMessengerState messenger =
                                   ScaffoldMessenger.of(context);
                               final dynamic localRouter = GoRouter.of(context);
+                              final isGuardian = GoRouterState.of(context).uri.toString().startsWith('/guardian');
+
                               final isComplete =
                                   await ProfileService.isProfileComplete();
-                              if (!mounted) return;
+                              if (!context.mounted) return;
                               if (!isComplete) {
                                 messenger.showSnackBar(
                                   const SnackBar(
@@ -401,27 +407,25 @@ class _CoachBookingScreenState extends State<CoachBookingScreen> {
                                 return;
                               }
 
-                              final startTime = DateTime.parse(
-                                _selectedSlot!['startTime'],
-                              ).toLocal();
+                              final calculatedPrice =
+                                  (widget.hourlyRate * (_selectedDuration / 60))
+                                      .round();
 
-                              localRouter.push(
-                                '/booking/confirm-private',
+                              await localRouter.push(
+                                isGuardian ? '/guardian/booking/confirm-private' : '/player/booking/confirm-private',
                                 extra: <String, dynamic>{
                                   'coachId': widget.coachId,
                                   'coachName': widget.coachName,
                                   'coachImageUrl': widget.coachImageUrl,
-                                  'startTime': startTime,
-                                  'durationMinutes': widget.sessionDuration,
-                                  'price': widget.hourlyRate *
-                                      (widget.sessionDuration / 60.0),
+                                  'startTime': _selectedSlot!['startTime'],
+                                  'durationMinutes': _selectedDuration,
+                                  'price': calculatedPrice,
                                   'cancellationPolicy':
                                       widget.cancellationPolicy,
                                   'currencySymbol': widget.currencySymbol,
                                 },
                               );
-                            }
-                          : null,
+                            },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppPalette.orangeAccent,
                         foregroundColor: Colors.white,

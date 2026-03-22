@@ -18,6 +18,7 @@ class BookingScreen extends StatefulWidget {
 
 class _BookingScreenState extends State<BookingScreen> {
   bool _isLoading = true;
+  DateTime _lastTap = DateTime.fromMillisecondsSinceEpoch(0);
   Map<String, dynamic>? _session;
   Set<int> _selectedDateIndices = {}; // Changed to Set for multi-select
 
@@ -465,15 +466,27 @@ class _BookingScreenState extends State<BookingScreen> {
               child: ElevatedButton(
                 onPressed: _selectedDateIndices.isEmpty
                     ? null
-                    : () {
+                    : () async {
+                        final now = DateTime.now();
+                        if (now.difference(_lastTap).inMilliseconds < 1500) return;
+                        _lastTap = now;
+
                         // Get all selected dates
                         final selectedDates = _selectedDateIndices
-                            .map((i) => _availableDates[i])
-                            .toList()
-                          ..sort();
+                           .map((i) => _availableDates[i])
+                           .toList()
+                        ..sort();
 
-                        context.push(
-                          '/confirm-booking',
+                        // Detect if us user is a guardian based on the current route
+                        final currentUri = GoRouterState.of(context).uri.toString();
+                        final isGuardian = currentUri.startsWith('/guardian');
+                        final confirmPath = isGuardian
+                            ? '/guardian/confirm-booking'
+                            : '/player/confirm-booking';
+
+                        final dynamic localRouter = GoRouter.of(context);
+                        await localRouter.push(
+                          confirmPath,
                           extra: {
                             'sessionId': widget.sessionId,
                             'session': _session,
@@ -494,12 +507,13 @@ class _BookingScreenState extends State<BookingScreen> {
                                 : 'Multiple dates',
                             'coachName': coachName,
                             'location': location,
+                            'coachImage': displayImage,
                             'totalAmount':
                                 (_session!['pricing']['amount'] as num) *
                                     _selectedDateIndices.length,
                           },
                         );
-                      },
+                    },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppPalette.navyPrimary,
                   foregroundColor: Colors.white,

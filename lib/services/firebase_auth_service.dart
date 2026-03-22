@@ -10,10 +10,18 @@ import 'dart:math';
 import 'package:crypto/crypto.dart';
 
 import '../config/api_config.dart';
+import 'push_notification_service.dart';
+
+class SocialRoleRequiredException implements Exception {
+  final UserCredential credential;
+  SocialRoleRequiredException(this.credential);
+  @override
+  String toString() => "Role selection required";
+}
 
 class FirebaseAuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
-  final GoogleSignIn _googleSignIn = GoogleSignIn();
+  late final GoogleSignIn _googleSignIn = GoogleSignIn();
 
   // Use ApiConfig for consistent URL handling across platforms
   static String get baseUrl => ApiConfig.baseUrl;
@@ -130,6 +138,7 @@ class FirebaseAuthService {
         await prefs.setString('auth_token', token);
 
         // Fetch profile once to persist role for navigation
+        Map<String, dynamic>? prefetchedUser;
         try {
           final response = await http.get(
             Uri.parse('$baseUrl/users/profile'),
@@ -137,9 +146,10 @@ class FirebaseAuthService {
           );
           if (response.statusCode == 200) {
             final data = jsonDecode(response.body);
-            final role = data['user']?['role'] as String?;
-            final name = data['user']?['fullName'] as String?;
-            final uid = (data['user']?['_id'] ?? data['user']?['id']) as String?;
+            prefetchedUser = data['user'] as Map<String, dynamic>?;
+            final role = prefetchedUser?['role'] as String?;
+            final name = prefetchedUser?['fullName'] as String?;
+            final uid = (prefetchedUser?['_id'] ?? prefetchedUser?['id']) as String?;
             if (role != null) await prefs.setString('user_role', role);
             if (name != null) await prefs.setString('user_name', name);
             if (uid != null) await prefs.setString('user_id', uid);
@@ -147,8 +157,11 @@ class FirebaseAuthService {
           }
         } catch (_) {}
 
-        // Profile completion notification check — background, non-blocking
-        _checkProfileCompletion();
+        // Profile completion check — reuse already-fetched user data (no extra API call)
+        _checkProfileCompletion(prefetchedUser: prefetchedUser);
+
+        // Register FCM token for push notifications
+        PushNotificationService.refreshToken();
       }
 
       return userCredential;
@@ -158,10 +171,7 @@ class FirebaseAuthService {
   }
 
   // Sign in with Google
-  Future<UserCredential> signInWithGoogle({
-    String? role,
-    bool loginOnly = false,
-  }) async {
+  Future<UserCredential> signInWithGoogle() async {
     try {
       // Trigger the Google Sign In flow
       final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
@@ -189,63 +199,42 @@ class FirebaseAuthService {
       // Sign in to Firebase
       final userCredential = await _auth.signInWithCredential(credential);
 
-      // Check for existing user restriction
-      if (loginOnly &&
-          (userCredential.additionalUserInfo?.isNewUser ?? false)) {
-        debugPrint('❌ Login only mode: New Google user rejected');
-        // Delete the just created user
-        await userCredential.user?.delete();
-        await _googleSignIn.signOut();
-        throw Exception(
-          'Account does not exist. Please register using the Sign Up page.',
-        );
+      // Check if new user
+      if (userCredential.additionalUserInfo?.isNewUser ?? false) {
+        debugPrint('🆕 Google Sign-In: New user detected. Routing to role selection.');
+        throw SocialRoleRequiredException(userCredential);
       }
 
-      // Ensure user exists in MongoDB
-      await _ensureMongoDBUser(
+      // Ensure user exists in MongoDB — returns the synced user map
+      final syncedUser = await _ensureMongoDBUser(
         fullName: userCredential.user?.displayName ??
             googleUser.displayName ??
             'Google User',
-        role: role ?? 'player',
         email: userCredential.user?.email ?? googleUser.email,
       );
-
-      // Check if profile is complete
-      await _checkProfileCompletion();
 
       // Save token to SharedPreferences for ApiService
       final token = await userCredential.user?.getIdToken();
       if (token != null) {
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString('auth_token', token);
-
-        // Fetch profile to persist role, name, and user_id
-        try {
-          final response = await http.get(
-            Uri.parse('$baseUrl/users/profile'),
-            headers: {'Authorization': 'Bearer $token'},
-          );
-          if (response.statusCode == 200) {
-            final data = jsonDecode(response.body);
-            final role = data['user']?['role'] as String?;
-            final name = data['user']?['fullName'] as String?;
-            final uid = (data['user']?['_id'] ?? data['user']?['id']) as String?;
-            if (role != null) await prefs.setString('user_role', role);
-            if (name != null) await prefs.setString('user_name', name);
-            if (uid != null) await prefs.setString('user_id', uid);
-            debugPrint('💾 Google/Apple login — role: $role, ID: $uid');
-          }
-        } catch (_) {}
       }
+
+      // Profile completion check — reuse data from _ensureMongoDBUser (no extra API call)
+      _checkProfileCompletion(prefetchedUser: syncedUser);
+
+      // Register FCM token for push notifications
+      PushNotificationService.refreshToken();
 
       return userCredential;
     } catch (e) {
+      if (e is SocialRoleRequiredException) rethrow;
       throw _handleAuthException(e);
     }
   }
 
   // Sign in with Apple
-  Future<UserCredential> signInWithApple({String? role}) async {
+  Future<UserCredential> signInWithApple() async {
     try {
       // Check if platform supports Apple Sign In
       if (!Platform.isIOS && !Platform.isMacOS) {
@@ -275,9 +264,9 @@ class FirebaseAuthService {
 
       // Sign in to Firebase
       final userCredential = await _auth.signInWithCredential(credential);
-
+      
       // Get full name — Apple only provides name on FIRST login
-      String fullName = userCredential.user?.displayName ?? 'Apple User';
+      String fullName = userCredential.user?.displayName ?? '';
       if (appleCredential.givenName != null ||
           appleCredential.familyName != null) {
         fullName = [appleCredential.givenName, appleCredential.familyName]
@@ -289,17 +278,60 @@ class FirebaseAuthService {
         }
       }
 
+      // Check if new user
+      if (userCredential.additionalUserInfo?.isNewUser ?? false) {
+        debugPrint('🆕 Apple Sign-In: New user detected. Routing to role selection.');
+        throw SocialRoleRequiredException(userCredential);
+      }
+
       final email = userCredential.user?.email ?? appleCredential.email ?? '';
 
-      // Ensure user exists in MongoDB
-      await _ensureMongoDBUser(
-        fullName: fullName.isNotEmpty ? fullName : 'Apple User',
-        role: role ?? 'player',
+      // Ensure user exists in MongoDB — returns the synced user map
+      final syncedUser = await _ensureMongoDBUser(
+        fullName: fullName.isNotEmpty ? fullName : 'User',
         email: email,
       );
 
-      // Check if profile is complete
-      await _checkProfileCompletion();
+      // Save token to SharedPreferences for ApiService
+      final token = await userCredential.user?.getIdToken();
+      if (token != null) {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('auth_token', token);
+      }
+
+      // Profile completion check — reuse data from _ensureMongoDBUser (no extra API call)
+      _checkProfileCompletion(prefetchedUser: syncedUser);
+
+      // Register FCM token for push notifications
+      PushNotificationService.refreshToken();
+
+      return userCredential;
+    } catch (e) {
+      if (e is SocialRoleRequiredException) rethrow;
+      throw _handleAuthException(e);
+    }
+  }
+
+  // Finalize social login after role selection
+  Future<void> finalizeSocialLogin({
+    required UserCredential userCredential,
+    required String role,
+    required String fullName,
+  }) async {
+    try {
+      final String email = userCredential.user?.email ?? '';
+
+      // Update Firebase display name if it was empty before
+      if (userCredential.user?.displayName == null || userCredential.user!.displayName!.isEmpty) {
+        await userCredential.user?.updateDisplayName(fullName);
+      }
+
+      // Create user in MongoDB with selected role
+      await _ensureMongoDBUser(
+        fullName: fullName,
+        role: role,
+        email: email,
+      );
 
       // Save token to SharedPreferences for ApiService
       final token = await userCredential.user?.getIdToken();
@@ -315,18 +347,15 @@ class FirebaseAuthService {
           );
           if (response.statusCode == 200) {
             final data = jsonDecode(response.body);
-            final role = data['user']?['role'] as String?;
+            final dbRole = data['user']?['role'] as String?;
             final name = data['user']?['fullName'] as String?;
             final uid = (data['user']?['_id'] ?? data['user']?['id']) as String?;
-            if (role != null) await prefs.setString('user_role', role);
+            if (dbRole != null) await prefs.setString('user_role', dbRole);
             if (name != null) await prefs.setString('user_name', name);
             if (uid != null) await prefs.setString('user_id', uid);
-            debugPrint('💾 Apple login — role: $role, ID: $uid');
           }
         } catch (_) {}
       }
-
-      return userCredential;
     } catch (e) {
       throw _handleAuthException(e);
     }
@@ -393,7 +422,8 @@ class FirebaseAuthService {
   }
 
   // Ensure user exists in MongoDB (create if first login after verification)
-  Future<void> _ensureMongoDBUser({
+  // Returns the synced user map so callers can reuse it without extra API calls.
+  Future<Map<String, dynamic>?> _ensureMongoDBUser({
     required String email,
     required String fullName,
     String? role,
@@ -409,8 +439,6 @@ class FirebaseAuthService {
       // Use default role if not provided
       final finalRole = role ?? 'player';
       debugPrint('🔄 Checking/creating user in MongoDB...');
-      debugPrint('📍 URL: $baseUrl/auth/signup');
-      debugPrint('📝 Data: fullName=$fullName, role=$finalRole, email=$email');
 
       final response = await http.post(
         Uri.parse('$baseUrl/auth/signup'),
@@ -435,79 +463,99 @@ class FirebaseAuthService {
           debugPrint('✅ Existing user found in MongoDB');
         }
 
-        // ✅ CRITICAL FIX: Update local storage with ACTUAL role/name from DB
+        // Update local storage with ACTUAL role/name from DB
         if (data['user'] != null) {
-          final dbUser = data['user'];
+          final dbUser = data['user'] as Map<String, dynamic>;
           final dbRole = dbUser['role'];
           final dbName = dbUser['fullName'];
           final dbId = (dbUser['_id'] ?? dbUser['id']) as String?;
 
           if (dbRole != null) {
             final prefs = await SharedPreferences.getInstance();
-            await prefs.setString('user_role', dbRole);
-            if (dbName != null) {
-              await prefs.setString('user_name', dbName);
-            }
-            if (dbId != null) {
-              await prefs.setString('user_id', dbId);
-            }
+            await prefs.setString('user_role', dbRole as String);
+            if (dbName != null) await prefs.setString('user_name', dbName as String);
+            if (dbId != null) await prefs.setString('user_id', dbId);
             debugPrint('💾 Updated local role to: $dbRole, ID: $dbId');
           }
+          // Return the user map so callers can pass it to _checkProfileCompletion
+          return dbUser;
         }
       } else {
         debugPrint('⚠️ MongoDB sync warning: ${response.body}');
         // Don't throw - allow login even if MongoDB sync fails
-        // User can try again or data will sync on next API call
       }
     } catch (e) {
       debugPrint('❌ MongoDB sync error: $e');
       // Don't throw - allow login even if MongoDB sync fails
     }
+    return null;
   }
 
-  // Check if profile is complete and create notification if not
-  Future<void> _checkProfileCompletion() async {
+  // Check if profile is complete and create notification if not.
+  // Accepts an optional [prefetchedUser] map to avoid an extra GET /users/profile call.
+  Future<void> _checkProfileCompletion({Map<String, dynamic>? prefetchedUser}) async {
     try {
       final token = await getIdToken();
       if (token == null) return;
 
-      final response = await http.get(
-        Uri.parse('$baseUrl/users/profile'),
-        headers: {'Authorization': 'Bearer $token'},
-      );
+      Map<String, dynamic>? user = prefetchedUser;
 
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        final user = data['user'];
-
-        // Check if profile is incomplete
-        final isIncomplete = user['phoneNumber'] == null ||
-            user['phoneNumber'] == '' ||
-            (user['role'] == 'coach' &&
-                (user['coachProfile'] == null ||
-                    user['coachProfile']['specialization'] == null ||
-                    user['coachProfile']['specialization'].isEmpty ||
-                    user['coachProfile']['bio'] == null ||
-                    (user['coachProfile']['bio'] as String).isEmpty));
-
-        if (isIncomplete) {
-          // Create profile completion notification
-          await _createProfileCompletionNotification();
-        } else {
-          // Profile is complete — mark all notifications as read so the
-          // "Complete Your Profile" prompt disappears automatically on login.
-          try {
-            await http.put(
-              Uri.parse('$baseUrl/notifications/mark-all-read'),
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': 'Bearer $token',
-              },
-              body: jsonEncode({}),
-            );
-            debugPrint('✅ Profile complete — notifications marked as read');
-          } catch (_) {}
+      // Only fetch from network if we don't already have the user data
+      if (user == null) {
+        final response = await http.get(
+          Uri.parse('$baseUrl/users/profile'),
+          headers: {'Authorization': 'Bearer $token'},
+        );
+        if (response.statusCode == 200) {
+          final data = jsonDecode(response.body);
+          user = data['user'] as Map<String, dynamic>?;
         }
+      }
+
+      if (user == null) return;
+
+      // Check if profile is incomplete
+      final coachProfile = user['coachProfile'];
+      bool isSpecializationEmpty() {
+        final spec = coachProfile?['specialization'];
+        if (spec == null) return true;
+        if (spec is List) return spec.isEmpty;
+        if (spec is String) return spec.trim().isEmpty;
+        return true;
+      }
+
+      final isIncomplete = user['phoneNumber'] == null ||
+          user['phoneNumber'] == '' ||
+          (user['role'] == 'coach' &&
+              (coachProfile == null ||
+                  isSpecializationEmpty() ||
+                  coachProfile['bio'] == null ||
+                  (coachProfile['bio'] as String? ?? '').isEmpty)) ||
+          (user['role'] == 'player' &&
+              (user['playerProfile'] == null ||
+                  user['playerProfile'] is! Map ||
+                  (user['playerProfile'] as Map)['skillLevel'] == null ||
+                  ((user['playerProfile'] as Map)['skillLevel'] as String? ?? '').isEmpty ||
+                  (user['playerProfile'] as Map)['role'] == null ||
+                  ((user['playerProfile'] as Map)['role'] as String? ?? '').isEmpty)) ||
+          (user['role'] == 'guardian' &&
+              (user['phoneNumber'] == null || (user['phoneNumber'] as String? ?? '').isEmpty));
+
+      if (isIncomplete) {
+        await _createProfileCompletionNotification();
+      } else {
+        // Profile is complete — mark all notifications as read
+        try {
+          await http.put(
+            Uri.parse('$baseUrl/notifications/mark-all-read'),
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer $token',
+            },
+            body: jsonEncode({}),
+          );
+          debugPrint('✅ Profile complete — notifications marked as read');
+        } catch (_) {}
       }
     } catch (e) {
       debugPrint('Profile check error: $e');
@@ -528,13 +576,17 @@ class FirebaseAuthService {
         },
         body: jsonEncode({
           'title': 'Complete Your Profile',
-          'message':
+          'description':
               'Welcome! Please complete your profile to get the most out of our platform.',
           'type': 'profile_completion',
-          'category': 'general',
+          'category': 'Other',
           'priority': 'high',
-          'actionUrl': '/edit-profile',
-          'icon': 'person',
+          'actionButton': {
+            'text': 'Complete Profile',
+            'action': 'view',
+            'url': '/edit-profile'
+          },
+          'sendPush': true, // Added flag for backend to fire FCM
         }),
       );
     } catch (e) {
@@ -550,7 +602,8 @@ class FirebaseAuthService {
         case 'weak-password':
           return 'The password provided is too weak.';
         case 'email-already-in-use':
-          return 'An account already exists with this email.';
+        case 'account-exists-with-different-credential':
+          return 'An account already exists with this email. Please login using your email and password and link this provider from your profile settings.';
         case 'invalid-email':
           return 'The email address is invalid.';
         case 'user-not-found':
