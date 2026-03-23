@@ -28,15 +28,13 @@ void main() async {
     debugPrint('Firebase init error: $e');
   }
 
-  // Initialize push notifications (permission + background handler)
-  // and prompt for location permission if it's the first time
-  try {
-    await StartupService.initializeAppStartup();
-  } catch (e) {
-    debugPrint('Startup service error: $e');
-  }
-
   runApp(const ProviderScope(child: CoachingApp()));
+
+  // Initialize push notifications and location AFTER the app is visible.
+  // Doing this before runApp blocks the UI if getToken() hangs on iOS.
+  StartupService.initializeAppStartup().catchError(
+    (e) => debugPrint('Startup service error: $e'),
+  );
 }
 
 class CoachingApp extends ConsumerWidget {
