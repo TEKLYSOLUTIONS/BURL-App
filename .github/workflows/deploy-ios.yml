@@ -6,6 +6,9 @@ on:
       - main  # Adjust if you want to trigger on a different branch or tag
   workflow_dispatch:
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+
 jobs:
   build_ios:
     name: Build and Deploy iOS
@@ -81,12 +84,19 @@ jobs:
 
       # 5. Upload to TestFlight
       - name: Upload to TestFlight
-        uses: apple-actions/upload-testflight-build@v1
-        with:
-          app-path: build/ios/ipa/BURL.ipa
-          issuer-id: ${{ secrets.APPSTORE_ISSUER_ID }}
-          api-key-id: ${{ secrets.APPSTORE_API_KEY_ID }}
-          api-private-key: ${{ secrets.APPSTORE_API_PRIVATE_KEY }}
+        env:
+          APPSTORE_API_KEY_ID: ${{ secrets.APPSTORE_API_KEY_ID }}
+          APPSTORE_ISSUER_ID: ${{ secrets.APPSTORE_ISSUER_ID }}
+          APPSTORE_API_PRIVATE_KEY: ${{ secrets.APPSTORE_API_PRIVATE_KEY }}
+        run: |
+          echo "$APPSTORE_API_PRIVATE_KEY" > /tmp/AuthKey.p8
+          xcrun altool --upload-app \
+            --type ios \
+            --file build/ios/ipa/BURL.ipa \
+            --apiKey "$APPSTORE_API_KEY_ID" \
+            --apiIssuer "$APPSTORE_ISSUER_ID" \
+            --apiKeyPath /tmp/AuthKey.p8
+          rm /tmp/AuthKey.p8
 
       # 6. Save IPA for manual download
       - name: Upload IPA Artifact

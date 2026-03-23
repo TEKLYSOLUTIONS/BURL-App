@@ -120,11 +120,12 @@ class _LoginScreenState extends State<LoginScreen> {
         debugPrint('👤 User role from MongoDB: $userRole');
         debugPrint('🔑 Access token received: ${accessToken != null}');
 
-        // Save JWT token to SharedPreferences for API calls
+        // Save JWT token and role to SharedPreferences for API calls and splash routing
         if (accessToken != null) {
           final prefs = await SharedPreferences.getInstance();
           await prefs.setString('auth_token', accessToken);
-          debugPrint('💾 Token saved to SharedPreferences');
+          if (userRole != null) await prefs.setString('user_role', userRole);
+          debugPrint('💾 Token + role saved to SharedPreferences');
         }
 
         // Store the user role for navigation
@@ -170,10 +171,15 @@ class _LoginScreenState extends State<LoginScreen> {
         final userRole = data['user']?['role'] as String?;
         debugPrint('👤 User role from profile: $userRole');
 
-        if (mounted && userRole != null) {
-          setState(() {
-            _userRole = userRole;
-          });
+        if (userRole != null) {
+          // Persist to SharedPrefs so splash screen routes correctly on next launch
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setString('user_role', userRole);
+          if (mounted) {
+            setState(() {
+              _userRole = userRole;
+            });
+          }
         }
       } else {
         debugPrint('⚠️ Failed to fetch profile: ${response.statusCode}');
@@ -204,16 +210,22 @@ class _LoginScreenState extends State<LoginScreen> {
 
     try {
       await _authService.signInWithGoogle();
+      // _ensureMongoDBUser() inside signInWithGoogle() already saved user_role to SharedPrefs
 
       // Save the fresh token to SharedPreferences for ApiService to use
       final firebaseToken = await _authService.getIdToken();
       if (firebaseToken != null) {
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString('auth_token', firebaseToken);
-        debugPrint('💾 Firebase token saved to SharedPreferences');
+        // Read the role that was saved by _ensureMongoDBUser()
+        final savedRole = prefs.getString('user_role');
+        if (mounted && savedRole != null) {
+          setState(() => _userRole = savedRole);
+        }
+        debugPrint('💾 Firebase token saved, role from prefs: $savedRole');
       }
 
-      // Fetch user profile from backend to get actual role
+      // Fetch user profile to confirm/refresh role (best-effort)
       await _fetchUserProfile();
 
       if (!mounted) return;
@@ -237,16 +249,22 @@ class _LoginScreenState extends State<LoginScreen> {
 
     try {
       await _authService.signInWithApple();
+      // _ensureMongoDBUser() inside signInWithApple() already saved user_role to SharedPrefs
 
       // Save the fresh token to SharedPreferences for ApiService to use
       final firebaseToken = await _authService.getIdToken();
       if (firebaseToken != null) {
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString('auth_token', firebaseToken);
-        debugPrint('💾 Firebase token saved to SharedPreferences');
+        // Read the role that was saved by _ensureMongoDBUser()
+        final savedRole = prefs.getString('user_role');
+        if (mounted && savedRole != null) {
+          setState(() => _userRole = savedRole);
+        }
+        debugPrint('💾 Firebase token saved, role from prefs: $savedRole');
       }
 
-      // Fetch user profile from backend to get actual role
+      // Fetch user profile to confirm/refresh role (best-effort)
       await _fetchUserProfile();
 
       if (!mounted) return;
