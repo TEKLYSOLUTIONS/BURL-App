@@ -861,7 +861,7 @@ class _CoachDetailsScreenState extends State<CoachDetailsScreen>
                         messenger.showSnackBar(
                           const SnackBar(
                             content: Text(
-                                'Please complete your profile (Location and Phone Number) before booking.'),
+                                'Please complete your required profile fields (Location, Phone, DOB) before booking.'),
                             backgroundColor: Colors.red,
                           ),
                         );

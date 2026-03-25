@@ -1221,7 +1221,7 @@ class _SessionDetailsScreenState extends State<SessionDetailsScreen> {
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(
                               content: Text(
-                                  'Please complete your profile (Location and Phone Number) before booking.'),
+                                  'Please complete your required profile fields (Location, Phone, DOB) before booking.'),
                               backgroundColor: Colors.red,
                             ),
                           );

@@ -8,7 +8,7 @@ class ApiConfig {
   // 🔧 PHYSICAL DEVICE TESTING
   // Set to true when testing on a physical Android device via USBS
   // Set to false when testing on Android Emulator
-  static const bool isPhysicalDevice = true;
+  static const bool isPhysicalDevice = false;
 
   // Development URLs (for emulator/simulator testing)
   static const String _baseUrlEmulator = 'http://10.0.2.2:4000/api';
@@ -20,7 +20,7 @@ class ApiConfig {
   // Production URL (for deployed backend)
   // ✅ Updated with Render.com deployment URL
   static const String _baseUrlProduction =
-      'https://us-central1-burl-ad60f.cloudfunctions.net/api';
+      'https://api-g3j6nukjya-uc.a.run.app/api';
 
   static const String googleMapsApiKey =
       'AIzaSyA49gBcEHS6benjXtwA2rakOLejlmDFd-0';

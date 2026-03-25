@@ -140,10 +140,12 @@ class ProfileService {
             profile?['location'] as String? ??
             profile?['city'] as String?;
         final hasLocation = location != null && location.trim().isNotEmpty;
-        return hasPhone && hasLocation;
+        final dob = profile?['dateOfBirth'] as String?;
+        final hasDob = dob != null && dob.trim().isNotEmpty;
+        return hasPhone && hasLocation && hasDob;
       } else if (role == 'coach') {
         final profile = userProfile['coachProfile'];
-        final location = profile?['location'] as String?;
+        final location = profile?['city'] as String? ?? profile?['location'] as String?;
         final hasLocation = location != null && location.trim().isNotEmpty;
         return hasPhone && hasLocation;
       }
