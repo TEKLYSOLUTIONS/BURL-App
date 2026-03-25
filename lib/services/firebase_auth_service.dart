@@ -147,6 +147,16 @@ class FirebaseAuthService {
           if (response.statusCode == 200) {
             final data = jsonDecode(response.body);
             prefetchedUser = data['user'] as Map<String, dynamic>?;
+            if (prefetchedUser != null && data['profile'] != null) {
+              final String? r = prefetchedUser['role']?.toString().toLowerCase();
+              if (r == 'coach') {
+                prefetchedUser['coachProfile'] = data['profile'];
+              } else if (r == 'player') {
+                prefetchedUser['playerProfile'] = data['profile'];
+              } else if (r == 'guardian') {
+                prefetchedUser['guardianProfile'] = data['profile'];
+              }
+            }
             final role = prefetchedUser?['role'] as String?;
             final name = prefetchedUser?['fullName'] as String?;
             final uid = (prefetchedUser?['_id'] ?? prefetchedUser?['id']) as String?;
@@ -512,6 +522,16 @@ class FirebaseAuthService {
         if (response.statusCode == 200) {
           final data = jsonDecode(response.body);
           user = data['user'] as Map<String, dynamic>?;
+          if (user != null && data['profile'] != null) {
+            final String? r = user['role']?.toString().toLowerCase();
+            if (r == 'coach') {
+              user['coachProfile'] = data['profile'];
+            } else if (r == 'player') {
+              user['playerProfile'] = data['profile'];
+            } else if (r == 'guardian') {
+              user['guardianProfile'] = data['profile'];
+            }
+          }
         }
       }
 
@@ -520,11 +540,11 @@ class FirebaseAuthService {
       // Check if profile is incomplete
       final coachProfile = user['coachProfile'];
       bool isSpecializationEmpty() {
-        final spec = coachProfile?['specialization'];
-        if (spec == null) return true;
-        if (spec is List) return spec.isEmpty;
-        if (spec is String) return spec.trim().isEmpty;
-        return true;
+        final String? primarySpec = coachProfile?['primarySpecialization'] as String?;
+        final List? specialties = coachProfile?['specialties'] as List?;
+        final bool hasPrimary = primarySpec != null && primarySpec.trim().isNotEmpty;
+        final bool hasSpecialties = specialties != null && specialties.isNotEmpty;
+        return !(hasPrimary || hasSpecialties);
       }
 
       final isIncomplete = user['phoneNumber'] == null ||
@@ -532,17 +552,24 @@ class FirebaseAuthService {
           (user['role'] == 'coach' &&
               (coachProfile == null ||
                   isSpecializationEmpty() ||
-                  coachProfile['bio'] == null ||
-                  (coachProfile['bio'] as String? ?? '').isEmpty)) ||
+                  coachProfile['aboutMe'] == null ||
+                  (coachProfile['aboutMe'] as String? ?? '').trim().isEmpty ||
+                  coachProfile['city'] == null ||
+                  (coachProfile['city'] as String? ?? '').trim().isEmpty)) ||
           (user['role'] == 'player' &&
               (user['playerProfile'] == null ||
                   user['playerProfile'] is! Map ||
-                  (user['playerProfile'] as Map)['skillLevel'] == null ||
-                  ((user['playerProfile'] as Map)['skillLevel'] as String? ?? '').isEmpty ||
                   (user['playerProfile'] as Map)['role'] == null ||
-                  ((user['playerProfile'] as Map)['role'] as String? ?? '').isEmpty)) ||
+                  ((user['playerProfile'] as Map)['role'] as String? ?? '').isEmpty ||
+                  (user['playerProfile'] as Map)['address'] == null ||
+                  ((user['playerProfile'] as Map)['address'] as String? ?? '').trim().isEmpty ||
+                  (user['playerProfile'] as Map)['dateOfBirth'] == null ||
+                  ((user['playerProfile'] as Map)['dateOfBirth'] as String? ?? '').trim().isEmpty)) ||
           (user['role'] == 'guardian' &&
-              (user['phoneNumber'] == null || (user['phoneNumber'] as String? ?? '').isEmpty));
+              (user['guardianProfile'] == null ||
+                  user['guardianProfile'] is! Map ||
+                  (user['guardianProfile'] as Map)['address'] == null ||
+                  ((user['guardianProfile'] as Map)['address'] as String? ?? '').trim().isEmpty));
 
       if (isIncomplete) {
         await _createProfileCompletionNotification();

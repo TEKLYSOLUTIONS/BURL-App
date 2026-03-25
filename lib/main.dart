@@ -17,7 +17,7 @@ void main() async {
   // Initialize Stripe (only on mobile, as web throws UnsupportedError without flutter_stripe_web)
   if (!kIsWeb) {
     Stripe.publishableKey =
-        'pk_test_51SuC7930IZOlKyebl2FVo2GzcjPwoYVcT4rDBh1mXeLlLkj52RXfuVvSwTdUztN4aVgPM2yoXm0DxlxoZIAhzhyN00cgqZiTyU';
+        'pk_test_51TEiw1RxbYrtkOuTL06gQBSdpcpF1aLeZqaKfWVOLuz33VWMy95pJk8woWqW1NIjkawJNFv03Z7a10QBvu5bOqNp00HEGQQgDB';
   }
 
   // Initialize Firebase
