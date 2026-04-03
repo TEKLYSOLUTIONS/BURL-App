@@ -7,6 +7,7 @@ import '../../config/palette.dart';
 import '../../services/booking_service.dart';
 import '../../services/commission_service.dart';
 import '../../services/guardian_service.dart';
+import '../../services/stripe_payment_service.dart';
 
 class ConfirmPrivateBookingScreen extends StatefulWidget {
   final String coachId;
@@ -38,6 +39,7 @@ class ConfirmPrivateBookingScreen extends StatefulWidget {
 class _ConfirmPrivateBookingScreenState
     extends State<ConfirmPrivateBookingScreen> {
   final TextEditingController _promoController = TextEditingController();
+  final _stripeService = StripePaymentService();
   bool _isProcessing = false;
 
   // Promo code state
@@ -52,9 +54,13 @@ class _ConfirmPrivateBookingScreenState
   List<String> _selectedPlayerIds = [];
   bool _isLoadingPlayers = false;
 
-  // Commission state — loaded dynamically
+  // Commission state
   bool _isLoadingCommission = true;
   CommissionResult? _commissionResult;
+
+  // Stripe card state
+  List<Map<String, dynamic>> _savedCards = [];
+  String? _selectedPaymentMethodId;
 
   // Pricing
   double get _sessionFee {
@@ -73,6 +79,15 @@ class _ConfirmPrivateBookingScreenState
     super.initState();
     _checkUserRole();
     _loadCommission();
+    _loadCards();
+  }
+
+  Future<void> _loadCards() async {
+    _savedCards = await _stripeService.listCards();
+    if (mounted) setState(() {});
+    if (_savedCards.isNotEmpty) {
+      _selectedPaymentMethodId = _savedCards[0]['id'] as String;
+    }
   }
 
   Future<void> _loadCommission() async {
@@ -190,14 +205,35 @@ class _ConfirmPrivateBookingScreenState
       return;
     }
 
+    if (_selectedPaymentMethodId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please add a payment method first'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
     setState(() => _isProcessing = true);
 
     try {
+      // 1. Charge via Stripe before creating booking
+      final amountCents = (_totalAmount * 100).round();
+      final paymentIntentId = await _stripeService.chargeBooking(
+        amountCents: amountCents,
+        paymentMethodId: _selectedPaymentMethodId!,
+        coachId: widget.coachId,
+        description: 'Private session with ${widget.coachName}',
+      );
+
+      // 2. Create booking with paymentIntentId
       final booking = await BookingService.createPrivateBooking(
         coachId: widget.coachId,
         startTime: widget.startTime,
         durationMinutes: widget.durationMinutes,
-        paymentMethod: 'test',
+        paymentMethod: 'stripe',
+        paymentIntentId: paymentIntentId,
         promoCode: _appliedPromoCode,
         playerIds: _isGuardian && _selectedPlayerIds.isNotEmpty
             ? _selectedPlayerIds

@@ -38,6 +38,7 @@ class BookingService {
     String? occurrenceDate,
     List<String>? occurrenceDates,
     required String paymentMethod,
+    String? paymentIntentId,
     String? promoCode,
     String? playerId,
   }) async {
@@ -47,6 +48,7 @@ class BookingService {
         if (occurrenceDate != null) 'occurrenceDate': occurrenceDate,
         if (occurrenceDates != null) 'occurrenceDates': occurrenceDates,
         'paymentMethod': paymentMethod,
+        if (paymentIntentId != null) 'paymentIntentId': paymentIntentId,
         if (promoCode != null && promoCode.isNotEmpty) 'promoCode': promoCode,
         if (playerId != null && playerId.isNotEmpty) 'playerId': playerId,
       });
@@ -70,6 +72,7 @@ class BookingService {
     required DateTime startTime,
     int durationMinutes = 60,
     required String paymentMethod,
+    String? paymentIntentId,
     String? promoCode,
     List<String>? playerIds,
   }) async {
@@ -79,6 +82,7 @@ class BookingService {
         'startTime': startTime.toUtc().toIso8601String(),
         'durationMinutes': durationMinutes,
         'paymentMethod': paymentMethod,
+        if (paymentIntentId != null) 'paymentIntentId': paymentIntentId,
         if (promoCode != null && promoCode.isNotEmpty) 'promoCode': promoCode,
         if (playerIds != null && playerIds.isNotEmpty) 'playerIds': playerIds,
       });

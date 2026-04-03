@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../config/palette.dart';
 import '../../models/subscription_plan.dart';
 import '../../services/subscription_service.dart';
+import '../../services/stripe_payment_service.dart';
 import '../../utils/currency_helper.dart';
 import 'subscription_result_screen.dart';
 
@@ -30,47 +31,32 @@ class _SubscriptionPaymentScreenState
     extends State<SubscriptionPaymentScreen> {
   final TextEditingController _promoController = TextEditingController();
   final _subscriptionService = SubscriptionService();
+  final _stripeService = StripePaymentService();
 
   PromoCodeValidation? _appliedPromo;
   bool _isValidatingPromo = false;
   String? _promoError;
   bool _isProcessing = false;
 
-  // ─── Test card options ────────────────────────────────────────────────────
-  // Using Stripe's official test card numbers for simulation
-  static const _testCards = [
-    {
-      'label': 'Visa — Payment succeeds',
-      'number': '4242 4242 4242 4242',
-      'expiry': '12/26',
-      'cvc': '123',
-      'icon': Icons.credit_card,
-      'color': 0xFF1A73E8,
-      'succeeds': true,
-    },
-    {
-      'label': 'Visa — Card declined',
-      'number': '4000 0000 0000 0002',
-      'expiry': '12/26',
-      'cvc': '123',
-      'icon': Icons.credit_card_off_outlined,
-      'color': 0xFFE53935,
-      'succeeds': false,
-    },
-    {
-      'label': 'Mastercard — Insufficient funds',
-      'number': '5105 1051 0510 5100',
-      'expiry': '12/26',
-      'cvc': '123',
-      'icon': Icons.credit_card_off_outlined,
-      'color': 0xFFFF6D00,
-      'succeeds': false,
-    },
-  ];
-
-  int _selectedCardIndex = 0;
+  // Real saved cards from Stripe
+  List<Map<String, dynamic>> _savedCards = [];
+  String? _selectedPaymentMethodId;
 
   // ─── Pricing helpers ───────────────────────────────────────────────────────
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCards();
+  }
+
+  Future<void> _loadCards() async {
+    _savedCards = await _stripeService.listCards();
+    if (mounted) setState(() {});
+    if (_savedCards.isNotEmpty) {
+      _selectedPaymentMethodId = _savedCards[0]['id'] as String;
+    }
+  }
 
   int get _monthlyPrice => widget.plan.price;
 
@@ -144,24 +130,47 @@ class _SubscriptionPaymentScreenState
   // ─── Subscribe ───────────────────────────────────────────────────────────────
 
   Future<void> _handleSubscribe() async {
+    if (_selectedPaymentMethodId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please add a payment card first'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
     setState(() => _isProcessing = true);
 
-    // Simulate network latency for test payment processing
-    await Future.delayed(const Duration(milliseconds: 1800));
-
-    final selectedCard = _testCards[_selectedCardIndex];
-    final succeeds = selectedCard['succeeds'] as bool;
-
     String? errorMsg;
-    if (succeeds) {
-      try {
+    bool success = false;
+
+    try {
+      // Determine if there's a real Stripe Price ID on the plan
+      final priceId = widget.isAnnual
+          ? widget.plan.stripePriceIdAnnual
+          : widget.plan.stripePriceIdMonthly;
+
+      if (priceId != null && priceId.isNotEmpty) {
+        // Real Stripe Billing subscription
+        await _stripeService.subscribeCoach(
+          priceId: priceId,
+          paymentMethodId: _selectedPaymentMethodId!,
+          trialDays: widget.plan.trialPeriodDays,
+        );
+        success = true;
+      } else {
+        // Fallback: DB-only subscription (no Stripe Price ID configured yet)
         await _subscriptionService.activateSubscription(
           planId: widget.plan.planId,
           isAnnual: widget.isAnnual,
+          paymentMethodId: _selectedPaymentMethodId,
         );
-      } catch (e) {
-        errorMsg = e.toString().replaceAll('Exception: ', '');
+        success = true;
       }
+    } catch (e) {
+      errorMsg = e.toString().replaceAll('Exception: ', '');
+      success = false;
     }
 
     if (!mounted) return;
@@ -170,7 +179,7 @@ class _SubscriptionPaymentScreenState
     Navigator.of(context).pushReplacement(
       MaterialPageRoute(
         builder: (_) => SubscriptionResultScreen(
-          success: succeeds && errorMsg == null,
+          success: success,
           planName: widget.plan.name,
           billingCycle: widget.isAnnual
               ? 'Annual (billed yearly)'
@@ -179,9 +188,7 @@ class _SubscriptionPaymentScreenState
           currency: _sym,
           promoCode: _appliedPromo?.code,
           promoDiscount: _promoDiscount,
-          errorMessage: !succeeds
-              ? 'Your card was declined. Please use a different card.'
-              : errorMsg,
+          errorMessage: errorMsg,
           trialDays: widget.plan.trialPeriodDays,
         ),
       ),
@@ -312,7 +319,7 @@ class _SubscriptionPaymentScreenState
                     ),
                   ),
                   const SizedBox(height: 10),
-                  _buildTestCardSelector(),
+                  _buildSavedCardSelector(),
 
                   const SizedBox(height: 12),
 
@@ -844,18 +851,44 @@ class _SubscriptionPaymentScreenState
     );
   }
 
-  // ─── Test Card Selector ─────────────────────────────────────────────────────
+  // ─── Saved Card Selector ──────────────────────────────────────────────────────
 
-  Widget _buildTestCardSelector() {
+  Widget _buildSavedCardSelector() {
+    if (_savedCards.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.orange.withValues(alpha: 0.06),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: Colors.orange.withValues(alpha: 0.3)),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.credit_card_off_rounded, color: Colors.orange),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                'No saved cards. Go to Payment Methods in your profile to add a card first.',
+                style: GoogleFonts.inter(fontSize: 13, color: Colors.orange[800]),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     return Column(
-      children: List.generate(_testCards.length, (index) {
-        final card = _testCards[index];
-        final isSelected = _selectedCardIndex == index;
-        final succeeds = card['succeeds'] as bool;
-        final cardColor = Color(card['color'] as int);
+      children: _savedCards.map((pm) {
+        final pmId = pm['id'] as String;
+        final cardData = pm['card'] as Map<String, dynamic>;
+        final brand = (cardData['brand'] as String? ?? 'card');
+        final last4 = (cardData['last4'] as String? ?? '••••');
+        final expMonth = cardData['exp_month']?.toString().padLeft(2, '0') ?? '??';
+        final expYear = cardData['exp_year']?.toString().substring(2) ?? '??';
+        final isSelected = _selectedPaymentMethodId == pmId;
 
         return GestureDetector(
-          onTap: () => setState(() => _selectedCardIndex = index),
+          onTap: () => setState(() => _selectedPaymentMethodId = pmId),
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 200),
             margin: const EdgeInsets.only(bottom: 10),
@@ -864,13 +897,13 @@ class _SubscriptionPaymentScreenState
               color: Colors.white,
               borderRadius: BorderRadius.circular(14),
               border: Border.all(
-                color: isSelected ? cardColor : Colors.grey.shade200,
+                color: isSelected ? AppPalette.navyPrimary : Colors.grey.shade200,
                 width: isSelected ? 2 : 1,
               ),
               boxShadow: isSelected
                   ? [
                       BoxShadow(
-                        color: cardColor.withValues(alpha: 0.15),
+                        color: AppPalette.navyPrimary.withValues(alpha: 0.12),
                         blurRadius: 8,
                         offset: const Offset(0, 3),
                       )
@@ -882,12 +915,12 @@ class _SubscriptionPaymentScreenState
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: cardColor.withValues(alpha: 0.10),
+                    color: AppPalette.navyPrimary.withValues(alpha: 0.08),
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: Icon(
-                    card['icon'] as IconData,
-                    color: cardColor,
+                  child: const Icon(
+                    Icons.credit_card,
+                    color: AppPalette.navyPrimary,
                     size: 20,
                   ),
                 ),
@@ -897,7 +930,7 @@ class _SubscriptionPaymentScreenState
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        card['label'] as String,
+                        '${brand[0].toUpperCase()}${brand.substring(1)} ending in $last4',
                         style: GoogleFonts.inter(
                           fontWeight: FontWeight.w600,
                           fontSize: 13,
@@ -906,51 +939,27 @@ class _SubscriptionPaymentScreenState
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        '•••• •••• •••• ${(card['number'] as String).split(' ').last}  ${card['expiry']}  CVC ${card['cvc']}',
+                        'Expires $expMonth/$expYear',
                         style: GoogleFonts.inter(
                           fontSize: 11,
                           color: Colors.grey[500],
-                          letterSpacing: 0.3,
                         ),
                       ),
                     ],
                   ),
                 ),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 8, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: succeeds
-                        ? const Color(0xFF22C55E).withValues(alpha: 0.1)
-                        : Colors.red.withValues(alpha: 0.08),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Text(
-                    succeeds ? 'SUCCESS' : 'DECLINE',
-                    style: GoogleFonts.inter(
-                      fontSize: 9,
-                      fontWeight: FontWeight.bold,
-                      color: succeeds
-                          ? const Color(0xFF22C55E)
-                          : Colors.red.shade400,
-                      letterSpacing: 0.5,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 10),
                 Icon(
                   isSelected
                       ? Icons.radio_button_checked
                       : Icons.radio_button_unchecked,
-                  color:
-                      isSelected ? cardColor : Colors.grey[400],
+                  color: isSelected ? AppPalette.navyPrimary : Colors.grey[400],
                   size: 22,
                 ),
               ],
             ),
           ),
         );
-      }),
+      }).toList(),
     );
   }
 

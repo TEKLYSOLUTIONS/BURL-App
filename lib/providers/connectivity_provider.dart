@@ -12,15 +12,20 @@ class NetworkStatus {
 
 /// Provider that exposes the current network status.
 final networkStatusProvider =
-    StateNotifierProvider<NetworkStatusNotifier, NetworkStatus>((ref) {
+    NotifierProvider<NetworkStatusNotifier, NetworkStatus>(() {
   return NetworkStatusNotifier();
 });
 
-class NetworkStatusNotifier extends StateNotifier<NetworkStatus> {
+class NetworkStatusNotifier extends Notifier<NetworkStatus> {
   late StreamSubscription<InternetStatus> _subscription;
 
-  NetworkStatusNotifier() : super(const NetworkStatus(isOffline: false)) {
+  @override
+  NetworkStatus build() {
     _initConnectionChecking();
+    ref.onDispose(() {
+      _subscription.cancel();
+    });
+    return const NetworkStatus(isOffline: false);
   }
 
   void _initConnectionChecking() {
@@ -35,9 +40,4 @@ class NetworkStatusNotifier extends StateNotifier<NetworkStatus> {
     });
   }
 
-  @override
-  void dispose() {
-    _subscription.cancel();
-    super.dispose();
-  }
 }

@@ -30,6 +30,9 @@ class SubscriptionPlan {
   final int trialPeriodDays;
   final List<SubscriptionFeature> features;
   final bool isPopular;
+  // Stripe Price IDs (set in Stripe dashboard; null if not configured yet)
+  final String? stripePriceIdMonthly;
+  final String? stripePriceIdAnnual;
 
   SubscriptionPlan({
     required this.id,
@@ -43,6 +46,8 @@ class SubscriptionPlan {
     required this.trialPeriodDays,
     required this.features,
     required this.isPopular,
+    this.stripePriceIdMonthly,
+    this.stripePriceIdAnnual,
   });
 
   factory SubscriptionPlan.fromJson(Map<String, dynamic> json) {
@@ -64,6 +69,8 @@ class SubscriptionPlan {
               .toList() ??
           [],
       isPopular: json['isPopular'] as bool? ?? false,
+      stripePriceIdMonthly: json['stripePriceIdMonthly'] as String?,
+      stripePriceIdAnnual: json['stripePriceIdAnnual'] as String?,
     );
   }
 

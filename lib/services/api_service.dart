@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../config/api_config.dart';
 import 'auth_service.dart';
 import '../navigation/app_router.dart';
@@ -17,20 +17,20 @@ class ApiService {
         // Pass forceRefresh=true to bypass cached expired tokens
         token = await user.getIdToken(forceRefresh);
 
-        // Save the fresh token to SharedPreferences
+        // Save the fresh token securely
         if (token != null) {
-          final prefs = await SharedPreferences.getInstance();
-          await prefs.setString('auth_token', token);
+          final secureStorage = FlutterSecureStorage();
+          await secureStorage.write(key: 'auth_token', value: token);
         }
       }
     } catch (_) {
-      // Ignore firebase auth errors here, fallback to SharedPreferences
+      // Ignore firebase auth errors here, fallback to secure storage
     }
 
-    // Fallback to SharedPreferences if Firebase token is unavailable
+    // Fallback to secure storage if Firebase token is unavailable
     if (token == null) {
-      final prefs = await SharedPreferences.getInstance();
-      token = prefs.getString('auth_token');
+      final secureStorage = FlutterSecureStorage();
+      token = await secureStorage.read(key: 'auth_token');
     }
 
     return {

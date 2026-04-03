@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:ionicons/ionicons.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -123,7 +124,8 @@ class _LoginScreenState extends State<LoginScreen> {
         // Save JWT token and role to SharedPreferences for API calls and splash routing
         if (accessToken != null) {
           final prefs = await SharedPreferences.getInstance();
-          await prefs.setString('auth_token', accessToken);
+          final secureStorage = const FlutterSecureStorage();
+          await secureStorage.write(key: 'auth_token', value: accessToken);
           if (userRole != null) await prefs.setString('user_role', userRole);
           debugPrint('💾 Token + role saved to SharedPreferences');
         }
@@ -216,7 +218,8 @@ class _LoginScreenState extends State<LoginScreen> {
       final firebaseToken = await _authService.getIdToken();
       if (firebaseToken != null) {
         final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('auth_token', firebaseToken);
+        final secureStorage = const FlutterSecureStorage();
+        await secureStorage.write(key: 'auth_token', value: firebaseToken);
         // Read the role that was saved by _ensureMongoDBUser()
         final savedRole = prefs.getString('user_role');
         if (mounted && savedRole != null) {
@@ -255,7 +258,8 @@ class _LoginScreenState extends State<LoginScreen> {
       final firebaseToken = await _authService.getIdToken();
       if (firebaseToken != null) {
         final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('auth_token', firebaseToken);
+        final secureStorage = const FlutterSecureStorage();
+        await secureStorage.write(key: 'auth_token', value: firebaseToken);
         // Read the role that was saved by _ensureMongoDBUser()
         final savedRole = prefs.getString('user_role');
         if (mounted && savedRole != null) {

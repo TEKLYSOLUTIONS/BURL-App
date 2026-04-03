@@ -4,7 +4,8 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
+
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import '../config/api_config.dart';
 
@@ -91,8 +92,8 @@ class PushNotificationService {
 
   static Future<void> _sendTokenToBackend(String token) async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final authToken = prefs.getString('auth_token');
+      final secureStorage = const FlutterSecureStorage();
+      final authToken = await secureStorage.read(key: 'auth_token');
       if (authToken == null) return; // Not logged in yet
 
       final response = await http.put(
