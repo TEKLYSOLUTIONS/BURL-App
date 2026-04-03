@@ -3,7 +3,7 @@ import 'dart:io';
 class ApiConfig {
   // Environment Configuration
   // Set to true when building for production (deployed backend)
-  static const bool isProduction = true; // 🔧 LOCAL DEV MODE
+  static const bool isProduction = true; // LOCAL DEV MODE
 
   // 🔧 PHYSICAL DEVICE TESTING
   // Set to true when testing on a physical Android device via USBS

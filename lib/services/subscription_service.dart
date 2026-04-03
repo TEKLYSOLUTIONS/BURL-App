@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
+
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../config/api_config.dart';
 import '../models/subscription_plan.dart';
 
@@ -80,10 +81,11 @@ class SubscriptionService {
   Future<void> activateSubscription({
     required String planId,
     required bool isAnnual,
+    String? paymentMethodId,
   }) async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString('auth_token');
+      final secureStorage = const FlutterSecureStorage();
+      final token = await secureStorage.read(key: 'auth_token');
 
       final response = await http.post(
         Uri.parse('${ApiConfig.baseUrl}/subscriptions/activate'),
@@ -94,6 +96,7 @@ class SubscriptionService {
         body: jsonEncode({
           'planId': planId,
           'isAnnual': isAnnual,
+          if (paymentMethodId != null) 'paymentMethodId': paymentMethodId,
         }),
       );
 
@@ -113,8 +116,8 @@ class SubscriptionService {
     String? userId,
   }) async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString('auth_token');
+      final secureStorage = const FlutterSecureStorage();
+      final token = await secureStorage.read(key: 'auth_token');
       
       final response = await http.post(
         Uri.parse('${ApiConfig.baseUrl}/bookings/validate-promo'),

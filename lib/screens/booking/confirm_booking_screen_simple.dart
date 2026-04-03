@@ -6,6 +6,7 @@ import '../../config/palette.dart';
 import '../../services/booking_service.dart';
 import '../../services/guardian_service.dart';
 import '../../services/commission_service.dart';
+import '../../services/stripe_payment_service.dart';
 
 class ConfirmBookingScreenSimple extends StatefulWidget {
   final Map<String, dynamic> bookingDetails;
@@ -20,6 +21,7 @@ class ConfirmBookingScreenSimple extends StatefulWidget {
 class _ConfirmBookingScreenSimpleState
     extends State<ConfirmBookingScreenSimple> {
   final TextEditingController _promoController = TextEditingController();
+  final _stripeService = StripePaymentService();
   bool _isProcessing = false;
 
   // Promo code state
@@ -33,6 +35,10 @@ class _ConfirmBookingScreenSimpleState
   List<dynamic> _players = [];
   String? _selectedPlayerId;
   bool _isLoadingPlayers = false;
+
+  // Stripe card state
+  List<Map<String, dynamic>> _savedCards = [];
+  String? _selectedPaymentMethodId;
 
   // Pricing values - loaded dynamically
   bool _isLoadingCommission = true;
@@ -88,6 +94,15 @@ class _ConfirmBookingScreenSimpleState
     _sessionFeeVal = _sessionFee;
     _checkUserRole();
     _loadCommission();
+    _loadCards();
+  }
+
+  Future<void> _loadCards() async {
+    _savedCards = await _stripeService.listCards();
+    if (mounted) setState(() {});
+    if (_savedCards.isNotEmpty) {
+      _selectedPaymentMethodId = _savedCards[0]['id'] as String;
+    }
   }
 
   Future<void> _loadCommission() async {
@@ -210,6 +225,16 @@ class _ConfirmBookingScreenSimpleState
       return;
     }
 
+    if (_selectedPaymentMethodId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please add a payment method first'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
     setState(() => _isProcessing = true);
 
     try {
@@ -223,11 +248,24 @@ class _ConfirmBookingScreenSimpleState
         throw Exception('Missing session details');
       }
 
+      // 1. Charge via Stripe before creating booking
+      final coachId = (widget.bookingDetails['session']?['coach']?['_id'] ??
+          widget.bookingDetails['coachId'] ?? '') as String;
+      final amountCents = (_totalAmount * 100).round();
+      final paymentIntentId = await _stripeService.chargeBooking(
+        amountCents: amountCents,
+        paymentMethodId: _selectedPaymentMethodId!,
+        coachId: coachId,
+        description: 'Session: ${widget.bookingDetails['session']?['title'] ?? 'Cricket Session'}',
+      );
+
+      // 2. Create booking with paymentIntentId
       final booking = await BookingService.createBooking(
         sessionId: sessionId,
         occurrenceDate: occurrenceDate,
         occurrenceDates: selectedDates,
-        paymentMethod: 'test',
+        paymentMethod: 'stripe',
+        paymentIntentId: paymentIntentId,
         promoCode: _appliedPromoCode,
         playerId: _isGuardian ? _selectedPlayerId : null,
       );

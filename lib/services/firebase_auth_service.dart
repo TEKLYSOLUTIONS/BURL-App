@@ -2,6 +2,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart';
 import 'dart:convert';
@@ -21,7 +22,8 @@ class SocialRoleRequiredException implements Exception {
 
 class FirebaseAuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
-  late final GoogleSignIn _googleSignIn = GoogleSignIn();
+  final GoogleSignIn _googleSignIn = GoogleSignIn.instance;
+  bool _isGoogleInitialized = false;
 
   // Use ApiConfig for consistent URL handling across platforms
   static String get baseUrl => ApiConfig.baseUrl;
@@ -54,11 +56,23 @@ class FirebaseAuthService {
         password: password,
       );
 
-      // 2️⃣ Update display name
-      await userCredential.user?.updateDisplayName(fullName);
+      // 2️⃣ Run background Firebase tasks asynchronously to speed up the flow
+      userCredential.user?.updateDisplayName(fullName).catchError((_) {});
 
-      // 3️⃣ Immediately persist role + name in MongoDB (user is authenticated
-      //    but email not yet verified — the backend only checks token validity).
+      final actionCodeSettings = ActionCodeSettings(
+        url:
+            'https://burl-ad60f.firebaseapp.com/finishSignUp?email=${userCredential.user?.email ?? email}',
+        handleCodeInApp: true,
+        iOSBundleId: 'com.burlcoachbookingapp.app',
+        androidPackageName: 'com.burlcoachbookingapp.app',
+        androidInstallApp: true,
+        androidMinimumVersion: '12',
+      );
+      // Fire-and-forget email verification
+      userCredential.user?.sendEmailVerification(actionCodeSettings).catchError((_) {});
+      debugPrint('✉️ Verification email requested in background to: $email');
+
+      // 3️⃣ Immediately persist role + name in MongoDB
       //    This removes the race condition where role was stored in
       //    SharedPreferences and could be lost or mismatched.
       debugPrint('🔄 Persisting user in MongoDB at sign-up...');
@@ -79,19 +93,6 @@ class FirebaseAuthService {
         throw Exception('Failed to create account. Please try again.');
       }
       debugPrint('✅ User persisted in MongoDB with role: $role');
-
-      // 4️⃣ Now send verification email
-      final actionCodeSettings = ActionCodeSettings(
-        url:
-            'https://burl-ad60f.firebaseapp.com/finishSignUp?email=${userCredential.user?.email ?? email}',
-        handleCodeInApp: true,
-        iOSBundleId: 'com.burlcoachbookingapp.app',
-        androidPackageName: 'com.burlcoachbookingapp.app',
-        androidInstallApp: true,
-        androidMinimumVersion: '12',
-      );
-      await userCredential.user?.sendEmailVerification(actionCodeSettings);
-      debugPrint('✉️ Verification email sent to: $email');
 
       return userCredential;
     } catch (e) {
@@ -135,7 +136,8 @@ class FirebaseAuthService {
       final token = await userCredential.user?.getIdToken();
       if (token != null) {
         final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('auth_token', token);
+        final secureStorage = const FlutterSecureStorage();
+        await secureStorage.write(key: 'auth_token', value: token);
 
         // Fetch profile once to persist role for navigation
         Map<String, dynamic>? prefetchedUser;
@@ -183,26 +185,28 @@ class FirebaseAuthService {
   // Sign in with Google
   Future<UserCredential> signInWithGoogle() async {
     try {
-      // Trigger the Google Sign In flow
-      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
-
-      if (googleUser == null) {
-        throw Exception('Google sign-in cancelled');
+      // Initialize only once
+      if (!_isGoogleInitialized) {
+        await _googleSignIn.initialize();
+        _isGoogleInitialized = true;
       }
+
+      // Trigger the Google Sign In flow
+      final GoogleSignInAccount googleUser = await _googleSignIn.authenticate();
 
       // Obtain the auth details
       final GoogleSignInAuthentication googleAuth =
-          await googleUser.authentication;
+          googleUser.authentication;
 
-      if (googleAuth.accessToken == null && googleAuth.idToken == null) {
+      if (googleAuth.idToken == null) {
         throw Exception(
-          'Google Sign-In failed: could not obtain authentication tokens.',
+          'Google Sign-In failed: could not obtain id token.',
         );
       }
 
       // Create a new credential
       final credential = GoogleAuthProvider.credential(
-        accessToken: googleAuth.accessToken,
+        accessToken: null, // accessToken relies on authorizeScopes now; idToken is enough
         idToken: googleAuth.idToken,
       );
 
@@ -226,8 +230,8 @@ class FirebaseAuthService {
       // Save token to SharedPreferences for ApiService
       final token = await userCredential.user?.getIdToken();
       if (token != null) {
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('auth_token', token);
+        final secureStorage = const FlutterSecureStorage();
+        await secureStorage.write(key: 'auth_token', value: token);
       }
 
       // Profile completion check — reuse data from _ensureMongoDBUser (no extra API call)
@@ -305,8 +309,8 @@ class FirebaseAuthService {
       // Save token to SharedPreferences for ApiService
       final token = await userCredential.user?.getIdToken();
       if (token != null) {
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('auth_token', token);
+        final secureStorage = const FlutterSecureStorage();
+        await secureStorage.write(key: 'auth_token', value: token);
       }
 
       // Profile completion check — reuse data from _ensureMongoDBUser (no extra API call)
@@ -347,7 +351,8 @@ class FirebaseAuthService {
       final token = await userCredential.user?.getIdToken();
       if (token != null) {
         final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('auth_token', token);
+        final secureStorage = const FlutterSecureStorage();
+        await secureStorage.write(key: 'auth_token', value: token);
 
         // Fetch profile to persist role, name, and user_id
         try {
@@ -410,7 +415,8 @@ class FirebaseAuthService {
     await _auth.signOut();
 
     final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('auth_token');
+    final secureStorage = const FlutterSecureStorage();
+    await secureStorage.delete(key: 'auth_token');
     await prefs.remove('user_role');
     await prefs.remove('user_id');
     await prefs.remove('user_name');

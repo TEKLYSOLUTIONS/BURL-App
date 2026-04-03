@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'api_service.dart';
 import 'firebase_auth_service.dart';
 import 'profile_service.dart';
@@ -43,9 +45,10 @@ class AuthService {
         final userRole = user['role'] ?? 'coach';
         final userId = user['id'] ?? user['_id'];
 
-        // Save token & user details to shared preferences
+        // Save token securely & user details to shared preferences
         final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('auth_token', token);
+        final secureStorage = const FlutterSecureStorage();
+        await secureStorage.write(key: 'auth_token', value: token);
         await prefs.setString('user_name', userName);
         await prefs.setString('user_role', userRole);
         if (userId != null) {
@@ -85,9 +88,10 @@ class AuthService {
         final userRole = user['role'] ?? role;
         final userId = user['id'] ?? user['_id'];
 
-        // Save token & user details to shared preferences
+        // Save token securely & user details to shared preferences
         final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('auth_token', token);
+        final secureStorage = const FlutterSecureStorage();
+        await secureStorage.write(key: 'auth_token', value: token);
         await prefs.setString('user_name', userName);
         await prefs.setString('user_role', userRole);
         if (userId != null) {
@@ -106,7 +110,12 @@ class AuthService {
 
   static Future<void> logout() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.clear(); // Clear all data (token, name, role, id)
+    const secureStorage = FlutterSecureStorage();
+    // Remove only auth keys — never call prefs.clear() (it wipes all app data)
+    await secureStorage.delete(key: 'auth_token');
+    await prefs.remove('user_role');
+    await prefs.remove('user_id');
+    await prefs.remove('user_name');
     _clearAllStaticCaches(); // Prevent cross-account data leak
   }
 
@@ -114,9 +123,13 @@ class AuthService {
   /// Use this for every logout button in the app.
   static Future<void> signOutCompletely() async {
     try {
-      // Clear local session data
+      // Remove only auth keys — never call prefs.clear() (it wipes all app data)
       final prefs = await SharedPreferences.getInstance();
-      await prefs.clear();
+      const secureStorage = FlutterSecureStorage();
+      await secureStorage.delete(key: 'auth_token');
+      await prefs.remove('user_role');
+      await prefs.remove('user_id');
+      await prefs.remove('user_name');
       _clearAllStaticCaches(); // Prevent cross-account data leak
       // Sign out of Firebase to prevent Router redirects
       final FirebaseAuthService firebaseAuthService = FirebaseAuthService();
@@ -125,8 +138,14 @@ class AuthService {
   }
 
   static Future<bool> isLoggedIn() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.containsKey('auth_token');
+    // Firebase session is the primary source of truth — it persists indefinitely
+    // until the user explicitly signs out, regardless of SharedPreferences state.
+    final firebaseUser = FirebaseAuth.instance.currentUser;
+    if (firebaseUser != null) return true;
+    // Fallback for non-Firebase auth flows
+    final secureStorage = const FlutterSecureStorage();
+    final token = await secureStorage.read(key: 'auth_token');
+    return token != null;
   }
 
   static Future<String?> getUserName() async {

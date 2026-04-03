@@ -172,44 +172,43 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen>
         child: _isLoading
             ? const Center(child: CircularProgressIndicator())
             : SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 16,
-                ),
+                padding: const EdgeInsets.symmetric(vertical: 16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     // Profile Header
-                    _ProfileHeader(
-                      userName: _userName,
-                      profileImageUrl: _profileImageUrl,
-                    ).animate().fadeIn(duration: 600.ms),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      child: _ProfileHeader(
+                        userName: _userName,
+                        profileImageUrl: _profileImageUrl,
+                      ).animate().fadeIn(duration: 600.ms),
+                    ),
                     const SizedBox(height: 20),
 
                     // Child Selection Tabs
-                    _buildChildTabs().animate().fadeIn(delay: 200.ms),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      child: _buildChildTabs().animate().fadeIn(delay: 200.ms),
+                    ),
                     const SizedBox(height: 12),
 
-                    // 📅 Horizontal Calendar
-                    Transform.translate(
-                      offset: const Offset(-20, 0),
-                      child: SizedBox(
-                        width: MediaQuery.of(context).size.width,
-                        child: HorizontalWeekCalendar(
-                          initialDate: _selectedDate,
-                          onDateSelected: (date) {
-                            setState(() => _selectedDate = date);
-                            _loadSessionsForDate(date);
-                          },
-                        ),
-                      ),
+                    // 📅 Horizontal Calendar (Let it span full width so it doesn't get clipped on right)
+                    HorizontalWeekCalendar(
+                      initialDate: _selectedDate,
+                      onDateSelected: (date) {
+                        setState(() => _selectedDate = date);
+                        _loadSessionsForDate(date);
+                      },
                     ).animate().fadeIn(delay: 200.ms),
                     const SizedBox(height: 16),
 
-                    if (_selectedTabIndex == 0)
-                      _buildOverviewView()
-                    else
-                      _buildChildDetailView(),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      child: _selectedTabIndex == 0
+                          ? _buildOverviewView()
+                          : _buildChildDetailView(),
+                    ),
                   ],
                 ),
               ),

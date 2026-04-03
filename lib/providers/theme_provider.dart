@@ -5,13 +5,15 @@ import 'package:shared_preferences/shared_preferences.dart';
 // Keys for SharedPreferences
 const String _themePrefsKey = 'isDarkMode';
 
-final themeProvider = StateNotifierProvider<ThemeNotifier, ThemeMode>((ref) {
+final themeProvider = NotifierProvider<ThemeNotifier, ThemeMode>(() {
   return ThemeNotifier();
 });
 
-class ThemeNotifier extends StateNotifier<ThemeMode> {
-  ThemeNotifier() : super(ThemeMode.dark) {
+class ThemeNotifier extends Notifier<ThemeMode> {
+  @override
+  ThemeMode build() {
     _loadTheme();
+    return ThemeMode.dark;
   }
 
   Future<void> _loadTheme() async {

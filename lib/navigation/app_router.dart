@@ -62,6 +62,7 @@ import '../screens/profile/change_password_screen.dart';
 import '../screens/profile/payment_methods_screen.dart';
 import '../screens/legal/terms_of_service_screen.dart';
 import '../screens/reviews/add_review_screen.dart'; // New Import
+import '../screens/coach/coach_connect_screen.dart'; // Stripe Connect
 
 // Placeholder screens for other tabs
 class PlaceholderScreen extends StatelessWidget {
@@ -180,6 +181,12 @@ class AppRouter {
 
       // IMPORTANT: Static /booking/confirm-private must come BEFORE /booking/:sessionId
       // to prevent GoRouter from matching 'confirm-private' as a sessionId parameter
+
+      GoRoute(
+        path: '/coach-connect',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const CoachConnectScreen(),
+      ),
       GoRoute(
         path: '/booking/confirm-private',
         parentNavigatorKey: _rootNavigatorKey,
