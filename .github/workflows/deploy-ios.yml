@@ -76,7 +76,7 @@ jobs:
 
       # 3. Build IPA
       - name: Build IPA
-        run: flutter build ipa --release --export-options-plist=ios/ExportOptions.plist --build-number $((GITHUB_RUN_NUMBER + 100))
+        run: flutter build ipa --release --export-options-plist=ios/ExportOptions.plist
 
       # 4. Verify IPA Existence
       - name: List Build Directory
