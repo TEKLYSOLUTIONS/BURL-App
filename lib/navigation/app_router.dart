@@ -287,6 +287,7 @@ class AppRouter {
             builder: (context, state) => SessionDetailsScreen(
               sessionId: state.pathParameters['id'] ?? '',
               occurrenceDate: state.uri.queryParameters['date'],
+              initialSession: state.extra as Map<String, dynamic>?,
             ),
           ),
           GoRoute(

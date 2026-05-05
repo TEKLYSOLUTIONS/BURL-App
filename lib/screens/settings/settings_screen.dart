@@ -39,8 +39,17 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       final data = await ProfileService.getProfile();
 
       setState(() {
-        _userData = data['user'] as Map<String, dynamic>?;
-        _profileData = data['profile'] as Map<String, dynamic>?;
+        _userData = data;
+        
+        final role = data['role'];
+        if (role == 'coach') {
+          _profileData = data['coachProfile'] as Map<String, dynamic>?;
+        } else if (role == 'player') {
+          _profileData = data['playerProfile'] as Map<String, dynamic>?;
+        } else if (role == 'guardian') {
+          _profileData = data['guardianProfile'] as Map<String, dynamic>?;
+        }
+        
         _isLoading = false;
       });
     } catch (e) {
@@ -56,6 +65,71 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       return _userData!['fullName'] as String? ?? 'User';
     }
     return 'User';
+  }
+
+  Widget _buildSubscriptionBadge() {
+    final role = _userData?['role'] as String?;
+    if (role == 'coach') {
+      final coachProfile = _userData?['coachProfile'] as Map<String, dynamic>?;
+      final plan = coachProfile?['plan'] as String? ?? 'free';
+      final subStatus = (coachProfile?['subscription']
+          as Map<String, dynamic>?)?['status'] as String?;
+      final isActive = subStatus == 'active' || subStatus == 'trial';
+      final isFree = plan == 'free' || plan.isEmpty;
+
+      final label = isFree ? 'Free' : plan[0].toUpperCase() + plan.substring(1);
+      final bgColor = isFree ? Colors.grey[100]! : Colors.orange.withValues(alpha: 0.2);
+      final textColor = isFree ? Colors.grey[600]! : Colors.orange;
+
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (!isFree && isActive) ...[
+            Container(
+              width: 7,
+              height: 7,
+              decoration: const BoxDecoration(
+                color: Color(0xFF22C55E),
+                shape: BoxShape.circle,
+              ),
+            ),
+            const SizedBox(width: 5),
+          ],
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+            decoration: BoxDecoration(
+              color: bgColor,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Text(
+              label,
+              style: GoogleFonts.inter(
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+                color: textColor,
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+    
+    // For non-coaches (players/guardians), return empty or default Free
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      decoration: BoxDecoration(
+        color: Colors.grey[100]!,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Text(
+        'Free',
+        style: GoogleFonts.inter(
+          fontSize: 12,
+          fontWeight: FontWeight.bold,
+          color: Colors.grey[600]!,
+        ),
+      ),
+    );
   }
 
   String get displayRole {
@@ -411,7 +485,15 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                           iconColor: Colors.orange,
                           iconBg: Colors.orange.withValues(alpha: 0.1),
                           title: 'Change Password',
-                          onTap: () {},
+                          onTap: () => context.push('/change-password'),
+                        ),
+                        const SizedBox(height: 12),
+                        _buildSettingsItem(
+                          icon: Icons.credit_card_outlined,
+                          iconColor: Colors.teal,
+                          iconBg: Colors.teal.withValues(alpha: 0.1),
+                          title: 'Payment Methods',
+                          onTap: () => context.push('/payment-methods'),
                         ),
                         const SizedBox(height: 12),
                         _buildSettingsItem(
@@ -419,30 +501,16 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                           iconColor: Colors.orange,
                           iconBg: Colors.orange.withValues(alpha: 0.1),
                           title: 'Subscription',
-                          trailing: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 4,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.orange.withValues(alpha: 0.2),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Text(
-                              'Pro Coach',
-                              style: GoogleFonts.inter(
-                                color: Colors.orange,
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                          onTap: () {
+                          trailing: _buildSubscriptionBadge(),
+                          onTap: () async {
                             final role = _userData?['role'] as String?;
                             if (role == 'coach') {
-                              context.push('/coach/subscription-plans');
+                              await context.push('/pro-upgrade');
+                              if (mounted) {
+                                _loadProfile();
+                              }
                             } else {
-                              context.push('/pro-upgrade');
+                              // show player subscription options
                             }
                           },
                         ),

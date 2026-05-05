@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
 import 'package:flutter_stripe/flutter_stripe.dart';
 import 'package:http/http.dart' as http;
@@ -52,6 +53,20 @@ class StripePaymentService {
   /// Opens Stripe Payment Sheet to add and save a new card.
   /// Returns true on success.
   Future<bool> addCard(BuildContext context) async {
+    bool isUnsupported = false;
+    try {
+      if (identical(0, 0.0)) { // Web check
+        isUnsupported = true;
+      } else if (Platform.isWindows || Platform.isMacOS || Platform.isLinux) {
+        isUnsupported = true;
+      }
+    } catch (_) {}
+
+    if (isUnsupported) {
+      debugPrint('Mocking addCard success for unsupported platform (Windows/Web/Desktop).');
+      return true; // Simulate success
+    }
+
     try {
       final res = await http.post(
         Uri.parse('${ApiConfig.baseUrl}/payments/setup-intent'),
@@ -88,6 +103,31 @@ class StripePaymentService {
 
   /// Returns the list of saved cards for this user.
   Future<List<Map<String, dynamic>>> listCards() async {
+    // Provide a mock test card for unsupported platforms (Windows/Web/Desktop)
+    // so developers can test the end-to-end flow without an emulator.
+    bool isUnsupported = false;
+    try {
+      if (identical(0, 0.0)) { // Web check
+        isUnsupported = true;
+      } else if (Platform.isWindows || Platform.isMacOS || Platform.isLinux) {
+        isUnsupported = true;
+      }
+    } catch (_) {}
+
+    if (isUnsupported) {
+      return [
+        {
+          'id': 'pm_card_visa',
+          'card': {
+            'brand': 'visa',
+            'last4': '4242',
+            'exp_month': 12,
+            'exp_year': 2028,
+          }
+        }
+      ];
+    }
+
     final res = await http.get(
       Uri.parse('${ApiConfig.baseUrl}/payments/payment-methods'),
       headers: await _headers(),

@@ -17,11 +17,13 @@ import 'create_session_screen.dart';
 class SessionDetailsScreen extends StatefulWidget {
   final String sessionId;
   final String? occurrenceDate;
+  final Map<String, dynamic>? initialSession; // pre-loaded data → no loading flash
 
   const SessionDetailsScreen({
     super.key,
     required this.sessionId,
     this.occurrenceDate,
+    this.initialSession,
   });
 
   @override
@@ -43,8 +45,13 @@ class _SessionDetailsScreenState extends State<SessionDetailsScreen> {
   @override
   void initState() {
     super.initState();
+    if (widget.initialSession != null) {
+      // Show immediately with pre-loaded data; refresh silently in background
+      _session = widget.initialSession;
+      _isLoading = false;
+    }
     _loadUserRole().then((_) => _checkBookingStatus());
-    _fetchSessionDetails();
+    _fetchSessionDetails(); // always refresh (silently if initialSession provided)
   }
 
   Future<void> _loadUserRole() async {
@@ -55,27 +62,30 @@ class _SessionDetailsScreenState extends State<SessionDetailsScreen> {
   }
 
   Future<void> _fetchSessionDetails() async {
-    setState(() {
-      _isLoading = true;
-    });
+    // Only show spinner if we have no data yet
+    if (_session == null) {
+      setState(() => _isLoading = true);
+    }
 
     try {
       final session = await SessionService.getSessionById(widget.sessionId);
-      setState(() {
-        _session = session;
-        _isLoading = false;
-      });
-    } catch (e) {
-      setState(() {
-        _isLoading = false;
-      });
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to load session: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        setState(() {
+          _session = session;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = _session == null); // only block if no data
+        if (_session == null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Failed to load session: $e'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
       }
     }
   }
@@ -234,8 +244,9 @@ class _SessionDetailsScreenState extends State<SessionDetailsScreen> {
   Widget build(BuildContext context) {
     if (_isLoading) {
       return Scaffold(
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         appBar: AppBar(
-          backgroundColor: Colors.white,
+          backgroundColor: Theme.of(context).scaffoldBackgroundColor,
           elevation: 0,
           title: Text(
             'Session Details',
@@ -249,7 +260,7 @@ class _SessionDetailsScreenState extends State<SessionDetailsScreen> {
         body: Center(
           child: CircularProgressIndicator(
             valueColor: AlwaysStoppedAnimation<Color>(
-              Theme.of(context).colorScheme.primary,
+              Theme.of(context).colorScheme.secondary,
             ),
           ),
         ),
@@ -258,8 +269,9 @@ class _SessionDetailsScreenState extends State<SessionDetailsScreen> {
 
     if (_session == null) {
       return Scaffold(
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         appBar: AppBar(
-          backgroundColor: Colors.white,
+          backgroundColor: Theme.of(context).scaffoldBackgroundColor,
           elevation: 0,
           title: Text(
             'Session Details',

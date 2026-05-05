@@ -94,8 +94,11 @@ class _PlayerHomeScreenState extends State<PlayerHomeScreen> {
     }
   }
 
-  Future<void> _loadDashboardAndSessions() async {
-    if (mounted) setState(() => _isLoading = true);
+  Future<void> _loadDashboardAndSessions({bool silent = false}) async {
+    // Show spinner only on very first load (no data yet)
+    if (!silent && _dateSessions.isEmpty && _stats == null) {
+      if (mounted) setState(() => _isLoading = true);
+    }
     try {
       final results = await Future.wait([
         DashboardService.getPlayerDashboard(),
@@ -106,9 +109,7 @@ class _PlayerHomeScreenState extends State<PlayerHomeScreen> {
 
       if (mounted) {
         setState(() {
-          if (dashboard != null) {
-            _stats = dashboard['stats'];
-          }
+          if (dashboard != null) _stats = dashboard['stats'];
           _dateSessions = (sessionsResponse['sessions'] as List<dynamic>?) ?? [];
           _isLoading = false;
         });
@@ -119,8 +120,11 @@ class _PlayerHomeScreenState extends State<PlayerHomeScreen> {
     }
   }
 
-  Future<void> _loadSessionsForDate(DateTime date) async {
-    if (mounted) setState(() => _isLoading = true);
+  Future<void> _loadSessionsForDate(DateTime date, {bool silent = false}) async {
+    // Only show spinner if no sessions are currently displayed
+    if (!silent && _dateSessions.isEmpty) {
+      if (mounted) setState(() => _isLoading = true);
+    }
     try {
       final response = await SessionService.getPlayerSessions(date: date);
       if (mounted) {

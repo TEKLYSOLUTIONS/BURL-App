@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_form_builder/flutter_form_builder.dart';
 import 'package:form_builder_validators/form_builder_validators.dart';
@@ -528,18 +529,27 @@ class _CreateSessionScreenState extends State<CreateSessionScreen> {
               final isEdit = widget.sessionToEdit != null;
               return LayoutBuilder(
                 builder: (context, constraints) {
-                  return Container(
-                    decoration: BoxDecoration(
-                      color: Theme.of(context)
-                          .colorScheme
-                          .surfaceContainerHighest
-                          .withValues(alpha: isEdit ? 0.1 : 0.3),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Theme.of(context).dividerColor),
-                    ),
-                    child: IgnorePointer(
-                      ignoring: isEdit,
-                      child: PopupMenuButton<String>(
+                  final isDark =
+                      Theme.of(context).brightness == Brightness.dark;
+                  final glassFill = isDark
+                      ? Colors.white.withValues(alpha: 0.08)
+                      : Colors.white.withValues(alpha: 0.55);
+                  final borderColor = isDark
+                      ? Colors.white.withValues(alpha: 0.18)
+                      : Colors.black.withValues(alpha: 0.12);
+                  return ClipRRect(
+                    borderRadius: BorderRadius.circular(14),
+                    child: BackdropFilter(
+                      filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: glassFill,
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: borderColor),
+                        ),
+                        child: IgnorePointer(
+                          ignoring: isEdit,
+                          child: PopupMenuButton<String>(
                         initialValue: field.value,
                         offset: const Offset(0, 50),
                         shape: RoundedRectangleBorder(
@@ -597,13 +607,15 @@ class _CreateSessionScreenState extends State<CreateSessionScreen> {
                           }).toList();
                         },
                         onSelected: (value) => field.didChange(value),
-                      ),
-                    ),
-                  );
-                },
-              );
-            },
-          ),
+                          ),           // PopupMenuButton
+                        ),             // IgnorePointer
+                      ),               // Container
+                    ),                 // BackdropFilter
+                  );                   // ClipRRect (return)
+                },                     // LayoutBuilder builder
+              );                       // LayoutBuilder
+            },                         // FormBuilderField builder
+          ),                           // FormBuilderField
           const SizedBox(height: 24),
           ModernTextField(
             name: 'title',
@@ -654,56 +666,75 @@ class _CreateSessionScreenState extends State<CreateSessionScreen> {
                       textEditingController.text = initialLocation;
                     }
                   }
-                  return FormBuilderTextField(
-                    name: 'location',
-                    controller: textEditingController,
-                    focusNode: focusNode,
-                    decoration: InputDecoration(
-                      hintText: 'Search location',
-                      hintStyle: GoogleFonts.inter(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      ),
-                      prefixIcon: Icon(
-                        Icons.location_on,
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      ),
-                      suffixIcon: IconButton(
-                        icon: const Icon(Icons.map, color: Colors.blue),
-                        onPressed: () async {
-                          final result = await Navigator.push<LatLng>(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) =>
-                                  const LocationPickerScreen(),
+                  final isDarkLoc =
+                      Theme.of(context).brightness == Brightness.dark;
+                  final locGlassFill = isDarkLoc
+                      ? Colors.white.withValues(alpha: 0.08)
+                      : Colors.white.withValues(alpha: 0.55);
+                  final locBorderColor = isDarkLoc
+                      ? Colors.white.withValues(alpha: 0.18)
+                      : Colors.black.withValues(alpha: 0.12);
+                  return ClipRRect(
+                    borderRadius: BorderRadius.circular(14),
+                    child: BackdropFilter(
+                      filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: locGlassFill,
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: locBorderColor),
+                        ),
+                        child: FormBuilderTextField(
+                          name: 'location',
+                          controller: textEditingController,
+                          focusNode: focusNode,
+                          decoration: InputDecoration(
+                            hintText: 'Search location',
+                            hintStyle: GoogleFonts.inter(
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurfaceVariant,
                             ),
-                          );
-
-                          if (result != null) {
-                            // Update the text field with coordinates
-                            final locString =
-                                '${result.latitude.toStringAsFixed(5)}, ${result.longitude.toStringAsFixed(5)}';
-                            textEditingController.text = locString;
-                            _formKey.currentState?.fields['location']
-                                ?.didChange(locString);
-                          }
-                        },
-                      ),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide.none,
-                      ),
-                      filled: true,
-                      fillColor: Theme.of(context)
-                          .colorScheme
-                          .surfaceContainerHighest
-                          .withValues(alpha: 0.3),
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 14,
+                            prefixIcon: Icon(
+                              Icons.location_on,
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurfaceVariant,
+                            ),
+                            suffixIcon: IconButton(
+                              icon: const Icon(Icons.map, color: Colors.blue),
+                              onPressed: () async {
+                                final result = await Navigator.push<LatLng>(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) =>
+                                        const LocationPickerScreen(),
+                                  ),
+                                );
+                                if (result != null) {
+                                  final locString =
+                                      '${result.latitude.toStringAsFixed(5)}, ${result.longitude.toStringAsFixed(5)}';
+                                  textEditingController.text = locString;
+                                  _formKey.currentState?.fields['location']
+                                      ?.didChange(locString);
+                                }
+                              },
+                            ),
+                            filled: true,
+                            fillColor: Colors.transparent,
+                            border: InputBorder.none,
+                            enabledBorder: InputBorder.none,
+                            focusedBorder: InputBorder.none,
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 14,
+                            ),
+                          ),
+                          validator: FormBuilderValidators.required(),
+                          onSubmitted: (_) => onFieldSubmitted(),
+                        ),
                       ),
                     ),
-                    validator: FormBuilderValidators.required(),
-                    onSubmitted: (_) => onFieldSubmitted(),
                   );
                 },
                 optionsViewBuilder: (context, onSelected, options) {
@@ -783,7 +814,7 @@ class _CreateSessionScreenState extends State<CreateSessionScreen> {
                       style: GoogleFonts.inter(
                         fontSize: 13,
                         color: isSelected
-                            ? Theme.of(context).colorScheme.onSecondary
+                            ? Colors.white
                             : Theme.of(context).colorScheme.onSurface,
                         fontWeight:
                             isSelected ? FontWeight.w600 : FontWeight.normal,
@@ -799,14 +830,20 @@ class _CreateSessionScreenState extends State<CreateSessionScreen> {
                       }
                       field.didChange(newVal);
                     },
-                    selectedColor: Theme.of(context).colorScheme.secondary,
-                    backgroundColor: Theme.of(context).cardColor,
+                    // Material 3: use color property to reliably override chip fill
+                    color: WidgetStateProperty.resolveWith((states) {
+                      if (states.contains(WidgetState.selected)) {
+                        return const Color(0xFFF97316); // orangeAccent
+                      }
+                      return Theme.of(context).cardColor;
+                    }),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(20),
                       side: BorderSide(
                         color: isSelected
-                            ? Theme.of(context).colorScheme.secondary
+                            ? const Color(0xFFF97316)
                             : Theme.of(context).dividerColor,
+                        width: isSelected ? 1.5 : 1.0,
                       ),
                     ),
                     showCheckmark: false,
@@ -916,7 +953,7 @@ class _CreateSessionScreenState extends State<CreateSessionScreen> {
                       style: GoogleFonts.inter(
                         fontSize: 13,
                         color: isSelected
-                            ? Theme.of(context).colorScheme.onSecondary
+                            ? Colors.white
                             : Theme.of(context).colorScheme.onSurface,
                         fontWeight:
                             isSelected ? FontWeight.w600 : FontWeight.normal,
@@ -932,14 +969,20 @@ class _CreateSessionScreenState extends State<CreateSessionScreen> {
                       }
                       field.didChange(newVal);
                     },
-                    selectedColor: Theme.of(context).colorScheme.secondary,
-                    backgroundColor: Theme.of(context).cardColor,
+                    // Material 3: use color property to reliably override chip fill
+                    color: WidgetStateProperty.resolveWith((states) {
+                      if (states.contains(WidgetState.selected)) {
+                        return const Color(0xFFF97316); // orangeAccent
+                      }
+                      return Theme.of(context).cardColor;
+                    }),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(20),
                       side: BorderSide(
                         color: isSelected
-                            ? Theme.of(context).colorScheme.secondary
+                            ? const Color(0xFFF97316)
                             : Theme.of(context).dividerColor,
+                        width: isSelected ? 1.5 : 1.0,
                       ),
                     ),
                     showCheckmark: false,

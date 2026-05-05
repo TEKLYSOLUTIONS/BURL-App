@@ -279,9 +279,10 @@ class _ConfirmPrivateBookingScreenState
 
   @override
   Widget build(BuildContext context) {
-    final dateStr = DateFormat('EEE, MMM d').format(widget.startTime);
-    final timeStr = DateFormat('h:mm a').format(widget.startTime);
-    final endTime = widget.startTime.add(
+    final localStartTime = widget.startTime.toLocal();
+    final dateStr = DateFormat('EEE, MMM d').format(localStartTime);
+    final timeStr = DateFormat('h:mm a').format(localStartTime);
+    final endTime = localStartTime.add(
       Duration(minutes: widget.durationMinutes),
     );
     final endTimeStr = DateFormat('h:mm a').format(endTime);

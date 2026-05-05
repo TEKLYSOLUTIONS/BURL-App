@@ -339,7 +339,7 @@ class _SearchScreenState extends State<SearchScreen> {
                                             ? timeSlots!.first
                                             : null;
                                     final startTime = firstSlot != null
-                                        ? DateTime.parse(firstSlot['startTime'])
+                                        ? DateTime.parse(firstSlot['startTime']).toLocal()
                                         : null;
 
                                     return Padding(
@@ -443,6 +443,7 @@ class _SearchScreenState extends State<SearchScreen> {
   }
 
   String _formatDate(DateTime date) {
+    date = date.toLocal();
     final now = DateTime.now();
     final tomorrow = DateTime(now.year, now.month, now.day + 1);
     final sessionDate = DateTime(date.year, date.month, date.day);
@@ -457,7 +458,8 @@ class _SearchScreenState extends State<SearchScreen> {
   }
 
   String _formatTime(DateTime time) {
-    final hour = time.hour > 12 ? time.hour - 12 : time.hour;
+    time = time.toLocal();
+    final hour = time.hour > 12 ? time.hour - 12 : time.hour == 0 ? 12 : time.hour;
     final minute = time.minute.toString().padLeft(2, '0');
     final period = time.hour >= 12 ? 'PM' : 'AM';
     return '$hour:$minute $period';

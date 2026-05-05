@@ -48,9 +48,16 @@ class _CoachHomeScreenState extends State<CoachHomeScreen> with RouteAware, Widg
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _loadUserAndCurrency();
-    _loadDashboardData();
     _startAutoRefreshTimer();
+    _loadAll();
+  }
+
+  /// Runs profile + dashboard fetch in parallel on first load.
+  Future<void> _loadAll() async {
+    await Future.wait([
+      _loadUserAndCurrency(),
+      _loadDashboardData(),
+    ]);
   }
 
   @override
@@ -74,7 +81,8 @@ class _CoachHomeScreenState extends State<CoachHomeScreen> with RouteAware, Widg
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       if (mounted) {
-        _loadDashboardData(forceRefresh: true);
+        // Silent refresh — no spinner, data already visible
+        _loadDashboardData(forceRefresh: true, silent: true);
       }
     }
   }
@@ -90,12 +98,11 @@ class _CoachHomeScreenState extends State<CoachHomeScreen> with RouteAware, Widg
 
   @override
   void didPopNext() {
-    // Refresh data when returning to this screen
+    // Silent refresh — keep showing existing data, update quietly in background
     _loadUserAndCurrency();
-    _loadDashboardData();
-    // Also reload sessions for the selected date if it's not today
+    _loadDashboardData(silent: true);
     if (!_isToday(_selectedDate)) {
-      _loadSessionsForDate(_selectedDate);
+      _loadSessionsForDate(_selectedDate, silent: true);
     }
   }
 
@@ -112,18 +119,20 @@ class _CoachHomeScreenState extends State<CoachHomeScreen> with RouteAware, Widg
     return "${date.day}/${date.month}";
   }
 
-  Future<void> _loadSessionsForDate(DateTime date) async {
-    setState(() => _isLoading = true);
+  Future<void> _loadSessionsForDate(DateTime date, {bool silent = false}) async {
+    // Only show spinner on first load (no existing data)
+    if (!silent && _todaysSessions.isEmpty) {
+      setState(() => _isLoading = true);
+    }
 
     try {
       if (_isToday(date)) {
-        await _loadDashboardData();
+        await _loadDashboardData(silent: silent);
       } else {
         final response = await SessionService.getCoachSessions(date: date);
         if (mounted) {
           setState(() {
             _todaysSessions = response['sessions'] as List<dynamic>;
-            // Determine upcoming for selected date if needed, or just list them all
             _isLoading = false;
           });
         }
@@ -191,8 +200,14 @@ class _CoachHomeScreenState extends State<CoachHomeScreen> with RouteAware, Widg
     }
   }
 
-  Future<void> _loadDashboardData({bool forceRefresh = false}) async {
-    setState(() => _isLoading = true);
+  Future<void> _loadDashboardData({
+    bool forceRefresh = false,
+    bool silent = false,
+  }) async {
+    // Show spinner only on very first load (no data visible yet)
+    if (!silent && _todaysSessions.isEmpty && _todaySessionsCount == 0) {
+      setState(() => _isLoading = true);
+    }
 
     try {
       if (forceRefresh) {
@@ -211,28 +226,20 @@ class _CoachHomeScreenState extends State<CoachHomeScreen> with RouteAware, Widg
       if (data != null && mounted) {
         setState(() {
           final todaySummary = data['todaySummary'];
-          final stats = data['stats']; // Get stats for Total Earnings
+          final stats = data['stats'];
 
           _todaySessionsCount = todaySummary?['sessions'] ?? 0;
-          // _todayEarnings removed
           _totalEarnings = (stats?['totalEarnings'] ?? 0).toDouble();
-          // Currency now loaded from profile location
           _todayStudentsCount = todaySummary?['students'] ?? 0;
-
           _todaysSessions = todaySessionsResponse['sessions'] as List<dynamic>;
-
           _isLoading = false;
         });
       } else {
-        if (mounted) {
-          setState(() => _isLoading = false);
-        }
+        if (mounted) setState(() => _isLoading = false);
       }
     } catch (e) {
       debugPrint('Dashboard load error: $e');
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -346,10 +353,8 @@ class _CoachHomeScreenState extends State<CoachHomeScreen> with RouteAware, Widg
                     child: HorizontalWeekCalendar(
                       initialDate: _selectedDate,
                       onDateSelected: (date) {
-                        setState(() {
-                          _selectedDate = date;
-                          _loadSessionsForDate(date);
-                        });
+                        setState(() => _selectedDate = date);
+                        _loadSessionsForDate(date);
                       },
                     ),
                   ),

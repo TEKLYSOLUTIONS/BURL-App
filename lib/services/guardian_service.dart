@@ -13,6 +13,7 @@ class GuardianService {
   Future<Map<String, dynamic>> addPlayer({
     required String fullName,
     required String age,
+    DateTime? dateOfBirth,
     String role = 'Batsman',
     String? battingStyle,
     String? bowlingStyle,
@@ -26,6 +27,7 @@ class GuardianService {
       final response = await ApiService.post('guardian/players', {
         'fullName': fullName,
         'age': age,
+        'dateOfBirth': dateOfBirth?.toIso8601String(),
         'role': role,
         'battingStyle': battingStyle,
         'bowlingStyle': bowlingStyle,

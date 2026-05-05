@@ -39,6 +39,7 @@ class BookingService {
     List<String>? occurrenceDates,
     required String paymentMethod,
     String? paymentIntentId,
+    String? paymentMethodId,
     String? promoCode,
     String? playerId,
   }) async {
@@ -49,6 +50,7 @@ class BookingService {
         if (occurrenceDates != null) 'occurrenceDates': occurrenceDates,
         'paymentMethod': paymentMethod,
         if (paymentIntentId != null) 'paymentIntentId': paymentIntentId,
+        if (paymentMethodId != null) 'paymentMethodId': paymentMethodId,
         if (promoCode != null && promoCode.isNotEmpty) 'promoCode': promoCode,
         if (playerId != null && playerId.isNotEmpty) 'playerId': playerId,
       });

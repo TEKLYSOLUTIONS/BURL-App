@@ -111,7 +111,7 @@ class NotificationsScreen extends StatefulWidget {
 }
 
 class _NotificationsScreenState extends State<NotificationsScreen> {
-  String _selectedFilter = 'All';
+  final String _selectedFilter = 'All';
   List<NotificationItem> _allNotifications = [];
   bool _isLoading = true;
   String? _error;
@@ -129,8 +129,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     });
 
     try {
+      // Always fetch ALL notifications once — filtering is done client-side
+      // so switching tabs is instant with no extra API calls.
       final data = await NotificationService.getNotifications(
-        category: _selectedFilter == 'All' ? 'all' : _selectedFilter,
+        category: 'all',
         limit: 50,
       );
 
@@ -358,116 +360,104 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                         onRefresh: _loadNotifications,
                         child: SingleChildScrollView(
                           physics: const AlwaysScrollableScrollPhysics(),
-                          padding: const EdgeInsets.all(24),
+                          padding: const EdgeInsets.only(top: 24, bottom: 24),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              // Filter Chips
-                              SingleChildScrollView(
-                                scrollDirection: Axis.horizontal,
-                                child: Row(
+                              // Filter Chips hidden as requested
+                              // const SizedBox(height: 32),
+
+                              // Notification content — keeps 24px horizontal padding
+                              Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 24,
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    _buildFilterChip('All'),
-                                    _buildFilterChip(
-                                      'Mentions',
-                                      icon: Icons.alternate_email,
-                                    ),
-                                    _buildFilterChip(
-                                      'Schedule',
-                                      icon: Icons.calendar_today,
-                                    ),
-                                    _buildFilterChip(
-                                      'Performance',
-                                      icon: Icons.bar_chart,
-                                    ),
-                                    _buildFilterChip(
-                                      'Payments',
-                                      icon: Icons.payment,
-                                    ),
+                                    if (_allNotifications.isEmpty)
+                                      Center(
+                                        child: Column(
+                                          children: [
+                                            const SizedBox(height: 64),
+                                            Icon(
+                                              Icons.notifications_none,
+                                              size: 80,
+                                              color: Colors.grey[300],
+                                            ),
+                                            const SizedBox(height: 16),
+                                            Text(
+                                              'No notifications yet',
+                                              style: GoogleFonts.inter(
+                                                fontSize: 18,
+                                                color: Colors.grey[600],
+                                                fontWeight: FontWeight.w500,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+
+                                    if (newNotifications.isNotEmpty) ...[
+                                      Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          Text(
+                                            'NEW',
+                                            style: GoogleFonts.inter(
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.bold,
+                                              color: Colors.grey[600],
+                                              letterSpacing: 1,
+                                            ),
+                                          ),
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 8,
+                                              vertical: 4,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: Colors.orange[50],
+                                              borderRadius:
+                                                  BorderRadius.circular(8),
+                                            ),
+                                            child: Text(
+                                              '${newNotifications.length} unread',
+                                              style: GoogleFonts.inter(
+                                                fontSize: 10,
+                                                fontWeight: FontWeight.bold,
+                                                color: Colors.orange[800],
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 16),
+                                      ...newNotifications.map(
+                                        (n) => _buildNotificationCard(n),
+                                      ),
+                                      const SizedBox(height: 32),
+                                    ],
+
+                                    if (earlierNotifications.isNotEmpty) ...[
+                                      Text(
+                                        'EARLIER',
+                                        style: GoogleFonts.inter(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.grey[600],
+                                          letterSpacing: 1,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 16),
+                                      ...earlierNotifications.map(
+                                        (n) => _buildNotificationCard(n),
+                                      ),
+                                    ],
                                   ],
                                 ),
                               ),
-                              const SizedBox(height: 32),
-
-                              if (_allNotifications.isEmpty)
-                                Center(
-                                  child: Column(
-                                    children: [
-                                      const SizedBox(height: 64),
-                                      Icon(
-                                        Icons.notifications_none,
-                                        size: 80,
-                                        color: Colors.grey[300],
-                                      ),
-                                      const SizedBox(height: 16),
-                                      Text(
-                                        'No notifications yet',
-                                        style: GoogleFonts.inter(
-                                          fontSize: 18,
-                                          color: Colors.grey[600],
-                                          fontWeight: FontWeight.w500,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-
-                              if (newNotifications.isNotEmpty) ...[
-                                Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Text(
-                                      'NEW',
-                                      style: GoogleFonts.inter(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.grey[600],
-                                        letterSpacing: 1,
-                                      ),
-                                    ),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 8,
-                                        vertical: 4,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: Colors.orange[50],
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
-                                      child: Text(
-                                        '${newNotifications.length} unread',
-                                        style: GoogleFonts.inter(
-                                          fontSize: 10,
-                                          fontWeight: FontWeight.bold,
-                                          color: Colors.orange[800],
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 16),
-                                ...newNotifications.map(
-                                  (n) => _buildNotificationCard(n),
-                                ),
-                                const SizedBox(height: 32),
-                              ],
-
-                              if (earlierNotifications.isNotEmpty) ...[
-                                Text(
-                                  'EARLIER',
-                                  style: GoogleFonts.inter(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.grey[600],
-                                    letterSpacing: 1,
-                                  ),
-                                ),
-                                const SizedBox(height: 16),
-                                ...earlierNotifications.map(
-                                  (n) => _buildNotificationCard(n),
-                                ),
-                              ],
                             ],
                           ),
                         ),
@@ -478,53 +468,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     );
   }
 
-  Widget _buildFilterChip(String label, {IconData? icon}) {
-    final isSelected = _selectedFilter == label;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final selectedColor = isDark ? Colors.white : AppPalette.navyPrimary;
-    final unselectedColor = isDark ? Colors.white70 : AppPalette.navyPrimary;
 
-    return Container(
-      margin: const EdgeInsets.only(right: 12),
-      child: FilterChip(
-        selected: isSelected,
-        showCheckmark: false,
-        avatar: icon != null
-            ? Icon(
-                icon,
-                size: 16,
-                color: isSelected
-                    ? (isDark ? Colors.black : Colors.white)
-                    : unselectedColor,
-              )
-            : null,
-        label: Text(
-          label,
-          style: GoogleFonts.inter(
-            fontWeight: FontWeight.w600,
-            color: isSelected
-                ? (isDark ? Colors.black : Colors.white)
-                : unselectedColor,
-          ),
-        ),
-        backgroundColor: Theme.of(context).cardColor,
-        selectedColor: selectedColor,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-          side: isSelected
-              ? BorderSide.none
-              : BorderSide(color: Theme.of(context).dividerColor),
-        ),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        onSelected: (val) {
-          setState(() {
-            _selectedFilter = label;
-            _loadNotifications();
-          });
-        },
-      ),
-    );
-  }
 
   Widget _buildNotificationCard(NotificationItem item) {
     final isDark = Theme.of(context).brightness == Brightness.dark;

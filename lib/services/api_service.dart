@@ -74,7 +74,7 @@ class ApiService {
     final url = Uri.parse(
       '${ApiConfig.baseUrl}/$endpoint',
     ).replace(queryParameters: queryParameters);
-    return _withTokenRetry(endpoint, (headers) => http.get(url, headers: headers));
+    return _withTokenRetry(endpoint, (headers) => http.get(url, headers: headers).timeout(const Duration(seconds: 10)));
   }
 
   static Future<http.Response> post(
@@ -84,7 +84,7 @@ class ApiService {
     final url = Uri.parse('${ApiConfig.baseUrl}/$endpoint');
     return _withTokenRetry(
       endpoint,
-      (headers) => http.post(url, headers: headers, body: jsonEncode(data)),
+      (headers) => http.post(url, headers: headers, body: jsonEncode(data)).timeout(const Duration(seconds: 10)),
     );
   }
 
@@ -95,7 +95,7 @@ class ApiService {
     final url = Uri.parse('${ApiConfig.baseUrl}/$endpoint');
     return _withTokenRetry(
       endpoint,
-      (headers) => http.put(url, headers: headers, body: jsonEncode(data)),
+      (headers) => http.put(url, headers: headers, body: jsonEncode(data)).timeout(const Duration(seconds: 10)),
     );
   }
 
@@ -103,7 +103,7 @@ class ApiService {
     final url = Uri.parse('${ApiConfig.baseUrl}/$endpoint');
     return _withTokenRetry(
       endpoint,
-      (headers) => http.delete(url, headers: headers),
+      (headers) => http.delete(url, headers: headers).timeout(const Duration(seconds: 10)),
     );
   }
 }

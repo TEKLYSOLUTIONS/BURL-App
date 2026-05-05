@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../config/palette.dart';
 import '../../services/booking_service.dart';
 import '../../services/commission_service.dart';
+import '../../services/stripe_payment_service.dart';
 
 class ConfirmBookingScreen extends StatefulWidget {
   final Map<String, dynamic> bookingDetails;
@@ -17,11 +18,13 @@ class ConfirmBookingScreen extends StatefulWidget {
 
 class _ConfirmBookingScreenState extends State<ConfirmBookingScreen> {
   final TextEditingController _promoController = TextEditingController();
+  final _stripeService = StripePaymentService();
   String? _appliedPromoCode;
   double _discountAmount = 0.0;
   String? _promoError;
   bool _isValidatingPromo = false;
   bool _isProcessingPayment = false;
+  bool _addingCard = false;
 
   // Pricing values — loaded dynamically from the backend
   bool _isLoadingCommission = true;
@@ -32,8 +35,9 @@ class _ConfirmBookingScreenState extends State<ConfirmBookingScreen> {
   String get _serviceFeeLabel => _commissionResult?.label ?? 'Platform Fee';
   final double _tax = 0.00;
 
-  // Payment methods
-  int _selectedPaymentMethod = 0; // 0: Card, 1: Apple Pay
+  // Real Stripe saved cards
+  List<Map<String, dynamic>> _savedCards = [];
+  String? _selectedPaymentMethodId;
 
   double get _totalAmount => _sessionFee + _serviceFee + _tax - _discountAmount;
 
@@ -41,6 +45,49 @@ class _ConfirmBookingScreenState extends State<ConfirmBookingScreen> {
   void initState() {
     super.initState();
     _loadCommission();
+    _loadCards();
+  }
+
+  Future<void> _loadCards() async {
+    try {
+      final cards = await _stripeService.listCards();
+      if (mounted) {
+        setState(() {
+          _savedCards = cards;
+          if (cards.isNotEmpty) _selectedPaymentMethodId = cards[0]['id'] as String;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading cards: $e');
+    }
+  }
+
+  Future<void> _addCard() async {
+    setState(() => _addingCard = true);
+    try {
+      final success = await _stripeService.addCard(context);
+      if (success && mounted) {
+        await _loadCards();
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Card added successfully'),
+            backgroundColor: AppPalette.successGreen,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Failed to add card. Please try again.'),
+            backgroundColor: Theme.of(context).colorScheme.error,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _addingCard = false);
+    }
   }
 
   Future<void> _loadCommission() async {
@@ -128,9 +175,16 @@ class _ConfirmBookingScreenState extends State<ConfirmBookingScreen> {
   }
 
   Future<void> _processPayment() async {
-    setState(() {
-      _isProcessingPayment = true;
-    });
+    if (_selectedPaymentMethodId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please add a payment card first'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+    setState(() => _isProcessingPayment = true);
 
     try {
       final sessionId = widget.bookingDetails['sessionId'];
@@ -143,32 +197,25 @@ class _ConfirmBookingScreenState extends State<ConfirmBookingScreen> {
         throw Exception('Missing booking details');
       }
 
-      final paymentMethod = _selectedPaymentMethod == 0 ? 'card' : 'apple_pay';
-
       final booking = await BookingService.createBooking(
         sessionId: sessionId,
         occurrenceDate: occurrenceDate,
         occurrenceDates: selectedDates,
-        paymentMethod: paymentMethod,
+        paymentMethod: 'card',
+        paymentMethodId: _selectedPaymentMethodId,
         promoCode: _appliedPromoCode,
       );
 
-      setState(() {
-        _isProcessingPayment = false;
-      });
-
       if (mounted) {
+        setState(() => _isProcessingPayment = false);
         context.push(
           '/booking-success',
           extra: {'bookingId': booking['_id'], ...widget.bookingDetails},
         );
       }
     } catch (e) {
-      setState(() {
-        _isProcessingPayment = false;
-      });
-
       if (mounted) {
+        setState(() => _isProcessingPayment = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Booking failed: ${e.toString()}'),
@@ -813,92 +860,8 @@ class _ConfirmBookingScreenState extends State<ConfirmBookingScreen> {
                     ),
                     const SizedBox(height: 12),
 
-                    // Cards
-                    _buildPaymentOption(
-                      index: 0,
-                      icon: Icons.credit_card,
-                      title: 'Visa ending in 4242',
-                      subtitle: 'Expires 12/25',
-                      iconContent: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 6,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Theme.of(context).cardColor,
-                          borderRadius: BorderRadius.circular(4),
-                          border: Border.all(
-                            color: Theme.of(context).dividerColor,
-                          ),
-                        ),
-                        child: Text(
-                          'VISA',
-                          style: GoogleFonts.inter(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 10,
-                            color: Theme.of(context).colorScheme.onSurface,
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    _buildPaymentOption(
-                      index: 1,
-                      icon: Icons.apple,
-                      title: 'Apple Pay',
-                      iconContent: Container(
-                        width: 38,
-                        height: 24,
-                        alignment: Alignment.center,
-                        decoration: BoxDecoration(
-                          color: Colors.black,
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: const Icon(
-                          Icons.apple,
-                          color: Colors.white,
-                          size: 16,
-                        ),
-                      ),
-                    ),
-
-                    const SizedBox(height: 12),
-                    // Add Payment Method Button
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      decoration: BoxDecoration(
-                        border: Border.all(
-                          color: Theme.of(context).dividerColor,
-                          style: BorderStyle.solid,
-                        ),
-                        borderRadius: BorderRadius.circular(16),
-                        color: Theme.of(context).scaffoldBackgroundColor,
-                      ),
-                      child: Center(
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            const Icon(
-                              Icons.add_circle,
-                              color: AppPalette.textSecondaryLight,
-                              size: 20,
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              'Add Payment Method',
-                              style: GoogleFonts.inter(
-                                color: Theme.of(context).brightness ==
-                                        Brightness.dark
-                                    ? AppPalette.textSecondaryDark
-                                    : AppPalette.textSecondaryLight,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
+                    // Real Stripe card selector
+                    _buildCardSelector(),
 
                     const SizedBox(height: 40),
                   ],
@@ -1018,89 +981,209 @@ class _ConfirmBookingScreenState extends State<ConfirmBookingScreen> {
     );
   }
 
-  Widget _buildPaymentOption({
-    required int index,
-    required String title,
-    String? subtitle,
-    required IconData icon,
-    Widget? iconContent,
-  }) {
-    final isSelected = _selectedPaymentMethod == index;
-
-    return GestureDetector(
-      onTap: () => setState(() => _selectedPaymentMethod = index),
-      child: AnimatedContainer(
-        duration: 200.ms,
-        width: double.infinity,
-        padding: const EdgeInsets.all(16),
+  Widget _buildCardSelector() {
+    if (_savedCards.isEmpty) {
+      // Empty state with inline Add Card button
+      return Container(
+        padding: const EdgeInsets.all(18),
         decoration: BoxDecoration(
-          color: isSelected
-              ? AppPalette.orangeAccent.withValues(alpha: 0.05)
-              : Theme.of(context).cardColor,
+          color: Theme.of(context).cardColor,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: isSelected
-                ? AppPalette.orangeAccent
-                : Theme.of(context).dividerColor,
-            width: isSelected ? 2 : 1,
-          ),
+          border: Border.all(color: Theme.of(context).dividerColor),
         ),
-        child: Row(
+        child: Column(
           children: [
-            if (iconContent != null)
-              iconContent
-            else
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).scaffoldBackgroundColor,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Icon(
-                  icon,
-                  color: Theme.of(context).colorScheme.onSurface,
-                ),
-              ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: GoogleFonts.inter(
-                      fontWeight: FontWeight.w600,
-                      color: Theme.of(context).colorScheme.onSurface,
-                      fontSize: 15,
-                    ),
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: Colors.orange.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(10),
                   ),
-                  if (subtitle != null)
-                    Text(
-                      subtitle,
-                      style: GoogleFonts.inter(
-                        color: Theme.of(context).textTheme.bodyMedium?.color,
-                        fontSize: 13,
+                  child: const Icon(Icons.credit_card_off_rounded,
+                      color: Colors.orange, size: 22),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'No payment cards saved',
+                        style: GoogleFonts.inter(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14,
+                          color: Theme.of(context).colorScheme.onSurface,
+                        ),
                       ),
-                    ),
-                ],
-              ),
+                      Text(
+                        'Add a card to complete booking',
+                        style: GoogleFonts.inter(
+                          fontSize: 12,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
-            Container(
-              width: 20,
-              height: 20,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: isSelected
-                      ? AppPalette.orangeAccent
-                      : Theme.of(context).disabledColor,
-                  width: isSelected ? 6 : 2,
+            const SizedBox(height: 14),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: _addingCard ? null : _addCard,
+                icon: _addingCard
+                    ? const SizedBox(
+                        width: 16, height: 16,
+                        child: CircularProgressIndicator(
+                            color: Colors.white, strokeWidth: 2),
+                      )
+                    : const Icon(Icons.add, size: 18),
+                label: Text(
+                  _addingCard ? 'Opening...' : '+ Add Card',
+                  style: GoogleFonts.inter(fontWeight: FontWeight.bold),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppPalette.navyPrimary,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                  elevation: 0,
                 ),
               ),
             ),
           ],
         ),
-      ),
+      );
+    }
+
+    // Has cards — show selectable list + Add Card at bottom
+    return Column(
+      children: [
+        ..._savedCards.map((pm) {
+          final pmId = pm['id'] as String;
+          final cardData = pm['card'] as Map<String, dynamic>;
+          final brand = (cardData['brand'] as String? ?? 'card');
+          final last4 = (cardData['last4'] as String? ?? '••••');
+          final expMonth =
+              cardData['exp_month']?.toString().padLeft(2, '0') ?? '??';
+          final expYear =
+              cardData['exp_year']?.toString().substring(2) ?? '??';
+          final isSelected = _selectedPaymentMethodId == pmId;
+
+          return GestureDetector(
+            onTap: () =>
+                setState(() => _selectedPaymentMethodId = pmId),
+            child: AnimatedContainer(
+              duration: 200.ms,
+              margin: const EdgeInsets.only(bottom: 10),
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: isSelected
+                    ? AppPalette.orangeAccent.withValues(alpha: 0.05)
+                    : Theme.of(context).cardColor,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: isSelected
+                      ? AppPalette.orangeAccent
+                      : Theme.of(context).dividerColor,
+                  width: isSelected ? 2 : 1,
+                ),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: AppPalette.navyPrimary.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(Icons.credit_card,
+                        color: AppPalette.navyPrimary, size: 20),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '${brand[0].toUpperCase()}${brand.substring(1)} ending in $last4',
+                          style: GoogleFonts.inter(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 14,
+                            color: Theme.of(context).colorScheme.onSurface,
+                          ),
+                        ),
+                        Text(
+                          'Expires $expMonth/$expYear',
+                          style: GoogleFonts.inter(
+                            fontSize: 12,
+                            color: Theme.of(context)
+                                .colorScheme
+                                .onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Icon(
+                    isSelected
+                        ? Icons.radio_button_checked
+                        : Icons.radio_button_unchecked,
+                    color: isSelected
+                        ? AppPalette.orangeAccent
+                        : Theme.of(context).disabledColor,
+                    size: 22,
+                  ),
+                ],
+              ),
+            ),
+          );
+        }),
+
+        // Add another card
+        GestureDetector(
+          onTap: _addingCard ? null : _addCard,
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: 14),
+            decoration: BoxDecoration(
+              border: Border.all(
+                color: Theme.of(context).dividerColor,
+                style: BorderStyle.solid,
+              ),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Center(
+              child: _addingCard
+                  ? const SizedBox(
+                      width: 18, height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.add_circle_outline,
+                            color: Theme.of(context).colorScheme.primary,
+                            size: 20),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Add New Card',
+                          style: GoogleFonts.inter(
+                            color: Theme.of(context).colorScheme.primary,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ],
+                    ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

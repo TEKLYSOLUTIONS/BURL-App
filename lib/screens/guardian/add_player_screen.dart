@@ -19,8 +19,8 @@ class _AddPlayerScreenState extends State<AddPlayerScreen> {
 
   // Controllers
   final TextEditingController _nameController = TextEditingController();
-  final TextEditingController _ageController =
-      TextEditingController(); // Replaced DOB with Age for consistency with service/backend
+  final TextEditingController _dobController = TextEditingController();
+  DateTime? _selectedDob;
   final TextEditingController _jerseyController = TextEditingController();
   final TextEditingController _teamController = TextEditingController();
   final TextEditingController _medicalController = TextEditingController();
@@ -54,7 +54,7 @@ class _AddPlayerScreenState extends State<AddPlayerScreen> {
   @override
   void dispose() {
     _nameController.dispose();
-    _ageController.dispose();
+    _dobController.dispose();
     _jerseyController.dispose();
     _teamController.dispose();
     _medicalController.dispose();
@@ -64,16 +64,23 @@ class _AddPlayerScreenState extends State<AddPlayerScreen> {
   Future<void> _submitData() async {
     if (!_formKey.currentState!.validate()) return;
 
-    if (_ageController.text.isEmpty) {
+    if (_selectedDob == null) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('Please enter Age')));
+      ).showSnackBar(const SnackBar(content: Text('Please select Date of Birth')));
       return;
     }
 
+    // Calculate age
+    final now = DateTime.now();
+    int age = now.year - _selectedDob!.year;
+    if (now.month < _selectedDob!.month ||
+        (now.month == _selectedDob!.month && now.day < _selectedDob!.day)) {
+      age--;
+    }
+
     // Backend restriction check
-    if (int.tryParse(_ageController.text) != null &&
-        int.parse(_ageController.text) >= 16) {
+    if (age >= 16) {
       _showTeenagerDialog();
       return;
     }
@@ -93,7 +100,8 @@ class _AddPlayerScreenState extends State<AddPlayerScreen> {
 
       await _guardianService.addPlayer(
         fullName: _nameController.text.trim(),
-        age: _ageController.text.trim(),
+        age: age.toString(),
+        dateOfBirth: _selectedDob,
         role: _selectedRole,
         battingStyle: _selectedBattingStyle,
         bowlingStyle: _selectedBowlingStyle,
@@ -133,6 +141,33 @@ class _AddPlayerScreenState extends State<AddPlayerScreen> {
     if (pickedFile != null) {
       setState(() {
         _pickedImage = File(pickedFile.path);
+      });
+    }
+  }
+
+  Future<void> _pickDateOfBirth() async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: DateTime.now().subtract(const Duration(days: 365 * 10)), // default to 10 years old
+      firstDate: DateTime.now().subtract(const Duration(days: 365 * 100)), // up to 100 years old
+      lastDate: DateTime.now(),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: ColorScheme.light(
+              primary: AppPalette.orangeAccent,
+              onPrimary: Colors.white,
+              onSurface: Theme.of(context).colorScheme.onSurface,
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+    if (picked != null && picked != _selectedDob) {
+      setState(() {
+        _selectedDob = picked;
+        _dobController.text = "${picked.year}-${picked.month.toString().padLeft(2, '0')}-${picked.day.toString().padLeft(2, '0')}";
       });
     }
   }
@@ -266,14 +301,18 @@ class _AddPlayerScreenState extends State<AddPlayerScreen> {
               ),
               const SizedBox(height: 16),
 
-              // Age (Number input for now to match backend simple age field)
-              _buildTextField(
-                "Age",
-                _ageController,
-                hint: "e.g. 12",
-                keyboardType: TextInputType.number,
-                validator: (val) =>
-                    val == null || val.isEmpty ? 'Please enter age' : null,
+              // Date of Birth
+              GestureDetector(
+                onTap: _pickDateOfBirth,
+                child: AbsorbPointer(
+                  child: _buildTextField(
+                    "Date of Birth",
+                    _dobController,
+                    hint: "Select Date",
+                    validator: (val) =>
+                        val == null || val.isEmpty ? 'Please select date of birth' : null,
+                  ),
+                ),
               ),
               const SizedBox(height: 24),
 
@@ -300,9 +339,6 @@ class _AddPlayerScreenState extends State<AddPlayerScreen> {
                 if (val != null) setState(() => _selectedBowlingStyle = val);
               }),
               const SizedBox(height: 32),
-
-              const Divider(),
-              const SizedBox(height: 16),
 
               // Medical (Optional)
               _buildLabel("Medical Notes (Optional)"),

@@ -117,7 +117,7 @@ class _LoginScreenState extends State<LoginScreen> {
       final response = await http.get(
         Uri.parse('${ApiConfig.baseUrl}/api/auth/me'),
         headers: {'Authorization': 'Bearer $token'},
-      );
+      ).timeout(const Duration(seconds: 10));
 
       if (response.statusCode == 200) {
         final userData = json.decode(response.body);

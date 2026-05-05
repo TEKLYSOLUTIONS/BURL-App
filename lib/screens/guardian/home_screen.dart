@@ -45,18 +45,26 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen>
   @override
   void initState() {
     super.initState();
-    _loadUserData();
-    // Listen for updates (e.g., new player added)
     GuardianService.playerUpdateNotifier.addListener(_loadDashboardData);
+    _loadAll();
+  }
+
+  /// Runs user data + dashboard fetch in parallel on first load.
+  Future<void> _loadAll() async {
+    await Future.wait([
+      _loadUserData(),
+      _loadDashboardData(),
+    ]);
   }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    // Reload dashboard every time this screen becomes active (first open + return from other routes)
-    if (!_initialLoadDone || _managedPlayers.isEmpty) {
+    if (!_initialLoadDone) {
       _initialLoadDone = true;
-      _loadDashboardData();
+    } else if (_managedPlayers.isEmpty) {
+      // Silent refresh — keep showing existing UI, update quietly
+      _loadDashboardData(silent: true);
     }
   }
 
@@ -92,8 +100,11 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen>
     }
   }
 
-  Future<void> _loadDashboardData() async {
-    setState(() => _isLoading = true);
+  Future<void> _loadDashboardData({bool silent = false}) async {
+    // Show spinner only on very first load (no data yet)
+    if (!silent && _managedPlayers.isEmpty && _stats == null) {
+      setState(() => _isLoading = true);
+    }
     try {
       final results = await Future.wait([
         DashboardService.getGuardianDashboard(),
@@ -105,8 +116,7 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen>
         setState(() {
           _managedPlayers = (data['managedPlayers'] as List? ?? []);
           _stats = data['stats'];
-          _dateFilteredSessions =
-              sessionsData?['sessions'] as List<dynamic>? ?? [];
+          _dateFilteredSessions = sessionsData?['sessions'] as List<dynamic>? ?? [];
           _isLoading = false;
         });
       } else {
@@ -118,14 +128,16 @@ class _GuardianHomeScreenState extends State<GuardianHomeScreen>
     }
   }
 
-  Future<void> _loadSessionsForDate(DateTime date) async {
-    setState(() => _isLoadingSessions = true);
+  Future<void> _loadSessionsForDate(DateTime date, {bool silent = false}) async {
+    // Only show spinner if no sessions currently visible
+    if (!silent && _dateFilteredSessions.isEmpty) {
+      setState(() => _isLoadingSessions = true);
+    }
     try {
       final result = await SessionService.getGuardianSessions(date: date);
       if (mounted) {
         setState(() {
-          _dateFilteredSessions =
-              result['sessions'] as List<dynamic>? ?? [];
+          _dateFilteredSessions = result['sessions'] as List<dynamic>? ?? [];
           _isLoadingSessions = false;
         });
       }

@@ -163,7 +163,7 @@ class _PlayerSessionsViewState extends State<PlayerSessionsView>
   Widget _buildStudentSessionCard(Map<String, dynamic> booking, int index) {
     final session = booking['session'] as Map<String, dynamic>? ?? {};
     final occurrenceDate = booking['occurrenceDate'] != null
-        ? DateTime.parse(booking['occurrenceDate'] as String)
+        ? DateTime.parse(booking['occurrenceDate'] as String).toLocal()
         : DateTime.now();
     final bookingStatus = booking['status'] as String? ?? 'pending';
 
