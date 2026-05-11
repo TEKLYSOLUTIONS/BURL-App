@@ -295,6 +295,11 @@ class _ConfirmBookingScreenState extends State<ConfirmBookingScreen> {
     final timeStr = widget.bookingDetails['time'] ?? '10:00 AM';
     final location =
         widget.bookingDetails['location'] ?? 'Sunnydale Sports Complex';
+    // Currency code from the coach's session (e.g. 'USD', 'AUD', 'GBP')
+    final currencyCode =
+        widget.bookingDetails['currency']?.toString() ??
+        session?['pricing']?['currency']?.toString() ??
+        'USD';
 
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
@@ -351,7 +356,7 @@ class _ConfirmBookingScreenState extends State<ConfirmBookingScreen> {
                                     ),
                                   ),
                                   Text(
-                                    "You're saving \$${_discountAmount.toStringAsFixed(2)} on this session.",
+                                    "You're saving $currencyCode ${_discountAmount.toStringAsFixed(2)} on this session.",
                                     style: GoogleFonts.inter(
                                       color: Colors.white.withValues(
                                         alpha: 0.9,
@@ -598,11 +603,11 @@ class _ConfirmBookingScreenState extends State<ConfirmBookingScreen> {
                       ),
                       child: Column(
                         children: [
-                          _buildPriceRow('Session Fee', _sessionFee),
+                          _buildPriceRow('Session Fee', _sessionFee, currency: currencyCode),
                           const SizedBox(height: 12),
-                          _buildPriceRow(_serviceFeeLabel, _serviceFee),
+                          _buildPriceRow(_serviceFeeLabel, _serviceFee, currency: currencyCode),
                           const SizedBox(height: 12),
-                          _buildPriceRow('Tax', _tax),
+                          _buildPriceRow('Tax', _tax, currency: currencyCode),
                           if (_appliedPromoCode != null) ...[
                             const SizedBox(height: 12),
                             Row(
@@ -627,7 +632,7 @@ class _ConfirmBookingScreenState extends State<ConfirmBookingScreen> {
                                   ],
                                 ),
                                 Text(
-                                  '-\$${_discountAmount.toStringAsFixed(2)}',
+                                  '-$currencyCode ${_discountAmount.toStringAsFixed(2)}',
                                   style: GoogleFonts.inter(
                                     fontSize: 15,
                                     fontWeight: FontWeight.bold,
@@ -658,7 +663,7 @@ class _ConfirmBookingScreenState extends State<ConfirmBookingScreen> {
                                 ),
                               ),
                               Text(
-                                '\$ ${_totalAmount.toStringAsFixed(2)}',
+                                '$currencyCode ${_totalAmount.toStringAsFixed(2)}',
                                 style: GoogleFonts.inter(
                                   fontSize: 24,
                                   fontWeight: FontWeight.bold,
@@ -938,7 +943,7 @@ class _ConfirmBookingScreenState extends State<ConfirmBookingScreen> {
                                   ),
                                 ),
                                 Text(
-                                  '\$ ${_totalAmount.toStringAsFixed(2)}',
+                                  '$currencyCode ${_totalAmount.toStringAsFixed(2)}',
                                   style: GoogleFonts.inter(
                                     fontSize: 20,
                                     fontWeight: FontWeight.bold,
@@ -958,7 +963,7 @@ class _ConfirmBookingScreenState extends State<ConfirmBookingScreen> {
     );
   }
 
-  Widget _buildPriceRow(String label, double amount) {
+  Widget _buildPriceRow(String label, double amount, {String? currency}) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -970,7 +975,7 @@ class _ConfirmBookingScreenState extends State<ConfirmBookingScreen> {
           ),
         ),
         Text(
-          '\$ ${amount.toStringAsFixed(2)}',
+          '${currency ?? '\$'} ${amount.toStringAsFixed(2)}',
           style: GoogleFonts.inter(
             fontSize: 15,
             fontWeight: FontWeight.w600,

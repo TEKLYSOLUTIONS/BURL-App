@@ -81,7 +81,8 @@ class _ConfirmBookingScreenSimpleState
         final session = widget.bookingDetails['session'];
         if (session is Map<String, dynamic>) {
           final amount = session['pricing']?['amount'] ?? 50.0;
-          return 'Session Fee (${selectedDates.length} × \$$amount)';
+          final cur = session['pricing']?['currency'] ?? 'USD';
+          return 'Session Fee (${selectedDates.length} × $cur $amount)';
         }
       }
     } catch (_) {}
@@ -324,6 +325,16 @@ class _ConfirmBookingScreenSimpleState
     final sessionTitle = session is Map<String, dynamic>
         ? (session['title'] ?? 'Cricket Coaching')
         : 'Cricket Coaching';
+    // Currency code from the coach's session pricing (e.g. 'USD', 'AUD', 'GBP')
+    final sessionCurrency = session is Map<String, dynamic>
+        ? (session['pricing'] as Map?)?.containsKey('currency') == true
+            ? session['pricing']['currency']?.toString()
+            : null
+        : null;
+    final currencyCode =
+        widget.bookingDetails['currency']?.toString() ??
+        sessionCurrency ??
+        'USD';
 
     if (_isLoadingCommission) {
       return Scaffold(
@@ -410,7 +421,7 @@ class _ConfirmBookingScreenSimpleState
                                   ),
                                 ),
                                 Text(
-                                  'You\'re saving \$${_discountAmount.toStringAsFixed(2)} on this session.',
+                                  'You\'re saving $currencyCode ${_discountAmount.toStringAsFixed(2)} on this session.',
                                   style: GoogleFonts.inter(
                                     color: Colors.white.withValues(alpha: 0.9),
                                     fontSize: 12,
@@ -475,7 +486,7 @@ class _ConfirmBookingScreenSimpleState
                     ),
                   ),
                   const SizedBox(height: 10),
-                  _buildPriceBreakdownCard(),
+                  _buildPriceBreakdownCard(currencyCode: currencyCode),
 
                   const SizedBox(height: 20),
 
@@ -607,7 +618,7 @@ class _ConfirmBookingScreenSimpleState
                             ),
                           ),
                           Text(
-                            '\$ ${_totalAmount.toStringAsFixed(2)}',
+                            '$currencyCode ${_totalAmount.toStringAsFixed(2)}',
                             style: GoogleFonts.inter(
                               fontSize: 16,
                               fontWeight: FontWeight.bold,
@@ -862,7 +873,7 @@ class _ConfirmBookingScreenSimpleState
   }
 
   // ─── PRICE BREAKDOWN ───
-  Widget _buildPriceBreakdownCard() {
+  Widget _buildPriceBreakdownCard({String currencyCode = 'USD'}) {
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
@@ -872,11 +883,11 @@ class _ConfirmBookingScreenSimpleState
       ),
       child: Column(
         children: [
-          _buildPriceRow(_sessionFeeLabel, _sessionFeeVal),
+          _buildPriceRow(_sessionFeeLabel, _sessionFeeVal, currency: currencyCode),
           const SizedBox(height: 10),
-          _buildPriceRow(_serviceFeeLabel, _serviceFee),
+          _buildPriceRow(_serviceFeeLabel, _serviceFee, currency: currencyCode),
           const SizedBox(height: 10),
-          _buildPriceRow('Tax', _tax),
+          _buildPriceRow('Tax', _tax, currency: currencyCode),
           if (_appliedPromoCode != null) ...[
             const SizedBox(height: 10),
             Row(
@@ -901,7 +912,7 @@ class _ConfirmBookingScreenSimpleState
                   ],
                 ),
                 Text(
-                  '-\$${_discountAmount.toStringAsFixed(2)}',
+                  '-$currencyCode ${_discountAmount.toStringAsFixed(2)}',
                   style: GoogleFonts.inter(
                     fontSize: 14,
                     fontWeight: FontWeight.bold,
@@ -927,7 +938,7 @@ class _ConfirmBookingScreenSimpleState
                 ),
               ),
               Text(
-                '\$ ${_totalAmount.toStringAsFixed(2)}',
+                '$currencyCode ${_totalAmount.toStringAsFixed(2)}',
                 style: GoogleFonts.inter(
                   fontSize: 22,
                   fontWeight: FontWeight.bold,
@@ -941,7 +952,7 @@ class _ConfirmBookingScreenSimpleState
     );
   }
 
-  Widget _buildPriceRow(String label, double amount) {
+  Widget _buildPriceRow(String label, double amount, {String currency = 'USD'}) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -950,7 +961,7 @@ class _ConfirmBookingScreenSimpleState
           style: GoogleFonts.inter(fontSize: 14, color: Colors.grey[600]),
         ),
         Text(
-          '\$ ${amount.toStringAsFixed(2)}',
+          '$currency ${amount.toStringAsFixed(2)}',
           style: GoogleFonts.inter(
             fontSize: 14,
             fontWeight: FontWeight.w500,

@@ -1,5 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
-    <!-- App background color — matches Flutter splash screen background, eliminates white flash -->
-    <item android:drawable="@color/app_background_light" />
+    <!-- Full-screen splash image — identical to the Flutter SplashScreen widget -->
+    <item>
+        <bitmap
+            android:gravity="fill"
+            android:src="@drawable/splash" />
+    </item>
 </layer-list>

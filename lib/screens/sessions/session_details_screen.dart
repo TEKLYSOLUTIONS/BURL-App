@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:geocoding/geocoding.dart';
 import '../../config/palette.dart';
 import '../../services/booking_service.dart';
 import '../../services/coach_service.dart';
@@ -42,6 +43,9 @@ class _SessionDetailsScreenState extends State<SessionDetailsScreen> {
   bool _isCancelling = false;
   DateTime _lastTap = DateTime.fromMillisecondsSinceEpoch(0);
 
+  // Resolved human-readable location (reverse geocoded from coordinates)
+  String? _resolvedLocation;
+
   @override
   void initState() {
     super.initState();
@@ -52,6 +56,50 @@ class _SessionDetailsScreenState extends State<SessionDetailsScreen> {
     }
     _loadUserRole().then((_) => _checkBookingStatus());
     _fetchSessionDetails(); // always refresh (silently if initialSession provided)
+    _resolveLocation(); // reverse geocode if location is stored as coordinates
+  }
+
+  /// Parses the session location. If it looks like "lat, lng" coordinates,
+  /// performs reverse geocoding to get a human-readable address.
+  Future<void> _resolveLocation() async {
+    final raw = _session?['location']?.toString().trim();
+    if (raw == null || raw.isEmpty) return;
+
+    // Check if it looks like coordinates: "37.42213, -122.08480"
+    final coordRegex = RegExp(r'^(-?\d+\.\d+),\s*(-?\d+\.\d+)$');
+    final match = coordRegex.firstMatch(raw);
+    if (match == null) {
+      // Already a text address — display as-is
+      if (mounted) setState(() => _resolvedLocation = raw);
+      return;
+    }
+
+    final lat = double.tryParse(match.group(1)!);
+    final lng = double.tryParse(match.group(2)!);
+    if (lat == null || lng == null) return;
+
+    try {
+      final placemarks = await placemarkFromCoordinates(lat, lng);
+      if (!mounted || placemarks.isEmpty) return;
+
+      final p = placemarks.first;
+      // Build a readable address from available components
+      final parts = <String>[
+        if (p.name != null && p.name!.isNotEmpty && p.name != p.street) p.name!,
+        if (p.street != null && p.street!.isNotEmpty) p.street!,
+        if (p.subLocality != null && p.subLocality!.isNotEmpty) p.subLocality!,
+        if (p.locality != null && p.locality!.isNotEmpty) p.locality!,
+        if (p.administrativeArea != null && p.administrativeArea!.isNotEmpty) p.administrativeArea!,
+        if (p.country != null && p.country!.isNotEmpty) p.country!,
+      ];
+      final address = parts.toSet().toList().take(4).join(', ');
+      if (mounted) {
+        setState(() => _resolvedLocation = address.isNotEmpty ? address : raw);
+      }
+    } catch (_) {
+      // Geocoding failed — keep raw value
+      if (mounted) setState(() => _resolvedLocation = raw);
+    }
   }
 
   Future<void> _loadUserRole() async {
@@ -74,6 +122,7 @@ class _SessionDetailsScreenState extends State<SessionDetailsScreen> {
           _session = session;
           _isLoading = false;
         });
+        _resolveLocation(); // Reverse geocode after session data is available
       }
     } catch (e) {
       if (mounted) {
@@ -768,7 +817,9 @@ class _SessionDetailsScreenState extends State<SessionDetailsScreen> {
                 color: Theme.of(context).colorScheme.onPrimaryContainer,
               ),
             ),
-            title: _session!['location']?.toString() ?? 'Unknown Location',
+            title: _resolvedLocation ??
+                _session!['location']?.toString() ??
+                'Unknown Location',
             subtitle: 'Training Location',
             actionIcon: Icons.directions,
           ),
