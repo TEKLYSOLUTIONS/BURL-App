@@ -94,7 +94,7 @@ jobs:
           echo "$APPSTORE_API_PRIVATE_KEY" > ~/.appstoreconnect/private_keys/AuthKey_${APPSTORE_API_KEY_ID}.p8
           xcrun altool --upload-app \
             --type ios \
-            --file build/ios/ipa/BURL.ipa \
+            --file build/ios/ipa/CricLy.ipa \
             --apiKey "$APPSTORE_API_KEY_ID" \
             --apiIssuer "$APPSTORE_ISSUER_ID"
           rm ~/.appstoreconnect/private_keys/AuthKey_${APPSTORE_API_KEY_ID}.p8
@@ -104,6 +104,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: Burl-App-IPA  # This is the name of the zip file you'll download
-          path: build/ios/ipa/BURL.ipa
+          path: build/ios/ipa/CricLy.ipa
           retention-days: 7
 
