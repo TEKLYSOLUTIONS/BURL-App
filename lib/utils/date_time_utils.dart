@@ -94,6 +94,7 @@ class DateTimeUtils {
 
   /// Format session date (e.g., "Tomorrow, 10:00 AM" or "Mon, Jan 25 • 2:00 PM")
   static String formatSessionDate(DateTime dateTime) {
+    dateTime = dateTime.toLocal();
     final now = DateTime.now();
     final tomorrow = DateTime(now.year, now.month, now.day + 1);
     final today = DateTime(now.year, now.month, now.day);
@@ -178,22 +179,24 @@ class DateTimeUtils {
 
   /// Format DateTime object to time string
   static String formatTimeFromDateTime(DateTime dateTime) {
-    return DateFormat('h:mm a').format(dateTime).toUpperCase();
+    return DateFormat('h:mm a').format(dateTime.toLocal()).toUpperCase();
   }
 
   /// Format DateTime object to short date
   static String formatDateShortFromDateTime(DateTime dateTime) {
-    return DateFormat('MMM dd').format(dateTime).toUpperCase();
+    return DateFormat('MMM dd').format(dateTime.toLocal()).toUpperCase();
   }
 
   /// Format DateTime object to standard date (e.g., "MMM dd, yyyy")
   static String formatDate(DateTime dateTime) {
-    return DateFormat('MMM dd, yyyy').format(dateTime);
+    return DateFormat('MMM dd, yyyy').format(dateTime.toLocal());
   }
 
   /// Check if two dates are on the same day
   static bool isSameDay(DateTime a, DateTime b) {
-    return a.year == b.year && a.month == b.month && a.day == b.day;
+    final aLocal = a.toLocal();
+    final bLocal = b.toLocal();
+    return aLocal.year == bLocal.year && aLocal.month == bLocal.month && aLocal.day == bLocal.day;
   }
 
   /// Calculate age from date of birth string (e.g. "2005-12-25")

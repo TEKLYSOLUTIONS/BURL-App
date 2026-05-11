@@ -394,7 +394,12 @@ class _CoachProfileScreenState extends ConsumerState<CoachProfileScreen> {
                           iconColor: Colors.orange,
                           title: 'Subscription',
                           trailing: _buildSubscriptionBadge(),
-                          onTap: () => context.push('/pro-upgrade'),
+                          onTap: () async {
+                            await context.push('/pro-upgrade');
+                            if (mounted) {
+                              _fetchProfile();
+                            }
+                          },
                         ),
                       ],
                     ),

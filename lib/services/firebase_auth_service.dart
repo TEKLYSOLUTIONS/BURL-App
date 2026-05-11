@@ -86,7 +86,7 @@ class FirebaseAuthService {
           'Authorization': 'Bearer $token',
         },
         body: jsonEncode({'fullName': fullName, 'role': role, 'email': email}),
-      );
+      ).timeout(const Duration(seconds: 10));
 
       if (response.statusCode != 200 && response.statusCode != 201) {
         debugPrint('❌ MongoDB signup failed: ${response.body}');
@@ -145,7 +145,7 @@ class FirebaseAuthService {
           final response = await http.get(
             Uri.parse('$baseUrl/users/profile'),
             headers: {'Authorization': 'Bearer $token'},
-          );
+          ).timeout(const Duration(seconds: 10));
           if (response.statusCode == 200) {
             final data = jsonDecode(response.body);
             prefetchedUser = data['user'] as Map<String, dynamic>?;
@@ -359,7 +359,7 @@ class FirebaseAuthService {
           final response = await http.get(
             Uri.parse('$baseUrl/users/profile'),
             headers: {'Authorization': 'Bearer $token'},
-          );
+          ).timeout(const Duration(seconds: 10));
           if (response.statusCode == 200) {
             final data = jsonDecode(response.body);
             final dbRole = data['user']?['role'] as String?;
@@ -470,7 +470,7 @@ class FirebaseAuthService {
           'role': finalRole,
           'email': email,
         }),
-      );
+      ).timeout(const Duration(seconds: 10));
 
       debugPrint('📡 MongoDB sync response: ${response.statusCode}');
 
@@ -524,7 +524,7 @@ class FirebaseAuthService {
         final response = await http.get(
           Uri.parse('$baseUrl/users/profile'),
           headers: {'Authorization': 'Bearer $token'},
-        );
+        ).timeout(const Duration(seconds: 10));
         if (response.statusCode == 200) {
           final data = jsonDecode(response.body);
           user = data['user'] as Map<String, dynamic>?;
@@ -589,7 +589,7 @@ class FirebaseAuthService {
               'Authorization': 'Bearer $token',
             },
             body: jsonEncode({}),
-          );
+          ).timeout(const Duration(seconds: 10));
           debugPrint('✅ Profile complete — notifications marked as read');
         } catch (_) {}
       }
@@ -624,7 +624,7 @@ class FirebaseAuthService {
           },
           'sendPush': true, // Added flag for backend to fire FCM
         }),
-      );
+      ).timeout(const Duration(seconds: 10));
     } catch (e) {
       debugPrint('Failed to create profile notification: $e');
     }

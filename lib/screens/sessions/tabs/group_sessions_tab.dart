@@ -201,7 +201,7 @@ class _GroupSessionsTabState extends State<GroupSessionsTab>
         ? Theme.of(context).colorScheme.onPrimaryContainer
         : const Color(0xFF1565C0);
 
-    final primaryColor = SessionUtils.getSessionPrimaryColor(context, session);
+
 
     return Container(
       margin: const EdgeInsets.only(bottom: 20),
@@ -343,39 +343,39 @@ class _GroupSessionsTabState extends State<GroupSessionsTab>
                     // Start button — only for upcoming (not yet finished)
                     if (!isFinished) ...[
                       Expanded(
-                        child: InkWell(
-                          onTap: () => context.push(
-                            '/session-attendance/${session['_id']}',
-                          ),
+                        child: Material(
+                          color: const Color(0xFFFF6B35),
                           borderRadius: BorderRadius.circular(8),
-                          child: Container(
-                            alignment: Alignment.center,
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 10,
+                          clipBehavior: Clip.antiAlias,
+                          child: InkWell(
+                            onTap: () => context.push(
+                              '/session-attendance/${session['_id']}',
                             ),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFFF6B35),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Icon(
-                                  Icons.play_arrow_rounded,
-                                  size: 16,
-                                  color: Colors.white,
-                                ),
-                                const SizedBox(width: 4),
-                                Text(
-                                  'Start',
-                                  style: GoogleFonts.inter(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w600,
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 10,
+                              ),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(
+                                    Icons.play_arrow_rounded,
+                                    size: 16,
                                     color: Colors.white,
                                   ),
-                                ),
-                              ],
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    'Start',
+                                    style: GoogleFonts.inter(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
                         ),
@@ -384,47 +384,46 @@ class _GroupSessionsTabState extends State<GroupSessionsTab>
                     ],
                     // Details / View Plan button
                     Expanded(
-                      child: InkWell(
-                        onTap: () async {
-                          final dateParam = startTime.toIso8601String();
-                          final result = await context.push(
-                            '/coach/session-details/${session['_id']}?date=$dateParam',
-                          );
-                          if (result == true) _fetchSessions();
-                        },
+                      child: Material(
+                        color: Theme.of(context).colorScheme.primary,
                         borderRadius: BorderRadius.circular(8),
-                        child: Container(
-                          alignment: Alignment.center,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 10,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Theme.of(
-                              context,
-                            ).dividerColor.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                isFinished ? 'Details' : 'View Plan',
-                                style: GoogleFonts.inter(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w600,
-                                  color: primaryColor,
+                        clipBehavior: Clip.antiAlias,
+                        child: InkWell(
+                          onTap: () async {
+                            final dateParam = startTime.toIso8601String();
+                            final result = await context.push(
+                              '/coach/session-details/${session['_id']}?date=$dateParam',
+                              extra: session,
+                            );
+                            if (result == true) _fetchSessions();
+                          },
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 10,
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  isFinished ? 'Details' : 'View Plan',
+                                  style: GoogleFonts.inter(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.white,
+                                  ),
                                 ),
-                              ),
-                              const SizedBox(width: 6),
-                              Icon(
-                                isFinished
-                                    ? Icons.check_circle_outline
-                                    : Icons.arrow_forward_rounded,
-                                size: 16,
-                                color: primaryColor,
-                              ),
-                            ],
+                                const SizedBox(width: 6),
+                                Icon(
+                                  isFinished
+                                      ? Icons.check_circle_outline
+                                      : Icons.arrow_forward_rounded,
+                                  size: 16,
+                                  color: Colors.white,
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                       ),

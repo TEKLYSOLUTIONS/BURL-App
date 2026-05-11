@@ -1293,16 +1293,27 @@ class _CoachAvailabilityScreenState extends State<CoachAvailabilityScreen> {
                         onPressed: _showAddBlockedDateDialog,
                         style: OutlinedButton.styleFrom(
                           padding: const EdgeInsets.symmetric(vertical: 16),
-                          side: BorderSide(color: AppPalette.navyPrimary),
+                          side: BorderSide(
+                            color: Theme.of(context).brightness == Brightness.dark
+                                ? Colors.white
+                                : AppPalette.navyPrimary,
+                          ),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),
                         ),
-                        icon: Icon(Icons.add, color: AppPalette.navyPrimary),
+                        icon: Icon(
+                          Icons.add,
+                          color: Theme.of(context).brightness == Brightness.dark
+                              ? Colors.white
+                              : AppPalette.navyPrimary,
+                        ),
                         label: Text(
                           "Add Blocked Date",
                           style: TextStyle(
-                            color: AppPalette.navyPrimary,
+                            color: Theme.of(context).brightness == Brightness.dark
+                                ? Colors.white
+                                : AppPalette.navyPrimary,
                             fontWeight: FontWeight.bold,
                           ),
                         ),

@@ -1,7 +1,7 @@
 name: cricketcoachflutter
 description: "A Multi-Sport Coaching Platform mobile app."
 publish_to: 'none'
-version: 1.0.0+12
+version: 1.0.0+13
 
 environment:
   sdk: '>=3.6.0 <4.0.0'
@@ -84,5 +84,5 @@ flutter_launcher_icons:
   android: true
   ios: true
   remove_alpha_ios: true
-  image_path: "assets/images/burl_icon_app_front.png"
+  image_path: "assets/images/cricly logo.png"
   min_sdk_android: 21

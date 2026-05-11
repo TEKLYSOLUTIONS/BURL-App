@@ -425,31 +425,43 @@ class _BookingScreenState extends State<BookingScreen> {
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: AppPalette.navyPrimary.withValues(alpha: 0.1),
+                  color: Theme.of(context).cardColor,
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color: AppPalette.navyPrimary.withValues(alpha: 0.3),
+                    color: AppPalette.orangeAccent.withValues(alpha: 0.5),
+                    width: 1.5,
                   ),
                 ),
                 child: Row(
                   children: [
-                    Icon(Icons.event_available, color: AppPalette.navyPrimary),
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: AppPalette.orangeAccent.withValues(alpha: 0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.event_available,
+                        color: AppPalette.orangeAccent,
+                        size: 20,
+                      ),
+                    ),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Text(
                         '${_selectedDateIndices.length} session${_selectedDateIndices.length > 1 ? 's' : ''} selected',
                         style: GoogleFonts.inter(
                           fontWeight: FontWeight.bold,
-                          color: AppPalette.navyPrimary,
-                          fontSize: 16,
+                          color: Theme.of(context).colorScheme.onSurface,
+                          fontSize: 15,
                         ),
                       ),
                     ),
                     Text(
-                      '\$ ${(_session!['pricing']['amount'] as num) * _selectedDateIndices.length}',
+                      '${_session!['pricing']['currency'] ?? 'USD'} ${(_session!['pricing']['amount'] as num) * _selectedDateIndices.length}',
                       style: GoogleFonts.inter(
                         fontWeight: FontWeight.bold,
-                        color: AppPalette.navyPrimary,
+                        color: AppPalette.orangeAccent,
                         fontSize: 18,
                       ),
                     ),
@@ -508,6 +520,7 @@ class _BookingScreenState extends State<BookingScreen> {
                             'coachName': coachName,
                             'location': location,
                             'coachImage': displayImage,
+                            'currency': _session!['pricing']['currency'] ?? 'USD',
                             'totalAmount':
                                 (_session!['pricing']['amount'] as num) *
                                     _selectedDateIndices.length,

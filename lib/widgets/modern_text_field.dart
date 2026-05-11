@@ -1,8 +1,12 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_form_builder/flutter_form_builder.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-class ModernTextField extends StatelessWidget {
+/// A text field with a glassmorphism appearance.
+/// Uses [BackdropFilter] to create a frosted-glass blur, a semi-transparent
+/// fill, and an animated border that glows with the primary color on focus.
+class ModernTextField extends StatefulWidget {
   final String name;
   final String? hintText;
   final String? labelText;
@@ -37,13 +41,66 @@ class ModernTextField extends StatelessWidget {
   });
 
   @override
+  State<ModernTextField> createState() => _ModernTextFieldState();
+}
+
+class _ModernTextFieldState extends State<ModernTextField>
+    with SingleTickerProviderStateMixin {
+  late final FocusNode _focusNode;
+  late final AnimationController _animController;
+  late final Animation<double> _glowAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _focusNode = FocusNode();
+    _animController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 220),
+    );
+    _glowAnimation = CurvedAnimation(
+      parent: _animController,
+      curve: Curves.easeInOut,
+    );
+    _focusNode.addListener(() {
+      if (_focusNode.hasFocus) {
+        _animController.forward();
+      } else {
+        _animController.reverse();
+      }
+      setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    _focusNode.dispose();
+    _animController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    // Glass fill: white with low opacity in dark, slightly higher in light
+    final glassFill = isDark
+        ? Colors.white.withValues(alpha: 0.08)
+        : Colors.white.withValues(alpha: 0.55);
+
+    // Border: glows orange-ish primary on focus
+    final borderColor = _focusNode.hasFocus
+        ? Theme.of(context).colorScheme.secondary.withValues(alpha: 0.85)
+        : (isDark
+            ? Colors.white.withValues(alpha: 0.18)
+            : Colors.black.withValues(alpha: 0.12));
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        if (labelText != null) ...[
+        if (widget.labelText != null) ...[
           Text(
-            labelText!,
+            widget.labelText!,
             style: GoogleFonts.inter(
               fontSize: 14,
               fontWeight: FontWeight.w600,
@@ -52,30 +109,64 @@ class ModernTextField extends StatelessWidget {
           ),
           const SizedBox(height: 8),
         ],
-        Container(
-          decoration: BoxDecoration(
-            color: Theme.of(context)
-                .colorScheme
-                .surfaceContainerHighest
-                .withValues(alpha: 0.3),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Theme.of(context).dividerColor),
-          ),
+        AnimatedBuilder(
+          animation: _glowAnimation,
+          builder: (context, child) {
+            return Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(14),
+                // Glow shadow on focus
+                boxShadow: _focusNode.hasFocus
+                    ? [
+                        BoxShadow(
+                          color: Theme.of(context)
+                              .colorScheme
+                              .secondary
+                              .withValues(alpha: 0.28 * _glowAnimation.value),
+                          blurRadius: 14,
+                          spreadRadius: 1,
+                        ),
+                      ]
+                    : [],
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(14),
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 220),
+                    decoration: BoxDecoration(
+                      color: glassFill,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: borderColor,
+                        width: _focusNode.hasFocus ? 1.6 : 1.0,
+                      ),
+                    ),
+                    child: child,
+                  ),
+                ),
+              ),
+            );
+          },
           child: FormBuilderTextField(
-            name: name,
-            controller: controller,
-            initialValue: initialValue,
-            validator: validator,
-            keyboardType: keyboardType,
-            maxLines: maxLines,
-            obscureText: obscureText,
-            readOnly: readOnly,
-            onTap: onTap,
-            cursorColor: Theme.of(context).primaryColor,
+            name: widget.name,
+            focusNode: _focusNode,
+            controller: widget.controller,
+            initialValue: widget.initialValue,
+            validator: widget.validator,
+            keyboardType: widget.keyboardType,
+            maxLines: widget.maxLines,
+            obscureText: widget.obscureText,
+            readOnly: widget.readOnly,
+            onTap: widget.onTap,
+            cursorColor: Theme.of(context).colorScheme.secondary,
             style: GoogleFonts.inter(
-                fontSize: 16, color: Theme.of(context).colorScheme.onSurface),
+              fontSize: 16,
+              color: Theme.of(context).colorScheme.onSurface,
+            ),
             decoration: InputDecoration(
-              hintText: hintText,
+              hintText: widget.hintText,
               hintStyle: GoogleFonts.inter(
                 color: Theme.of(context)
                     .colorScheme
@@ -83,7 +174,7 @@ class ModernTextField extends StatelessWidget {
                     .withValues(alpha: 0.4),
                 fontSize: 15,
               ),
-              prefixText: prefixText,
+              prefixText: widget.prefixText,
               prefixStyle: GoogleFonts.inter(
                 color: Theme.of(context)
                     .colorScheme
@@ -91,17 +182,29 @@ class ModernTextField extends StatelessWidget {
                     .withValues(alpha: 0.6),
                 fontSize: 16,
               ),
-              prefixIcon: prefixIcon != null
-                  ? Icon(prefixIcon,
+              prefixIcon: widget.prefixIcon != null
+                  ? Icon(
+                      widget.prefixIcon,
                       color: Theme.of(context)
                           .colorScheme
                           .onSurface
-                          .withValues(alpha: 0.4),
-                      size: 22)
+                          .withValues(alpha: 0.45),
+                      size: 22,
+                    )
                   : null,
-              suffixIcon: suffixIcon,
+              suffixIcon: widget.suffixIcon,
+              // No fill — glass container handles the visual background
+              filled: true,
+              fillColor: Colors.transparent,
               border: InputBorder.none,
-              contentPadding: const EdgeInsets.all(16),
+              enabledBorder: InputBorder.none,
+              focusedBorder: InputBorder.none,
+              errorBorder: InputBorder.none,
+              focusedErrorBorder: InputBorder.none,
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 14,
+              ),
               isDense: true,
             ),
           ),

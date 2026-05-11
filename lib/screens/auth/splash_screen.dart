@@ -50,7 +50,7 @@ class _SplashScreenState extends State<SplashScreen>
 
   Future<void> _checkAuth() async {
     // Wait for animation before routing
-    await Future.delayed(const Duration(milliseconds: 3000));
+    await Future.delayed(const Duration(milliseconds: 1500));
     if (!mounted) return;
 
     // ✅ Firebase is the primary source of truth.
@@ -75,7 +75,7 @@ class _SplashScreenState extends State<SplashScreen>
         final response = await http.get(
           Uri.parse('${ApiConfig.baseUrl}/users/profile'),
           headers: {'Authorization': 'Bearer $token'},
-        );
+        ).timeout(const Duration(seconds: 5));
         if (response.statusCode == 200) {
           final data = jsonDecode(response.body);
           role = data['user']?['role'] as String?;
@@ -135,11 +135,8 @@ class _SplashScreenState extends State<SplashScreen>
             child: Stack(
               fit: StackFit.expand,
               children: [
-                // Full-height splash image
                 Image.asset(
-                  Theme.of(context).brightness == Brightness.dark
-                      ? 'assets/images/burl_splash_dark.jpg'
-                      : 'assets/images/burl_splash_light.jpg',
+                  'assets/images/splash screen.jpg',
                   fit: BoxFit.fitHeight,
                 ),
                 // Overlay loading spinner

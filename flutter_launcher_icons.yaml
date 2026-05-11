@@ -1,5 +1,5 @@
 flutter_launcher_icons:
   android: "launcher_icon"
   ios: true
-  image_path: "assets/images/burl_icon.png"
+  image_path: "assets/images/cricly logo.png"
   min_sdk_android: 21

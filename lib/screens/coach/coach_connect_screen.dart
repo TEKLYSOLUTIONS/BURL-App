@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../config/palette.dart';
 import '../../services/stripe_payment_service.dart';
+import '../../widgets/navigation/coach_bottom_bar.dart';
 
 /// Screen for Stripe Connect Express onboarding and status display.
 /// Coaches must complete Connect onboarding before they can receive payouts.
@@ -64,13 +65,13 @@ class _CoachConnectScreenState extends State<CoachConnectScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F7FA),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         title: Text(
           'Payout Setup',
           style: GoogleFonts.inter(
             fontWeight: FontWeight.bold,
-            color: AppPalette.navyPrimary,
+            color: Theme.of(context).colorScheme.onSurface,
             fontSize: 20,
           ),
         ),
@@ -78,10 +79,11 @@ class _CoachConnectScreenState extends State<CoachConnectScreen> {
         elevation: 0,
         centerTitle: true,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: AppPalette.navyPrimary),
+          icon: Icon(Icons.arrow_back, color: Theme.of(context).colorScheme.onSurface),
           onPressed: () => context.pop(),
         ),
       ),
+      bottomNavigationBar: const CoachBottomBar(),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
@@ -172,12 +174,12 @@ class _CoachConnectScreenState extends State<CoachConnectScreen> {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: Colors.grey.shade200),
+        border: Border.all(color: Theme.of(context).dividerColor.withValues(alpha: 0.5)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
+            color: Theme.of(context).shadowColor.withValues(alpha: 0.04),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -192,7 +194,7 @@ class _CoachConnectScreenState extends State<CoachConnectScreen> {
               fontSize: 11,
               fontWeight: FontWeight.w700,
               letterSpacing: 1.2,
-              color: Colors.grey[500],
+              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
             ),
           ),
           const SizedBox(height: 16),
@@ -255,13 +257,13 @@ class _CoachConnectScreenState extends State<CoachConnectScreen> {
           decoration: BoxDecoration(
             color: ok
                 ? const Color(0xFF22C55E).withValues(alpha: 0.1)
-                : Colors.grey.withValues(alpha: 0.1),
+                : Theme.of(context).disabledColor.withValues(alpha: 0.1),
             shape: BoxShape.circle,
           ),
           child: Icon(
             ok ? Icons.check_rounded : Icons.close_rounded,
             size: 16,
-            color: ok ? const Color(0xFF22C55E) : Colors.grey[400],
+            color: ok ? const Color(0xFF22C55E) : Theme.of(context).disabledColor,
           ),
         ),
         const SizedBox(width: 12),
@@ -270,7 +272,7 @@ class _CoachConnectScreenState extends State<CoachConnectScreen> {
           style: GoogleFonts.inter(
             fontSize: 14,
             fontWeight: FontWeight.w500,
-            color: AppPalette.navyPrimary,
+            color: Theme.of(context).colorScheme.onSurface,
           ),
         ),
       ],
@@ -351,9 +353,9 @@ class _CoachConnectScreenState extends State<CoachConnectScreen> {
           margin: const EdgeInsets.only(bottom: 12),
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: Theme.of(context).cardColor,
             borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: Colors.grey.shade100),
+            border: Border.all(color: Theme.of(context).dividerColor.withValues(alpha: 0.5)),
           ),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -361,10 +363,10 @@ class _CoachConnectScreenState extends State<CoachConnectScreen> {
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: AppPalette.navyPrimary.withValues(alpha: 0.08),
+                  color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: Icon(item.$1, color: AppPalette.navyPrimary, size: 20),
+                child: Icon(item.$1, color: Theme.of(context).colorScheme.primary, size: 20),
               ),
               const SizedBox(width: 14),
               Expanded(
@@ -376,13 +378,13 @@ class _CoachConnectScreenState extends State<CoachConnectScreen> {
                       style: GoogleFonts.inter(
                         fontWeight: FontWeight.bold,
                         fontSize: 14,
-                        color: AppPalette.navyPrimary,
+                        color: Theme.of(context).colorScheme.onSurface,
                       ),
                     ),
                     const SizedBox(height: 2),
                     Text(
                       item.$3,
-                      style: GoogleFonts.inter(fontSize: 12, color: Colors.grey[600], height: 1.4),
+                      style: GoogleFonts.inter(fontSize: 12, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6), height: 1.4),
                     ),
                   ],
                 ),

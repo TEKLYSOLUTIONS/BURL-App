@@ -5,6 +5,7 @@ import '../../config/palette.dart';
 import '../../models/subscription_plan.dart';
 import '../../services/subscription_service.dart';
 import '../../services/stripe_payment_service.dart';
+import '../../services/profile_service.dart';
 import '../../utils/currency_helper.dart';
 import 'subscription_result_screen.dart';
 
@@ -37,6 +38,7 @@ class _SubscriptionPaymentScreenState
   bool _isValidatingPromo = false;
   String? _promoError;
   bool _isProcessing = false;
+  bool _addingCard = false;
 
   // Real saved cards from Stripe
   List<Map<String, dynamic>> _savedCards = [];
@@ -55,6 +57,35 @@ class _SubscriptionPaymentScreenState
     if (mounted) setState(() {});
     if (_savedCards.isNotEmpty) {
       _selectedPaymentMethodId = _savedCards[0]['id'] as String;
+    }
+  }
+
+  Future<void> _addCard() async {
+    setState(() => _addingCard = true);
+    try {
+      final success = await _stripeService.addCard(context);
+      if (success && mounted) {
+        await _loadCards();
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Card added successfully'),
+              backgroundColor: Color(0xFF22C55E),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Failed to add card. Please try again.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _addingCard = false);
     }
   }
 
@@ -167,6 +198,12 @@ class _SubscriptionPaymentScreenState
           paymentMethodId: _selectedPaymentMethodId,
         );
         success = true;
+      }
+
+      if (success) {
+        // Invalidate the profile cache so the UI updates to show the new 'Pro' status 
+        // when the user returns to the Settings/Profile screen.
+        ProfileService.invalidateCache();
       }
     } catch (e) {
       errorMsg = e.toString().replaceAll('Exception: ', '');
@@ -856,72 +893,26 @@ class _SubscriptionPaymentScreenState
   Widget _buildSavedCardSelector() {
     if (_savedCards.isEmpty) {
       return Container(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(18),
         decoration: BoxDecoration(
-          color: Colors.orange.withValues(alpha: 0.06),
+          color: Colors.white,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: Colors.orange.withValues(alpha: 0.3)),
+          border: Border.all(color: Colors.grey.shade200),
         ),
-        child: Row(
+        child: Column(
           children: [
-            const Icon(Icons.credit_card_off_rounded, color: Colors.orange),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                'No saved cards. Go to Payment Methods in your profile to add a card first.',
-                style: GoogleFonts.inter(fontSize: 13, color: Colors.orange[800]),
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
-    return Column(
-      children: _savedCards.map((pm) {
-        final pmId = pm['id'] as String;
-        final cardData = pm['card'] as Map<String, dynamic>;
-        final brand = (cardData['brand'] as String? ?? 'card');
-        final last4 = (cardData['last4'] as String? ?? '••••');
-        final expMonth = cardData['exp_month']?.toString().padLeft(2, '0') ?? '??';
-        final expYear = cardData['exp_year']?.toString().substring(2) ?? '??';
-        final isSelected = _selectedPaymentMethodId == pmId;
-
-        return GestureDetector(
-          onTap: () => setState(() => _selectedPaymentMethodId = pmId),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            margin: const EdgeInsets.only(bottom: 10),
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(
-                color: isSelected ? AppPalette.navyPrimary : Colors.grey.shade200,
-                width: isSelected ? 2 : 1,
-              ),
-              boxShadow: isSelected
-                  ? [
-                      BoxShadow(
-                        color: AppPalette.navyPrimary.withValues(alpha: 0.12),
-                        blurRadius: 8,
-                        offset: const Offset(0, 3),
-                      )
-                    ]
-                  : [],
-            ),
-            child: Row(
+            Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.all(8),
+                  padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: AppPalette.navyPrimary.withValues(alpha: 0.08),
-                    borderRadius: BorderRadius.circular(8),
+                    color: Colors.orange.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(10),
                   ),
                   child: const Icon(
-                    Icons.credit_card,
-                    color: AppPalette.navyPrimary,
-                    size: 20,
+                    Icons.credit_card_off_rounded,
+                    color: Colors.orange,
+                    size: 22,
                   ),
                 ),
                 const SizedBox(width: 14),
@@ -930,36 +921,187 @@ class _SubscriptionPaymentScreenState
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        '${brand[0].toUpperCase()}${brand.substring(1)} ending in $last4',
+                        'No payment cards saved',
                         style: GoogleFonts.inter(
                           fontWeight: FontWeight.w600,
-                          fontSize: 13,
+                          fontSize: 14,
                           color: AppPalette.navyPrimary,
                         ),
                       ),
-                      const SizedBox(height: 2),
                       Text(
-                        'Expires $expMonth/$expYear',
+                        'Add a card to start your subscription',
                         style: GoogleFonts.inter(
-                          fontSize: 11,
-                          color: Colors.grey[500],
+                          fontSize: 12,
+                          color: Colors.grey[600],
                         ),
                       ),
                     ],
                   ),
                 ),
-                Icon(
-                  isSelected
-                      ? Icons.radio_button_checked
-                      : Icons.radio_button_unchecked,
-                  color: isSelected ? AppPalette.navyPrimary : Colors.grey[400],
-                  size: 22,
-                ),
               ],
             ),
+            const SizedBox(height: 14),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: _addingCard ? null : _addCard,
+                icon: _addingCard
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                            color: Colors.white, strokeWidth: 2),
+                      )
+                    : const Icon(Icons.add, size: 18),
+                label: Text(
+                  _addingCard ? 'Opening...' : '+ Add Card',
+                  style: GoogleFonts.inter(fontWeight: FontWeight.bold),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppPalette.navyPrimary,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                  elevation: 0,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Column(
+      children: [
+        ..._savedCards.map((pm) {
+          final pmId = pm['id'] as String;
+          final cardData = pm['card'] as Map<String, dynamic>;
+          final brand = (cardData['brand'] as String? ?? 'card');
+          final last4 = (cardData['last4'] as String? ?? '••••');
+          final expMonth =
+              cardData['exp_month']?.toString().padLeft(2, '0') ?? '??';
+          final expYear =
+              cardData['exp_year']?.toString().substring(2) ?? '??';
+          final isSelected = _selectedPaymentMethodId == pmId;
+
+          return GestureDetector(
+            onTap: () => setState(() => _selectedPaymentMethodId = pmId),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              margin: const EdgeInsets.only(bottom: 10),
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                  color: isSelected
+                      ? AppPalette.navyPrimary
+                      : Colors.grey.shade200,
+                  width: isSelected ? 2 : 1,
+                ),
+                boxShadow: isSelected
+                    ? [
+                        BoxShadow(
+                          color: AppPalette.navyPrimary
+                              .withValues(alpha: 0.12),
+                          blurRadius: 8,
+                          offset: const Offset(0, 3),
+                        )
+                      ]
+                    : [],
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color:
+                          AppPalette.navyPrimary.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(
+                      Icons.credit_card,
+                      color: AppPalette.navyPrimary,
+                      size: 20,
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '${brand[0].toUpperCase()}${brand.substring(1)} ending in $last4',
+                          style: GoogleFonts.inter(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 13,
+                            color: AppPalette.navyPrimary,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          'Expires $expMonth/$expYear',
+                          style: GoogleFonts.inter(
+                            fontSize: 11,
+                            color: Colors.grey[500],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Icon(
+                    isSelected
+                        ? Icons.radio_button_checked
+                        : Icons.radio_button_unchecked,
+                    color: isSelected
+                        ? AppPalette.navyPrimary
+                        : Colors.grey[400],
+                    size: 22,
+                  ),
+                ],
+              ),
+            ),
+          );
+        }),
+
+        // ── Add New Card ──
+        const SizedBox(height: 10),
+        GestureDetector(
+          onTap: _addingCard ? null : _addCard,
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 13),
+            decoration: BoxDecoration(
+              border: Border.all(color: Colors.grey.shade300),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Center(
+              child: _addingCard
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.add_circle_outline,
+                            color: AppPalette.navyPrimary, size: 20),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Add New Card',
+                          style: GoogleFonts.inter(
+                            color: AppPalette.navyPrimary,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ],
+                    ),
+            ),
           ),
-        );
-      }).toList(),
+        ),
+      ],
     );
   }
 

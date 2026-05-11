@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:geocoding/geocoding.dart';
 import '../../config/palette.dart';
 import '../../services/booking_service.dart';
 import '../../services/coach_service.dart';
@@ -17,11 +18,13 @@ import 'create_session_screen.dart';
 class SessionDetailsScreen extends StatefulWidget {
   final String sessionId;
   final String? occurrenceDate;
+  final Map<String, dynamic>? initialSession; // pre-loaded data → no loading flash
 
   const SessionDetailsScreen({
     super.key,
     required this.sessionId,
     this.occurrenceDate,
+    this.initialSession,
   });
 
   @override
@@ -40,11 +43,63 @@ class _SessionDetailsScreenState extends State<SessionDetailsScreen> {
   bool _isCancelling = false;
   DateTime _lastTap = DateTime.fromMillisecondsSinceEpoch(0);
 
+  // Resolved human-readable location (reverse geocoded from coordinates)
+  String? _resolvedLocation;
+
   @override
   void initState() {
     super.initState();
+    if (widget.initialSession != null) {
+      // Show immediately with pre-loaded data; refresh silently in background
+      _session = widget.initialSession;
+      _isLoading = false;
+    }
     _loadUserRole().then((_) => _checkBookingStatus());
-    _fetchSessionDetails();
+    _fetchSessionDetails(); // always refresh (silently if initialSession provided)
+    _resolveLocation(); // reverse geocode if location is stored as coordinates
+  }
+
+  /// Parses the session location. If it looks like "lat, lng" coordinates,
+  /// performs reverse geocoding to get a human-readable address.
+  Future<void> _resolveLocation() async {
+    final raw = _session?['location']?.toString().trim();
+    if (raw == null || raw.isEmpty) return;
+
+    // Check if it looks like coordinates: "37.42213, -122.08480"
+    final coordRegex = RegExp(r'^(-?\d+\.\d+),\s*(-?\d+\.\d+)$');
+    final match = coordRegex.firstMatch(raw);
+    if (match == null) {
+      // Already a text address — display as-is
+      if (mounted) setState(() => _resolvedLocation = raw);
+      return;
+    }
+
+    final lat = double.tryParse(match.group(1)!);
+    final lng = double.tryParse(match.group(2)!);
+    if (lat == null || lng == null) return;
+
+    try {
+      final placemarks = await placemarkFromCoordinates(lat, lng);
+      if (!mounted || placemarks.isEmpty) return;
+
+      final p = placemarks.first;
+      // Build a readable address from available components
+      final parts = <String>[
+        if (p.name != null && p.name!.isNotEmpty && p.name != p.street) p.name!,
+        if (p.street != null && p.street!.isNotEmpty) p.street!,
+        if (p.subLocality != null && p.subLocality!.isNotEmpty) p.subLocality!,
+        if (p.locality != null && p.locality!.isNotEmpty) p.locality!,
+        if (p.administrativeArea != null && p.administrativeArea!.isNotEmpty) p.administrativeArea!,
+        if (p.country != null && p.country!.isNotEmpty) p.country!,
+      ];
+      final address = parts.toSet().toList().take(4).join(', ');
+      if (mounted) {
+        setState(() => _resolvedLocation = address.isNotEmpty ? address : raw);
+      }
+    } catch (_) {
+      // Geocoding failed — keep raw value
+      if (mounted) setState(() => _resolvedLocation = raw);
+    }
   }
 
   Future<void> _loadUserRole() async {
@@ -55,27 +110,31 @@ class _SessionDetailsScreenState extends State<SessionDetailsScreen> {
   }
 
   Future<void> _fetchSessionDetails() async {
-    setState(() {
-      _isLoading = true;
-    });
+    // Only show spinner if we have no data yet
+    if (_session == null) {
+      setState(() => _isLoading = true);
+    }
 
     try {
       final session = await SessionService.getSessionById(widget.sessionId);
-      setState(() {
-        _session = session;
-        _isLoading = false;
-      });
-    } catch (e) {
-      setState(() {
-        _isLoading = false;
-      });
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to load session: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        setState(() {
+          _session = session;
+          _isLoading = false;
+        });
+        _resolveLocation(); // Reverse geocode after session data is available
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = _session == null); // only block if no data
+        if (_session == null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Failed to load session: $e'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
       }
     }
   }
@@ -234,8 +293,9 @@ class _SessionDetailsScreenState extends State<SessionDetailsScreen> {
   Widget build(BuildContext context) {
     if (_isLoading) {
       return Scaffold(
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         appBar: AppBar(
-          backgroundColor: Colors.white,
+          backgroundColor: Theme.of(context).scaffoldBackgroundColor,
           elevation: 0,
           title: Text(
             'Session Details',
@@ -249,7 +309,7 @@ class _SessionDetailsScreenState extends State<SessionDetailsScreen> {
         body: Center(
           child: CircularProgressIndicator(
             valueColor: AlwaysStoppedAnimation<Color>(
-              Theme.of(context).colorScheme.primary,
+              Theme.of(context).colorScheme.secondary,
             ),
           ),
         ),
@@ -258,8 +318,9 @@ class _SessionDetailsScreenState extends State<SessionDetailsScreen> {
 
     if (_session == null) {
       return Scaffold(
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         appBar: AppBar(
-          backgroundColor: Colors.white,
+          backgroundColor: Theme.of(context).scaffoldBackgroundColor,
           elevation: 0,
           title: Text(
             'Session Details',
@@ -756,7 +817,9 @@ class _SessionDetailsScreenState extends State<SessionDetailsScreen> {
                 color: Theme.of(context).colorScheme.onPrimaryContainer,
               ),
             ),
-            title: _session!['location']?.toString() ?? 'Unknown Location',
+            title: _resolvedLocation ??
+                _session!['location']?.toString() ??
+                'Unknown Location',
             subtitle: 'Training Location',
             actionIcon: Icons.directions,
           ),

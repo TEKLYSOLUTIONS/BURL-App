@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Dark mode app background — matches Flutter dark splash screen, eliminates black flash -->
-    <color name="app_background_light">#010613</color>
+    <!-- Matches the Cricly splash screen navy background — eliminates flash -->
+    <color name="app_background_light">#0A1628</color>
 </resources>
